@@ -1,0 +1,30 @@
+{
+  "name": "@coeval/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Coeval API, persistence layer, and background workers.",
+  "scripts": {
+    "predev": "pnpm --filter @coeval/shared build && pnpm --filter @coeval/db build && pnpm --filter @coeval/audit build && pnpm --filter @coeval/queue build",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "seed:user": "tsx src/scripts/seed-user.ts"
+  },
+  "dependencies": {
+    "@coeval/audit": "workspace:*",
+    "@coeval/db": "workspace:*",
+    "@coeval/queue": "workspace:*",
+    "@coeval/shared": "workspace:*",
+    "@hono/node-server": "^2.0.10",
+    "better-auth": "1.6.22",
+    "hono": "^4.12.34",
+    "pg": "^8.20.0",
+    "zod": "^4.4.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.0",
+    "ajv": "^8.20.0"
+  }
+}

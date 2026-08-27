@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coeval.dev/contracts/binary-calibration-private-ledger-v1.schema.json",
+  "title": "Coeval binary calibration private ledger v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "schemaVersion",
+    "canonicalizationVersion",
+    "artifactId",
+    "calibrationRunId",
+    "projectId",
+    "revisionDigest",
+    "requestedProvider",
+    "itemCount",
+    "trialsPerItem",
+    "records"
+  ],
+  "properties": {
+    "contract": { "const": "coeval/binary-calibration-private-ledger/v1" },
+    "schemaVersion": { "const": 1 },
+    "canonicalizationVersion": { "const": "coeval-canonical-json/v1" },
+    "artifactId": { "$ref": "#/$defs/nonEmptyString" },
+    "calibrationRunId": { "$ref": "#/$defs/nonEmptyString" },
+    "projectId": { "$ref": "#/$defs/nonEmptyString" },
+    "revisionDigest": { "$ref": "#/$defs/sha256Digest" },
+    "requestedProvider": { "$ref": "#/$defs/nonEmptyString" },
+    "itemCount": { "type": "integer", "minimum": 1, "maximum": 5000 },
+    "trialsPerItem": { "type": "integer", "minimum": 1, "maximum": 10 },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50000,
+      "items": { "$ref": "#/$defs/record" }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^[^\\uD800-\\uDFFF]+$"
+    },
+    "sha256Digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "nullableString": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/nonEmptyString" }]
+    },
+    "providerObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "observedModel", "observedVersion", "systemFingerprint"],
+      "properties": {
+        "provider": { "$ref": "#/$defs/nonEmptyString" },
+        "observedModel": { "$ref": "#/$defs/nullableString" },
+        "observedVersion": { "$ref": "#/$defs/nullableString" },
+        "systemFingerprint": { "$ref": "#/$defs/nullableString" }
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "datasetRevisionItemDigest",
+        "trialIndex",
+        "truthLabel",
+        "terminalEvaluatorOutcome",
+        "attemptState",
+        "errorCode",
+        "physicalProviderCalls",
+        "providerObservation",
+        "commitmentSalt"
+      ],
+      "properties": {
+        "datasetRevisionItemDigest": { "$ref": "#/$defs/sha256Digest" },
+        "trialIndex": { "type": "integer", "minimum": 0, "maximum": 9 },
+        "truthLabel": { "enum": ["pass", "fail"] },
+        "terminalEvaluatorOutcome": {
+          "enum": ["evaluator_pass", "evaluator_fail", "abstained", "errored", "unevaluated"]
+        },
+        "attemptState": { "enum": ["not_started", "started", "terminal"] },
+        "errorCode": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "enum": [
+                "provider_unavailable",
+                "provider_authentication",
+                "provider_rate_limit",
+                "provider_timeout",
+                "provider_transport",
+                "provider_protocol",
+                "invalid_evaluator_output",
+                "outcome_unknown",
+                "internal"
+              ]
+            }
+          ]
+        },
+        "physicalProviderCalls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "providerObservation": { "$ref": "#/$defs/providerObservation" },
+        "commitmentSalt": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  }
+}

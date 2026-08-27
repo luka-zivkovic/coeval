@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-and-test:
+    runs-on: ubuntu-latest
+    env:
+      PG_SMOKE_DATABASE_URL: postgres://coeval:coeval@localhost:5432/coeval
+      BETTER_AUTH_SECRET: ci-test-secret-for-postgres-suite-at-least-32-bytes
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: coeval
+          POSTGRES_PASSWORD: coeval
+          POSTGRES_DB: coeval
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U coeval -d coeval"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build web
+        run: pnpm --filter @coeval/web build
+
+  # Dogfood the judge gate when a hosted Coeval endpoint is configured.
+  # Secrets are not readable in a job-level `if`, so a small check job exposes
+  # their presence as an output. Without both secrets this job is skipped.
+  gate-secrets:
+    runs-on: ubuntu-latest
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - id: check
+        run: echo "available=${{ secrets.COEVAL_URL != '' && secrets.COEVAL_API_KEY != '' }}" >> "$GITHUB_OUTPUT"
+
+  judge-gate:
+    runs-on: ubuntu-latest
+    needs: gate-secrets
+    if: needs.gate-secrets.outputs.available == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Judge gate
+        run: node tools/ci/gate.mjs tools/ci/examples.jsonl --min-agreement 1.0
+        env:
+          COEVAL_URL: ${{ secrets.COEVAL_URL }}
+          COEVAL_API_KEY: ${{ secrets.COEVAL_API_KEY }}

@@ -1,0 +1,17 @@
+{
+  "name": "@coeval/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP stdio server exposing Coeval's /api/v1 machine surface: findings, cases, golden set, project check, batch submission, and gate checks.",
+  "type": "module",
+  "bin": {
+    "coeval-mcp": "./index.mjs"
+  },
+  "scripts": {
+    "test": "node --test *.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.4.1"
+  }
+}

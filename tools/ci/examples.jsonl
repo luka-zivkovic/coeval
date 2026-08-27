@@ -1,0 +1,4 @@
+{"input": {"q": "What is your refund policy?"}, "output": {"answer": "Refunds are available within 30 days of purchase. You can request one anytime from Settings -> Billing -> Request refund."}, "expected": "pass", "name": "refund policy"}
+{"input": {"q": "How do I export my data?"}, "output": {"answer": "Go to Settings -> Data -> Export. We'll email you a download link within a few minutes."}, "expected": "pass", "name": "export how-to"}
+{"input": {"q": "How do I export my data?", "tone": "frustrated"}, "output": {"answer": "No idea. Figure it out yourself."}, "expected": "fail", "name": "rude export"}
+{"input": {"q": "Thanks!"}, "output": {"answer": "Anytime - glad it worked."}, "name": "unlabeled thanks"}

@@ -1,0 +1,46 @@
+{
+  "name": "coeval",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Governed evaluators and verifiable assessment evidence for AI systems.",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/luka-zivkovic/coeval.git"
+  },
+  "bugs": {
+    "url": "https://github.com/luka-zivkovic/coeval/issues"
+  },
+  "homepage": "https://coeval.io",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "build": "pnpm -r --sort build",
+    "typecheck": "tsc -b",
+    "test": "vitest run && node --test tools/ci/*.test.mjs tools/mcp/*.test.mjs",
+    "test:pg": "tsx tools/test-postgres.ts",
+    "clean": "rm -rf apps/*/dist apps/*/dist-ts packages/*/dist packages/*/*.tsbuildinfo apps/*/*.tsbuildinfo .turbo coverage out",
+    "dev:api": "pnpm --filter @coeval/api dev",
+    "dev:web": "pnpm --filter @coeval/web dev",
+    "sim:prelude": "node tools/sim/prelude.mjs",
+    "sim:checks": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.20.0",
+    "jsdom": "^30.0.1",
+    "pg": "^8.20.0",
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild@0.18.20": "0.25.12"
+    }
+  }
+}

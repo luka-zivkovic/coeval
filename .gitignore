@@ -1,0 +1,29 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+.DS_Store
+.pnpm-store/
+out/
+*.log
+
+# Local product planning, research, and design artifacts. This directory is
+# intentionally kept inside the checkout for private future-development notes,
+# but none of its contents belong in the published repository.
+.private/
+
+# Tool-specific local state.
+.ai/
+.claude/
+.playwright-mcp/
+
+*.tsbuildinfo
+
+dist-ts/
+
+# E2E sim harness artifacts
+e2e/.auth/
+test-results/
+playwright-report/

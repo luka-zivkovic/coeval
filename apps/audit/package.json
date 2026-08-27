@@ -1,0 +1,22 @@
+{
+  "name": "@coeval/audit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Judge runtime for Coeval: LLM providers + structured verdict spec consumed by the platform.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.92.0",
+    "zod": "^4.4.1"
+  },
+  "devDependencies": {},
+  "exports": {
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.js"
+    }
+  }
+}

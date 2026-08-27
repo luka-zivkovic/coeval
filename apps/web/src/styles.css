@@ -1,0 +1,291 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+ * Coeval design tokens
+ * Light = the original "paper & ink" product theme
+ * Dark  = preserved zinc + purple from the previous build
+ * ========================================================= */
+
+:root {
+  /* paper & ink (raw design tokens) */
+  --paper:        #F1EBDE;
+  --paper-2:      #ECE4D1;
+  --paper-3:      #E5DCC4;
+  --card-raw:     #FAF6EC;
+  --card-2:       #F6F0E0;
+  --rule:         #D4C9AE;
+  --rule-soft:    #DFD5BC;
+  --rule-strong:  #B8AC8E;
+
+  --ink:          #1A1614;
+  --ink-2:        #3D362E;
+  --ink-3:        #5E574B;
+  --ink-4:        #665E51;
+  --ink-mute:     #B0A88F;
+
+  --signal:       #8B2A1C;
+  --signal-2:     #A6402E;
+  --signal-contrast: #FFF6EE;
+  --signal-tint:  #ECD7CF;
+  --signal-wash:  #F3E2DA;
+
+  --dev:          #2A3F66;
+  --dev-tint:     #D9DEE9;
+
+  --gold:         #76570E;
+  --gold-tint:    #EFE3BE;
+  --ambig-bg:     #F4ECCC;
+  --ambig-fill:   #C49B32;
+  --ambig-stripe: rgba(255, 255, 255, 0.45);
+  --ambig-pattern: repeating-linear-gradient(135deg, var(--ambig-fill) 0 4px, var(--ambig-stripe) 4px 6px);
+
+  --shadow-card:  0 1px 0 rgba(26,22,20,0.04), 0 0 0 1px var(--rule-soft);
+  --shadow-elev:  0 6px 24px -10px rgba(26,22,20,0.18), 0 0 0 1px var(--rule);
+
+  /* shadcn semantic tokens (light = paper theme) */
+  --background:           var(--paper);
+  --foreground:           var(--ink);
+  --card:                 var(--card-raw);
+  --card-foreground:      var(--ink);
+  --popover:              var(--card-raw);
+  --popover-foreground:   var(--ink);
+  --primary:              var(--ink);
+  --primary-foreground:   var(--paper);
+  --secondary:            var(--paper-2);
+  --secondary-foreground: var(--ink);
+  --muted:                var(--paper-2);
+  --muted-foreground:     var(--ink-3);
+  --accent:               var(--paper-3);
+  --accent-foreground:    var(--ink);
+  --destructive:          var(--signal);
+  --destructive-foreground: #FFF6EE;
+  --border:               var(--rule-soft);
+  --input:                var(--rule);
+  --ring:                 var(--ink);
+
+  --radius: 2px;
+
+  --font-serif: "Geist", "Söhne", ui-sans-serif, system-ui, sans-serif;
+  --font-sans:  "Geist", "Söhne", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:  "Geist Mono", "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+}
+
+.dark {
+  /* dark = preserved zinc + purple */
+  --paper:        #09090b;
+  --paper-2:      #18181b;
+  --paper-3:      #27272a;
+  --card-raw:     #18181b;
+  --card-2:       #1f1f23;
+  --rule:         rgba(255, 255, 255, 0.12);
+  --rule-soft:    rgba(255, 255, 255, 0.08);
+  --rule-strong:  rgba(255, 255, 255, 0.18);
+
+  --ink:          #fafafa;
+  --ink-2:        #e4e4e7;
+  --ink-3:        #a1a1aa;
+  --ink-4:        #9595A0;
+  --ink-mute:     #52525b;
+
+  --signal:       #f97316;
+  --signal-2:     #fb923c;
+  --signal-contrast: #18181B;
+  --signal-tint:  rgba(249, 115, 22, 0.20);
+  --signal-wash:  rgba(249, 115, 22, 0.08);
+
+  --dev:          #a78bfa;
+  --dev-tint:     rgba(167, 139, 250, 0.20);
+
+  --gold:         #fde68a;
+  --gold-tint:    rgba(253, 230, 138, 0.16);
+  --ambig-bg:     rgba(253, 230, 138, 0.12);
+  --ambig-fill:   #374151;
+  --ambig-stripe: rgba(255, 255, 255, 0.28);
+  --ambig-pattern: repeating-linear-gradient(135deg, var(--ambig-fill) 0 4px, var(--ambig-stripe) 4px 6px);
+
+  --shadow-card:  0 1px 0 rgba(0,0,0,0.4), 0 0 0 1px var(--rule-soft);
+  --shadow-elev:  0 20px 80px rgba(0,0,0,0.45), 0 0 0 1px var(--rule);
+
+  --background:           var(--paper);
+  --foreground:           var(--ink);
+  --card:                 var(--card-raw);
+  --card-foreground:      var(--ink);
+  --popover:              var(--card-raw);
+  --popover-foreground:   var(--ink);
+  --primary:              var(--ink);
+  --primary-foreground:   #18181b;
+  --secondary:            var(--paper-2);
+  --secondary-foreground: var(--ink);
+  --muted:                var(--paper-2);
+  --muted-foreground:     var(--ink-3);
+  --accent:               var(--paper-3);
+  --accent-foreground:    var(--ink);
+  --destructive:          var(--signal);
+  --destructive-foreground: #fff7ed;
+  --border:               var(--rule-soft);
+  --input:                var(--rule);
+  --ring:                 #a78bfa;
+}
+
+/* Map design tokens into Tailwind's @theme so utilities like
+ * bg-paper, text-ink, border-rule, text-signal all work. */
+@theme inline {
+  --color-background:   var(--background);
+  --color-foreground:   var(--foreground);
+  --color-card:         var(--card);
+  --color-card-foreground:   var(--card-foreground);
+  --color-popover:      var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary:      var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary:    var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:        var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent:       var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive:  var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border:       var(--border);
+  --color-input:        var(--input);
+  --color-ring:         var(--ring);
+
+  /* Coeval-specific colors */
+  --color-paper:        var(--paper);
+  --color-paper-2:      var(--paper-2);
+  --color-paper-3:      var(--paper-3);
+  --color-card-2:       var(--card-2);
+  --color-rule:         var(--rule);
+  --color-rule-soft:    var(--rule-soft);
+  --color-rule-strong:  var(--rule-strong);
+  --color-ink:          var(--ink);
+  --color-ink-2:        var(--ink-2);
+  --color-ink-3:        var(--ink-3);
+  --color-ink-4:        var(--ink-4);
+  --color-ink-mute:     var(--ink-mute);
+  --color-signal:       var(--signal);
+  --color-signal-2:     var(--signal-2);
+  --color-signal-contrast: var(--signal-contrast);
+  --color-signal-tint:  var(--signal-tint);
+  --color-signal-wash:  var(--signal-wash);
+  --color-dev:          var(--dev);
+  --color-dev-tint:     var(--dev-tint);
+  --color-gold:         var(--gold);
+  --color-gold-tint:    var(--gold-tint);
+  --color-ambig-bg:     var(--ambig-bg);
+  --color-ambig-fill:   var(--ambig-fill);
+
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+
+  --font-serif: var(--font-serif);
+  --font-sans:  var(--font-sans);
+  --font-mono:  var(--font-mono);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  :where(a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--ring) !important;
+    outline-offset: 2px;
+  }
+}
+
+/* ============================================================
+ * Coeval typography utilities
+ * ========================================================= */
+@layer components {
+  .font-serif { font-family: var(--font-serif); font-weight: 500; letter-spacing: -0.015em; }
+  .font-mono  { font-family: var(--font-mono); font-feature-settings: "ss01"; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+  .eyebrow-signal { color: var(--signal); }
+  .eyebrow-dev    { color: var(--dev); }
+
+  .h-display { font-family: var(--font-serif); font-weight: 500; font-size: 40px; line-height: 1.06; letter-spacing: -0.022em; color: var(--ink); }
+  .h-1       { font-family: var(--font-serif); font-weight: 500; font-size: 28px; line-height: 1.10; letter-spacing: -0.020em; }
+  .h-2       { font-family: var(--font-serif); font-weight: 500; font-size: 20px; line-height: 1.18; letter-spacing: -0.015em; }
+  .h-3       { font-family: var(--font-serif); font-weight: 500; font-size: 16px; line-height: 1.22; letter-spacing: -0.010em; }
+  .t-lg      { font-size: 14px; }
+  .t-sm      { font-size: 12px; }
+  .t-xs      { font-size: 11px; }
+
+  /* a ledger table — used everywhere */
+  .ledger { width: 100%; border-collapse: collapse; }
+  .ledger th, .ledger td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--rule-soft);
+    font-size: 12.5px;
+    vertical-align: top;
+  }
+  .ledger th {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .ledger tbody tr:hover td { background: var(--card-2); }
+  .ledger tbody tr.row-link:hover td { cursor: pointer; }
+  .ledger tbody tr.row-signal:hover td { background: var(--signal-wash); }
+  .ledger tbody tr.selected td { background: var(--card-2); }
+
+  .fill-ambiguous { background: var(--ambig-pattern); }
+
+  /* dev-only blocks: surfaced by an ancestor .dev class */
+  .dev-only { display: none; }
+  .dev .dev-only       { display: initial; }
+  .dev .dev-only.block { display: block; }
+  .dev .dev-only.flex  { display: flex; }
+  .dev .dev-only.grid  { display: grid; }
+  .dev .pm-only        { display: none; }
+
+  /* highlighted edited block (rubric edits) */
+  .edit-mark {
+    background: linear-gradient(transparent 60%, var(--signal-tint) 60%);
+    padding: 1px 2px;
+  }
+
+  /* fade-up screen transition */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .fadeUp { animation: fadeUp 280ms ease-out backwards; }
+}
