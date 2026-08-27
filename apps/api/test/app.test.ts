@@ -539,8 +539,9 @@ describe("Coeval Hono API", () => {
         confidence: 0.5
       }
     });
-    expect((await seeded.getDashboardSummary(projectId)).exceptions.map((exception) => exception.id))
-      .toContain("case_exc_003");
+    const reopenedDashboard = await seeded.getDashboardSummary(projectId);
+    expect(reopenedDashboard.exceptions.map((exception) => exception.id)).toContain("case_exc_003");
+    expect(reopenedDashboard.currentVersionResultCount).toBe(dashboard.currentVersionResultCount);
     const reopenedDetail = await seeded.getCaseDetail(projectId, "case_exc_003");
     expect(reopenedDetail?.judgeRun.id).toBe(runOnly.id);
     expect(reopenedDetail?.verdictHistory).toEqual(expect.arrayContaining([

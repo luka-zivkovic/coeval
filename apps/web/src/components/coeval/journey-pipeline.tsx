@@ -15,7 +15,7 @@ export function JourneyPipeline({
 }) {
   const states = journeyActStates(dashboard);
   const bench = isBench(dashboard.project);
-  const judged = dashboard.project.autoJudgedTraceCount;
+  const judged = dashboard.currentVersionResultCount;
   const golden = dashboard.goldenSetSize;
   const steps: Array<{
     state: JourneyActState;

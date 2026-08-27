@@ -92,18 +92,26 @@ describe("beginner-first hierarchy", () => {
   });
 
   it("routes new projects through Overview before the advanced editor", async () => {
-    const [projectCreate, skillEdit, tracingWelcome, benchWelcome] = await Promise.all([
+    const [projectCreate, skillEdit, provisional, dashboard, tracingWelcome, benchWelcome, importTrace] = await Promise.all([
       source("../src/components/project-create.tsx"),
       source("../src/screens/skill-edit.tsx"),
+      source("../src/screens/dashboard-provisional.tsx"),
+      source("../src/screens/dashboard.tsx"),
       source("../src/screens/dashboard-welcome.tsx"),
-      source("../src/screens/dashboard-bench-welcome.tsx")
+      source("../src/screens/dashboard-bench-welcome.tsx"),
+      source("../src/components/import-trace-launcher.tsx")
     ]);
 
     expect(projectCreate.match(/window\.location\.assign\("\/"\)/g)).toHaveLength(2);
     expect(projectCreate).not.toContain("firstRunEditorPath");
     expect(skillEdit).toContain("Starter Check v${result.version.version} created. Add a Run to see its first Result.");
+    expect(skillEdit).toContain('useState<SkillVersionTimeScope>(firstRun ? "both" : "new")');
+    expect(provisional).toContain("navigate(firstRunEditorPath())");
+    expect(dashboard).toContain("setReceipt(takeSetupReceipt())");
     expect(tracingWelcome).toContain("emphasizeAction={false}");
     expect(benchWelcome).toContain("emphasizeAction={false}");
+    expect(importTrace).toContain("Its Check is queued");
+    expect(importTrace).not.toContain("The skill ran on the case you imported");
   });
 
   it("leads the evaluator screen with purpose and action before technical metadata", async () => {

@@ -109,17 +109,23 @@ describe("journey state", () => {
   });
 
   it("does not treat historical Results or a failed edit as a ready current Check", () => {
-    expect(firstRunSetupStepStates(dashboard({
+    const failedCurrent = dashboard({
       starter: false,
       imported: 4,
       judged: 4,
       currentJudged: 0,
       golden: 0,
       status: "failed"
-    }))).toEqual({
+    });
+    expect(firstRunSetupStepStates(failedCurrent)).toEqual({
       bringRun: "done",
       chooseCheck: "now",
       seeResult: "locked"
+    });
+    expect(journeyActStates(failedCurrent)).toEqual({
+      defineGood: "now",
+      judgeRealWork: "next",
+      earnTrust: "next"
     });
 
     expect(firstRunSetupStepStates(dashboard({

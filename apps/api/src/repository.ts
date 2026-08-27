@@ -1464,7 +1464,15 @@ export class DemoRepository implements CoevalRepository {
     const topCapabilityGaps = isLegacyCriterion ? capabilityGapsFromExceptions(exceptions) : [];
     const dynamicCurrentVersionResultCount = new Set(
       countedRuns
-        .filter((run) => run.skillVersionId === skill.currentVersion.id)
+        .filter((run) =>
+          run.skillVersionId === skill.currentVersion.id &&
+          // The aggregate demo baseline already includes every built-in
+          // case. A runtime re-judge of one of those identities replaces its
+          // Result; it is not another covered case. Dynamically imported
+          // cases remain outside that baseline and do increase coverage.
+          !(isLegacyCriterion && skill.currentVersion.id === demoSkill.currentVersion.id &&
+            this.syntheticTraceForBuiltinCase(run.caseId))
+        )
         .map((run) => run.caseId)
     ).size;
     const currentVersionResultCount = isLegacyCriterion && skill.currentVersion.id === demoSkill.currentVersion.id

@@ -34,13 +34,13 @@ vi.mock("@/lib/api", () => ({
   signOffSkillVersion: vi.fn()
 }));
 
-function provisionalBench(): DashboardSummary {
+function provisionalBench(judged = 0): DashboardSummary {
   return {
     project: {
       id: "project_bench",
       mode: "bench",
       importedTraceCount: 4,
-      autoJudgedTraceCount: 0,
+      autoJudgedTraceCount: judged,
       traceProvider: "manual"
     },
     skill: {
@@ -53,7 +53,7 @@ function provisionalBench(): DashboardSummary {
         approvedAt: null
       }
     },
-    currentVersionResultCount: 0,
+    currentVersionResultCount: judged,
     goldenSetSize: 0,
     exceptions: []
   } as DashboardSummary;
@@ -86,5 +86,31 @@ describe("provisional Skill Bench journey", () => {
     expect(html).toContain("No complete Check Result yet");
     expect(html).toContain("has not returned a complete Result");
     expect(html).not.toContain("did not flag these imported runs");
+  });
+
+  it("describes partial tracing coverage without extending the Result to pending runs", async () => {
+    const { DashboardProvisional } = await import("../src/screens/dashboard-provisional.js");
+    const dashboard = provisionalBench(2);
+    dashboard.project.mode = "tracing";
+    dashboard.project.traceProvider = "langsmith";
+    const html = renderToStaticMarkup(createElement(DashboardProvisional, {
+      dashboard,
+      onSignedOff: vi.fn()
+    }));
+
+    expect(html).toContain("2 completed Runs");
+    expect(html).toContain("2 still have no complete Result");
+    expect(html).not.toContain("did not flag these imported runs");
+  });
+
+  it("does not call a completed bench Result unevaluated", async () => {
+    const { DashboardProvisional } = await import("../src/screens/dashboard-provisional.js");
+    const html = renderToStaticMarkup(createElement(DashboardProvisional, {
+      dashboard: provisionalBench(1),
+      onSignedOff: vi.fn()
+    }));
+
+    expect(html).toContain("1 of 4 examples have a provisional Result");
+    expect(html).not.toContain("Nothing has been evaluated yet");
   });
 });

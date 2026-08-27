@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DashboardSummary } from "@coeval/shared";
 
 const state = {
@@ -41,8 +41,12 @@ vi.mock("@/components/coeval", () => ({
 vi.mock("@/components/first-run-setup-ledger", () => ({
   FirstRunSetupLedger: () => createElement("div", null, "three-step-first-run-journey")
 }));
-vi.mock("@/screens/dashboard-welcome", () => ({ DashboardWelcome: Element }));
-vi.mock("@/screens/dashboard-bench-welcome", () => ({ DashboardBenchWelcome: Element }));
+vi.mock("@/screens/dashboard-welcome", () => ({
+  DashboardWelcome: () => createElement("div", null, "tracing-welcome")
+}));
+vi.mock("@/screens/dashboard-bench-welcome", () => ({
+  DashboardBenchWelcome: () => createElement("div", null, "bench-welcome")
+}));
 vi.mock("@/screens/dashboard-provisional", () => ({ DashboardProvisional: Element }));
 vi.mock("@/components/first-project-key", () => ({ FirstProjectKeyCard: () => null }));
 vi.mock("@/components/first-verdict", () => ({ FirstVerdictCard: () => null }));
@@ -100,6 +104,8 @@ function productionBench(input: { judged: number; golden: number }): DashboardSu
 }
 
 describe("Skill Bench dashboard routing", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   it("keeps the first-run ledger mounted after examples are imported", async () => {
     const { DashboardScreen } = await import("../src/screens/dashboard.js");
     state.dashboard = productionBench({ judged: 0, golden: 0 });
@@ -115,5 +121,24 @@ describe("Skill Bench dashboard routing", () => {
     const html = renderToStaticMarkup(createElement(DashboardScreen));
 
     expect(html).toContain("three-step-first-run-journey");
+  });
+
+  it("shows a no-Run completion update immediately on the day-zero Overview", async () => {
+    const { DashboardScreen } = await import("../src/screens/dashboard.js");
+    const dashboard = productionBench({ judged: 0, golden: 0 });
+    dashboard.project.importedTraceCount = 0;
+    state.dashboard = dashboard;
+    vi.stubGlobal("sessionStorage", {
+      getItem: (key: string) => key === "coeval.setup-receipt"
+        ? "Starter Check v1.0.0 created. Add a Run to see its first Result."
+        : null,
+      removeItem: vi.fn()
+    });
+
+    const html = renderToStaticMarkup(createElement(DashboardScreen));
+
+    expect(html).toContain("Setup update.");
+    expect(html).toContain("Add a Run to see its first Result");
+    expect(html).toContain("bench-welcome");
   });
 });

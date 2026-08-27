@@ -99,6 +99,27 @@ export function DashboardScreen() {
     );
   }
 
+  const setupReceipt = receipt ? (
+    <Receipt
+      className="mb-5"
+      meta="this session"
+      actions={
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            clearSetupReceipt();
+            setReceipt(null);
+          }}
+        >
+          <X /> Dismiss
+        </Button>
+      }
+    >
+      <b>Setup update.</b> {receipt}
+    </Receipt>
+  ) : null;
+
   // Journey stages (P0-1), derived from real state:
   //   day0        → setup ledger (nothing imported, nothing to show)
   //   provisional → traces in, starter rubric never approved — verdicts wear
@@ -109,12 +130,28 @@ export function DashboardScreen() {
     // Owners only: creating a pairing is owner-gated server-side, so showing
     // the card to members would offer a guaranteed-403 action.
     const canPairAgent = dashboard.viewerRole === "owner" && dashboard.skill.isStarter;
-    return isBench(dashboard.project)
-      ? <DashboardBenchWelcome dashboard={dashboard} canPairAgent={canPairAgent} />
-      : <DashboardWelcome dashboard={dashboard} canPairAgent={canPairAgent} />;
+    return (
+      <div className="max-w-[1760px]">
+        {setupReceipt}
+        {isBench(dashboard.project)
+          ? <DashboardBenchWelcome dashboard={dashboard} canPairAgent={canPairAgent} />
+          : <DashboardWelcome dashboard={dashboard} canPairAgent={canPairAgent} />}
+      </div>
+    );
   }
   if (stage === "provisional") {
-    return <DashboardProvisional dashboard={dashboard} onSignedOff={() => void reload()} />;
+    return (
+      <div className="max-w-[1760px]">
+        {setupReceipt}
+        <DashboardProvisional
+          dashboard={dashboard}
+          onSignedOff={() => {
+            setReceipt(takeSetupReceipt());
+            void reload();
+          }}
+        />
+      </div>
+    );
   }
 
   const { project, skill, exceptions, topCapabilityGaps, goldenSetSize } = dashboard;
@@ -132,26 +169,7 @@ export function DashboardScreen() {
   return (
     <div className="fadeUp max-w-[1760px]">
       <FirstProjectKeyCard project={project} className="mb-5" />
-      {receipt ? (
-        <Receipt
-          className="mb-5"
-          meta="just now"
-          actions={
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                clearSetupReceipt();
-                setReceipt(null);
-              }}
-            >
-              <X /> Dismiss
-            </Button>
-          }
-        >
-          <b>Setup complete.</b> {receipt}
-        </Receipt>
-      ) : null}
+      {setupReceipt}
       <SectionHead
         eyebrow="Overview"
         title="Project overview"

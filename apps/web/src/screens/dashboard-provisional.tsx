@@ -6,7 +6,7 @@ import { FirstProjectKeyCard } from "@/components/first-project-key";
 import { FirstVerdictCard } from "@/components/first-verdict";
 import { SectionHead, KPI, KPIRow, ProvBanner } from "@/components/coeval";
 import { signOffSkillVersion, ApiError } from "@/lib/api";
-import { isBench, markSetupReceipt } from "@/lib/journey";
+import { firstRunEditorPath, isBench, markSetupReceipt } from "@/lib/journey";
 import type { DashboardSummary } from "@coeval/shared";
 
 interface DashboardProvisionalProps {
@@ -26,6 +26,7 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
   const bench = isBench(project);
   const imported = project.importedTraceCount;
   const judged = dashboard.currentVersionResultCount;
+  const withoutResult = Math.max(0, imported - judged);
   const version = skill.currentVersion;
 
   async function signOffAsIs() {
@@ -58,15 +59,17 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
           text={
             bench ? (
               <span>
-                {imported.toLocaleString()} example{imported === 1 ? "" : "s"} on the bench. Nothing is
-                evaluated until you start a run, and results remain <b>provisional</b> until an owner
-                reviews and signs off the guide.
+                {judged === 0
+                  ? `${imported.toLocaleString()} example${imported === 1 ? "" : "s"} ready. No complete Result is recorded yet.`
+                  : `${judged.toLocaleString()} of ${imported.toLocaleString()} examples have a Result.`}{" "}
+                Results remain <b>provisional</b> until an owner reviews and signs off the guide.
               </span>
             ) : (
               <span>
-                The starter Check evaluated {judged === imported ? "all" : judged.toLocaleString()} of your{" "}
-                {imported.toLocaleString()} runs. These Results are <b>provisional</b>. Review the guide
-                before asking an owner to sign it off.
+                {judged === 0
+                  ? `No complete Result is recorded for the ${imported.toLocaleString()} imported run${imported === 1 ? "" : "s"}.`
+                  : `The starter Check returned a Result for ${judged.toLocaleString()} of ${imported.toLocaleString()} runs.`}{" "}
+                Recorded Results are <b>provisional</b>. Review the guide before asking an owner to sign it off.
               </span>
             )
           }
@@ -76,7 +79,7 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
             </Button>
           }
           cta={
-            <Button size="sm" onClick={() => navigate("/skill/edit")}>
+            <Button size="sm" onClick={() => navigate(firstRunEditorPath())}>
               Review the Check
             </Button>
           }
@@ -90,7 +93,9 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
         eyebrow={bench ? "First examples · Skill Bench" : `First import · ${project.traceProvider}`}
         title={
           bench
-            ? `${imported.toLocaleString()} example${imported === 1 ? "" : "s"} ready. Run your Check.`
+            ? judged > 0
+              ? `${judged.toLocaleString()} of ${imported.toLocaleString()} examples have a provisional Result.`
+              : `${imported.toLocaleString()} example${imported === 1 ? "" : "s"} ready. Run your Check.`
             : judged > 0
               ? `${imported.toLocaleString()} run${imported === 1 ? "" : "s"} imported. Here is what the starter Check found.`
               : `${imported.toLocaleString()} run${imported === 1 ? "" : "s"} imported. No complete Check Result yet.`
@@ -99,10 +104,16 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
           exceptions.length > 0
             ? `${exceptions.length} Result${exceptions.length === 1 ? " needs" : "s need"} a closer look. Open one to compare the recorded evidence with the starter guide.`
             : bench
-              ? "Nothing has been evaluated yet. Start one run from Examples. A supplied expected label is optional and is not governed human truth."
+              ? judged === 0
+                ? "Nothing has been evaluated yet. Start one run from Examples. A supplied expected label is optional and is not governed human truth."
+                : withoutResult > 0
+                  ? `The Check did not flag the ${judged.toLocaleString()} completed example${judged === 1 ? "" : "s"}. ${withoutResult.toLocaleString()} still ${withoutResult === 1 ? "has" : "have"} no complete Result.`
+                  : `The Check did not flag the ${judged.toLocaleString()} example${judged === 1 ? "" : "s"} it evaluated. These Results are still provisional.`
               : judged === 0
                 ? "The runs are recorded, but this Check has not returned a complete Result. It may still be running or need a retry; open Runs to inspect their status."
-                : "The starter Check did not flag these imported runs, but its Results are still provisional. Review the guide against the recorded evidence next."
+                : withoutResult > 0
+                  ? `The Check did not flag the ${judged.toLocaleString()} completed Run${judged === 1 ? "" : "s"}. ${withoutResult.toLocaleString()} still ${withoutResult === 1 ? "has" : "have"} no complete Result.`
+                  : `The starter Check did not flag the ${judged.toLocaleString()} Run${judged === 1 ? "" : "s"} it evaluated. These Results are still provisional.`
         }
       />
 

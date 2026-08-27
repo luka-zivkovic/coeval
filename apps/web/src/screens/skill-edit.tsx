@@ -122,7 +122,11 @@ export function SkillEditScreen() {
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [temperature, setTemperature] = useState("0");
-  const [timeScope, setTimeScope] = useState<SkillVersionTimeScope>("new");
+  // First-run setup starts from an already-recorded Run whenever one exists;
+  // keep the new Check on future Runs and enqueue the existing evidence after
+  // its regression gate. The ordinary editor preserves the safer new-only
+  // default for later changes.
+  const [timeScope, setTimeScope] = useState<SkillVersionTimeScope>(firstRun ? "both" : "new");
   // The judge prompt template is an advanced concern — most users should only touch the
   // rubric. Collapsed by default; the disconnect warning below stays visible
   // either way.
@@ -634,15 +638,23 @@ export function SkillEditScreen() {
           clearRememberedVersion();
         }}
         doneLabel={firstRun
-          ? result.regressionRun.status === "error" ? "Back to onboarding" : "Finish setup"
+          ? result.regressionRun.status === "error"
+            ? "Back to onboarding"
+            : evidenceCount === 0
+              ? "Finish for now"
+              : bench ? "Open examples" : "Open Runs"
           : "View skill versions"}
         onDone={() => {
           if (firstRun && result.regressionRun.status !== "error" && result.regressionRun.status !== "blocked") {
-            markSetupReceipt(
-              evidenceCount === 0
-                ? `Starter Check v${result.version.version} created. Add a Run to see its first Result.`
-                : `Starter Check v${result.version.version} created. Open a recorded Run to inspect its Result.`
-            );
+            if (evidenceCount === 0) {
+              markSetupReceipt(`Starter Check v${result.version.version} created. Add a Run to see its first Result.`);
+              navigate("/");
+            } else {
+              // Existing Runs are queued asynchronously after the gate. Open
+              // their real status instead of claiming a Result already exists.
+              navigate(bench ? "/datasets" : "/traces");
+            }
+            return;
           }
           navigate(firstRun ? "/" : "/skill/versions");
         }}

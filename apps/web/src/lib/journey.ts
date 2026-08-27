@@ -75,7 +75,7 @@ export function firstRunSetupStepStates(dashboard: DashboardSummary): FirstRunSe
 // actual regression gate still arms on the first promotion.
 export function journeyActStates(dashboard: DashboardSummary): JourneyActStates {
   const defineGoodDone = currentCheckIsReady(dashboard);
-  const judgeRealWorkDone = dashboard.project.autoJudgedTraceCount > 0;
+  const judgeRealWorkDone = dashboard.currentVersionResultCount > 0;
   const earnTrustDone = dashboard.goldenSetSize >= GOLDEN_GATE_RECOMMENDED;
   const completed = [defineGoodDone, judgeRealWorkDone, earnTrustDone];
   const current = completed.findIndex((done) => !done);
