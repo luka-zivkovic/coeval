@@ -717,6 +717,46 @@ run("PgRepository smoke", () => {
     }
   });
 
+  it("creates one backfill eval run per Check under concurrent starts", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_smoke");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      await seedSkill(pool);
+      const imported = await repo.importTrace("proj_test", "manual", {
+        sourceTraceId: "backfill_once",
+        input: { question: "q" },
+        output: { answer: "a" },
+        metadata: {}
+      }, { ingestionPurpose: "analysis_eligible_manual" });
+
+      const [first, second] = await Promise.all([
+        repo.createEvalRun({
+          projectId: "proj_test",
+          skillVersionId: "skillv_test",
+          trigger: "backfill",
+          items: [{ caseId: imported.caseId }]
+        }),
+        repo.createEvalRun({
+          projectId: "proj_test",
+          skillVersionId: "skillv_test",
+          trigger: "backfill",
+          items: [{ caseId: imported.caseId }]
+        })
+      ]);
+
+      expect(second.id).toBe(first.id);
+      const rows = await pool.query(
+        `select count(*)::int as count from eval_runs where project_id='proj_test' and skill_version_id='skillv_test' and trigger='backfill'`
+      );
+      expect(rows.rows[0]?.count).toBe(1);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it("allows one evaluator lineage per criterion and multiple criteria per project", async () => {
     const { pool, cleanup } = await openPostgresTestDatabase("pg_smoke");
     try {

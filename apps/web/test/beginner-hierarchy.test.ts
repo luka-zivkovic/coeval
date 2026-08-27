@@ -92,9 +92,11 @@ describe("beginner-first hierarchy", () => {
   });
 
   it("routes new projects through Overview before the advanced editor", async () => {
-    const [projectCreate, skillEdit, provisional, dashboard, tracingWelcome, benchWelcome, importTrace] = await Promise.all([
+    const [projectCreate, skillEdit, firstResult, firstResultState, provisional, dashboard, tracingWelcome, benchWelcome, importTrace] = await Promise.all([
       source("../src/components/project-create.tsx"),
       source("../src/screens/skill-edit.tsx"),
+      source("../src/screens/first-result.tsx"),
+      source("../src/lib/first-result.ts"),
       source("../src/screens/dashboard-provisional.tsx"),
       source("../src/screens/dashboard.tsx"),
       source("../src/screens/dashboard-welcome.tsx"),
@@ -106,6 +108,11 @@ describe("beginner-first hierarchy", () => {
     expect(projectCreate).not.toContain("firstRunEditorPath");
     expect(skillEdit).toContain("Starter Check v${result.version.version} created. Add a Run to see its first Result.");
     expect(skillEdit).toContain('useState<SkillVersionTimeScope>(firstRun ? "both" : "new")');
+    expect(skillEdit).toContain("navigate(firstResultPath(result.version.id))");
+    expect(firstResultState).toContain('run.trigger === "backfill"');
+    expect(firstResult).toContain("ensureSkillVersionBackfill(dashboard.skill.id, versionId)");
+    expect(firstResult).toContain("Your first Result is ready");
+    expect(firstResult).toContain("The first Result could not be produced");
     expect(provisional).toContain("navigate(firstRunEditorPath())");
     expect(dashboard).toContain("setReceipt(takeSetupReceipt())");
     expect(tracingWelcome).toContain("emphasizeAction={false}");

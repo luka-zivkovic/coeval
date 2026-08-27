@@ -57,6 +57,7 @@ function dashboard(input: {
     skill: {
       isStarter: input.starter ?? false,
       currentVersion: {
+        id: "skillv_current",
         version: "1.0.0",
         status: input.starter ? "draft" : "approved"
       }
@@ -126,15 +127,18 @@ describe("first-run setup ledger", () => {
   });
 
   it("shows the Result action only after the Check and Run are ready", () => {
+    ledgerHarness.navigate.mockClear();
     const runHtml = renderToStaticMarkup(createElement(FirstRunSetupLedger, {
       dashboard: dashboard({ imported: 6, judged: 0, golden: 0 })
     }));
-    expect(runHtml).toContain("Run the example");
+    expect(runHtml).toContain("Continue to first Result");
+    ledgerHarness.steps[2]?.onCta?.();
+    expect(ledgerHarness.navigate).toHaveBeenCalledWith("/first-result?version=skillv_current");
 
     const starterHtml = renderToStaticMarkup(createElement(FirstRunSetupLedger, {
       dashboard: dashboard({ imported: 6, judged: 0, golden: 0, starter: true })
     }));
     expect(starterHtml).toContain("Review the Check");
-    expect(starterHtml).not.toContain("Run the example");
+    expect(starterHtml).not.toContain("Continue to first Result");
   });
 });

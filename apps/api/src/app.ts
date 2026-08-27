@@ -170,6 +170,7 @@ import { computeRunComparisonDiff, runComparisonAgreement, runComparisonStatus }
 import { contentDigest, sha256Digest } from "./lib/assessment-receipt.js";
 import { canonicalEvaluatorSuiteManifestBytes } from "./lib/evaluator-suite.js";
 import { runEvalRunInline } from "./workers/eval-run.js";
+import { runExistingCaseBackfill } from "./workers/gate.js";
 import { judgeAndRecord } from "./workers/judge.js";
 import {
   buildTraceTestDraftPrompt,
@@ -1406,14 +1407,40 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       throw error;
     }
 
-    // PR #56 time-scope, post-C5a: with a queue wired the backfill happens in
-    // the gate.run worker AFTER the outcome is known (workers/gate.ts) — this
-    // inline branch only runs queue-less (demo), where nothing can enqueue,
-    // so existing/both report the degenerate zero-backfill summary.
+    // Queue-less demo mode still records a real EvalRun and executes it
+    // inline. The browser then observes exactly the same durable first-Result
+    // lifecycle as a PostgreSQL installation instead of waiting forever for a
+    // queue that does not exist.
     const timeScope = parsed.data.timeScope;
     let backfill: { timeScope: typeof timeScope; cases: number; enqueued: number; skipped: number } | undefined;
-    if (timeScope === "existing" || timeScope === "both") {
-      backfill = { timeScope, cases: 0, enqueued: 0, skipped: 0 };
+    if (
+      (timeScope === "existing" || timeScope === "both") &&
+      result.regressionRun.status !== "blocked"
+    ) {
+      let authorized = false;
+      try {
+        await repository.authorizeSkillVersionExecution({
+          projectId,
+          skillVersionId: result.version.id,
+          context: "implicit_production",
+          resourceKind: "regression_backfill",
+          resourceId: result.regressionRun.id,
+          idempotencyKey: `regression-backfill:${result.regressionRun.id}`
+        });
+        authorized = true;
+      } catch {
+        // Governed candidates are never executed through the legacy implicit
+        // path. Their accepted lifecycle decides when evaluation is allowed.
+      }
+      if (authorized) {
+        const run = await runExistingCaseBackfill(repository, projectId, result.version.id);
+        backfill = {
+          timeScope,
+          cases: run.totalItems,
+          enqueued: 0,
+          skipped: 0
+        };
+      }
     }
 
     const status = result.regressionRun.status === "blocked" ? 409 : 201;
@@ -3655,6 +3682,41 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       if (error instanceof DatasetRevisionNotFoundError) return c.json({ error: error.message }, 404);
       throw error;
     }
+  });
+
+  // First-Result continuation: idempotently materialize a durable backfill
+  // run for one saved Check. This covers the equally valid order where the
+  // user created the Check before bringing a Run; imported judge jobs alone
+  // do not expose enough lifecycle state for beginner onboarding.
+  app.post("/api/skills/:skillId/versions/:versionId/backfill", async (c) => {
+    const denied = await requireOwner(c, "start the first Result evaluation");
+    if (denied) return denied;
+    const projectId = c.get("projectId");
+    const version = await repository.getSkillVersion(projectId, c.req.param("versionId"));
+    if (!version || version.skillId !== c.req.param("skillId")) {
+      return c.json({ error: "Check version not found" }, 404);
+    }
+    if ((await repository.listCaseIdsForProject(projectId, 1)).length === 0) {
+      return c.json({ error: "Add a recorded Run before asking for the first Result." }, 409);
+    }
+    try {
+      await repository.authorizeSkillVersionExecution({
+        projectId,
+        skillVersionId: version.id,
+        context: "implicit_production",
+        resourceKind: "onboarding_first_result",
+        resourceId: version.id,
+        idempotencyKey: `onboarding-first-result:${version.id}`
+      });
+    } catch (error) {
+      return c.json({
+        error: error instanceof Error ? error.message : "This Check is not available for evaluation."
+      }, 409);
+    }
+    const run = await runExistingCaseBackfill(repository, projectId, version.id, options.queue);
+    const detail = await repository.getEvalRunDetail(projectId, run.id);
+    if (!detail) throw new Error(`Backfill run vanished after creation: ${run.id}`);
+    return c.json({ run: detail }, detail.status === "pending" || detail.status === "running" ? 202 : 200);
   });
 
   app.get("/api/eval-runs", async (c) => {

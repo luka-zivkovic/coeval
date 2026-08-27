@@ -96,6 +96,10 @@ export function firstRunEditorPath(): string {
   return "/skill/edit?first=1&starter=task-outcome-quality";
 }
 
+export function firstResultPath(skillVersionId: string): string {
+  return `/first-result?version=${encodeURIComponent(skillVersionId)}`;
+}
+
 const FIRST_PROJECT_KEY = "coeval.first-project-key";
 
 // Returns whether the plaintext key was actually persisted. A live bearer

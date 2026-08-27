@@ -1599,7 +1599,7 @@ describe("Coeval Hono API", () => {
     expect(queue.jobs.filter((job) => job.name === "judge.run")).toHaveLength(0);
   });
 
-  it("PR #56/C5a: timeScope='both' — worker enqueues judge.run for every case after the gate passes", async () => {
+  it("records timeScope='both' backfill as one durable eval run after the gate passes", async () => {
     const queue = new CapturingQueue();
     const repository = new DemoRepository();
     const appWithQueue = createApp(repository, { queue });
@@ -1631,12 +1631,67 @@ describe("Coeval Hono API", () => {
 
     await processGateRunJob(repository, gateJob.data as GateRunJob, queue);
     const caseIds = await repository.listCaseIdsForProject("proj_langsmith_support");
-    const backfillJobs = queue.jobs.filter((job) => job.name === "judge.run");
-    expect(backfillJobs.length).toBe(caseIds.length);
-    expect(backfillJobs.length).toBeGreaterThan(0);
-    for (const job of backfillJobs) {
-      expect((job.data as { skillVersionId: string }).skillVersionId).toBe(body.version.id);
-    }
+    const evalRuns = await repository.listEvalRuns("proj_langsmith_support", { skillVersionId: body.version.id });
+    expect(evalRuns).toHaveLength(1);
+    expect(evalRuns[0]).toMatchObject({
+      trigger: "backfill",
+      status: "pending",
+      totalItems: caseIds.length,
+      skillVersionId: body.version.id
+    });
+    expect(queue.jobs.filter((job) => job.name === "eval.run")).toEqual([
+      expect.objectContaining({
+        data: { projectId: "proj_langsmith_support", evalRunId: evalRuns[0]!.id }
+      })
+    ]);
+    expect(queue.jobs.filter((job) => job.name === "judge.run")).toHaveLength(0);
+
+    // A replay observes the same durable run instead of creating another
+    // provider-spending batch.
+    await processGateRunJob(repository, gateJob.data as GateRunJob, queue);
+    expect(await repository.listEvalRuns("proj_langsmith_support", { skillVersionId: body.version.id })).toHaveLength(1);
+  });
+
+  it("records and completes the same backfill lifecycle in queue-less demo mode", async () => {
+    const repository = new DemoRepository();
+    const demoApp = createApp(repository);
+    const response = await demoApp.request("/api/skills/skill_support_quality/versions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        rubricMarkdown: "## Updated rubric\n\nKeep judging support quality with clearer wording.",
+        prompt: "Judge support answer quality.",
+        modelBinding: { provider: "anthropic", modelId: "claude-sonnet-4-6", modelVersion: "2026-04-15", temperature: 0 },
+        timeScope: "both"
+      })
+    });
+
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as { version: { id: string } };
+    const runs = await repository.listEvalRuns("proj_langsmith_support", { skillVersionId: body.version.id });
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({
+      trigger: "backfill",
+      status: "completed",
+      skillVersionId: body.version.id
+    });
+    expect(runs[0]!.completedItems).toBeGreaterThan(0);
+  });
+
+  it("idempotently starts the first Result when a Check existed before its Runs", async () => {
+    const repository = new DemoRepository();
+    const demoApp = createApp(repository);
+    const path = "/api/skills/skill_support_quality/versions/skillv_1_2_0/backfill";
+    const first = await demoApp.request(path, { method: "POST" });
+    const second = await demoApp.request(path, { method: "POST" });
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    const firstBody = (await first.json()) as { run: { id: string; trigger: string; status: string } };
+    const secondBody = (await second.json()) as { run: { id: string } };
+    expect(firstBody.run).toMatchObject({ trigger: "backfill", status: "completed" });
+    expect(secondBody.run.id).toBe(firstBody.run.id);
+    expect(await repository.listEvalRuns("proj_langsmith_support", { skillVersionId: "skillv_1_2_0" })).toHaveLength(1);
   });
 
   it("PR #56/C5a: blocked gate leaves the version regressing and skips backfill even when timeScope=existing", async () => {
@@ -1665,6 +1720,7 @@ describe("Coeval Hono API", () => {
     const versions = await repository.listSkillVersions("proj_langsmith_support", "skill_support_quality");
     expect(versions.find((v) => v.id === body.version.id)?.status).toBe("regressing");
     expect(queue.jobs.filter((job) => job.name === "judge.run")).toHaveLength(0);
+    expect(queue.jobs.filter((job) => job.name === "eval.run")).toHaveLength(0);
   });
 
   it("PR #59: GET /api/projects/verdicts returns project-scope verdicts with filter + limit", async () => {

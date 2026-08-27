@@ -3218,8 +3218,11 @@ export type ProviderResponseMetadata = z.infer<typeof ProviderResponseMetadataSc
 export const EvalRunStatusSchema = z.enum(["pending", "running", "completed", "failed", "canceled"]);
 export type EvalRunStatus = z.infer<typeof EvalRunStatusSchema>;
 
+// 'backfill' = a durable re-evaluation of existing cases after a version gate.
+// It is deliberately distinct from 'regression_gate', which is evaluator-
+// version governance over the pinned known-failure revision.
 // 'product_gate' = the retained run kind behind deprecated product-gate reads.
-export const EvalRunTriggerSchema = z.enum(["manual", "api_batch", "regression_gate", "product_gate", "release_evidence"]);
+export const EvalRunTriggerSchema = z.enum(["manual", "api_batch", "backfill", "regression_gate", "product_gate", "release_evidence"]);
 export type EvalRunTrigger = z.infer<typeof EvalRunTriggerSchema>;
 
 export const EvalRunItemStatusSchema = z.enum(["pending", "completed", "failed", "skipped"]);
@@ -4903,8 +4906,8 @@ export type FeedbackSyncJob = z.infer<typeof FeedbackSyncJobSchema>;
 // one case via judgeAndRecord and atomically updates the run's counters.
 // gate.run payload (M0 C5): executes the golden-set regression gate for a
 // pending (calibrating) skill version asynchronously. timeScope rides along so
-// the worker can enqueue the existing/both backfill AFTER the gate outcome is
-// known (a blocked version must never judge traffic).
+// the worker can create the existing/both backfill EvalRun AFTER the gate
+// outcome is known (a blocked version must never judge traffic).
 export const GateRunJobSchema = z.object({
   projectId: z.string(),
   skillVersionId: z.string(),
@@ -5051,9 +5054,8 @@ export type DashboardSummary = z.infer<typeof DashboardSummarySchema>;
 
 // time-scope on skill edits. Per Langfuse's evaluator time-scope
 // (docs/08, high-priority borrow #5). "new" is the product default.
-// "existing" + "both" trigger a backfill that
-// enqueues judge.run jobs for every project case against the new skill
-// version.
+// "existing" + "both" create one durable backfill EvalRun over project cases
+// against the new skill version.
 export const SkillVersionTimeScopeSchema = z.enum(["new", "existing", "both"]);
 export type SkillVersionTimeScope = z.infer<typeof SkillVersionTimeScopeSchema>;
 
@@ -5086,9 +5088,8 @@ export const CreateSkillVersionInputSchema = z
 export type CreateSkillVersionInput = z.infer<typeof CreateSkillVersionInputSchema>;
 
 // Backfill summary returned alongside the regression run when timeScope is
-// 'existing' or 'both'. `enqueued` counts judge.run jobs successfully sent to
-// the queue; `cases` is the total number of cases the backfill considered.
-// `skipped` is `cases - enqueued`.
+// 'existing' or 'both'. This aggregate is retained for the synchronous demo
+// response; the EvalRun is the authoritative lifecycle record.
 export const SkillVersionBackfillSummarySchema = z.object({
   timeScope: SkillVersionTimeScopeSchema,
   cases: z.number().int().nonnegative(),

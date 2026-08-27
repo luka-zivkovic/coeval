@@ -2748,13 +2748,17 @@ export class PgRepository implements CoevalRepository {
         [job.evalRunId,job.projectId,resolvedSkillVersionId]
       )).rows[0];
       if (!evalRun) throw new Error(`Eval run not found for judge job: ${job.evalRunId}`);
-      executionContext = evalRun.trigger === "product_gate" || evalRun.trigger === "release_evidence"
-        ? "release_gate"
-        : evalRun.source_trace_test_id
-          ? "trace_test"
-          : evalRun.trigger === "manual"
-            ? "explicit_nonproduction_dataset"
-            : "manual_import";
+      if (evalRun.trigger === "product_gate" || evalRun.trigger === "release_evidence") {
+        executionContext = "release_gate";
+      } else if (evalRun.source_trace_test_id) {
+        executionContext = "trace_test";
+      } else if (evalRun.trigger === "backfill") {
+        executionContext = "implicit_production";
+      } else if (evalRun.trigger === "manual") {
+        executionContext = "explicit_nonproduction_dataset";
+      } else {
+        executionContext = "manual_import";
+      }
       resourceKind = "eval_run_item";
       resourceId = job.evalRunItemId ?? job.evalRunId;
     } else {
@@ -4246,9 +4250,7 @@ export class PgRepository implements CoevalRepository {
           source_trace_test_case_id, source_trace_test_dataset_item_id, convergence_case_id)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,0,$11,$12, case when $7 = 'completed' then now() else null end,
                  $13,$14,$15,$16,$17,$18,$19,$20)
-         on conflict (project_id, skill_version_id, convergence_case_id)
-           where convergence_case_id is not null and status in ('pending', 'running')
-         do nothing
+         on conflict do nothing
          returning id`,
         [
           runId,
@@ -4274,13 +4276,19 @@ export class PgRepository implements CoevalRepository {
         ]
       );
       if (insertedRun.rowCount === 0) {
-        const existing = await client.query(
-          `select id from eval_runs
-           where project_id = $1 and skill_version_id = $2 and convergence_case_id = $3
-             and status in ('pending', 'running')`,
-          [input.projectId, input.skillVersionId, input.convergenceCaseId]
-        );
-        if (!existing.rows[0]?.id) throw new Error("Convergence eval run conflict could not be resolved");
+        const existing = input.trigger === "backfill"
+          ? await client.query(
+              `select id from eval_runs
+               where project_id = $1 and skill_version_id = $2 and trigger = 'backfill'`,
+              [input.projectId, input.skillVersionId]
+            )
+          : await client.query(
+              `select id from eval_runs
+               where project_id = $1 and skill_version_id = $2 and convergence_case_id = $3
+                 and status in ('pending', 'running')`,
+              [input.projectId, input.skillVersionId, input.convergenceCaseId]
+            );
+        if (!existing.rows[0]?.id) throw new Error("Eval run conflict could not be resolved");
         resolvedRunId = String(existing.rows[0].id);
         created = false;
       }

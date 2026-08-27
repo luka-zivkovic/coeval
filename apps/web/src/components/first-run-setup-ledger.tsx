@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { SetupLedger } from "@/components/coeval";
-import { firstRunEditorPath, firstRunSetupStepStates, isBench } from "@/lib/journey";
+import { firstResultPath, firstRunEditorPath, firstRunSetupStepStates, isBench } from "@/lib/journey";
 import type { DashboardSummary } from "@coeval/shared";
 
 export function FirstRunSetupLedger({
@@ -61,8 +61,8 @@ export function FirstRunSetupLedger({
                 detail: "Coeval applies the Check to recorded evidence. This is the Check's opinion until a person reviews it separately.",
                 ...(states.seeResult === "now"
                   ? {
-                      cta: bench ? "Run the example" : "Open imported runs",
-                      onCta: () => navigate(bench ? "/datasets" : "/traces")
+                      cta: "Continue to first Result",
+                      onCta: () => navigate(firstResultPath(skill.currentVersion.id))
                     }
                   : {})
               })

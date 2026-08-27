@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 import { GOLDEN_GATE_RECOMMENDED, type DashboardSummary } from "@coeval/shared";
 import { Button } from "@/components/ui/button";
-import { firstRunEditorPath, journeyActStates, isBench, type JourneyActState } from "@/lib/journey";
+import { firstResultPath, firstRunEditorPath, journeyActStates, isBench, type JourneyActState } from "@/lib/journey";
 import { cn } from "@/lib/utils";
 
 export function JourneyPipeline({
@@ -16,6 +16,7 @@ export function JourneyPipeline({
   const states = journeyActStates(dashboard);
   const bench = isBench(dashboard.project);
   const judged = dashboard.currentVersionResultCount;
+  const recorded = dashboard.project.importedTraceCount;
   const golden = dashboard.goldenSetSize;
   const steps: Array<{
     state: JourneyActState;
@@ -43,9 +44,13 @@ export function JourneyPipeline({
       title: "See Results on real Runs",
       detail: judged > 0
         ? `${judged.toLocaleString()} recorded ${bench ? "example" : "Run"}${judged === 1 ? "" : "s"} checked · ungoverned triage`
-        : `Add the first ${bench ? "example and run it" : "recorded Run or live source"}.`,
-      action: bench ? "Open examples" : "Open traces",
-      path: bench ? "/datasets" : "/traces"
+        : recorded > 0
+          ? `${recorded.toLocaleString()} recorded ${bench ? "example" : "Run"}${recorded === 1 ? " is" : "s are"} waiting for this Check.`
+          : `Add the first ${bench ? "example and run it" : "recorded Run or live source"}.`,
+      action: recorded > 0 ? "Continue to first Result" : bench ? "Open examples" : "Open traces",
+      path: recorded > 0
+        ? firstResultPath(dashboard.skill.currentVersion.id)
+        : bench ? "/datasets" : "/traces"
     },
     {
       state: states.earnTrust,

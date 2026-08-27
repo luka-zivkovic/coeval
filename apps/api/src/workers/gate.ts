@@ -2,6 +2,7 @@ import { z } from "zod";
 import { GateRunJobSchema, type GateRunJob } from "@coeval/shared";
 import type { Queue } from "@coeval/queue";
 import { GateRunBindingMismatchError, type CoevalRepository } from "../repository.js";
+import { runEvalRunInline } from "./eval-run.js";
 
 // gate.run (M0 C5a): executes the golden-set regression gate for a pending
 // (calibrating) skill version. Provider failures (RegressionGateJudgeError /
@@ -65,14 +66,38 @@ export async function processGateRunJob(
       // an explicit owner activation makes it current and admissible.
       return;
     }
-    for (const caseId of await repository.listCaseIdsForProject(parsed.projectId)) {
-      await queue.send("judge.run", {
-        projectId: parsed.projectId,
-        caseId,
-        skillVersionId: version.id
-      }, { retryLimit: 5, retryBackoff: true });
-    }
+    await runExistingCaseBackfill(repository, parsed.projectId, version.id, queue);
   }
+}
+
+// Existing-case evaluation is a durable EvalRun, not a loose collection of
+// judge.run jobs. The UI can therefore show real pending/running/failed state,
+// resume after reload, and open the exact Result that completed onboarding.
+// Replaying gate.run reuses the version's single backfill run; eval.item
+// delivery has its own deterministic identities and execution claims.
+export async function runExistingCaseBackfill(
+  repository: CoevalRepository,
+  projectId: string,
+  skillVersionId: string,
+  queue?: Queue | undefined
+) {
+  const existing = (await repository.listEvalRuns(projectId, { limit: 100, skillVersionId }))
+    .find((run) => run.trigger === "backfill");
+  const run = existing ?? await repository.createEvalRun({
+    projectId,
+    skillVersionId,
+    trigger: "backfill",
+    items: (await repository.listCaseIdsForProject(projectId)).map((caseId) => ({ caseId }))
+  });
+
+  if (run.totalItems === 0 || (run.status !== "pending" && run.status !== "running")) return run;
+  await repository.armEvalRunItemDeliveryDeadline(projectId, run.id);
+  if (queue) {
+    await queue.send("eval.run", { projectId, evalRunId: run.id }, { retryLimit: 5, retryBackoff: true });
+  } else {
+    await runEvalRunInline(repository, projectId, run.id);
+  }
+  return (await repository.getEvalRun(projectId, run.id)) ?? run;
 }
 
 function isPermanentGateError(error: unknown): boolean {

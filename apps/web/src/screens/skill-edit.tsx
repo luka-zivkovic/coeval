@@ -25,7 +25,7 @@ import { useDashboard } from "@/lib/dashboard-context";
 import { useCriterion } from "@/lib/criterion-context";
 import { skillCriterionVersionId } from "@/lib/criterion-scope";
 import { resolveJudgeProviderSelection } from "@/lib/judge-provider-selection";
-import { isBench, markSetupReceipt } from "@/lib/journey";
+import { firstResultPath, isBench, markSetupReceipt } from "@/lib/journey";
 import { STARTER_SKILLS, findStarterSkill, type StarterSkill } from "@/lib/starter-skills";
 import { cn } from "@/lib/utils";
 import { verdictKindDescription } from "@/lib/verdict-kind";
@@ -642,7 +642,7 @@ export function SkillEditScreen() {
             ? "Back to onboarding"
             : evidenceCount === 0
               ? "Finish for now"
-              : bench ? "Open examples" : "Open Runs"
+              : "See first Result"
           : "View skill versions"}
         onDone={() => {
           if (firstRun && result.regressionRun.status !== "error" && result.regressionRun.status !== "blocked") {
@@ -650,9 +650,7 @@ export function SkillEditScreen() {
               markSetupReceipt(`Starter Check v${result.version.version} created. Add a Run to see its first Result.`);
               navigate("/");
             } else {
-              // Existing Runs are queued asynchronously after the gate. Open
-              // their real status instead of claiming a Result already exists.
-              navigate(bench ? "/datasets" : "/traces");
+              navigate(firstResultPath(result.version.id));
             }
             return;
           }

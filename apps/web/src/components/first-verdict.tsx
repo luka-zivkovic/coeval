@@ -19,7 +19,7 @@ export function FirstVerdictCard({
   const [detail, setDetail] = useState<ExceptionDetail | null>(null);
 
   useEffect(() => {
-    if (dashboard.project.autoJudgedTraceCount === 0) return;
+    if (dashboard.currentVersionResultCount === 0) return;
     let cancelled = false;
     void fetchProjectVerdicts({
       source: "llm_judge",
@@ -43,12 +43,12 @@ export function FirstVerdictCard({
         if (!cancelled) setDetail(null);
       });
     return () => { cancelled = true; };
-  }, [dashboard.project.autoJudgedTraceCount, dashboard.skill.currentVersion.id]);
+  }, [dashboard.currentVersionResultCount, dashboard.skill.currentVersion.id]);
 
   if (!detail) return null;
   const rubric = dashboard.skill.currentVersion.rubricMarkdown.trim();
   const excerpt = rubric.length > 720 ? `${rubric.slice(0, 720).trimEnd()}…` : rubric;
-  const isFirst = dashboard.project.autoJudgedTraceCount === 1;
+  const isFirst = dashboard.currentVersionResultCount === 1;
 
   return (
     <Card className={cn("border-gold-tint", className)}>

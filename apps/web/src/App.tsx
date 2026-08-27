@@ -17,6 +17,7 @@ import { ReviewQueuesScreen } from "@/screens/review-queues";
 import { QueueDetailScreen } from "@/screens/queue-detail";
 import { SkillScreen } from "@/screens/skill";
 import { SkillEditScreen } from "@/screens/skill-edit";
+import { FirstResultScreen } from "@/screens/first-result";
 import { SkillVersionsScreen, SkillVersionDetailScreen } from "@/screens/skill-versions";
 import { CompareVersionsScreen } from "@/screens/compare-versions";
 import { CompareRunsScreen } from "@/screens/compare-runs";
@@ -68,6 +69,7 @@ const router = createBrowserRouter([
       { path: "human-truth/batches/:batchId/items/:itemId/resolve", element: <HumanTruthResolutionScreen /> },
       { path: "skill", element: <SkillScreen /> },
       { path: "skill/edit", element: <SkillEditScreen /> },
+      { path: "first-result", element: <FirstResultScreen /> },
       { path: "skill/versions", element: <SkillVersionsScreen /> },
       { path: "skill/versions/:id", element: <SkillVersionDetailScreen /> },
       { path: "skill/compare", element: <CompareVersionsScreen /> },

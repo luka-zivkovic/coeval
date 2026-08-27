@@ -393,8 +393,8 @@ export interface CoevalRepository {
   // Idempotently terminalize a valid gate job that cannot complete. This is
   // called for permanent failures and on the final queue attempt.
   failRegressionGateForVersion(job: GateRunJob, error: unknown): Promise<void>;
-  // support time-scoped skill edits. The route enqueues judge.run for
-  // each case id when timeScope ∈ {existing, both}; the repo just lists ids.
+  // Support time-scoped skill edits. The gate worker snapshots these ids into
+  // one durable backfill EvalRun when timeScope ∈ {existing, both}.
   // Capped at 10k (defensive bound to keep one skill edit from spawning a
   // million-job backfill — operators can split into batches if they really
   // need more).
@@ -3763,6 +3763,17 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async createEvalRun(input: CreateEvalRunInputDb): Promise<EvalRunDetail> {
+    if (input.trigger === "backfill") {
+      const existing = this.evalRuns.find((candidate) =>
+        candidate.projectId === input.projectId &&
+        candidate.skillVersionId === input.skillVersionId &&
+        candidate.trigger === "backfill"
+      );
+      if (existing) {
+        const detail = await this.getEvalRunDetail(input.projectId, existing.id);
+        if (detail) return detail;
+      }
+    }
     const createdAt = new Date().toISOString();
     const runId = `evr_${randomUUID()}`;
     const revision = input.datasetRevisionId
