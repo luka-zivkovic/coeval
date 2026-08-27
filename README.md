@@ -5,11 +5,32 @@
 
 **Governed evaluators for AI systems.**
 
-Coeval helps quality owners analyze representative traces, turn observed
-failure modes into narrow human-reviewed criteria, and govern versioned
-evaluators. It validates those evaluators against human truth, executes exact
-versions with observable provenance, and emits policy-free assessment evidence
-that other systems can verify.
+Coeval helps quality owners understand where an AI system falls short, define
+how each problem should be judged, and improve the evaluator without losing
+the history behind it. You can begin with production traces or a small set of
+examples; Coeval keeps the human review, evaluator versions, and resulting
+evidence connected as the project grows.
+
+## Beginner-friendly by default
+
+You do not need to learn evaluator-governance terminology before you can get
+useful work done. Coeval defaults to a **Guided** view that keeps the core
+journey visible, explains what each step changes, and leaves secondary
+diagnostics and system details out of the way.
+
+A typical first project looks like this:
+
+1. adding traces or a few example input-and-output pairs;
+2. defining what the evaluator should check;
+3. running it and reviewing the cases where its result needs human attention;
+4. protecting reviewed cases as regression tests for future evaluator changes;
+5. creating a new evaluator version and seeing whether those checks still pass.
+
+Model identifiers, immutable revision details, calibration evidence, and other
+technical records remain available in the **Technical** view. Guided mode
+changes the presentation, not the evidence, permissions, or safety rules.
+
+## How the pieces connect
 
 ```text
 representative traces and cases
@@ -115,7 +136,10 @@ pnpm dev:api
 pnpm dev:web
 ```
 
-Open [http://localhost:5173](http://localhost:5173), create the first owner, and follow the setup ledger. The API runs migrations when `DATABASE_URL` is configured.
+Open [http://localhost:5173](http://localhost:5173), create the first owner, and
+follow the Guided setup ledger. It uses saved project state to show what is
+complete and what to do next. The API runs migrations when `DATABASE_URL` is
+configured.
 
 To onboard with an external AI agent, choose **Create agent connection** after
 creating the owner account (or from a new project's Overview) and paste the
