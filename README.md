@@ -51,7 +51,8 @@ for the boundaries between Coeval, Dailies, and Casefile. The time-sensitive
 turning competitor features into product authority. The cross-product
 [implementation batches](docs/implementation-batches.md) sequence target work
 without changing those boundaries. Beginner-facing workflow language is kept
-in the [Analyze journey](docs/analyze-journey.md) and
+in the [beginner onboarding journey](docs/beginner-onboarding-journey.md),
+[Analyze journey](docs/analyze-journey.md), and
 [trace-to-test journey](docs/trace-to-test-journey.md) contracts.
 
 ## What is included
