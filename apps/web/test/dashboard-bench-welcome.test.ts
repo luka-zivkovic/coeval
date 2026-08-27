@@ -56,8 +56,12 @@ function dashboard(input: {
     },
     skill: {
       isStarter: input.starter ?? false,
-      currentVersion: { version: "1.0.0", status: "approved" }
+      currentVersion: {
+        version: "1.0.0",
+        status: input.starter ? "draft" : "approved"
+      }
     },
+    currentVersionResultCount: input.judged,
     goldenSetSize: input.golden,
     exceptions: Array.from({ length: input.exceptions ?? 0 }, (_, index) => ({ id: `case_${index}` }))
   } as DashboardSummary;
@@ -102,10 +106,10 @@ describe("first-run setup ledger", () => {
 
     expect(html).toContain("Bring one recorded run");
     expect(html).toContain("Coeval reads the record; it does not replay your AI.");
-    expect(html).toContain("Connect or paste a run");
+    expect(html).toContain("Add a recorded run");
 
     ledgerHarness.steps[0]?.onCta?.();
-    expect(ledgerHarness.navigate).toHaveBeenCalledWith("/integrations");
+    expect(ledgerHarness.navigate).toHaveBeenCalledWith("/traces");
   });
 
   it("completes setup at the first Result without requiring a protected example", () => {

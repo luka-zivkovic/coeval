@@ -29,7 +29,7 @@ export function DashboardBenchWelcome({ dashboard, canPairAgent }: DashboardBenc
 
         <div className="min-w-0 flex flex-col gap-4">
           <FirstProjectKeyCard project={project} />
-          {canPairAgent ? <AgentSetupPairingCard /> : null}
+          {canPairAgent ? <AgentSetupPairingCard emphasizeAction={false} /> : null}
 
           <Card className="bg-paper-2">
             <CardContent className="py-4">

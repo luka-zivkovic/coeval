@@ -91,6 +91,21 @@ describe("beginner-first hierarchy", () => {
     expect(compact).toContain("{copy.title}");
   });
 
+  it("routes new projects through Overview before the advanced editor", async () => {
+    const [projectCreate, skillEdit, tracingWelcome, benchWelcome] = await Promise.all([
+      source("../src/components/project-create.tsx"),
+      source("../src/screens/skill-edit.tsx"),
+      source("../src/screens/dashboard-welcome.tsx"),
+      source("../src/screens/dashboard-bench-welcome.tsx")
+    ]);
+
+    expect(projectCreate.match(/window\.location\.assign\("\/"\)/g)).toHaveLength(2);
+    expect(projectCreate).not.toContain("firstRunEditorPath");
+    expect(skillEdit).toContain("Starter Check v${result.version.version} created. Add a Run to see its first Result.");
+    expect(tracingWelcome).toContain("emphasizeAction={false}");
+    expect(benchWelcome).toContain("emphasizeAction={false}");
+  });
+
   it("leads the evaluator screen with purpose and action before technical metadata", async () => {
     const skill = await source("../src/screens/skill.tsx");
     const loadedView = skill.slice(skill.indexOf("const v = skill.currentVersion"));

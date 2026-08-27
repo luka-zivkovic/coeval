@@ -562,10 +562,20 @@ export class PgRepository implements CoevalRepository {
         verdictDistribution[verdict] = Number(row.count);
       }
     }
+    const currentVersionResultCount = Number((await this.pool.query(
+      `select count(distinct jr.case_id)::int as count
+       from judge_runs jr
+       join cases c on c.id = jr.case_id and c.project_id = jr.project_id
+       where jr.project_id = $1
+         and jr.skill_version_id = $2
+         and c.case_type not in ('gate_candidate', 'release_evidence')`,
+      [projectId, skill.currentVersion.id]
+    )).rows[0]?.count ?? 0);
 
     return {
       project: rowToProject(project),
       skill,
+      currentVersionResultCount,
       verdictDistribution,
       exceptions,
       topCapabilityGaps: capabilityGapsFromExceptions(exceptions),

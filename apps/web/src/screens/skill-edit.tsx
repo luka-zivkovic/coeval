@@ -25,7 +25,7 @@ import { useDashboard } from "@/lib/dashboard-context";
 import { useCriterion } from "@/lib/criterion-context";
 import { skillCriterionVersionId } from "@/lib/criterion-scope";
 import { resolveJudgeProviderSelection } from "@/lib/judge-provider-selection";
-import { isBench } from "@/lib/journey";
+import { isBench, markSetupReceipt } from "@/lib/journey";
 import { STARTER_SKILLS, findStarterSkill, type StarterSkill } from "@/lib/starter-skills";
 import { cn } from "@/lib/utils";
 import { verdictKindDescription } from "@/lib/verdict-kind";
@@ -633,7 +633,19 @@ export function SkillEditScreen() {
           setSubmitError(null);
           clearRememberedVersion();
         }}
-        onDone={() => navigate(firstRun ? "/" : "/skill/versions")}
+        doneLabel={firstRun
+          ? result.regressionRun.status === "error" ? "Back to onboarding" : "Finish setup"
+          : "View skill versions"}
+        onDone={() => {
+          if (firstRun && result.regressionRun.status !== "error" && result.regressionRun.status !== "blocked") {
+            markSetupReceipt(
+              evidenceCount === 0
+                ? `Starter Check v${result.version.version} created. Add a Run to see its first Result.`
+                : `Starter Check v${result.version.version} created. Open a recorded Run to inspect its Result.`
+            );
+          }
+          navigate(firstRun ? "/" : "/skill/versions");
+        }}
       />
     );
   }
@@ -1181,7 +1193,8 @@ function RegressionResult({
   submitError,
   onPublishOverride,
   onBackToEdit,
-  onDone
+  onDone,
+  doneLabel
 }: {
   skill: Skill;
   baseVersion: string;
@@ -1194,6 +1207,7 @@ function RegressionResult({
   onPublishOverride: () => void;
   onBackToEdit: () => void;
   onDone: () => void;
+  doneLabel: string;
 }) {
   const run = result.regressionRun;
   const blocked = result.blocked && run.status === "blocked";
@@ -1394,7 +1408,7 @@ function RegressionResult({
             <ArrowLeft /> Back to edit
           </Button>
           <Button variant="primary" onClick={onDone}>
-            View skill versions
+            {doneLabel}
           </Button>
         </div>
       ) : (
@@ -1405,7 +1419,7 @@ function RegressionResult({
             </MarginNote>
           ) : null}
           <Button variant="primary" onClick={onDone}>
-            View skill versions
+            {doneLabel}
           </Button>
         </div>
       )}

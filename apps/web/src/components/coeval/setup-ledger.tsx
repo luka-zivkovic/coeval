@@ -38,16 +38,18 @@ export function SetupLedger({
           {description ?? `${done} of ${steps.length} complete`}
         </CardDescription>
       </CardHeader>
-      <div>
+      <ol>
         {steps.map((s, i) => (
-          <div
+          <li
             key={i}
+            aria-current={s.state === "now" ? "step" : undefined}
             className={cn(
               "flex items-start gap-3.5 border-b border-rule-soft px-[18px] py-3.5 last:border-b-0",
               s.state === "locked" && "opacity-90"
             )}
           >
             <div
+              aria-hidden="true"
               className={cn(
                 "mt-px grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border border-rule-strong font-mono text-[10.5px] text-ink-3",
                 s.state === "done" && "border-ink bg-ink text-paper",
@@ -63,6 +65,9 @@ export function SetupLedger({
                   s.state === "done" && "text-ink-4 line-through decoration-rule-strong"
                 )}
               >
+                <span className="sr-only">
+                  {s.state === "done" ? "Complete: " : s.state === "now" ? "Current step: " : "Locked: "}
+                </span>
                 {s.title}
               </div>
               {s.detail ? <div className="mt-px text-[12px] text-ink-3">{s.detail}</div> : null}
@@ -82,9 +87,9 @@ export function SetupLedger({
               </div>
             ) : null}
             {s.foot ? <div className="self-center font-mono text-[11px] text-ink-4">{s.foot}</div> : null}
-          </div>
+          </li>
         ))}
-      </div>
+      </ol>
     </Card>
   );
 }

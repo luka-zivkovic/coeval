@@ -5035,6 +5035,10 @@ export type TrustDigest = z.infer<typeof TrustDigestSchema>;
 export const DashboardSummarySchema = z.object({
   project: ProjectSchema,
   skill: SkillSchema,
+  // Exact successful coverage for the evaluator version shown in `skill`.
+  // `project.autoJudgedTraceCount` is intentionally historical/project-wide
+  // and cannot prove that this version has produced a Result.
+  currentVersionResultCount: z.number().int().nonnegative(),
   verdictDistribution: VerdictDistributionSchema,
   exceptions: z.array(ExceptionCaseSchema),
   topCapabilityGaps: z.array(CapabilityGapSchema),

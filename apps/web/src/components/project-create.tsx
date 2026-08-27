@@ -7,7 +7,7 @@ import { Eyebrow } from "@/components/coeval";
 import { CHOOSE_TASK_ERROR, NAME_REQUIRED_ERROR, PROJECT_TASK_COPY, ProjectTaskFields } from "@/components/project-task";
 import { ApiError, createProject, selectProject } from "@/lib/api";
 import { copyTextToClipboard } from "@/lib/clipboard";
-import { firstRunEditorPath, rememberFirstProjectKey } from "@/lib/journey";
+import { rememberFirstProjectKey } from "@/lib/journey";
 import { useDialogFocus } from "@/hooks/use-dialog-focus";
 import type { CreatedApiKey, ProjectMode } from "@coeval/shared";
 
@@ -58,9 +58,9 @@ function useCreateProject(onCreated?: () => void) {
       selectProject(projectId);
       if (onCreated) onCreated();
       // Full reload: every cached surface must re-resolve against the new
-      // project. Start in Act 1 with a concrete worked rubric, not a blank
-      // schema dashboard.
-      window.location.assign(firstRunEditorPath());
+      // project. Overview owns the Run → Check → Result sequence and offers
+      // the explicit low-friction path for creating a Check without a Run.
+      window.location.assign("/");
     } catch (err) {
       setError(
         err instanceof ApiError && err.status === 501
@@ -76,7 +76,7 @@ function useCreateProject(onCreated?: () => void) {
   function continueAfterSavingKey() {
     if (!pendingProject) return;
     selectProject(pendingProject.projectId);
-    window.location.assign(firstRunEditorPath());
+    window.location.assign("/");
   }
 
   return { name, setName, mode, setMode, busy, error, submit, pendingProject, continueAfterSavingKey };

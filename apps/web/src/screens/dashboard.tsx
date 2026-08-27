@@ -123,7 +123,7 @@ export function DashboardScreen() {
   // never production language.
   const bench = isBench(project);
   const importedTotal = project.importedTraceCount;
-  const autoJudged = project.autoJudgedTraceCount;
+  const autoJudged = dashboard.currentVersionResultCount;
   const exceptionsTotal = exceptions.length;
   const syncBackPct = Math.round(project.syncBackCoverage * 100);
   const agreement = skill.currentVersion.goldenSetAgreement;
@@ -172,7 +172,7 @@ export function DashboardScreen() {
         <JourneyPipeline dashboard={dashboard} onNavigate={navigate} />
       )}
 
-      {project.autoJudgedTraceCount === 1 ? (
+      {dashboard.currentVersionResultCount === 1 ? (
         <FirstVerdictCard
           dashboard={dashboard}
           onOpenCase={(caseId) => navigate(`/cases/${caseId}`, { state: { backTo: "/", backLabel: "Back to overview" } })}

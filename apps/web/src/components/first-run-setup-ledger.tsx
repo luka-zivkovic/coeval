@@ -16,7 +16,7 @@ export function FirstRunSetupLedger({
   const states = firstRunSetupStepStates(dashboard);
   const done = Object.values(states).filter((state) => state === "done").length;
   const imported = project.importedTraceCount;
-  const judged = project.autoJudgedTraceCount;
+  const judged = dashboard.currentVersionResultCount;
   const editPath = skill.isStarter ? firstRunEditorPath() : "/skill/edit";
 
   return (
@@ -34,8 +34,8 @@ export function FirstRunSetupLedger({
                 detail: bench
                   ? "A run is one input and the output your AI produced. An expected result is optional."
                   : "Connect LangSmith or Langfuse, or paste one run. Coeval reads the record; it does not replay your AI.",
-                cta: bench ? "Add an example" : "Connect or paste a run",
-                onCta: () => navigate(bench ? "/datasets?add=1" : "/integrations"),
+                cta: bench ? "Add an example" : "Add a recorded run",
+                onCta: () => navigate(bench ? "/datasets?add=1" : "/traces"),
                 secondaryCta: "Set up without a run",
                 onSecondaryCta: () => navigate(editPath)
               })

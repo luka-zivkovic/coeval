@@ -91,6 +91,7 @@ function productionBench(input: { judged: number; golden: number }): DashboardSu
         }
       }
     },
+    currentVersionResultCount: input.judged,
     goldenSetSize: input.golden,
     exceptions: [],
     topCapabilityGaps: [],

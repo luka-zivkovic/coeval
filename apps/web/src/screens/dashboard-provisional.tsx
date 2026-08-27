@@ -25,7 +25,7 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
   const { project, skill, exceptions } = dashboard;
   const bench = isBench(project);
   const imported = project.importedTraceCount;
-  const judged = project.autoJudgedTraceCount;
+  const judged = dashboard.currentVersionResultCount;
   const version = skill.currentVersion;
 
   async function signOffAsIs() {
@@ -91,14 +91,18 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
         title={
           bench
             ? `${imported.toLocaleString()} example${imported === 1 ? "" : "s"} ready. Run your Check.`
-            : `${imported.toLocaleString()} run${imported === 1 ? "" : "s"} imported. Here is what the starter Check found.`
+            : judged > 0
+              ? `${imported.toLocaleString()} run${imported === 1 ? "" : "s"} imported. Here is what the starter Check found.`
+              : `${imported.toLocaleString()} run${imported === 1 ? "" : "s"} imported. No complete Check Result yet.`
         }
         sub={
           exceptions.length > 0
             ? `${exceptions.length} Result${exceptions.length === 1 ? " needs" : "s need"} a closer look. Open one to compare the recorded evidence with the starter guide.`
             : bench
               ? "Nothing has been evaluated yet. Start one run from Examples. A supplied expected label is optional and is not governed human truth."
-              : "The starter Check did not flag these imported runs, but its Results are still provisional. Review the guide against the recorded evidence next."
+              : judged === 0
+                ? "The runs are recorded, but this Check has not returned a complete Result. It may still be running or need a retry; open Runs to inspect their status."
+                : "The starter Check did not flag these imported runs, but its Results are still provisional. Review the guide against the recorded evidence next."
         }
       />
 

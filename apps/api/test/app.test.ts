@@ -187,8 +187,13 @@ describe("Coeval Hono API", () => {
   it("returns dashboard summary", async () => {
     const response = await app.request("/api/dashboard");
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { project: { name: string }; exceptions: unknown[] };
+    const body = (await response.json()) as {
+      project: { name: string };
+      currentVersionResultCount: number;
+      exceptions: unknown[];
+    };
     expect(body.project.name).toBe("LangSmith Support Agent");
+    expect(body.currentVersionResultCount).toBeGreaterThan(0);
     expect(body.exceptions.length).toBeGreaterThan(0);
   });
 

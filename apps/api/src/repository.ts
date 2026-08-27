@@ -1462,10 +1462,19 @@ export class DemoRepository implements CoevalRepository {
       : [];
     const goldenSetSize = (await this.listGoldenSet(projectId, criterionVersionId)).length;
     const topCapabilityGaps = isLegacyCriterion ? capabilityGapsFromExceptions(exceptions) : [];
+    const dynamicCurrentVersionResultCount = new Set(
+      countedRuns
+        .filter((run) => run.skillVersionId === skill.currentVersion.id)
+        .map((run) => run.caseId)
+    ).size;
+    const currentVersionResultCount = isLegacyCriterion && skill.currentVersion.id === demoSkill.currentVersion.id
+      ? summary.currentVersionResultCount + dynamicCurrentVersionResultCount
+      : dynamicCurrentVersionResultCount;
     if (countedRuns.length === 0) {
       return {
         ...summary,
         skill,
+        currentVersionResultCount,
         verdictDistribution: isLegacyCriterion
           ? summary.verdictDistribution
           : { pass: 0, fail: 0, ambiguous: 0 },
@@ -1489,6 +1498,7 @@ export class DemoRepository implements CoevalRepository {
     return {
       ...summary,
       skill,
+      currentVersionResultCount,
       exceptions,
       topCapabilityGaps,
       goldenSetSize,

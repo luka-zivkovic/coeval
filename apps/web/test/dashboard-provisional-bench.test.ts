@@ -53,6 +53,7 @@ function provisionalBench(): DashboardSummary {
         approvedAt: null
       }
     },
+    currentVersionResultCount: 0,
     goldenSetSize: 0,
     exceptions: []
   } as DashboardSummary;
@@ -70,5 +71,20 @@ describe("provisional Skill Bench journey", () => {
     expect(html).not.toContain("Run the example");
     expect(html).toContain("1 of 3 complete");
     expect(html).toContain("until an owner reviews and signs off the guide");
+  });
+
+  it("keeps a missing tracing Result explicit instead of implying a pass", async () => {
+    const { DashboardProvisional } = await import("../src/screens/dashboard-provisional.js");
+    const dashboard = provisionalBench();
+    dashboard.project.mode = "tracing";
+    dashboard.project.traceProvider = "langsmith";
+    const html = renderToStaticMarkup(createElement(DashboardProvisional, {
+      dashboard,
+      onSignedOff: vi.fn()
+    }));
+
+    expect(html).toContain("No complete Check Result yet");
+    expect(html).toContain("has not returned a complete Result");
+    expect(html).not.toContain("did not flag these imported runs");
   });
 });

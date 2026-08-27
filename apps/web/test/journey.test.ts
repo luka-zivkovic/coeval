@@ -8,10 +8,24 @@ import {
   rememberFirstProjectKey
 } from "../src/lib/journey.js";
 
-function dashboard(input: { starter: boolean; judged: number; golden: number; imported?: number }): DashboardSummary {
+function dashboard(input: {
+  starter: boolean;
+  judged: number;
+  golden: number;
+  imported?: number;
+  currentJudged?: number;
+  status?: "draft" | "approved" | "production" | "failed";
+}): DashboardSummary {
   return {
-    skill: { isStarter: input.starter, currentVersion: { version: "0.1.0", status: "draft" } },
+    skill: {
+      isStarter: input.starter,
+      currentVersion: {
+        version: "0.1.0",
+        status: input.status ?? (input.starter ? "draft" : "approved")
+      }
+    },
     project: { importedTraceCount: input.imported ?? input.judged, autoJudgedTraceCount: input.judged },
+    currentVersionResultCount: input.currentJudged ?? input.judged,
     goldenSetSize: input.golden
   } as DashboardSummary;
 }
@@ -91,6 +105,34 @@ describe("journey state", () => {
       bringRun: "done",
       chooseCheck: "now",
       seeResult: "locked"
+    });
+  });
+
+  it("does not treat historical Results or a failed edit as a ready current Check", () => {
+    expect(firstRunSetupStepStates(dashboard({
+      starter: false,
+      imported: 4,
+      judged: 4,
+      currentJudged: 0,
+      golden: 0,
+      status: "failed"
+    }))).toEqual({
+      bringRun: "done",
+      chooseCheck: "now",
+      seeResult: "locked"
+    });
+
+    expect(firstRunSetupStepStates(dashboard({
+      starter: false,
+      imported: 4,
+      judged: 4,
+      currentJudged: 0,
+      golden: 0,
+      status: "approved"
+    }))).toEqual({
+      bringRun: "done",
+      chooseCheck: "done",
+      seeResult: "now"
     });
   });
 

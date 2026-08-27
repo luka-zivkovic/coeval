@@ -47,6 +47,11 @@ export interface FirstRunSetupStepStates {
   seeResult: SetupJourneyStepState;
 }
 
+export function currentCheckIsReady(dashboard: DashboardSummary): boolean {
+  return dashboard.skill.currentVersion.status === "approved" ||
+    dashboard.skill.currentVersion.status === "production";
+}
+
 // The first-run ledger mirrors durable project state for both supplied-example
 // and tracing projects. No click-completion flags are allowed: agent setup,
 // imports, and eval runs can all happen outside the current browser. Later
@@ -54,8 +59,8 @@ export interface FirstRunSetupStepStates {
 // unmet prerequisite is presented as the primary next action.
 export function firstRunSetupStepStates(dashboard: DashboardSummary): FirstRunSetupStepStates {
   const hasRun = dashboard.project.importedTraceCount > 0;
-  const hasCheck = !dashboard.skill.isStarter;
-  const hasResult = dashboard.project.autoJudgedTraceCount > 0;
+  const hasCheck = currentCheckIsReady(dashboard);
+  const hasResult = dashboard.currentVersionResultCount > 0;
 
   return {
     bringRun: hasRun ? "done" : "now",
@@ -69,7 +74,7 @@ export function firstRunSetupStepStates(dashboard: DashboardSummary): FirstRunSe
 // are unlocked milestones. Five golden cases is a recommendation, while the
 // actual regression gate still arms on the first promotion.
 export function journeyActStates(dashboard: DashboardSummary): JourneyActStates {
-  const defineGoodDone = !dashboard.skill.isStarter;
+  const defineGoodDone = currentCheckIsReady(dashboard);
   const judgeRealWorkDone = dashboard.project.autoJudgedTraceCount > 0;
   const earnTrustDone = dashboard.goldenSetSize >= GOLDEN_GATE_RECOMMENDED;
   const completed = [defineGoodDone, judgeRealWorkDone, earnTrustDone];

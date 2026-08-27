@@ -167,6 +167,7 @@ run("PgRepository smoke", () => {
       // Only the ordinary fixture counts; release evidence stays invisible.
       expect(dashboard.project.importedTraceCount).toBe(1);
       expect(dashboard.project.autoJudgedTraceCount).toBe(0);
+      expect(dashboard.currentVersionResultCount).toBe(0);
       expect(dashboard.verdictDistribution.pass).toBe(0);
       expect(dashboard.verdictDistribution.fail).toBe(0);
       expect(dashboard.exceptions).not.toEqual(
@@ -1049,6 +1050,7 @@ run("PgRepository smoke", () => {
       const dashboard = await repo.getDashboardSummary("proj_test");
       expect(dashboard.project.importedTraceCount).toBe(1);
       expect(dashboard.project.autoJudgedTraceCount).toBe(1);
+      expect(dashboard.currentVersionResultCount).toBe(1);
       expect(dashboard.verdictDistribution.pass).toBe(1);
 
       // The judge worker now feeds the v2 trust layer too: a real source=llm_judge
