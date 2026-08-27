@@ -35,13 +35,16 @@ approve a governed candidate, or decide whether a release should ship.
 
 ## Beginner mental model
 
-The default journey teaches five concepts through use:
+The default journey teaches six concepts through use:
 
 1. **Run:** one recorded example of what an AI system did.
 2. **Check:** one reusable automated evaluation of one thing that matters.
 3. **Result:** what the Check concluded from the recorded evidence.
-4. **Your review:** a person's judgment about whether a result is right.
-5. **Agreement with people:** how often a Check matches reviewed human
+4. **Correct this result:** a visible, ungoverned ruling when a person thinks
+   the Check is wrong.
+5. **Independent human review:** a person judges the run without seeing the
+   Check's result; this separate path may create governed human evidence.
+6. **Agreement with people:** how often a Check matches reviewed human
    outcomes on an identified set of runs.
 
 The first session needs to answer only:
@@ -58,7 +61,8 @@ The first session needs to answer only:
 | Check | one criterion and its evaluator | A Check should answer one independently judgeable quality question. |
 | Review guide | evaluator rubric | It defines pass, fail, and insufficient-evidence behavior. |
 | Result | evaluator assessment | This is the Check's output, not human truth or a release decision. |
-| Your review | human ruling or governed label, depending on the named path | The UI must state which evidence class the action creates. |
+| Correct this result | evaluator-visible legacy human ruling | This is `ungoverned_legacy` triage and never becomes governed truth. |
+| Independent human review | evaluator-blind governed label | The reviewer judges the criterion from frozen case evidence without seeing the evaluator output. |
 | Protected example | regression/golden case | It catches changes on a known case; it does not estimate production quality. |
 | Agreement with people | evaluator-to-human comparison | The named people, dataset, coverage, and evaluator version still matter. |
 | Technical details | prompts, schemas, model bindings, versions, revisions, and digests | Available for inspection without blocking the default journey. |
@@ -71,6 +75,12 @@ the relationship once in context:
 Do not lead first-run screens with `eval`, `criterion`, `rubric`, `judging
 skill`, `golden`, `model binding`, `output schema`, `calibration`, or revision
 identifiers. These terms remain exact on Technical surfaces and in evidence.
+
+Visible result correction and independent human review are not two names for
+the same action. The first starts from an evaluator result and records an
+ungoverned ruling. The second hides evaluator output and follows the governed
+review contract. Agreement or calibration compares the two evidence types only
+after their separately authorized collection.
 
 ## One journey, two entrances
 
@@ -91,7 +101,9 @@ visible.
 4. **Review the proposed Check.** Show its one quality question, the evidence
    it reads, what it cannot know, and the editable Review guide.
 5. **Create or refine.** Offer **Create this Check** and **Refine it first**.
-   During refinement, keep **Create with current draft** available.
+   During refinement, keep **Create with current draft** available. Creation
+   must append the exact criterion definition shown in the card and atomically
+   bind the evaluator version to it.
 6. **See the first result.** When a run is available, execute the Check and
    open that result instead of returning to a dashboard with no explanation.
 7. **Finish for now.** State what was created, what was run, and what has not
@@ -110,13 +122,22 @@ available without competing visually with it.
 5. Show the proposed Check and offer **Create** or **Refine**.
 6. Ask the user to mint the short-lived Coeval connection only after the
    non-secret setup draft is ready.
-7. Apply the draft through the existing bootstrap path and submit one real run
-   when one is already available. Never invent a run to demonstrate success.
-8. Return an honest receipt and hand ongoing capture, submission, and findings
-   work to the audit workflow.
+7. Apply the draft through the mode-appropriate setup path and submit one real
+   run when one is already available. Never invent a run to demonstrate
+   success.
+8. Return an honest completion summary and route ongoing work by source:
+   Agent Skill projects use the audit workflow, supplied examples use the
+   bench batch flow, and production runs use the selected trace integration or
+   manual import.
 
 The preparation phase never needs a pairing token or provider secret. The
 connection remains project-scoped, single-use, and short-lived.
+
+The visible Check, immutable criterion definition and digest, evaluator
+version, and every executed Result must name the same quality question. A
+generic seeded criterion cannot remain underneath a more specific proposed
+Check. App and agent creation fail before mutation when that exact binding
+cannot be established.
 
 ## Question behavior
 
@@ -191,6 +212,12 @@ Status
 Generated or inferred content remains a proposal. The interface must not use
 silence, inactivity, or a preselected action as approval.
 
+`Starter · unvalidated` is an assurance projection, not an alias for
+`is_starter`, evaluator lifecycle state, or legacy version approval. It remains
+visible until named comparison evidence exists. Later states must say what was
+measured and against which evidence class; only currently admissible
+calibration may be described as calibrated.
+
 ## Completion states
 
 ### Check created without a run
@@ -200,7 +227,7 @@ silence, inactivity, or a preselected action as approval.
 This is a valid low-friction exit. Do not claim first value, testing, or human
 agreement.
 
-### Check created and run
+### Check created and run without a supplied label
 
 > Starter Check created and run on one recorded example. Its result has not
 > been compared with a human decision.
@@ -208,18 +235,32 @@ agreement.
 Execution proves operability on that run only. It does not prove evaluator
 quality.
 
+### Check created and run with a supplied label
+
+> Starter Check created and compared with the label supplied for this example.
+> That label is not governed human truth.
+
+If the run belongs to an exact governed truth revision, name that revision,
+evidence class, coverage, and comparison instead of using either generic
+message. Completion copy is always derived from recorded evidence; the
+presence of a label never silently upgrades its provenance.
+
 ### Optional next steps
 
-After the receipt, a person may:
+After the completion summary, a person may:
 
 - review or correct the result;
 - try another run;
 - refine the Check;
-- protect a reviewed example against future evaluator regressions;
+- start **Protect this behavior** or **Prevent this next time**. This enters
+  the trace-to-test journey and retains its person-confirmed contrasting
+  example and successful-validation requirements before protection;
 - collect human-reviewed examples and measure agreement;
 - enter governed review and calibration when the intended use requires it.
 
-These are progressive milestones, not first-run requirements.
+These are progressive milestones, not first-run requirements. In particular,
+the absence of mandatory contrasting examples applies only to creation of the
+unvalidated Check; it does not relax trace-to-test enablement.
 
 ## Non-negotiable boundaries
 
@@ -240,9 +281,10 @@ Low friction may defer assurance, but it must not falsify state or authority:
 
 ## MVP scope and deferred work
 
-The first implementation should reuse the existing starter evaluator,
-templates, agent bootstrap, project authorization, and evaluation run paths.
-It does not require:
+The first implementation should reuse the existing templates, project
+authorization, and evaluation run paths. It may extend the starter and agent
+bootstrap writers only when they atomically append and bind the exact criterion
+definition shown to the user. It does not require:
 
 - mandatory positive and negative examples;
 - mandatory human labeling or contrastive validation;
@@ -259,9 +301,50 @@ into the MVP as incidental UI state.
 
 ## Validation
 
-Test the implemented journey with people who are new to evaluation
-methodology, including technically capable builders and less-technical domain
-or product owners. Observe whether they can:
+### Automated acceptance
+
+Before release, tests must cover:
+
+- app and external-agent creation bind the displayed Check, exact criterion
+  definition and digest, evaluator version, and Result;
+- Agent Skill, supplied-example, and production-trace entrances route to the
+  correct ongoing workflow;
+- ungoverned correction and evaluator-blind governed review never share copy,
+  payloads, or authority;
+- assurance copy derives from absent, supplied-label, governed-comparison, and
+  calibrated evidence rather than legacy version status;
+- missing, ambiguous, provider-failed, and queue-failed execution cannot render
+  a favorable Result or a successful completion claim;
+- authorization, selected-data scope, redaction, pairing-token expiry,
+  single-use consumption, and non-disclosure remain enforced;
+- the app draft survives Back, refresh, and a return to the same entrance, and
+  the agent's non-secret local draft survives a new conversation; cross-channel
+  resume remains deferred;
+- primary actions, focus order, status announcements, error recovery, and
+  keyboard-only operation remain accessible at every state;
+- protection always enters the existing trace-to-test contract and cannot
+  bypass its validation rules.
+
+### Moderated release gate
+
+Run at least five formative sessions with people new to evaluation methodology:
+at least two technically capable AI builders and at least two less-technical
+domain or product owners. The sample is a launch gate, not statistical proof.
+Release the first-run path only when:
+
+- at least four of five reach a Check proposal without moderator intervention;
+- at least four of five create one criterion that is supported by recorded
+  evidence and can explain the Run, Check, and Result in their own words;
+- all five understand after completion that Coeval did not replay the AI
+  system, that the starter is not governed human truth or calibrated, and that
+  the Result cannot decide whether a release ships;
+- no session sends or retains sensitive fields outside the person's visible
+  selection; and
+- every participant can return to unfinished work in the same entrance.
+
+If a threshold misses, revise and repeat the formative round rather than
+averaging the failure into a launch score. During the sessions, also observe
+whether participants can:
 
 - explain a Run, Check, and Result in their own words;
 - create one Check that uses evidence actually present in the run;
