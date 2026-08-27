@@ -47,7 +47,7 @@ describe("exception queue rows", () => {
     expect(exceptionsSource).toContain("Judge category");
     expect(exceptionsSource).toContain("Save this category as a queue");
     expect(exceptionsSource).not.toContain("Queue this cluster");
-    expect(dashboardSource).toContain("Exact failure categories supplied by the evaluator");
+    expect(dashboardSource).toContain("Exact failure categories supplied by the Check");
     expect(dashboardSource).not.toContain("Clusters of disagreement");
     expect(dashboardSource).toContain("High unresolved volume");
     expect(dashboardSource).not.toContain("Skill too strict or lenient");

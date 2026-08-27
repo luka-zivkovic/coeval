@@ -38,8 +38,8 @@ vi.mock("@/components/coeval", () => ({
   Receipt: Element,
   Ref: Element
 }));
-vi.mock("@/components/bench-setup-ledger", () => ({
-  BenchSetupLedger: () => createElement("div", null, "four-step-bench-journey")
+vi.mock("@/components/first-run-setup-ledger", () => ({
+  FirstRunSetupLedger: () => createElement("div", null, "three-step-first-run-journey")
 }));
 vi.mock("@/screens/dashboard-welcome", () => ({ DashboardWelcome: Element }));
 vi.mock("@/screens/dashboard-bench-welcome", () => ({ DashboardBenchWelcome: Element }));
@@ -99,20 +99,20 @@ function productionBench(input: { judged: number; golden: number }): DashboardSu
 }
 
 describe("Skill Bench dashboard routing", () => {
-  it("keeps the four-step ledger mounted after examples are imported", async () => {
+  it("keeps the first-run ledger mounted after examples are imported", async () => {
     const { DashboardScreen } = await import("../src/screens/dashboard.js");
     state.dashboard = productionBench({ judged: 0, golden: 0 });
     const html = renderToStaticMarkup(createElement(DashboardScreen));
 
-    expect(html).toContain("four-step-bench-journey");
+    expect(html).toContain("three-step-first-run-journey");
     expect(html).not.toContain("three-act-journey");
   });
 
-  it("keeps the same ledger mounted after runs and golden promotion", async () => {
+  it("keeps the same ledger mounted after the first Result", async () => {
     const { DashboardScreen } = await import("../src/screens/dashboard.js");
     state.dashboard = productionBench({ judged: 6, golden: 1 });
     const html = renderToStaticMarkup(createElement(DashboardScreen));
 
-    expect(html).toContain("four-step-bench-journey");
+    expect(html).toContain("three-step-first-run-journey");
   });
 });

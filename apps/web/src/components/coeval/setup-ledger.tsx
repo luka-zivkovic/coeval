@@ -13,6 +13,8 @@ export interface LedgerStep {
   detail?: React.ReactNode;
   cta?: React.ReactNode;
   onCta?: () => void;
+  secondaryCta?: React.ReactNode;
+  onSecondaryCta?: () => void;
   foot?: React.ReactNode;
 }
 
@@ -65,10 +67,19 @@ export function SetupLedger({
               </div>
               {s.detail ? <div className="mt-px text-[12px] text-ink-3">{s.detail}</div> : null}
             </div>
-            {s.cta ? (
-              <Button size="sm" variant={s.state === "now" ? "primary" : "default"} onClick={s.onCta}>
-                {s.cta}
-              </Button>
+            {s.cta || s.secondaryCta ? (
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                {s.secondaryCta ? (
+                  <Button size="sm" variant="ghost" onClick={s.onSecondaryCta}>
+                    {s.secondaryCta}
+                  </Button>
+                ) : null}
+                {s.cta ? (
+                  <Button size="sm" variant={s.state === "now" ? "primary" : "default"} onClick={s.onCta}>
+                    {s.cta}
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
             {s.foot ? <div className="self-center font-mono text-[11px] text-ink-4">{s.foot}</div> : null}
           </div>

@@ -2,20 +2,40 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { DashboardSummary } from "@coeval/shared";
-import { BenchSetupLedger } from "../src/components/bench-setup-ledger.js";
+import { FirstRunSetupLedger } from "../src/components/first-run-setup-ledger.js";
 
-vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
+const ledgerHarness = vi.hoisted(() => ({
+  navigate: vi.fn(),
+  steps: [] as Array<{
+    title: string;
+    onCta?: () => void;
+    onSecondaryCta?: () => void;
+  }>
+}));
+
+vi.mock("react-router-dom", () => ({ useNavigate: () => ledgerHarness.navigate }));
 vi.mock("@/components/coeval", () => ({
   SetupLedger: ({ steps, description }: {
-    steps: Array<{ state: string; title: string; detail?: string; cta?: string; foot?: string }>;
+    steps: Array<{
+      state: string;
+      title: string;
+      detail?: string;
+      cta?: string;
+      onCta?: () => void;
+      secondaryCta?: string;
+      onSecondaryCta?: () => void;
+      foot?: string;
+    }>;
     description: string;
-  }) =>
-    createElement(
+  }) => {
+    ledgerHarness.steps = steps;
+    return createElement(
       "div",
       null,
       description,
-      ...steps.map((step) => createElement("div", { key: step.title }, step.title, step.detail, step.cta, step.foot))
-    )
+      ...steps.map((step) => createElement("div", { key: step.title }, step.title, step.detail, step.secondaryCta, step.cta, step.foot))
+    );
+  }
 }));
 vi.mock("@/lib/journey", async () => import("../src/lib/journey.js"));
 
@@ -25,11 +45,12 @@ function dashboard(input: {
   golden: number;
   starter?: boolean;
   exceptions?: number;
+  mode?: "bench" | "tracing";
 }): DashboardSummary {
   return {
     project: {
       id: "project_bench",
-      mode: "bench",
+      mode: input.mode ?? "bench",
       importedTraceCount: input.imported,
       autoJudgedTraceCount: input.judged
     },
@@ -42,56 +63,74 @@ function dashboard(input: {
   } as DashboardSummary;
 }
 
-describe("Skill Bench setup ledger", () => {
-  it("shows an agent-bootstrapped evaluator as complete and makes examples next", () => {
+describe("first-run setup ledger", () => {
+  it("shows an agent-bootstrapped Check as complete and makes a Run next", () => {
     const html = renderToStaticMarkup(createElement(
-      BenchSetupLedger,
+      FirstRunSetupLedger,
       {
         dashboard: dashboard({ imported: 0, judged: 0, golden: 0 })
       }
     ));
 
-    expect(html).toContain("1 of 4 complete");
-    expect(html).toContain("v1.0.0 ready");
-    expect(html).toContain("Add examples");
-    expect(html).not.toContain("Open the editor");
+    expect(html).toContain("1 of 3 complete");
+    expect(html).toContain("Check v1.0.0 ready");
+    expect(html).toContain("Add an example");
+    expect(html).not.toContain("Review the Check");
   });
 
-  it("explains the evaluator output contract during starter setup", () => {
-    const html = renderToStaticMarkup(createElement(BenchSetupLedger, {
+  it("offers a low-friction no-Run escape hatch without technical setup terms", () => {
+    ledgerHarness.navigate.mockClear();
+    const html = renderToStaticMarkup(createElement(FirstRunSetupLedger, {
       dashboard: dashboard({ imported: 0, judged: 0, golden: 0, starter: true })
     }));
 
-    expect(html).toContain("structured verdict");
-    expect(html).toContain("Open the editor");
+    expect(html).toContain("Set up without a run");
+    expect(html).not.toContain("structured verdict");
+    expect(html).not.toContain("Golden");
+
+    ledgerHarness.steps[0]?.onCta?.();
+    ledgerHarness.steps[0]?.onSecondaryCta?.();
+    expect(ledgerHarness.navigate).toHaveBeenNthCalledWith(1, "/datasets?add=1");
+    expect(ledgerHarness.navigate).toHaveBeenNthCalledWith(2, "/skill/edit?first=1&starter=task-outcome-quality");
   });
 
-  it("marks regression checks enabled after the first golden case", () => {
+  it("gives tracing projects an honest recorded-Run path", () => {
+    ledgerHarness.navigate.mockClear();
+    const html = renderToStaticMarkup(createElement(FirstRunSetupLedger, {
+      dashboard: dashboard({ imported: 0, judged: 0, golden: 0, starter: true, mode: "tracing" })
+    }));
+
+    expect(html).toContain("Bring one recorded run");
+    expect(html).toContain("Coeval reads the record; it does not replay your AI.");
+    expect(html).toContain("Connect or paste a run");
+
+    ledgerHarness.steps[0]?.onCta?.();
+    expect(ledgerHarness.navigate).toHaveBeenCalledWith("/integrations");
+  });
+
+  it("completes setup at the first Result without requiring a protected example", () => {
     const html = renderToStaticMarkup(createElement(
-      BenchSetupLedger,
+      FirstRunSetupLedger,
       {
-        dashboard: dashboard({ imported: 6, judged: 6, golden: 1 })
+        dashboard: dashboard({ imported: 6, judged: 6, golden: 0 })
       }
     ));
 
-    expect(html).toContain("4 of 4 complete");
-    expect(html).toContain("1 active · 1/5 recommended");
+    expect(html).toContain("first result ready");
+    expect(html).toContain("3 of 3");
+    expect(html).not.toContain("Golden");
   });
 
-  it("shows reachable run and regression actions as saved state advances", () => {
-    const runHtml = renderToStaticMarkup(createElement(BenchSetupLedger, {
+  it("shows the Result action only after the Check and Run are ready", () => {
+    const runHtml = renderToStaticMarkup(createElement(FirstRunSetupLedger, {
       dashboard: dashboard({ imported: 6, judged: 0, golden: 0 })
     }));
-    expect(runHtml).toContain("Run examples");
+    expect(runHtml).toContain("Run the example");
 
-    const goldenHtml = renderToStaticMarkup(createElement(BenchSetupLedger, {
-      dashboard: dashboard({ imported: 6, judged: 6, golden: 0 })
+    const starterHtml = renderToStaticMarkup(createElement(FirstRunSetupLedger, {
+      dashboard: dashboard({ imported: 6, judged: 0, golden: 0, starter: true })
     }));
-    expect(goldenHtml).toContain("Open golden set");
-
-    const disagreementHtml = renderToStaticMarkup(createElement(BenchSetupLedger, {
-      dashboard: dashboard({ imported: 6, judged: 6, golden: 0, exceptions: 1 })
-    }));
-    expect(disagreementHtml).toContain("Review disagreements");
+    expect(starterHtml).toContain("Review the Check");
+    expect(starterHtml).not.toContain("Run the example");
   });
 });

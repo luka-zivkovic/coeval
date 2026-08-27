@@ -1,17 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { BenchSetupLedger } from "@/components/bench-setup-ledger";
+import { FirstRunSetupLedger } from "@/components/first-run-setup-ledger";
 import { FirstProjectKeyCard } from "@/components/first-project-key";
 import { FirstVerdictCard } from "@/components/first-verdict";
-import { SectionHead, KPI, KPIRow, SetupLedger, ProvBanner } from "@/components/coeval";
+import { SectionHead, KPI, KPIRow, ProvBanner } from "@/components/coeval";
 import { signOffSkillVersion, ApiError } from "@/lib/api";
 import { isBench, markSetupReceipt } from "@/lib/journey";
-import {
-  GOLDEN_GATE_ARMS_AT,
-  GOLDEN_GATE_RECOMMENDED,
-  type DashboardSummary
-} from "@coeval/shared";
+import type { DashboardSummary } from "@coeval/shared";
 
 interface DashboardProvisionalProps {
   dashboard: DashboardSummary;
@@ -26,7 +22,7 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
   const [signingOff, setSigningOff] = useState(false);
   const [signOffError, setSignOffError] = useState<string | null>(null);
 
-  const { project, skill, exceptions, goldenSetSize } = dashboard;
+  const { project, skill, exceptions } = dashboard;
   const bench = isBench(project);
   const imported = project.importedTraceCount;
   const judged = project.autoJudgedTraceCount;
@@ -38,7 +34,7 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
     try {
       await signOffSkillVersion(skill.id, version.id);
       markSetupReceipt(
-        `Rubric v${version.version} signed off — the dashed badges are gone, verdicts count now.`
+        `Check v${version.version} signed off. It is ready to use, but it has not been calibrated against governed human truth.`
       );
       onSignedOff();
     } catch (error) {
@@ -64,24 +60,24 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
               <span>
                 {imported.toLocaleString()} example{imported === 1 ? "" : "s"} on the bench. Nothing is
                 evaluated until you start a run, and results remain <b>provisional</b> until an owner
-                reviews and approves the guide.
+                reviews and signs off the guide.
               </span>
             ) : (
               <span>
-                The starter rubric judged {judged === imported ? "all" : judged.toLocaleString()} of your{" "}
-                {imported.toLocaleString()} traces. These verdicts are <b>provisional</b>. Review the guide
-                before asking an owner to approve the evaluator.
+                The starter Check evaluated {judged === imported ? "all" : judged.toLocaleString()} of your{" "}
+                {imported.toLocaleString()} runs. These Results are <b>provisional</b>. Review the guide
+                before asking an owner to sign it off.
               </span>
             )
           }
           cta2={
             <Button size="sm" variant="ghost" disabled={signingOff} onClick={() => void signOffAsIs()}>
-              {signingOff ? "Signing off…" : "Sign off as-is"}
+              {signingOff ? "Signing off…" : "Use this starter Check"}
             </Button>
           }
           cta={
             <Button size="sm" onClick={() => navigate("/skill/edit")}>
-              Review the rubric
+              Review the Check
             </Button>
           }
         />
@@ -94,15 +90,15 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
         eyebrow={bench ? "First examples · Skill Bench" : `First import · ${project.traceProvider}`}
         title={
           bench
-            ? `${imported.toLocaleString()} example${imported === 1 ? "" : "s"} in. Run the skill over them.`
-            : `${imported.toLocaleString()} traces in. Here's what the judge thinks.`
+            ? `${imported.toLocaleString()} example${imported === 1 ? "" : "s"} ready. Run your Check.`
+            : `${imported.toLocaleString()} run${imported === 1 ? "" : "s"} imported. Here is what the starter Check found.`
         }
         sub={
           exceptions.length > 0
-            ? `${exceptions.length} cases need human review. Open a few to see where the starter guide needs to change.`
+            ? `${exceptions.length} Result${exceptions.length === 1 ? " needs" : "s need"} a closer look. Open one to compare the recorded evidence with the starter guide.`
             : bench
-              ? "Nothing has been evaluated yet. Start a run from Examples. Agreement is calculated only for the examples that include an expected label."
-              : "The starter evaluator passed every imported trace, but the results are still provisional. Review the guide against those traces next."
+              ? "Nothing has been evaluated yet. Start one run from Examples. A supplied expected label is optional and is not governed human truth."
+              : "The starter Check did not flag these imported runs, but its Results are still provisional. Review the guide against the recorded evidence next."
         }
       />
 
@@ -119,72 +115,22 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
           foot={bench ? "supplied · no production traces" : `${project.traceProvider} · first poll`}
         />
         <KPI
-          label="Judged · provisional"
+          label="Results · provisional"
           num={judged.toLocaleString()}
-          foot={`starter rubric v${version.version}`}
+          foot={`starter Check v${version.version}`}
         />
         <KPI
-          label="Want a human look"
+          label="Need a closer look"
           num={exceptions.length}
           delta={exceptions.length > 0 ? "open the queue →" : "queue clear"}
           deltaKind={exceptions.length > 0 ? "signal" : "default"}
           to="/exceptions"
           src="open exceptions →"
         />
-        <KPI
-          label="Golden cases"
-          num={goldenSetSize}
-          foot={
-            goldenSetSize === 0
-              ? "promote a case to arm the gate"
-              : goldenSetSize >= GOLDEN_GATE_RECOMMENDED
-                ? "gate armed"
-                : `gate armed · aim for ${GOLDEN_GATE_RECOMMENDED}+`
-          }
-          to="/golden"
-          src="open golden set →"
-        />
       </KPIRow>
 
       <div className="max-w-[960px]">
-        {bench ? (
-          <BenchSetupLedger dashboard={dashboard} />
-        ) : (
-          <SetupLedger
-            steps={[
-              {
-                state: "done",
-                title: "Connect a trace source",
-                foot: project.traceProvider
-              },
-              {
-                state: "done",
-                title: "Import your first traces",
-                foot: `${imported.toLocaleString()} traces`
-              },
-              {
-                state: "now",
-                title: "Review the starter rubric",
-                detail:
-                  exceptions.length > 0
-                    ? `Open it next to the ${exceptions.length} flagged cases and edit what reads wrong.`
-                    : "Edit it against the traces that just arrived.",
-                cta: "Review rubric",
-                onCta: () => navigate("/skill/edit")
-              },
-              {
-                state: goldenSetSize >= GOLDEN_GATE_ARMS_AT ? "done" : "locked",
-                title: "Enable regression checks with a golden case",
-                detail: "You'll do this naturally while reviewing exceptions.",
-                ...(goldenSetSize >= GOLDEN_GATE_ARMS_AT
-                  ? {
-                      foot: `${goldenSetSize} active · ${Math.min(goldenSetSize, GOLDEN_GATE_RECOMMENDED)}/${GOLDEN_GATE_RECOMMENDED} recommended`
-                    }
-                  : { cta: "Open exceptions", onCta: () => navigate("/exceptions") })
-              }
-            ]}
-          />
-        )}
+        <FirstRunSetupLedger dashboard={dashboard} />
       </div>
     </div>
   );

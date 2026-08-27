@@ -25,8 +25,8 @@ vi.mock("@/components/coeval", () => ({
     ...steps.map((step) => createElement("div", { key: step.title }, step.title, step.cta, step.foot))
   )
 }));
-vi.mock("@/components/bench-setup-ledger", async () =>
-  import("../src/components/bench-setup-ledger.js")
+vi.mock("@/components/first-run-setup-ledger", async () =>
+  import("../src/components/first-run-setup-ledger.js")
 );
 vi.mock("@/lib/journey", async () => import("../src/lib/journey.js"));
 vi.mock("@/lib/api", () => ({
@@ -59,16 +59,16 @@ function provisionalBench(): DashboardSummary {
 }
 
 describe("provisional Skill Bench journey", () => {
-  it("keeps imported examples runnable while starter rubric review is open", async () => {
+  it("makes the Check the next action after examples arrive", async () => {
     const { DashboardProvisional } = await import("../src/screens/dashboard-provisional.js");
     const html = renderToStaticMarkup(createElement(DashboardProvisional, {
       dashboard: provisionalBench(),
       onSignedOff: vi.fn()
     }));
 
-    expect(html).toContain("Open the editor");
-    expect(html).toContain("Run examples");
-    expect(html).toContain("1 of 4 complete");
-    expect(html).toContain("until an owner reviews and approves the guide");
+    expect(html).toContain("Review the Check");
+    expect(html).not.toContain("Run the example");
+    expect(html).toContain("1 of 3 complete");
+    expect(html).toContain("until an owner reviews and signs off the guide");
   });
 });

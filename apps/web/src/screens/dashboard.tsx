@@ -9,7 +9,7 @@ import { Eyebrow, SectionHead, KPI, KPIRow, DistBar, Legend, VerdictChip, Chip, 
 import { DashboardWelcome } from "@/screens/dashboard-welcome";
 import { DashboardBenchWelcome } from "@/screens/dashboard-bench-welcome";
 import { DashboardProvisional } from "@/screens/dashboard-provisional";
-import { BenchSetupLedger } from "@/components/bench-setup-ledger";
+import { FirstRunSetupLedger } from "@/components/first-run-setup-ledger";
 import { FirstProjectKeyCard } from "@/components/first-project-key";
 import { FirstVerdictCard } from "@/components/first-verdict";
 import { RowLink } from "@/components/row-action";
@@ -111,7 +111,7 @@ export function DashboardScreen() {
     const canPairAgent = dashboard.viewerRole === "owner" && dashboard.skill.isStarter;
     return isBench(dashboard.project)
       ? <DashboardBenchWelcome dashboard={dashboard} canPairAgent={canPairAgent} />
-      : <DashboardWelcome project={dashboard.project} canPairAgent={canPairAgent} />;
+      : <DashboardWelcome dashboard={dashboard} canPairAgent={canPairAgent} />;
   }
   if (stage === "provisional") {
     return <DashboardProvisional dashboard={dashboard} onSignedOff={() => void reload()} />;
@@ -156,7 +156,7 @@ export function DashboardScreen() {
         eyebrow="Overview"
         title="Project overview"
         sub={bench
-          ? "See what is ready on the evaluator bench, what still needs an example or run, and the next setup action."
+          ? "See what is ready, what still needs an example or Run, and the next action for this Check."
           : "See what is set up, what needs a human, and the next action for this criterion before opening detailed evidence."}
         when={`Data as of ${new Date(project.updatedAt).toLocaleString(undefined, {
           month: "short",
@@ -167,7 +167,7 @@ export function DashboardScreen() {
       />
 
       {bench ? (
-        <BenchSetupLedger dashboard={dashboard} className="mb-7" />
+        <FirstRunSetupLedger dashboard={dashboard} className="mb-7" />
       ) : (
         <JourneyPipeline dashboard={dashboard} onNavigate={navigate} />
       )}
@@ -181,7 +181,7 @@ export function DashboardScreen() {
       ) : null}
 
       <div className="mb-7 max-w-[760px] font-serif text-[22px] font-medium leading-[1.28] tracking-[-0.022em]">
-        The skill judged {autoJudged.toLocaleString()} of {importedTotal.toLocaleString()}{" "}
+        The Check evaluated {autoJudged.toLocaleString()} of {importedTotal.toLocaleString()}{" "}
         {bench ? "supplied examples" : "traces"}.{" "}
         <Link className="border-b border-ink-3 text-inherit no-underline hover:border-ink" to="/exceptions">
           {exceptionsTotal} {exceptionsTotal === 1 ? "is" : "are"} waiting on a person
@@ -197,7 +197,7 @@ export function DashboardScreen() {
             </Link>
           </>
         ) : null}
-        . The remaining judged cases rely only on the evaluator.
+        . The remaining Results rely only on the Check.
         {agreementPct != null ? (
           <>
             {" "}Its recorded agreement with the Golden set is{" "}
@@ -241,11 +241,11 @@ export function DashboardScreen() {
         />
         {bench ? (
           <KPI
-            label="Golden cases"
+            label="Protected examples"
             num={goldenSetSize}
             delta={goldenSetSize === 0 ? "gate advisory only" : "gate armed"}
             deltaKind={goldenSetSize === 0 ? "signal" : "default"}
-            foot="the regression suite your edits must pass"
+            foot="known cases used to catch evaluator regressions"
             to="/golden"
             src="open golden set →"
           />
@@ -275,9 +275,9 @@ export function DashboardScreen() {
       <Card className="mb-7">
         <CardHeader>
           <div>
-            <CardTitle>Verdict distribution</CardTitle>
+          <CardTitle>Result distribution</CardTitle>
             <CardDescription>
-              The latest evaluator verdict for each judged case. Earlier verdicts and repeated
+              The latest Check result for each recorded case. Earlier results and repeated
               runs are excluded.
             </CardDescription>
           </div>
@@ -302,9 +302,9 @@ export function DashboardScreen() {
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>Judge categories</CardTitle>
+              <CardTitle>Check categories</CardTitle>
               <CardDescription>
-                Exact failure categories supplied by the evaluator. They filter cases; they do not imply similarity.
+                Exact failure categories supplied by the Check. They filter cases; they do not imply similarity.
               </CardDescription>
             </div>
             <div className="flex-1" />
@@ -403,7 +403,7 @@ export function DashboardScreen() {
               </Button>
             ) : (
               <Button variant="default" className="mt-2 self-start" onClick={() => navigate("/skill")}>
-                Open skill <ArrowRight />
+                Open Check <ArrowRight />
               </Button>
             )}
           </CardContent>

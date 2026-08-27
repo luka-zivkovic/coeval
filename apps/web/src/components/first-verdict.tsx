@@ -54,19 +54,19 @@ export function FirstVerdictCard({
     <Card className={cn("border-gold-tint", className)}>
       <CardHeader>
         <div>
-          <Eyebrow>Recorded evaluator result</Eyebrow>
-          <CardTitle className="mt-1">{isFirst ? "Your first verdict" : "Latest verdict"}</CardTitle>
-          <CardDescription>Compare the evaluator result and rationale with the review guide used for this case.</CardDescription>
+          <Eyebrow>Recorded Check result</Eyebrow>
+          <CardTitle className="mt-1">{isFirst ? "Your first Result" : "Latest Result"}</CardTitle>
+          <CardDescription>See what the Check concluded and which Review guide produced that opinion. It is not a human decision.</CardDescription>
         </div>
         <div className="flex-1" />
         <VerdictChip verdict={detail.judgeRun.verdict} />
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-5">
         <div>
-          <Eyebrow>Judge reason</Eyebrow>
+          <Eyebrow>Why the Check said this</Eyebrow>
           <div className="mt-2 text-[13px] leading-[1.6] text-ink-2">{detail.judgeRun.reasoning}</div>
           <Button className="mt-3" size="sm" variant="outline" onClick={() => onOpenCase(detail.judgeRun.caseId)}>
-            Open the case <ArrowRight />
+            Open the recorded Run <ArrowRight />
           </Button>
         </div>
         <div className="border-l border-rule-soft pl-5">

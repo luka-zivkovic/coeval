@@ -214,10 +214,10 @@ export function NoProjectLanding() {
     <div className="fadeUp mx-auto mt-[12vh] max-w-[520px]">
       <Eyebrow>First evaluation</Eyebrow>
       <div className="mt-2 font-serif text-[26px] font-medium leading-[1.12] tracking-[-0.02em]">
-        What do you want Coeval to judge?
+        What are you evaluating?
       </div>
       <div className="mt-2.5 text-[13px] leading-[1.55] text-ink-3">
-        Pick the job. Coeval creates the matching workspace and starter judging skill for you.
+        Start with recorded production Runs or a few examples. Coeval will help you create one reusable Check.
       </div>
       <Card className="mt-5">
         <CardContent className="flex flex-col gap-3.5 py-4">

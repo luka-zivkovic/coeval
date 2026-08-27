@@ -28,11 +28,11 @@ export function JourneyPipeline({
     {
       state: states.defineGood,
       act: "Act 1",
-      title: "Define good",
+      title: "Choose what to Check",
       detail: dashboard.skill.isStarter
-        ? "Review the starter guide and pin the judge."
+        ? "Review the starter Check against a recorded Run."
         : `v${dashboard.skill.currentVersion.version} · ${dashboard.skill.currentVersion.status}`,
-      action: "Review guide",
+      action: "Review Check",
       // A still-starter skill routes through the first-run editor (onboarding
       // framing + worked starter); anything else opens the plain editor.
       path: dashboard.skill.isStarter ? firstRunEditorPath() : "/skill/edit"
@@ -40,21 +40,21 @@ export function JourneyPipeline({
     {
       state: states.judgeRealWork,
       act: "Act 2",
-      title: "Triage judged work",
+      title: "See Results on real Runs",
       detail: judged > 0
-        ? `${judged.toLocaleString()} ${bench ? "examples" : "traces"} auto-judged · ungoverned triage`
-        : `Add the first ${bench ? "examples and run them" : "trace or live source"}.`,
+        ? `${judged.toLocaleString()} recorded ${bench ? "example" : "Run"}${judged === 1 ? "" : "s"} checked · ungoverned triage`
+        : `Add the first ${bench ? "example and run it" : "recorded Run or live source"}.`,
       action: bench ? "Open examples" : "Open traces",
       path: bench ? "/datasets" : "/traces"
     },
     {
       state: states.earnTrust,
       act: "Act 3",
-      title: "Guard known failures",
+      title: "Protect reviewed examples",
       detail: golden >= GOLDEN_GATE_RECOMMENDED
-        ? `${golden} golden cases · recommended size reached`
-        : `${golden}/${GOLDEN_GATE_RECOMMENDED} golden cases · known-failure check ${golden > 0 ? "active" : "empty"}`,
-      action: dashboard.exceptions.length > 0 ? "Review cases" : "Open golden set",
+        ? `${golden} protected examples · recommended starting set reached`
+        : `${golden}/${GOLDEN_GATE_RECOMMENDED} protected examples · regression check ${golden > 0 ? "active" : "empty"}`,
+      action: dashboard.exceptions.length > 0 ? "Review Results" : "Open protected examples",
       path: dashboard.exceptions.length > 0 ? "/exceptions" : "/golden"
     }
   ];
