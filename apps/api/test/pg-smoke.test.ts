@@ -1345,7 +1345,10 @@ run("PgRepository smoke", () => {
         skillVersionId: importJob.skillVersionId!,
         limit: 2,
         importJobId: importJob.id
-      }, createClient)).resolves.toEqual({ imported: 1, queued: 2 });
+      // The worker now imports the complete batch before dispatching its
+      // evaluation work. Both rows were therefore durably created on the
+      // failed first attempt; the retry schedules them without re-importing.
+      }, createClient)).resolves.toEqual({ imported: 0, queued: 2 });
 
       const counts = await pool.query(
         `select

@@ -64,6 +64,7 @@ function dashboard(input: {
     },
     currentVersionResultCount: input.judged,
     goldenSetSize: input.golden,
+    viewerRole: "owner",
     exceptions: Array.from({ length: input.exceptions ?? 0 }, (_, index) => ({ id: `case_${index}` }))
   } as DashboardSummary;
 }
@@ -140,5 +141,14 @@ describe("first-run setup ledger", () => {
     }));
     expect(starterHtml).toContain("Review the Check");
     expect(starterHtml).not.toContain("Continue to first Result");
+  });
+
+  it("does not offer members an owner-only Result action", () => {
+    const member = dashboard({ imported: 1, judged: 0, golden: 0 });
+    member.viewerRole = "member";
+    const html = renderToStaticMarkup(createElement(FirstRunSetupLedger, { dashboard: member }));
+
+    expect(html).toContain("An owner needs to start this Result.");
+    expect(html).not.toContain("Continue to first Result");
   });
 });

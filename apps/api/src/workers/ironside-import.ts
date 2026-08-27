@@ -4,6 +4,7 @@ import type { Queue } from "@coeval/queue";
 import type { CoevalRepository, IronsideImportContext } from "../repository.js";
 import { ImportSkillVersionBindingError, IronsideCredentialsMissingError, IronsideIntegrationNotFoundError, NoCurrentSkillError, RecursiveTraceSkippedError } from "../repository.js";
 import { IronsideClient, ironsideTraceToTraceImport, type IronsideTraceSource } from "../lib/ironside.js";
+import { scheduleImportedCaseJudging } from "./import-judging.js";
 
 // Reconcile sweep over ironside's native GET /api/v1/traces (issue #153).
 //
@@ -73,8 +74,8 @@ export async function processIronsideImportJob(
     let cursor = resuming ? state.cursor : null;
 
     let imported = 0;
-    let queued = 0;
     let scanned = 0;
+    const caseIds: string[] = [];
 
     if (from !== undefined && from >= windowTo) {
       // Nothing settled since the last sweep. The watermark must not move
@@ -111,17 +112,19 @@ export async function processIronsideImportJob(
           throw error;
         }
         if (row.created) imported += 1;
-        const jobId = await queue.send("judge.run", {
-          projectId: context.projectId,
-          caseId: row.caseId,
-          skillVersionId: version.id
-        }, { retryLimit: 5, retryBackoff: true });
-        if (jobId) queued += 1;
+        caseIds.push(row.caseId);
       }
 
       cursor = page.nextCursor;
       if (!cursor) drained = true;
     }
+
+    const judging = await scheduleImportedCaseJudging(repository, queue, {
+      projectId: context.projectId,
+      skillVersionId: version.id,
+      caseIds
+    });
+    const queued = judging.scheduledCaseCount;
 
     await repository.saveIronsideSyncState(context.projectId, context.id, drained
       ? { watermark: windowTo, cursor: null, windowTo: null }

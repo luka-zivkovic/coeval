@@ -7,7 +7,7 @@ import { agentSetupPairingClaimExpiresAt, agentSetupPairingStatus, bootstrapRate
 import type { AgentSetupPairingRecord } from "../src/lib/auth.js";
 import { DemoRepository, NoCurrentSkillError, buildGoldenSetHealthSummary, runGoldenSetRegression } from "../src/repository.js";
 import { isPermanentFeedbackSyncError, processFeedbackSyncJob } from "../src/workers/feedback-sync.js";
-import { processGateRunJob } from "../src/workers/gate.js";
+import { processGateRunJob, runExistingCaseBackfill } from "../src/workers/gate.js";
 import { processJudgeRunJob } from "../src/workers/judge.js";
 import { processLangfuseImportJob } from "../src/workers/langfuse-import.js";
 import { enqueueDueLangfuseImports } from "../src/workers/langfuse-poller.js";
@@ -1678,6 +1678,30 @@ describe("Coeval Hono API", () => {
     expect(runs[0]!.completedItems).toBeGreaterThan(0);
   });
 
+  it("does not poison a Check with an empty backfill before its first Run arrives", async () => {
+    class InitiallyEmptyRepository extends DemoRepository {
+      empty = true;
+      override async listCaseIdsForProject(...args: Parameters<DemoRepository["listCaseIdsForProject"]>) {
+        return this.empty ? [] : super.listCaseIdsForProject(...args);
+      }
+    }
+    const repository = new InitiallyEmptyRepository();
+
+    await expect(runExistingCaseBackfill(
+      repository,
+      "proj_langsmith_support",
+      "skillv_1_2_0"
+    )).resolves.toBeNull();
+    await expect(repository.listEvalRuns("proj_langsmith_support", {
+      skillVersionId: "skillv_1_2_0"
+    })).resolves.toHaveLength(0);
+
+    repository.empty = false;
+    const run = await runExistingCaseBackfill(repository, "proj_langsmith_support", "skillv_1_2_0");
+    expect(run).toMatchObject({ trigger: "backfill", status: "completed" });
+    expect(run!.totalItems).toBeGreaterThan(0);
+  });
+
   it("idempotently starts the first Result when a Check existed before its Runs", async () => {
     const repository = new DemoRepository();
     const demoApp = createApp(repository);
@@ -1692,6 +1716,60 @@ describe("Coeval Hono API", () => {
     expect(firstBody.run).toMatchObject({ trigger: "backfill", status: "completed" });
     expect(secondBody.run.id).toBe(firstBody.run.id);
     expect(await repository.listEvalRuns("proj_langsmith_support", { skillVersionId: "skillv_1_2_0" })).toHaveLength(1);
+  });
+
+  it("puts a clean install's first imported Run in the same tracked Result lifecycle", async () => {
+    class CleanInstallRepository extends DemoRepository {
+      importedCaseId: string | null = null;
+
+      override async importTrace(...args: Parameters<DemoRepository["importTrace"]>) {
+        const result = await super.importTrace(...args);
+        this.importedCaseId = result.caseId;
+        return result;
+      }
+
+      override async listCaseIdsForProject(
+        _projectId: string,
+        limit?: number | undefined
+      ): Promise<string[]> {
+        const ids = this.importedCaseId ? [this.importedCaseId] : [];
+        return limit === undefined ? ids : ids.slice(0, limit);
+      }
+    }
+    const queue = new CapturingQueue();
+    const repository = new CleanInstallRepository();
+    const cleanApp = createApp(repository, { queue });
+
+    const imported = await cleanApp.request("/api/traces/manual", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        skillVersionId: "skillv_1_2_0",
+        sourceTraceId: "clean-install-first-run",
+        input: { question: "Can I return this?" },
+        output: { answer: "Yes." },
+        metadata: {}
+      })
+    });
+    expect(imported.status).toBe(201);
+    await expect(imported.json()).resolves.toMatchObject({ queued: true, queueJobId: null });
+
+    const runs = await repository.listEvalRuns("proj_langsmith_support", {
+      skillVersionId: "skillv_1_2_0"
+    });
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({ trigger: "backfill", totalItems: 1, status: "pending" });
+    expect(queue.jobs.filter((job) => job.name === "eval.run")).toHaveLength(1);
+    expect(queue.jobs.filter((job) => job.name === "judge.run")).toHaveLength(0);
+
+    const continued = await cleanApp.request(
+      "/api/skills/skill_support_quality/versions/skillv_1_2_0/backfill",
+      { method: "POST" }
+    );
+    expect(continued.status).toBe(202);
+    await expect(continued.json()).resolves.toMatchObject({ run: { id: runs[0]!.id } });
+    expect(queue.jobs.filter((job) => job.name === "eval.run")).toHaveLength(1);
+    expect(queue.jobs.filter((job) => job.name === "judge.run")).toHaveLength(0);
   });
 
   it("PR #56/C5a: blocked gate leaves the version regressing and skips backfill even when timeScope=existing", async () => {
@@ -1721,6 +1799,18 @@ describe("Coeval Hono API", () => {
     expect(versions.find((v) => v.id === body.version.id)?.status).toBe("regressing");
     expect(queue.jobs.filter((job) => job.name === "judge.run")).toHaveLength(0);
     expect(queue.jobs.filter((job) => job.name === "eval.run")).toHaveLength(0);
+
+    const rejected = await appWithQueue.request(
+      `/api/skills/skill_support_quality/versions/${body.version.id}/backfill`,
+      { method: "POST" }
+    );
+    expect(rejected.status).toBe(409);
+    await expect(rejected.json()).resolves.toMatchObject({
+      error: "Only the current runnable Check can produce the first Result."
+    });
+    expect(await repository.listEvalRuns("proj_langsmith_support", {
+      skillVersionId: body.version.id
+    })).toHaveLength(0);
   });
 
   it("PR #59: GET /api/projects/verdicts returns project-scope verdicts with filter + limit", async () => {
@@ -3282,7 +3372,7 @@ describe("LangSmith import worker", () => {
       skillVersionId: "skillv_1_2_0",
       limit: 2,
       importJobId: importJob.id
-    }, createClient)).resolves.toEqual({ imported: 1, queued: 2 });
+    }, createClient)).resolves.toEqual({ imported: 0, queued: 2 });
 
     await expect(repository.listImportJobs({ projectId: "proj_langsmith_support", limit: 5 })).resolves.toMatchObject([
       {

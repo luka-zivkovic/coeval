@@ -1230,13 +1230,18 @@ export async function fetchEvalRunDetail(evalRunId: string): Promise<EvalRunDeta
   return EvalRunDetailSchema.parse(await response.json());
 }
 
-export async function ensureSkillVersionBackfill(skillId: string, skillVersionId: string): Promise<EvalRunDetail> {
+export async function ensureSkillVersionBackfill(skillId: string, skillVersionId: string): Promise<EvalRunDetail | null> {
   const response = await apiFetch(
     `${API_BASE}/api/skills/${encodeURIComponent(skillId)}/versions/${encodeURIComponent(skillVersionId)}/backfill`,
     { method: "POST", credentials: "include" }
   );
-  const payload = await response.json().catch(() => null) as { run?: unknown; error?: string } | null;
+  const payload = await response.json().catch(() => null) as {
+    run?: unknown;
+    existingResult?: boolean;
+    error?: string;
+  } | null;
   if (response.ok && payload?.run) return EvalRunDetailSchema.parse(payload.run);
+  if (response.ok && payload?.existingResult === true) return null;
   throw apiError(response, payload, "First Result evaluation could not start");
 }
 

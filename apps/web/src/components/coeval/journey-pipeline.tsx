@@ -45,10 +45,10 @@ export function JourneyPipeline({
       detail: judged > 0
         ? `${judged.toLocaleString()} recorded ${bench ? "example" : "Run"}${judged === 1 ? "" : "s"} checked · ungoverned triage`
         : recorded > 0
-          ? `${recorded.toLocaleString()} recorded ${bench ? "example" : "Run"}${recorded === 1 ? " is" : "s are"} waiting for this Check.`
+          ? `${recorded.toLocaleString()} recorded ${bench ? "example" : "Run"}${recorded === 1 ? " is" : "s are"} waiting for this Check.${dashboard.viewerRole === "member" ? " An owner needs to start it." : ""}`
           : `Add the first ${bench ? "example and run it" : "recorded Run or live source"}.`,
-      action: recorded > 0 ? "Continue to first Result" : bench ? "Open examples" : "Open traces",
-      path: recorded > 0
+      action: recorded > 0 && dashboard.viewerRole === "owner" ? "Continue to first Result" : bench ? "Open examples" : "Open traces",
+      path: recorded > 0 && dashboard.viewerRole === "owner"
         ? firstResultPath(dashboard.skill.currentVersion.id)
         : bench ? "/datasets" : "/traces"
     },

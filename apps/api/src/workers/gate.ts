@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
 import { GateRunJobSchema, type GateRunJob } from "@coeval/shared";
 import type { Queue } from "@coeval/queue";
 import { GateRunBindingMismatchError, type CoevalRepository } from "../repository.js";
@@ -81,20 +82,40 @@ export async function runExistingCaseBackfill(
   skillVersionId: string,
   queue?: Queue | undefined
 ) {
+  const caseIds = await repository.listCaseIdsForProject(projectId);
+  if (caseIds.length === 0) return null;
   const existing = (await repository.listEvalRuns(projectId, { limit: 100, skillVersionId }))
     .find((run) => run.trigger === "backfill");
   const run = existing ?? await repository.createEvalRun({
     projectId,
     skillVersionId,
     trigger: "backfill",
-    items: (await repository.listCaseIdsForProject(projectId)).map((caseId) => ({ caseId }))
+    items: caseIds.map((caseId) => ({ caseId }))
   });
 
   if (run.totalItems === 0 || (run.status !== "pending" && run.status !== "running")) return run;
-  await repository.armEvalRunItemDeliveryDeadline(projectId, run.id);
   if (queue) {
-    await queue.send("eval.run", { projectId, evalRunId: run.id }, { retryLimit: 5, retryBackoff: true });
+    const dispatchToken = randomUUID();
+    const dispatch = await repository.claimEvalRunDispatch({
+      projectId,
+      evalRunId: run.id,
+      dispatchToken
+    });
+    if (dispatch.state === "claimed") {
+      try {
+        await queue.send("eval.run", { projectId, evalRunId: run.id }, {
+          id: dispatch.jobId,
+          retryLimit: 5,
+          retryBackoff: true
+        });
+        await repository.markEvalRunDispatched({ projectId, evalRunId: run.id, dispatchToken });
+      } catch (error) {
+        await repository.releaseEvalRunDispatch({ projectId, evalRunId: run.id, dispatchToken });
+        throw error;
+      }
+    }
   } else {
+    await repository.armEvalRunItemDeliveryDeadline(projectId, run.id);
     await runEvalRunInline(repository, projectId, run.id);
   }
   return (await repository.getEvalRun(projectId, run.id)) ?? run;

@@ -171,6 +171,7 @@ import { contentDigest, sha256Digest } from "./lib/assessment-receipt.js";
 import { canonicalEvaluatorSuiteManifestBytes } from "./lib/evaluator-suite.js";
 import { runEvalRunInline } from "./workers/eval-run.js";
 import { runExistingCaseBackfill } from "./workers/gate.js";
+import { scheduleImportedCaseJudging } from "./workers/import-judging.js";
 import { judgeAndRecord } from "./workers/judge.js";
 import {
   buildTraceTestDraftPrompt,
@@ -1434,12 +1435,14 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       }
       if (authorized) {
         const run = await runExistingCaseBackfill(repository, projectId, result.version.id);
-        backfill = {
-          timeScope,
-          cases: run.totalItems,
-          enqueued: 0,
-          skipped: 0
-        };
+        if (run) {
+          backfill = {
+            timeScope,
+            cases: run.totalItems,
+            enqueued: 0,
+            skipped: 0
+          };
+        }
       }
     }
 
@@ -1493,16 +1496,16 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       }
       throw error;
     }
-    const queueJobId = await options.queue?.send("judge.run", {
+    const judging = await scheduleImportedCaseJudging(repository, options.queue, {
       projectId,
-      caseId: imported.caseId,
-      skillVersionId: resolvedVersion.id
-    }, { retryLimit: 5, retryBackoff: true });
+      skillVersionId: resolvedVersion.id,
+      caseIds: [imported.caseId]
+    });
 
     return c.json({
       ...imported,
-      queued: Boolean(queueJobId),
-      queueJobId: queueJobId ?? null
+      queued: judging.scheduledCaseCount > 0,
+      queueJobId: judging.queueJobIds[0] ?? null
     }, 201);
   });
 
@@ -3696,6 +3699,18 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     if (!version || version.skillId !== c.req.param("skillId")) {
       return c.json({ error: "Check version not found" }, 404);
     }
+    const criterionVersion = await repository.getCriterionVersionForSkillVersion(projectId, version.id);
+    const currentSkill = criterionVersion
+      ? await repository.getCurrentSkillForCriterion(projectId, criterionVersion.criterionId)
+      : null;
+    if (
+      !currentSkill ||
+      currentSkill.id !== version.skillId ||
+      currentSkill.currentVersion.id !== version.id ||
+      (version.status !== "approved" && version.status !== "production")
+    ) {
+      return c.json({ error: "Only the current runnable Check can produce the first Result." }, 409);
+    }
     if ((await repository.listCaseIdsForProject(projectId, 1)).length === 0) {
       return c.json({ error: "Add a recorded Run before asking for the first Result." }, 409);
     }
@@ -3713,7 +3728,27 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         error: error instanceof Error ? error.message : "This Check is not available for evaluation."
       }, 409);
     }
+    const existingBackfill = (await repository.listEvalRuns(projectId, {
+      limit: 100,
+      skillVersionId: version.id
+    })).find((run) => run.trigger === "backfill");
+    if (existingBackfill) {
+      const resumed = await runExistingCaseBackfill(repository, projectId, version.id, options.queue);
+      const detail = resumed
+        ? await repository.getEvalRunDetail(projectId, resumed.id)
+        : null;
+      if (!detail) throw new Error(`Backfill run vanished after creation: ${existingBackfill.id}`);
+      return c.json({ run: detail }, detail.status === "pending" || detail.status === "running" ? 202 : 200);
+    }
+    const existingResult = await repository.listVerdicts({
+      projectId,
+      source: "llm_judge",
+      skillVersionId: version.id,
+      limit: 1
+    });
+    if (existingResult[0]) return c.json({ run: null, existingResult: true }, 200);
     const run = await runExistingCaseBackfill(repository, projectId, version.id, options.queue);
+    if (!run) return c.json({ error: "Add a recorded Run before asking for the first Result." }, 409);
     const detail = await repository.getEvalRunDetail(projectId, run.id);
     if (!detail) throw new Error(`Backfill run vanished after creation: ${run.id}`);
     return c.json({ run: detail }, detail.status === "pending" || detail.status === "running" ? 202 : 200);

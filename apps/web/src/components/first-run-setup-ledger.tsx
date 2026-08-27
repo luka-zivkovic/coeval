@@ -60,10 +60,10 @@ export function FirstRunSetupLedger({
             : {
                 detail: "Coeval applies the Check to recorded evidence. This is the Check's opinion until a person reviews it separately.",
                 ...(states.seeResult === "now"
-                  ? {
+                  ? dashboard.viewerRole === "owner" ? {
                       cta: "Continue to first Result",
                       onCta: () => navigate(firstResultPath(skill.currentVersion.id))
-                    }
+                    } : { foot: "An owner needs to start this Result." }
                   : {})
               })
         }

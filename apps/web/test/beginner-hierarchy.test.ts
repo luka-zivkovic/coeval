@@ -113,6 +113,9 @@ describe("beginner-first hierarchy", () => {
     expect(firstResult).toContain("ensureSkillVersionBackfill(dashboard.skill.id, versionId)");
     expect(firstResult).toContain("Your first Result is ready");
     expect(firstResult).toContain("The first Result could not be produced");
+    expect(firstResult).toContain('navigate("/skill/edit")');
+    expect(firstResult).not.toContain("navigate(firstRunEditorPath())");
+    expect(firstResult).toContain('aria-live={urgent ? "assertive" : "polite"}');
     expect(provisional).toContain("navigate(firstRunEditorPath())");
     expect(dashboard).toContain("setReceipt(takeSetupReceipt())");
     expect(tracingWelcome).toContain("emphasizeAction={false}");

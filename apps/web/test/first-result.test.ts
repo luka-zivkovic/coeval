@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { EvalRun } from "@coeval/shared";
-import { backfillRunForVersion } from "../src/lib/first-result.js";
+import type { EvalRun, VerdictRecord } from "@coeval/shared";
+import { backfillRunForVersion, verdictForTrackedItem } from "../src/lib/first-result.js";
 
 function run(input: Partial<EvalRun> & Pick<EvalRun, "id" | "skillVersionId" | "trigger">): EvalRun {
   return {
@@ -37,5 +37,24 @@ describe("first Result tracked run", () => {
     expect(backfillRunForVersion([
       run({ id: "evr_manual", skillVersionId: "skillv_new", trigger: "manual" })
     ], "skillv_new")).toBeNull();
+  });
+
+  it("renders the verdict linked by the completed item instead of a case/version fallback", () => {
+    const verdict = (id: string, rationale: string): VerdictRecord => ({
+      id,
+      projectId: "project_1",
+      caseId: "case_1",
+      skillVersionId: "skillv_new",
+      source: "llm_judge",
+      actorUserId: null,
+      payload: { kind: "binary", pass: id === "verdict_tracked", rationale },
+      externalRunId: null,
+      createdAt: "2026-08-28T00:00:00.000Z"
+    });
+    const older = verdict("verdict_legacy", "Reasoning from a different provider call");
+    const tracked = verdict("verdict_tracked", "Reasoning that completed this item");
+
+    expect(verdictForTrackedItem([older, tracked], tracked.id)).toEqual(tracked);
+    expect(verdictForTrackedItem([older], tracked.id)).toBeNull();
   });
 });

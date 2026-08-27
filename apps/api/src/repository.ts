@@ -549,7 +549,7 @@ export interface CoevalRepository {
     run: EvalRunDetail;
     created: boolean;
   }>;
-  // Durable queue outbox claim for an eval run. Only the claim holder sends
+  // Durable queue outbox claim for any eval run. Only the claim holder sends
   // the deterministic queue job; a send failure releases the claim, while a
   // crash can be recovered after the lease without creating another job id.
   claimEvalRunDispatch(input: EvalRunDispatchInputDb): Promise<EvalRunDispatchClaim>;

@@ -4363,7 +4363,6 @@ export class PgRepository implements CoevalRepository {
            queue_dispatch_token = $3,
            queue_dispatch_claimed_at = clock_timestamp()
        where id = $1 and project_id = $2
-         and convergence_case_id is not null
          and queue_dispatched_at is null
          and (queue_dispatch_token is null
               or queue_dispatch_claimed_at <= clock_timestamp() - interval '5 minutes')
@@ -4375,7 +4374,7 @@ export class PgRepository implements CoevalRepository {
     }
     const existing = await this.pool.query(
       `select queue_job_id, queue_dispatched_at
-       from eval_runs where id = $1 and project_id = $2 and convergence_case_id is not null`,
+       from eval_runs where id = $1 and project_id = $2`,
       [input.evalRunId, input.projectId]
     );
     const row = existing.rows[0];

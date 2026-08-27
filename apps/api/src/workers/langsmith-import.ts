@@ -4,6 +4,7 @@ import type { Queue } from "@coeval/queue";
 import type { CoevalRepository, LangSmithImportContext } from "../repository.js";
 import { ImportSkillVersionBindingError, LangSmithCredentialsMissingError, LangSmithIntegrationNotFoundError, NoCurrentSkillError, RecursiveTraceSkippedError } from "../repository.js";
 import { LangSmithClient, type LangSmithTraceFetcher } from "../lib/langsmith.js";
+import { scheduleImportedCaseJudging } from "./import-judging.js";
 
 export interface LangSmithImportResult {
   imported: number;
@@ -47,8 +48,8 @@ export async function processLangSmithImportJob(
     const traces = await createClient(context).listRuns({ projectName: context.projectName, limit: context.limit });
 
     let imported = 0;
-    let queued = 0;
     let skipped = 0;
+    const caseIds: string[] = [];
     for (const trace of traces) {
       let row;
       try {
@@ -70,13 +71,14 @@ export async function processLangSmithImportJob(
         throw error;
       }
       if (row.created) imported += 1;
-      const jobId = await queue.send("judge.run", {
-        projectId: context.projectId,
-        caseId: row.caseId,
-        skillVersionId: version.id
-      }, { retryLimit: 5, retryBackoff: true });
-      if (jobId) queued += 1;
+      caseIds.push(row.caseId);
     }
+    const judging = await scheduleImportedCaseJudging(repository, queue, {
+      projectId: context.projectId,
+      skillVersionId: version.id,
+      caseIds
+    });
+    const queued = judging.scheduledCaseCount;
 
     if (parsed.importJobId) {
       await repository.markImportJobCompleted(parsed.projectId, parsed.importJobId, {
