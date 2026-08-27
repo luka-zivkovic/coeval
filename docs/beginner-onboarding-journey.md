@@ -51,7 +51,7 @@ The first session needs to answer only:
 
 - What is being checked?
 - What recorded information can Coeval see?
-- Has a person confirmed the result?
+- Is this only the Check's result, or has a person judged the run separately?
 
 ## Product language
 
@@ -79,8 +79,9 @@ identifiers. These terms remain exact on Technical surfaces and in evidence.
 Visible result correction and independent human review are not two names for
 the same action. The first starts from an evaluator result and records an
 ungoverned ruling. The second hides evaluator output and follows the governed
-review contract. Agreement or calibration compares the two evidence types only
-after their separately authorized collection.
+review contract. A visible correction may support explicitly ungoverned legacy
+agreement diagnostics. Calibration instead compares a pinned evaluator result
+with separately collected governed human truth under the calibration contract.
 
 ## One journey, two entrances
 
@@ -213,10 +214,11 @@ Generated or inferred content remains a proposal. The interface must not use
 silence, inactivity, or a preselected action as approval.
 
 `Starter · unvalidated` is an assurance projection, not an alias for
-`is_starter`, evaluator lifecycle state, or legacy version approval. It remains
-visible until named comparison evidence exists. Later states must say what was
-measured and against which evidence class; only currently admissible
-calibration may be described as calibrated.
+`is_starter`, evaluator lifecycle state, or legacy version approval. A supplied
+label, legacy ruling, or nonsealed development comparison may add a qualified
+measurement detail, but it does not remove `unvalidated`. Only exact currently
+admissible sealed calibration may replace it with a specifically scoped
+`calibrated against …` state; no comparison creates generic approval or trust.
 
 ## Completion states
 
