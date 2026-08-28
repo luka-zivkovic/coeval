@@ -379,6 +379,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         "X-Coeval-Governance-Class",
         "X-Coeval-Artifact-Digest",
         "X-Coeval-Evidence-Digest",
+        "Retry-After",
         "ETag",
         "Digest"
       ],

@@ -36,6 +36,14 @@ describe("Coeval Hono API", () => {
     await expect(response.json()).resolves.toMatchObject({ ok: true });
   });
 
+  it("exposes retry guidance to cross-origin browser clients", async () => {
+    const response = await app.request("/health", {
+      headers: { origin: "http://localhost:5173" }
+    });
+    expect(response.headers.get("access-control-expose-headers")?.toLowerCase())
+      .toContain("retry-after");
+  });
+
   it("answers every pool-less bootstrap attempt with 501, never a misleading token error", async () => {
     // Pool-less mode can never bootstrap — a pairing token must NOT get a 401
     // "invalid or expired" that tells the user to regenerate connections that
