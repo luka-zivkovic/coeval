@@ -143,11 +143,15 @@ Run the audited skill on real cases. Each case is one JSONL line in
 ## Phase 3 — Submit
 
 ```bash
-node scripts/coeval-submit.mjs submit .coeval/<skillName>.jsonl [--min-agreement 0.9]
+node scripts/coeval-submit.mjs submit .coeval/<skillName>.jsonl [--skill-version ID] [--min-agreement 0.9]
 ```
 
 - Submission is idempotent: content-hash (`ci_`) source ids mean re-submitting
   unchanged lines reuses recorded verdicts with no provider spend.
+- `setup --first-batch` supplies `--skill-version` automatically so the first
+  Result is pinned to the exact Check version just created. For later manual
+  submissions, provide it whenever the run must stay pinned across concurrent
+  evaluator edits.
 - `--env-var COEVAL_KEY_MY_SKILL` selects a per-skill key from `config.json`.
 - Exit codes: 0 completed (threshold met, if one was given); 1 infrastructure
   failure or agreement below `--min-agreement`; 2 usage/config error (the

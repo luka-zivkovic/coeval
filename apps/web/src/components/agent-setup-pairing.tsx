@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { Bot, Check, Copy, Link2, RefreshCcw, X } from "lucide-react";
 import type { AgentSetupPairing, CreatedAgentSetupPairing } from "@coeval/shared";
 import { Eyebrow } from "@/components/coeval";
@@ -10,7 +10,11 @@ import {
   revokeAgentSetupPairing
 } from "@/lib/api";
 import { copyTextToClipboard } from "@/lib/clipboard";
-import { AGENT_SETUP_PREPARATION_PROMPT, buildAgentPairingPrompt } from "@/lib/agent-setup-copy";
+import {
+  AGENT_SETUP_PREPARATION_PROMPT,
+  buildAgentPairingPrompt,
+  reduceAgentSetupClipboardReceipt
+} from "@/lib/agent-setup-copy";
 
 export function AgentSetupPairingCard({
   onContinue,
@@ -25,8 +29,7 @@ export function AgentSetupPairingCard({
 }) {
   const [pairing, setPairing] = useState<CreatedAgentSetupPairing | AgentSetupPairing | null>(null);
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [preparationCopied, setPreparationCopied] = useState(false);
+  const [clipboardReceipt, dispatchClipboardReceipt] = useReducer(reduceAgentSetupClipboardReceipt, null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,9 +59,9 @@ export function AgentSetupPairingCard({
     if (busy) return;
     setBusy(true);
     setError(null);
-    setCopied(false);
     try {
       setPairing(await createAgentSetupPairing());
+      dispatchClipboardReceipt("pairing-created");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -73,7 +76,7 @@ export function AgentSetupPairingCard({
     try {
       await revokeAgentSetupPairing(pairing.id);
       setPairing(null);
-      setCopied(false);
+      dispatchClipboardReceipt("pairing-cancelled");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -85,7 +88,7 @@ export function AgentSetupPairingCard({
     setError(null);
     try {
       await copyTextToClipboard(prompt);
-      setCopied(true);
+      dispatchClipboardReceipt("connection-copied");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -95,7 +98,7 @@ export function AgentSetupPairingCard({
     setError(null);
     try {
       await copyTextToClipboard(AGENT_SETUP_PREPARATION_PROMPT);
-      setPreparationCopied(true);
+      dispatchClipboardReceipt("preparation-copied");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -130,7 +133,7 @@ export function AgentSetupPairingCard({
             </pre>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button variant={emphasizeAction ? "primary" : "default"} onClick={() => void copyPreparationPrompt()}>
-                <Copy /> {preparationCopied ? "Copied" : "Copy setup prompt"}
+                <Copy /> {clipboardReceipt === "preparation" ? "Copied" : "Copy setup prompt"}
               </Button>
               <Button variant="default" onClick={() => void generate()} disabled={busy}>
                 <Link2 /> {busy ? "Creating…" : "I have a proposal · connect"}
@@ -177,7 +180,7 @@ export function AgentSetupPairingCard({
                 variant={emphasizeAction ? "primary" : "default"}
                 onClick={() => void copyInstructions()}
               >
-                <Copy /> {copied ? "Copied" : "Copy instructions"}
+                <Copy /> {clipboardReceipt === "connection" ? "Copied" : "Copy instructions"}
               </Button>
               {pairing.status === "pending" ? (
                 <Button variant="ghost" onClick={() => void cancel()} disabled={busy}><X /> Cancel connection</Button>

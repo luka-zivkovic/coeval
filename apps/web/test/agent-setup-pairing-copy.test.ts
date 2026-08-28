@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { CreatedAgentSetupPairing } from "@coeval/shared";
 import {
   AGENT_SETUP_PREPARATION_PROMPT,
-  buildAgentPairingPrompt
+  buildAgentPairingPrompt,
+  reduceAgentSetupClipboardReceipt,
+  type AgentSetupClipboardReceipt
 } from "../src/lib/agent-setup-copy.js";
 
 describe("external agent setup copy", () => {
@@ -39,5 +41,19 @@ describe("external agent setup copy", () => {
     expect(prompt).toContain("real Run");
     expect(prompt).toContain("Starter · unvalidated");
     expect(prompt).toContain("stop before human adjudication");
+  });
+
+  it("clears stale clipboard receipts across connection lifecycle transitions", () => {
+    let receipt: AgentSetupClipboardReceipt = null;
+    receipt = reduceAgentSetupClipboardReceipt(receipt, "preparation-copied");
+    expect(receipt).toBe("preparation");
+
+    receipt = reduceAgentSetupClipboardReceipt(receipt, "pairing-created");
+    expect(receipt).toBeNull();
+    receipt = reduceAgentSetupClipboardReceipt(receipt, "connection-copied");
+    expect(receipt).toBe("connection");
+
+    receipt = reduceAgentSetupClipboardReceipt(receipt, "pairing-cancelled");
+    expect(receipt).toBeNull();
   });
 });

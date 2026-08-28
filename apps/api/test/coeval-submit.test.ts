@@ -60,6 +60,7 @@ describe("coeval-audit setup client", () => {
     let receivedBody: Record<string, unknown> | null = null;
     let receivedBatchAuthorization = "";
     let receivedBatch: Record<string, unknown> | null = null;
+    let terminalSkillVersionId = "skillv_bootstrap";
     const server = createServer(async (request, response) => {
       const chunks: Buffer[] = [];
       for await (const chunk of request) chunks.push(Buffer.from(chunk));
@@ -129,7 +130,7 @@ describe("coeval-audit setup client", () => {
         response.writeHead(200, { "content-type": "application/json" });
         response.end(JSON.stringify({
           status: "completed",
-          skillVersionId: "skillv_bootstrap",
+          skillVersionId: terminalSkillVersionId,
           agreedItems: 1,
           items: [{
             caseId: "case_first",
@@ -179,6 +180,7 @@ describe("coeval-audit setup client", () => {
       });
       expect(receivedBatchAuthorization).toBe("Bearer coeval_sk_abcdef-one-time-project-key");
       expect(receivedBatch).toMatchObject({
+        skillVersionId: "skillv_bootstrap",
         items: [{
           input: "perform the audited task",
           output: "completed result",
@@ -212,6 +214,21 @@ describe("coeval-audit setup client", () => {
       expect(result.stdout).toContain("\"COEVAL_API_KEY\": \"$COEVAL_KEY_TEST\"");
       expect(result.stdout).toContain("coeval-submit.mjs findings");
       expect(result.stdout).toContain("first batch completed — exceptions are ready for human review");
+
+      terminalSkillVersionId = "skillv_changed-after-submit";
+      const mismatched = await runScript([
+        "submit",
+        firstBatchPath,
+        "--skill-version", "skillv_bootstrap",
+        "--env-var", "COEVAL_KEY_TEST"
+      ], cwd, {
+        ...env,
+        COEVAL_URL: `http://127.0.0.1:${address.port}`
+      });
+      expect(mismatched.code).toBe(1);
+      expect(mismatched.stderr).toContain(
+        "terminal run reported skill version skillv_changed-after-submit, expected pinned version skillv_bootstrap"
+      );
     } finally {
       await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     }

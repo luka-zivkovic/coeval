@@ -1,5 +1,21 @@
 import type { CreatedAgentSetupPairing } from "@coeval/shared";
 
+export type AgentSetupClipboardReceipt = "preparation" | "connection" | null;
+export type AgentSetupClipboardEvent =
+  | "preparation-copied"
+  | "connection-copied"
+  | "pairing-created"
+  | "pairing-cancelled";
+
+export function reduceAgentSetupClipboardReceipt(
+  _current: AgentSetupClipboardReceipt,
+  event: AgentSetupClipboardEvent
+): AgentSetupClipboardReceipt {
+  if (event === "preparation-copied") return "preparation";
+  if (event === "connection-copied") return "connection";
+  return null;
+}
+
 export const AGENT_SETUP_PREPARATION_PROMPT = `Use the $coeval-setup skill to help me set up Coeval for this repository. If it is unavailable, read https://github.com/luka-zivkovic/coeval/blob/main/skills/coeval-setup/SKILL.md before acting.
 
 Inspect safe, relevant project text before asking me to repeat context. Tell me what AI system and recorded Run evidence you found, then ask one short decision-changing question. Show a proposed Check with what it decides, the exact evidence it reads, what it cannot know, and its Review guide. Keep it Starter · unvalidated.
