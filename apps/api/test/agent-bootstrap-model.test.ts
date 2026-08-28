@@ -33,6 +33,7 @@ describe("AgentBootstrapModelInputSchema — explicit mock pin", () => {
 const BASE_REQUEST = {
   owner: { email: "agent@example.com", password: "agent-password" },
   project: { name: "Mock wiring test" },
+  check: { name: "Correctness", question: "Was this Run correct?" },
   skill: {
     rubricMarkdown: "# Rubric\n\nPass correct answers.",
     model: { provider: "mock" }

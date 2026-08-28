@@ -1,6 +1,6 @@
 ---
 name: coeval-audit
-description: Set up and audit a developer's own agent skill with a coeval instance — connect through a short-lived onboarding pairing, draft the judging rubric, capture real skill runs, submit them for LLM judging, and report verdicts honestly. Use when the user says "audit my skill with coeval", "set up coeval for my skill", "connect to coeval", "submit results to coeval", or "judge these outputs".
+description: Audit a developer's own agent skill with a Coeval instance — connect an approved first Check, capture real skill runs, submit them for judging, and report Results honestly. Use when the user says "audit my skill with coeval", "submit results to coeval", "capture skill runs", or "judge these outputs". For a new or unclear setup, begin with the sibling coeval-setup skill's context-first interview and approved proposal.
 ---
 
 # coeval-audit
@@ -21,6 +21,15 @@ Never read the user's `.env` file directly — unrelated secrets live there.
 
 ## Phase 1 — Set up or connect
 
+For a new or unclear project, use the sibling `coeval-setup` skill first. It
+inspects safe project context, asks only a short decision-changing question,
+shows the exact proposed Check, and waits for **Finish setup** before requesting
+the short-lived connection. Do not replace that flow with a one-shot rubric
+guess. If `coeval-setup` is not installed, follow its published instructions at
+https://github.com/luka-zivkovic/coeval/blob/main/skills/coeval-setup/SKILL.md.
+
+Resume here after the user has approved the non-secret setup proposal.
+
 1. **Reachability pre-flight.** Require `COEVAL_URL` (environment or `.env`)
    and a reachable coeval instance. Otherwise point the user at the README
    quickstart (https://github.com/luka-zivkovic/coeval#quickstart) and stop.
@@ -28,22 +37,26 @@ Never read the user's `.env` file directly — unrelated secrets live there.
    `node scripts/coeval-submit.mjs check`. Exit 0 means connected. If the
    project key is absent, connect it as follows. Never read `.env` directly;
    the script consumes and updates it without printing secrets.
-3. **Prefer an onboarding connection.** Ask the user to open the new project's
-   Coeval Overview, choose **Create agent connection**, and paste the generated
-   instructions into this conversation. The included `coeval_pair_...` token
-   is project-scoped, single-use, and expires after 15 minutes. Keep it only in
-   `COEVAL_PAIRING_TOKEN`; never write it to a file or repeat it in output.
-4. **Derive the judging rubric.** Read the target skill's own SKILL.md. Turn
-   its purpose, required workflow, constraints/"never" rules, evidence limits,
-   and output contract into concrete binary pass/fail clauses. Keep claims
-   checkable from the captured run; do not require evidence the hook cannot
-   capture. See `references/coeval-primer.md`.
-5. **Write a non-secret setup plan** at `.coeval/<skillName>.setup.json`:
+3. **Prefer an onboarding connection after proposal approval.** Ask the user
+   to open the new project's Coeval Overview, choose **Create agent
+   connection**, and paste the generated instructions into this conversation.
+   The included `coeval_pair_...` token is project-scoped, single-use, and
+   expires after 15 minutes. Keep it only in `COEVAL_PAIRING_TOKEN`; never
+   write it to a file or repeat it in output.
+4. **Use the approved Check.** Translate the exact proposal accepted through
+   `coeval-setup` into concrete pass/fail/insufficient-evidence clauses. Keep
+   every claim checkable from the recorded Run; do not require evidence the
+   hook cannot capture. See `references/coeval-primer.md`.
+5. **Write the final non-secret setup plan** at `.coeval/<skillName>.setup.json`:
 
    ```json
    {
      "owner": { "email": "owner@example.com", "name": "Owner" },
      "project": { "name": "my-skill audit", "apiKeyName": "my-skill agent" },
+     "check": {
+       "name": "Follows the skill contract",
+       "question": "Did this Run follow the target skill's required workflow and constraints?"
+     },
      "skill": {
        "name": "My skill audit",
        "rubricMarkdown": "# My skill audit\n\n## Pass when\n- ...\n\n## Fail when\n- ...",
@@ -66,10 +79,11 @@ Never read the user's `.env` file directly — unrelated secrets live there.
      --env-var COEVAL_KEY_MY_SKILL
    ```
 
-   The command configures the paired project, pins and activates an
-   agent-drafted judging version, mints the first project key, and saves that
-   key to `.env` without printing it. Machine error codes name expired/used
-   pairings, invalid fields, rejected credentials, and unavailable models. Ask
+   The command appends the exact visible quality question, binds the
+   agent-drafted evaluator version to it, mints the first project key, and
+   saves that key to `.env` without printing it. Machine error codes name
+   expired/used pairings, invalid fields, rejected credentials, and
+   unavailable models. Ask
    the user to generate a new connection if it expired. For fully headless
    administration with no signed-in human, the deployment owner may instead
    provide `COEVAL_BOOTSTRAP_TOKEN`; that advanced fallback can create the
@@ -129,11 +143,15 @@ Run the audited skill on real cases. Each case is one JSONL line in
 ## Phase 3 — Submit
 
 ```bash
-node scripts/coeval-submit.mjs submit .coeval/<skillName>.jsonl [--min-agreement 0.9]
+node scripts/coeval-submit.mjs submit .coeval/<skillName>.jsonl [--skill-version ID] [--min-agreement 0.9]
 ```
 
 - Submission is idempotent: content-hash (`ci_`) source ids mean re-submitting
   unchanged lines reuses recorded verdicts with no provider spend.
+- `setup --first-batch` supplies `--skill-version` automatically so the first
+  Result is pinned to the exact Check version just created. For later manual
+  submissions, provide it whenever the run must stay pinned across concurrent
+  evaluator edits.
 - `--env-var COEVAL_KEY_MY_SKILL` selects a per-skill key from `config.json`.
 - Exit codes: 0 completed (threshold met, if one was given); 1 infrastructure
   failure or agreement below `--min-agreement`; 2 usage/config error (the

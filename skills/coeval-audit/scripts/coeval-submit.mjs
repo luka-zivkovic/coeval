@@ -95,7 +95,8 @@ const VALUE_FLAGS = new Set([
   "--pairing-env-var",
   "--bootstrap-env-var",
   "--owner-password-env-var",
-  "--provider-key-env-var"
+  "--provider-key-env-var",
+  "--skill-version"
 ]);
 const fileArg = rest.find((a, i) => !a.startsWith("--") && !VALUE_FLAGS.has(rest[i - 1] ?? ""));
 function flag(name, fallback) {
@@ -106,10 +107,17 @@ function flag(name, fallback) {
   return value;
 }
 
-const USAGE = "usage: node coeval-submit.mjs setup <setup.json> [--first-batch results.jsonl] [--pairing-env-var NAME] [--bootstrap-env-var NAME] [--owner-password-env-var NAME] [--provider-key-env-var NAME] [--env-var NAME] [--min-agreement 0.9] [--timeout 300] | check [--allow-inactive] [--env-var NAME] | submit <results.jsonl> [--min-agreement 0.9] [--timeout 300] [--env-var NAME] | findings [--since ISO-8601] [--md] [--env-var NAME]";
+const USAGE = "usage: node coeval-submit.mjs setup <setup.json> [--first-batch results.jsonl] [--pairing-env-var NAME] [--bootstrap-env-var NAME] [--owner-password-env-var NAME] [--provider-key-env-var NAME] [--env-var NAME] [--min-agreement 0.9] [--timeout 300] | check [--allow-inactive] [--env-var NAME] | submit <results.jsonl> [--skill-version ID] [--min-agreement 0.9] [--timeout 300] [--env-var NAME] | findings [--since ISO-8601] [--md] [--env-var NAME]";
 if (command !== "setup" && command !== "check" && command !== "submit" && command !== "findings") fail(2, USAGE);
 
 const keyVarName = flag("env-var", "COEVAL_API_KEY");
+const pinnedSkillVersionId = flag("skill-version", null);
+if (pinnedSkillVersionId !== null && !pinnedSkillVersionId.trim()) {
+  fail(2, "--skill-version must be a non-empty evaluator version id");
+}
+if (command !== "submit" && pinnedSkillVersionId !== null) {
+  fail(2, "--skill-version is valid only for submit");
+}
 const baseUrl = envVal("COEVAL_URL").replace(/\/$/, "");
 const apiKey = envVal(keyVarName);
 if (!baseUrl) fail(2, "COEVAL_URL is not set (environment or ./.env)");
@@ -215,6 +223,12 @@ if (command === "setup") {
   if (typeof setupInput !== "object" || setupInput === null || Array.isArray(setupInput)) {
     fail(2, `${fileArg} must contain one JSON object`);
   }
+  if (
+    typeof setupInput.check?.name !== "string" || !setupInput.check.name.trim() ||
+    typeof setupInput.check?.question !== "string" || !setupInput.check.question.trim()
+  ) {
+    fail(2, `${fileArg} requires check.name and check.question from the approved Check proposal`);
+  }
   if (setupInput.owner?.password !== undefined || setupInput.providerApiKey !== undefined) {
     fail(2, `${fileArg} must not contain owner.password or providerApiKey; pass their environment variable names as flags`);
   }
@@ -246,8 +260,14 @@ if (command === "setup") {
   saveProjectKey(keyVarName, minted);
   console.log(
     `coeval-submit: configured ${result.mode ?? "bench"} project "${result.projectId}" · ` +
-    `agent-drafted skill version ${result.skillVersionId} · saved project key as ${keyVarName} in ./.env`
+    `Check "${result.check?.question ?? "unknown quality question"}" · ` +
+    `agent-drafted version ${result.skillVersionId} · saved project key as ${keyVarName} in ./.env`
   );
+  if (result.check?.criterionVersionId) {
+    console.log(
+      `coeval-submit: exact Check binding ${result.check.criterionVersionId} · ${result.check.digest ?? "digest unavailable"} · Starter · unvalidated`
+    );
+  }
   console.log("coeval-submit: setup stops before adjudication — submit runs next; a human must label exceptions and promote golden cases");
   // The server's `connect` block carries the same wiring snippets the app
   // shows at the key-mint moment, PRE-FILLED with the one-time key. "The API
@@ -272,6 +292,9 @@ if (command === "setup") {
     }
   }
   if (firstBatch) {
+    if (typeof result.skillVersionId !== "string" || !result.skillVersionId) {
+      fail(2, "project setup succeeded, but the response did not name the exact evaluator version for the first batch");
+    }
     // Re-enter the same validated submit/poll path instead of maintaining a
     // second JSONL parser. The one-time project key travels in the child
     // environment (and the just-written .env), never argv or output.
@@ -282,7 +305,9 @@ if (command === "setup") {
       "--env-var",
       keyVarName,
       "--timeout",
-      String(timeoutSeconds)
+      String(timeoutSeconds),
+      "--skill-version",
+      result.skillVersionId
     ];
     if (minAgreement !== null) submitArgs.push("--min-agreement", String(minAgreement));
     const child = spawnSync(process.execPath, submitArgs, {
@@ -467,7 +492,7 @@ if (items.length === 0) fail(2, `${fileArg} contains no examples`);
 
 const submitted = await api("/api/v1/judge/batch", {
   method: "POST",
-  body: JSON.stringify({ items })
+  body: JSON.stringify({ items, ...(pinnedSkillVersionId ? { skillVersionId: pinnedSkillVersionId } : {}) })
 });
 console.log(
   `coeval-submit: submitted ${submitted.totalItems} case(s) ` +
@@ -481,6 +506,12 @@ for (;;) {
   if (run.status === "completed" || run.status === "failed") break;
   if (Date.now() > deadline) fail(2, `run still ${run.status} after ${timeoutSeconds}s — raise --timeout or check the API`);
   await new Promise((resolve) => setTimeout(resolve, 2000));
+}
+if (pinnedSkillVersionId && run.skillVersionId !== pinnedSkillVersionId) {
+  fail(
+    1,
+    `the terminal run reported skill version ${run.skillVersionId ?? "(missing)"}, expected pinned version ${pinnedSkillVersionId}`
+  );
 }
 
 // Table: counts, not percentages, per the product's honesty rules. The step

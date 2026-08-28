@@ -1286,6 +1286,14 @@ export const AgentBootstrapRequestSchema = z.object({
     name: z.string().trim().min(1).max(PROJECT_NAME_MAX_LENGTH),
     apiKeyName: z.string().trim().min(1).max(120).default("Agent bootstrap")
   }),
+  // The beginner-visible quality question. Agent bootstrap must append this
+  // exact immutable criterion definition and bind the evaluator version to it;
+  // hiding it only inside rubricMarkdown would leave a generic seeded
+  // criterion underneath a more specific visible Check.
+  check: z.object({
+    name: UnicodeScalarValueSchema.trim().min(1).max(200),
+    question: UnicodeScalarValueSchema.trim().min(1).max(20_000)
+  }).strict(),
   skill: z.object({
     name: z.string().trim().min(1).max(120).optional(),
     rubricMarkdown: z.string().trim().min(1).max(100_000),
@@ -1373,6 +1381,13 @@ export const AgentBootstrapResponseSchema = z.object({
   projectId: z.string(),
   skillId: z.string(),
   skillVersionId: z.string(),
+  check: z.object({
+    criterionId: z.string().min(1),
+    criterionVersionId: z.string().min(1),
+    name: z.string().min(1),
+    question: z.string().min(1),
+    digest: z.string().startsWith("sha256:")
+  }).strict(),
   mode: ProjectModeSchema,
   rubricProvenance: z.literal("agent-drafted"),
   modelBinding: StoredModelBindingSchema,

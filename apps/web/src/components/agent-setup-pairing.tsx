@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { Bot, Check, Copy, Link2, RefreshCcw, X } from "lucide-react";
 import type { AgentSetupPairing, CreatedAgentSetupPairing } from "@coeval/shared";
 import { Eyebrow } from "@/components/coeval";
@@ -10,6 +10,11 @@ import {
   revokeAgentSetupPairing
 } from "@/lib/api";
 import { copyTextToClipboard } from "@/lib/clipboard";
+import {
+  AGENT_SETUP_PREPARATION_PROMPT,
+  buildAgentPairingPrompt,
+  reduceAgentSetupClipboardReceipt
+} from "@/lib/agent-setup-copy";
 
 export function AgentSetupPairingCard({
   onContinue,
@@ -24,7 +29,7 @@ export function AgentSetupPairingCard({
 }) {
   const [pairing, setPairing] = useState<CreatedAgentSetupPairing | AgentSetupPairing | null>(null);
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [clipboardReceipt, dispatchClipboardReceipt] = useReducer(reduceAgentSetupClipboardReceipt, null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,25 +52,16 @@ export function AgentSetupPairingCard({
 
   const prompt = useMemo(() => {
     if (!pairing || !("token" in pairing)) return "";
-    return `Help me finish onboarding this project in Coeval.
-
-Coeval API: ${pairing.apiBaseUrl}
-Project: ${pairing.projectName}
-Owner email: ${pairing.ownerEmail}
-One-time pairing token: ${pairing.token}
-
-Use the coeval-audit skill if it is available. Otherwise read https://github.com/luka-zivkovic/coeval/blob/main/skills/coeval-audit/SKILL.md before acting. Inspect the target agent skill's SKILL.md, derive a concrete pass/fail rubric, configure the judge model, mint the project key, and submit a real first batch when one is available. Provide the token through COEVAL_PAIRING_TOKEN; never write it into the setup JSON or repeat it in output. Stop before human adjudication or golden-set promotion.
-
-This connection expires at ${pairing.expiresAt} and can be used once.`;
+    return buildAgentPairingPrompt(pairing);
   }, [pairing]);
 
   async function generate() {
     if (busy) return;
     setBusy(true);
     setError(null);
-    setCopied(false);
     try {
       setPairing(await createAgentSetupPairing());
+      dispatchClipboardReceipt("pairing-created");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -80,7 +76,7 @@ This connection expires at ${pairing.expiresAt} and can be used once.`;
     try {
       await revokeAgentSetupPairing(pairing.id);
       setPairing(null);
-      setCopied(false);
+      dispatchClipboardReceipt("pairing-cancelled");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -92,7 +88,17 @@ This connection expires at ${pairing.expiresAt} and can be used once.`;
     setError(null);
     try {
       await copyTextToClipboard(prompt);
-      setCopied(true);
+      dispatchClipboardReceipt("connection-copied");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function copyPreparationPrompt() {
+    setError(null);
+    try {
+      await copyTextToClipboard(AGENT_SETUP_PREPARATION_PROMPT);
+      dispatchClipboardReceipt("preparation-copied");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -115,19 +121,27 @@ This connection expires at ${pairing.expiresAt} and can be used once.`;
           </div>
         </div>
         <CardDescription>
-          Create a private 15-minute connection for Claude, Codex, or another agent. It can draft the rubric,
-          configure the model, and submit the first run in this project.
+          First ask Claude, Codex, or another agent to inspect your project and propose one plain-language Check.
+          Create the private 15-minute connection only after you choose Finish setup.
         </CardDescription>
       </CardHeader>
       <CardContent>
         {!pairing ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant={emphasizeAction ? "primary" : "default"} onClick={() => void generate()} disabled={busy}>
-              <Link2 /> {busy ? "Creating…" : "Create agent connection"}
-            </Button>
-            {continueManually ? (
-              <Button variant="ghost" onClick={continueManually}>I'll set it up myself</Button>
-            ) : null}
+          <div>
+            <pre className="max-h-[220px] overflow-auto whitespace-pre-wrap break-words rounded-sm border border-rule-soft bg-paper-3 p-3 font-mono text-[10.5px] leading-[1.55] text-ink-2">
+              {AGENT_SETUP_PREPARATION_PROMPT}
+            </pre>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Button variant={emphasizeAction ? "primary" : "default"} onClick={() => void copyPreparationPrompt()}>
+                <Copy /> {clipboardReceipt === "preparation" ? "Copied" : "Copy setup prompt"}
+              </Button>
+              <Button variant="default" onClick={() => void generate()} disabled={busy}>
+                <Link2 /> {busy ? "Creating…" : "I have a proposal · connect"}
+              </Button>
+              {continueManually ? (
+                <Button variant="ghost" onClick={continueManually}>I'll set it up myself</Button>
+              ) : null}
+            </div>
           </div>
         ) : completed ? (
           <div className="rounded-sm border border-rule bg-paper-2 px-3.5 py-3">
@@ -135,7 +149,7 @@ This connection expires at ${pairing.expiresAt} and can be used once.`;
               <Check className="size-4" /> Agent setup completed
             </div>
             <p className="mt-1 text-[12px] leading-[1.55] text-ink-3">
-              The connection is closed. Your agent can now use the project key it minted; exceptions are waiting for human review.
+              The connection is closed. Inspect the new Starter · unvalidated Check and its first Result when a real Run was submitted.
             </p>
             {onContinue ? <Button variant={emphasizeAction ? "primary" : "default"} className="mt-3" onClick={onContinue}>Open the project</Button> : null}
           </div>
@@ -166,7 +180,7 @@ This connection expires at ${pairing.expiresAt} and can be used once.`;
                 variant={emphasizeAction ? "primary" : "default"}
                 onClick={() => void copyInstructions()}
               >
-                <Copy /> {copied ? "Copied" : "Copy instructions"}
+                <Copy /> {clipboardReceipt === "connection" ? "Copied" : "Copy instructions"}
               </Button>
               {pairing.status === "pending" ? (
                 <Button variant="ghost" onClick={() => void cancel()} disabled={busy}><X /> Cancel connection</Button>

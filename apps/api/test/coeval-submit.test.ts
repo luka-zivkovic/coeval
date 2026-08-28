@@ -10,6 +10,29 @@ import { buildAgentConnectSnippets } from "@coeval/shared";
 const SCRIPT = fileURLToPath(new URL("../../../skills/coeval-audit/scripts/coeval-submit.mjs", import.meta.url));
 
 describe("coeval-audit setup client", () => {
+  it("refuses to connect before the setup plan names the approved Check", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "coeval-audit-missing-check-"));
+    const setupPath = join(cwd, "setup.json");
+    await writeFile(setupPath, JSON.stringify({
+      owner: { email: "owner@example.com" },
+      project: { name: "Missing Check" },
+      skill: {
+        rubricMarkdown: "# Missing Check\n\nPass when correct.",
+        model: { provider: "mock" }
+      }
+    }), "utf8");
+
+    const result = await runScript(["setup", setupPath], cwd, {
+      ...process.env,
+      COEVAL_URL: "http://127.0.0.1:9",
+      COEVAL_PAIRING_TOKEN: "coeval_pair_must-not-be-used"
+    });
+
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain("requires check.name and check.question from the approved Check proposal");
+    expect(result.stderr).not.toContain("fetch");
+  });
+
   it("injects setup secrets from env and stores the one-time project key without printing it", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "coeval-audit-setup-"));
     const setupPath = join(cwd, "setup.json");
@@ -17,6 +40,10 @@ describe("coeval-audit setup client", () => {
     await writeFile(setupPath, JSON.stringify({
       owner: { email: "owner@example.com", name: "Owner" },
       project: { name: "External skill audit" },
+      check: {
+        name: "Follows contract",
+        question: "Did this Run follow the external skill contract?"
+      },
       skill: {
         rubricMarkdown: "# External skill audit\n\nPass when the contract is followed.",
         model: { provider: "custom", modelId: "judge-model", baseUrl: "https://judge.example/v1" }
@@ -33,6 +60,7 @@ describe("coeval-audit setup client", () => {
     let receivedBody: Record<string, unknown> | null = null;
     let receivedBatchAuthorization = "";
     let receivedBatch: Record<string, unknown> | null = null;
+    let terminalSkillVersionId = "skillv_bootstrap";
     const server = createServer(async (request, response) => {
       const chunks: Buffer[] = [];
       for await (const chunk of request) chunks.push(Buffer.from(chunk));
@@ -44,6 +72,13 @@ describe("coeval-audit setup client", () => {
           projectId: "proj_bootstrap",
           skillId: "skill_bootstrap",
           skillVersionId: "skillv_bootstrap",
+          check: {
+            criterionId: "criterion_bootstrap",
+            criterionVersionId: "criterionv_bootstrap",
+            name: "Follows contract",
+            question: "Did this Run follow the external skill contract?",
+            digest: `sha256:${"a".repeat(64)}`
+          },
           mode: "bench",
           rubricProvenance: "agent-drafted",
           modelBinding: {
@@ -95,7 +130,7 @@ describe("coeval-audit setup client", () => {
         response.writeHead(200, { "content-type": "application/json" });
         response.end(JSON.stringify({
           status: "completed",
-          skillVersionId: "skillv_bootstrap",
+          skillVersionId: terminalSkillVersionId,
           agreedItems: 1,
           items: [{
             caseId: "case_first",
@@ -140,10 +175,12 @@ describe("coeval-audit setup client", () => {
       expect(receivedAuthorization).toBe("Bearer coeval_pair_secret-that-must-not-be-printed");
       expect(receivedBody).toMatchObject({
         owner: { email: "owner@example.com", password: "owner-password-that-must-not-be-printed" },
+        check: { question: "Did this Run follow the external skill contract?" },
         providerApiKey: "provider-key-that-must-not-be-printed"
       });
       expect(receivedBatchAuthorization).toBe("Bearer coeval_sk_abcdef-one-time-project-key");
       expect(receivedBatch).toMatchObject({
+        skillVersionId: "skillv_bootstrap",
         items: [{
           input: "perform the audited task",
           output: "completed result",
@@ -163,6 +200,9 @@ describe("coeval-audit setup client", () => {
       );
       expect(await readFile(join(cwd, ".coeval/.gitignore"), "utf8")).toBe("*\n");
       expect(result.stdout).toContain("human must label exceptions and promote golden cases");
+      expect(result.stdout).toContain('Check "Did this Run follow the external skill contract?"');
+      expect(result.stdout).toContain("criterionv_bootstrap");
+      expect(result.stdout).toContain("Starter · unvalidated");
       // Next-steps wiring is printed with the saved env-var name standing in
       // for the one-time key (the not-toContain loop above proves the key
       // itself never reached stdout/stderr).
@@ -174,6 +214,21 @@ describe("coeval-audit setup client", () => {
       expect(result.stdout).toContain("\"COEVAL_API_KEY\": \"$COEVAL_KEY_TEST\"");
       expect(result.stdout).toContain("coeval-submit.mjs findings");
       expect(result.stdout).toContain("first batch completed — exceptions are ready for human review");
+
+      terminalSkillVersionId = "skillv_changed-after-submit";
+      const mismatched = await runScript([
+        "submit",
+        firstBatchPath,
+        "--skill-version", "skillv_bootstrap",
+        "--env-var", "COEVAL_KEY_TEST"
+      ], cwd, {
+        ...env,
+        COEVAL_URL: `http://127.0.0.1:${address.port}`
+      });
+      expect(mismatched.code).toBe(1);
+      expect(mismatched.stderr).toContain(
+        "terminal run reported skill version skillv_changed-after-submit, expected pinned version skillv_bootstrap"
+      );
     } finally {
       await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     }
@@ -188,6 +243,7 @@ describe("coeval-audit setup client", () => {
     await writeFile(setupPath, JSON.stringify({
       owner: { email: "owner@example.com" },
       project: { name: "Env guard" },
+      check: { name: "Correctness", question: "Was this Run correct?" },
       skill: {
         rubricMarkdown: "# Env guard\n\nPass when correct.",
         model: { provider: "custom", modelId: "judge-model", baseUrl: "https://judge.example/v1" }
