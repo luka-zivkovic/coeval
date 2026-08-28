@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { signIn } from "@/lib/auth-client";
 import { forgetFirstProjectKey } from "@/lib/journey";
+import { CoevalBrand } from "@/components/coeval-brand";
 
 export function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -29,6 +30,11 @@ export function LoginScreen() {
     <div className="min-h-screen grid place-items-center px-6">
       <Card className="w-full max-w-md">
         <CardHeader className="flex-col items-start gap-1.5">
+          <CoevalBrand
+            className="mb-2"
+            markClassName="size-6"
+            nameClassName="font-serif text-[17px] font-semibold tracking-[-0.025em] text-ink"
+          />
           <CardTitle className="text-[20px]">Log in to Coeval</CardTitle>
           <CardDescription>Public sign-up is disabled. Use an owner-created invite.</CardDescription>
         </CardHeader>
