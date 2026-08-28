@@ -24,6 +24,15 @@ export function sameModelBinding(left: SkillVersion["modelBinding"], right: Skil
     left.baseUrl === right.baseUrl;
 }
 
+export function verdictOutputContractChanged(
+  base: Pick<SkillVersion, "verdictKind" | "scalarRange" | "categoricalChoiceScores">,
+  current: Pick<SkillVersion, "verdictKind" | "scalarRange" | "categoricalChoiceScores">
+): boolean {
+  return base.verdictKind !== current.verdictKind ||
+    JSON.stringify(base.scalarRange) !== JSON.stringify(current.scalarRange) ||
+    JSON.stringify(base.categoricalChoiceScores) !== JSON.stringify(current.categoricalChoiceScores);
+}
+
 export function skillVersionChangeLabels(current: SkillVersion, previous?: SkillVersion | undefined): string[] {
   if (!previous) return ["initial version"];
   const labels: string[] = [];

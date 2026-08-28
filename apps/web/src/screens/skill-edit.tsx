@@ -44,7 +44,7 @@ import {
 import { STARTER_SKILLS, findStarterSkill, type StarterSkill } from "@/lib/starter-skills";
 import { cn } from "@/lib/utils";
 import { verdictKindDescription } from "@/lib/verdict-kind";
-import { skillEditOperationIsCurrent } from "@/lib/skill-edit-flow";
+import { skillEditOperationIsCurrent, verdictOutputContractChanged } from "@/lib/skill-edit-flow";
 import {
   compileJudgePrompt,
   regressionDirectionCounts,
@@ -529,6 +529,11 @@ export function SkillEditScreen() {
       if (temperature.trim() === "") return null;
       const temp = Number(temperature);
       if (!Number.isFinite(temp) || temp < 0 || temp > 2) return null;
+      const outputContractChanged = verdictOutputContractChanged(v, {
+        verdictKind,
+        scalarRange,
+        categoricalChoiceScores: choiceScores
+      });
       const input: CreateSkillVersionInput = {
         ...(skillCriterionVersionId(skill) ? { criterionVersionId: skillCriterionVersionId(skill)! } : {}),
         rubricMarkdown: rubric,
@@ -542,7 +547,7 @@ export function SkillEditScreen() {
           ...(v.modelBinding.topP !== undefined ? { topP: v.modelBinding.topP } : {}),
           ...(provider === "custom" ? { baseUrl: baseUrl.trim() } : {})
         },
-        outputSchema: firstRun || appliedStarter
+        outputSchema: firstRun || outputContractChanged
           ? verdictOutputSchema({ verdictKind, scalarRange, categoricalChoiceScores: choiceScores })
           : v.outputSchema,
         verdictKind,
@@ -555,7 +560,7 @@ export function SkillEditScreen() {
       };
       return input;
     },
-    [skill, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange, firstRun, appliedStarter]
+    [skill, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange, firstRun]
   );
 
   const canSave =
