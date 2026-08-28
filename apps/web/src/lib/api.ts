@@ -437,6 +437,7 @@ export async function fetchProjectVerdicts(opts?: {
   caseId?: string;
   criterionId?: string;
   skillVersionId?: string;
+  evidenceScope?: "all" | "customer";
   limit?: number;
 }): Promise<VerdictRecord[]> {
   const params = new URLSearchParams();
@@ -444,6 +445,7 @@ export async function fetchProjectVerdicts(opts?: {
   if (opts?.caseId) params.set("caseId", opts.caseId);
   if (opts?.criterionId) params.set("criterionId", opts.criterionId);
   if (opts?.skillVersionId) params.set("skillVersionId", opts.skillVersionId);
+  if (opts?.evidenceScope) params.set("evidenceScope", opts.evidenceScope);
   if (opts?.limit !== undefined) params.set("limit", String(opts.limit));
   const suffix = params.toString();
   const response = await apiFetch(`${API_BASE}/api/projects/verdicts${suffix ? `?${suffix}` : ""}`, { credentials: "include" });
@@ -1228,6 +1230,44 @@ export async function fetchEvalRunDetail(evalRunId: string): Promise<EvalRunDeta
   if (response.status === 404) return null;
   if (!response.ok) throw await apiErrorFromResponse(response, "Eval run detail request failed");
   return EvalRunDetailSchema.parse(await response.json());
+}
+
+export interface SkillVersionBackfillEnsureResult {
+  run: EvalRunDetail | null;
+  dispatchPending: boolean;
+  retryAfterMs: number;
+}
+
+export async function ensureSkillVersionBackfill(
+  skillId: string,
+  skillVersionId: string
+): Promise<SkillVersionBackfillEnsureResult> {
+  const response = await apiFetch(
+    `${API_BASE}/api/skills/${encodeURIComponent(skillId)}/versions/${encodeURIComponent(skillVersionId)}/backfill`,
+    { method: "POST", credentials: "include" }
+  );
+  const payload = await response.json().catch(() => null) as {
+    run?: unknown;
+    existingResult?: boolean;
+    error?: string;
+  } | null;
+  if (response.ok && payload?.run) {
+    return { run: EvalRunDetailSchema.parse(payload.run), dispatchPending: false, retryAfterMs: 30_000 };
+  }
+  if (response.status === 503 && payload?.run) {
+    const retryAfterSeconds = Number(response.headers.get("retry-after"));
+    return {
+      run: EvalRunDetailSchema.parse(payload.run),
+      dispatchPending: true,
+      retryAfterMs: Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+        ? retryAfterSeconds * 1000
+        : 30_000
+    };
+  }
+  if (response.ok && payload?.existingResult === true) {
+    return { run: null, dispatchPending: false, retryAfterMs: 30_000 };
+  }
+  throw apiError(response, payload, "First Result evaluation could not start");
 }
 
 export async function createDataset(input: CreateDatasetInput): Promise<Dataset> {

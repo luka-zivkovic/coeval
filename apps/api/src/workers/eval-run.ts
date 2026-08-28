@@ -44,7 +44,7 @@ export async function registerEvalRunWorkers(
   await queue.work<EvalItemJob>("eval.item", async ({ id, data, retryCount, retryLimit }) => {
     const executionToken = `${id}:${randomUUID()}`;
     try {
-      await processEvalItemJob(repository, data, provider, executionToken);
+      await processEvalItemJob(repository, data, provider, executionToken, queue);
     } catch (error) {
       // Failures proven to occur before physical provider dispatch may use
       // pg-boss retries. Permanent/final pre-call failures terminalize the
@@ -263,7 +263,8 @@ export async function processEvalItemJob(
   repository: CoevalRepository,
   job: EvalItemJob,
   provider: ProviderArg = createJudgeProvider,
-  executionToken = `direct:${randomUUID()}`
+  executionToken = `direct:${randomUUID()}`,
+  queue?: Queue | undefined
 ): Promise<void> {
   const parsed = EvalItemJobSchema.parse(job);
   // Atomic generation BEFORE the provider call: concurrent or redelivered
@@ -288,7 +289,7 @@ export async function processEvalItemJob(
     return;
   }
   if (claimed.state !== "claimed") return;
-  const { payload, verdict, latencyMs, usage, providerMetadata } = await judgeAndRecord(repository, {
+  const { run: judgeRun, payload, verdict, latencyMs, usage, providerMetadata } = await judgeAndRecord(repository, {
     projectId: parsed.projectId,
     caseId: parsed.caseId,
     skillVersionId: parsed.skillVersionId,
@@ -333,6 +334,27 @@ export async function processEvalItemJob(
     providerMetadata,
     latencyMs
   });
+  if (queue) {
+    for (const feedbackProvider of ["langsmith", "langfuse", "ironside"] as const) {
+      try {
+        const feedbackJob = await repository.createFeedbackSyncJob({
+          projectId: judgeRun.projectId,
+          judgeRunId: judgeRun.id,
+          provider: feedbackProvider
+        });
+        if (!feedbackJob) continue;
+        await queue.send("feedback.sync", {
+          projectId: feedbackJob.projectId,
+          feedbackSyncJobId: feedbackJob.id
+        }, { retryLimit: 5, retryBackoff: true });
+      } catch (error) {
+        // The evaluation item is already terminal and must never re-enter the
+        // provider call because optional upstream feedback preparation or
+        // dispatch failed.
+        console.error(`feedback.sync preparation or dispatch failed for ${feedbackProvider}:`, error);
+      }
+    }
+  }
 }
 
 // Queue-less path (demo mode): judge every pending item sequentially before

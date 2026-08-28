@@ -25,8 +25,8 @@ vi.mock("@/components/coeval", () => ({
     ...steps.map((step) => createElement("div", { key: step.title }, step.title, step.cta, step.foot))
   )
 }));
-vi.mock("@/components/bench-setup-ledger", async () =>
-  import("../src/components/bench-setup-ledger.js")
+vi.mock("@/components/first-run-setup-ledger", async () =>
+  import("../src/components/first-run-setup-ledger.js")
 );
 vi.mock("@/lib/journey", async () => import("../src/lib/journey.js"));
 vi.mock("@/lib/api", () => ({
@@ -34,13 +34,13 @@ vi.mock("@/lib/api", () => ({
   signOffSkillVersion: vi.fn()
 }));
 
-function provisionalBench(): DashboardSummary {
+function provisionalBench(judged = 0): DashboardSummary {
   return {
     project: {
       id: "project_bench",
       mode: "bench",
       importedTraceCount: 4,
-      autoJudgedTraceCount: 0,
+      autoJudgedTraceCount: judged,
       traceProvider: "manual"
     },
     skill: {
@@ -53,22 +53,64 @@ function provisionalBench(): DashboardSummary {
         approvedAt: null
       }
     },
+    currentVersionResultCount: judged,
     goldenSetSize: 0,
     exceptions: []
   } as DashboardSummary;
 }
 
 describe("provisional Skill Bench journey", () => {
-  it("keeps imported examples runnable while starter rubric review is open", async () => {
+  it("makes the Check the next action after examples arrive", async () => {
     const { DashboardProvisional } = await import("../src/screens/dashboard-provisional.js");
     const html = renderToStaticMarkup(createElement(DashboardProvisional, {
       dashboard: provisionalBench(),
       onSignedOff: vi.fn()
     }));
 
-    expect(html).toContain("Open the editor");
-    expect(html).toContain("Run examples");
-    expect(html).toContain("1 of 4 complete");
-    expect(html).toContain("until an owner reviews and approves the guide");
+    expect(html).toContain("Review the Check");
+    expect(html).not.toContain("Run the example");
+    expect(html).toContain("1 of 3 complete");
+    expect(html).toContain("until an owner reviews and signs off the guide");
+  });
+
+  it("keeps a missing tracing Result explicit instead of implying a pass", async () => {
+    const { DashboardProvisional } = await import("../src/screens/dashboard-provisional.js");
+    const dashboard = provisionalBench();
+    dashboard.project.mode = "tracing";
+    dashboard.project.traceProvider = "langsmith";
+    const html = renderToStaticMarkup(createElement(DashboardProvisional, {
+      dashboard,
+      onSignedOff: vi.fn()
+    }));
+
+    expect(html).toContain("No complete Check Result yet");
+    expect(html).toContain("has not returned a complete Result");
+    expect(html).not.toContain("did not flag these imported runs");
+  });
+
+  it("describes partial tracing coverage without extending the Result to pending runs", async () => {
+    const { DashboardProvisional } = await import("../src/screens/dashboard-provisional.js");
+    const dashboard = provisionalBench(2);
+    dashboard.project.mode = "tracing";
+    dashboard.project.traceProvider = "langsmith";
+    const html = renderToStaticMarkup(createElement(DashboardProvisional, {
+      dashboard,
+      onSignedOff: vi.fn()
+    }));
+
+    expect(html).toContain("2 completed Runs");
+    expect(html).toContain("2 still have no complete Result");
+    expect(html).not.toContain("did not flag these imported runs");
+  });
+
+  it("does not call a completed bench Result unevaluated", async () => {
+    const { DashboardProvisional } = await import("../src/screens/dashboard-provisional.js");
+    const html = renderToStaticMarkup(createElement(DashboardProvisional, {
+      dashboard: provisionalBench(1),
+      onSignedOff: vi.fn()
+    }));
+
+    expect(html).toContain("1 of 4 examples have a provisional Result");
+    expect(html).not.toContain("Nothing has been evaluated yet");
   });
 });

@@ -6,7 +6,7 @@ import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema, type JudgePr
 import { GoldenSetEntryAlreadyRetiredError, RegressionGateJudgeError, RegressionGateUnavailableError } from "../src/repository.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { processFeedbackSyncJob } from "../src/workers/feedback-sync.js";
-import { processGateRunJob } from "../src/workers/gate.js";
+import { dispatchEvalRunOnce, processGateRunJob } from "../src/workers/gate.js";
 import { processJudgeRunJob, registerJudgeRunWorker } from "../src/workers/judge.js";
 import { processLangSmithImportJob } from "../src/workers/langsmith-import.js";
 import { enqueueDueLangSmithImports } from "../src/workers/langsmith-poller.js";
@@ -167,11 +167,107 @@ run("PgRepository smoke", () => {
       // Only the ordinary fixture counts; release evidence stays invisible.
       expect(dashboard.project.importedTraceCount).toBe(1);
       expect(dashboard.project.autoJudgedTraceCount).toBe(0);
+      expect(dashboard.currentVersionResultCount).toBe(0);
       expect(dashboard.verdictDistribution.pass).toBe(0);
       expect(dashboard.verdictDistribution.fail).toBe(0);
       expect(dashboard.exceptions).not.toEqual(
         expect.arrayContaining([expect.objectContaining({ id: imported.caseId })]),
       );
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("keeps imported-case evaluation unique and excludes scaffolding from customer Result probes", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_smoke");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      await seedSkill(pool);
+
+      const customer = await repo.importTrace("proj_test", "manual", {
+        sourceTraceId: "customer-result-case",
+        input: { question: "Customer?" },
+        output: { answer: "Customer." },
+        metadata: {}
+      }, { ingestionPurpose: "analysis_eligible_manual" });
+      const scaffolding = await repo.importTrace("proj_test", "release_evidence", {
+        sourceTraceId: "scaffolding-result-case",
+        input: { question: "Gate?" },
+        output: { answer: "Gate." },
+        metadata: {}
+      }, { ingestionPurpose: "release_evidence" });
+
+      await repo.recordVerdict({
+        projectId: "proj_test",
+        caseId: scaffolding.caseId,
+        skillVersionId: "skillv_test",
+        source: "llm_judge",
+        payload: { kind: "binary", pass: true, rationale: "release-only result" }
+      });
+      await expect(repo.listVerdicts({
+        projectId: "proj_test",
+        skillVersionId: "skillv_test",
+        source: "llm_judge",
+        evidenceScope: "customer",
+        limit: 10
+      })).resolves.toEqual([]);
+      await expect(repo.listVerdicts({
+        projectId: "proj_test",
+        skillVersionId: "skillv_test",
+        source: "llm_judge",
+        evidenceScope: "all",
+        limit: 10
+      })).resolves.toHaveLength(1);
+
+      const [first, second] = await Promise.all([
+        repo.createImportedCaseEvalRun({
+          projectId: "proj_test",
+          skillVersionId: "skillv_test",
+          caseId: customer.caseId
+        }),
+        repo.createImportedCaseEvalRun({
+          projectId: "proj_test",
+          skillVersionId: "skillv_test",
+          caseId: customer.caseId
+        })
+      ]);
+      expect(first.run.id).toBe(second.run.id);
+      expect([first.created, second.created].sort()).toEqual([false, true]);
+      const stored = await pool.query(
+        `select id, ingestion_case_id from eval_runs
+         where project_id = 'proj_test' and skill_version_id = 'skillv_test' and ingestion_case_id = $1`,
+        [customer.caseId]
+      );
+      expect(stored.rows).toEqual([{ id: first.run.id, ingestion_case_id: customer.caseId }]);
+
+      const attemptedIds: string[] = [];
+      const exhaustedQueue: Queue = {
+        async start() {},
+        async stop() {},
+        async work() {},
+        async send(_name, _data, options) {
+          attemptedIds.push(String(options?.id));
+          return attemptedIds.length === 1 ? null : String(options?.id);
+        },
+        async getJobState(_name, id) {
+          return id === attemptedIds[0] ? "cancelled" : null;
+        }
+      };
+      await expect(dispatchEvalRunOnce(repo, first.run, exhaustedQueue)).resolves.toBe("ready");
+      expect(attemptedIds).toHaveLength(2);
+      expect(attemptedIds[1]).not.toBe(attemptedIds[0]);
+      const dispatch = await pool.query(
+        `select queue_job_id::text as queue_job_id, queue_dispatched_at
+         from eval_runs where id = $1`,
+        [first.run.id]
+      );
+      expect(dispatch.rows[0]).toMatchObject({
+        queue_job_id: attemptedIds[1],
+        queue_dispatched_at: expect.any(Date)
+      });
     } finally {
       await cleanup();
     }
@@ -716,6 +812,46 @@ run("PgRepository smoke", () => {
     }
   });
 
+  it("creates one backfill eval run per Check under concurrent starts", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_smoke");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      await seedSkill(pool);
+      const imported = await repo.importTrace("proj_test", "manual", {
+        sourceTraceId: "backfill_once",
+        input: { question: "q" },
+        output: { answer: "a" },
+        metadata: {}
+      }, { ingestionPurpose: "analysis_eligible_manual" });
+
+      const [first, second] = await Promise.all([
+        repo.createEvalRun({
+          projectId: "proj_test",
+          skillVersionId: "skillv_test",
+          trigger: "backfill",
+          items: [{ caseId: imported.caseId }]
+        }),
+        repo.createEvalRun({
+          projectId: "proj_test",
+          skillVersionId: "skillv_test",
+          trigger: "backfill",
+          items: [{ caseId: imported.caseId }]
+        })
+      ]);
+
+      expect(second.id).toBe(first.id);
+      const rows = await pool.query(
+        `select count(*)::int as count from eval_runs where project_id='proj_test' and skill_version_id='skillv_test' and trigger='backfill'`
+      );
+      expect(rows.rows[0]?.count).toBe(1);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it("allows one evaluator lineage per criterion and multiple criteria per project", async () => {
     const { pool, cleanup } = await openPostgresTestDatabase("pg_smoke");
     try {
@@ -1049,6 +1185,7 @@ run("PgRepository smoke", () => {
       const dashboard = await repo.getDashboardSummary("proj_test");
       expect(dashboard.project.importedTraceCount).toBe(1);
       expect(dashboard.project.autoJudgedTraceCount).toBe(1);
+      expect(dashboard.currentVersionResultCount).toBe(1);
       expect(dashboard.verdictDistribution.pass).toBe(1);
 
       // The judge worker now feeds the v2 trust layer too: a real source=llm_judge
@@ -1173,6 +1310,7 @@ run("PgRepository smoke", () => {
       await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
       await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
       await seedSkill(pool);
+      await pool.query(`update skill_versions set status = 'approved', approved_at = now() where id = 'skillv_test'`);
 
       const integration = await repo.createLangSmithIntegration("proj_test", { apiKey: "ls_test_key", projectName: "Support Agent" });
       const importJob = await repo.createImportJob({
@@ -1201,7 +1339,7 @@ run("PgRepository smoke", () => {
         limit: 1,
         importJobId: importJob.id
       }, createClient)).resolves.toEqual({ imported: 1, queued: 1 });
-      const firstCaseId = (queue.jobs[0]?.data as { caseId?: string } | undefined)?.caseId;
+      const firstEvalRunId = (queue.jobs[0]?.data as { evalRunId?: string } | undefined)?.evalRunId;
 
       const retryJob = await repo.createImportJob({
         projectId: "proj_test",
@@ -1216,9 +1354,14 @@ run("PgRepository smoke", () => {
         limit: 1,
         importJobId: retryJob.id
       }, createClient)).resolves.toEqual({ imported: 0, queued: 1 });
-      const secondCaseId = (queue.jobs[1]?.data as { caseId?: string } | undefined)?.caseId;
-
-      expect(secondCaseId).toBe(firstCaseId);
+      expect(queue.jobs.filter((job) => job.name === "eval.run")).toHaveLength(1);
+      const runs = await repo.listEvalRuns("proj_test", { skillVersionId: "skillv_test" });
+      expect(runs).toHaveLength(1);
+      expect(runs[0]?.id).toBe(firstEvalRunId);
+      const runDetail = await repo.getEvalRunDetail("proj_test", runs[0]!.id);
+      expect(runDetail?.items).toEqual([
+        expect.objectContaining({ caseId: expect.any(String) })
+      ]);
       const counts = await pool.query(
         `select
            (select count(*)::int from raw_traces) as raw_count,
@@ -1262,6 +1405,7 @@ run("PgRepository smoke", () => {
       await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
       await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
       await seedSkill(pool);
+      await pool.query(`update skill_versions set status = 'approved', approved_at = now() where id = 'skillv_test'`);
 
       const integration = await repo.createLangSmithIntegration("proj_test", { apiKey: "ls_test_key", projectName: "Support Agent" });
       const importJob = await repo.createImportJob({
@@ -1303,7 +1447,10 @@ run("PgRepository smoke", () => {
         skillVersionId: importJob.skillVersionId!,
         limit: 2,
         importJobId: importJob.id
-      }, createClient)).resolves.toEqual({ imported: 1, queued: 2 });
+      // The worker now imports the complete batch before dispatching its
+      // evaluation work. Both rows were therefore durably created on the
+      // failed first attempt; the retry schedules them without re-importing.
+      }, createClient)).resolves.toEqual({ imported: 0, queued: 2 });
 
       const counts = await pool.query(
         `select

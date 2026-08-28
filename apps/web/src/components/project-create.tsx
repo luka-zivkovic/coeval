@@ -7,7 +7,7 @@ import { Eyebrow } from "@/components/coeval";
 import { CHOOSE_TASK_ERROR, NAME_REQUIRED_ERROR, PROJECT_TASK_COPY, ProjectTaskFields } from "@/components/project-task";
 import { ApiError, createProject, selectProject } from "@/lib/api";
 import { copyTextToClipboard } from "@/lib/clipboard";
-import { firstRunEditorPath, rememberFirstProjectKey } from "@/lib/journey";
+import { rememberFirstProjectKey } from "@/lib/journey";
 import { useDialogFocus } from "@/hooks/use-dialog-focus";
 import type { CreatedApiKey, ProjectMode } from "@coeval/shared";
 
@@ -58,9 +58,9 @@ function useCreateProject(onCreated?: () => void) {
       selectProject(projectId);
       if (onCreated) onCreated();
       // Full reload: every cached surface must re-resolve against the new
-      // project. Start in Act 1 with a concrete worked rubric, not a blank
-      // schema dashboard.
-      window.location.assign(firstRunEditorPath());
+      // project. Overview owns the Run → Check → Result sequence and offers
+      // the explicit low-friction path for creating a Check without a Run.
+      window.location.assign("/");
     } catch (err) {
       setError(
         err instanceof ApiError && err.status === 501
@@ -76,7 +76,7 @@ function useCreateProject(onCreated?: () => void) {
   function continueAfterSavingKey() {
     if (!pendingProject) return;
     selectProject(pendingProject.projectId);
-    window.location.assign(firstRunEditorPath());
+    window.location.assign("/");
   }
 
   return { name, setName, mode, setMode, busy, error, submit, pendingProject, continueAfterSavingKey };
@@ -214,10 +214,10 @@ export function NoProjectLanding() {
     <div className="fadeUp mx-auto mt-[12vh] max-w-[520px]">
       <Eyebrow>First evaluation</Eyebrow>
       <div className="mt-2 font-serif text-[26px] font-medium leading-[1.12] tracking-[-0.02em]">
-        What do you want Coeval to judge?
+        What are you evaluating?
       </div>
       <div className="mt-2.5 text-[13px] leading-[1.55] text-ink-3">
-        Pick the job. Coeval creates the matching workspace and starter judging skill for you.
+        Start with recorded production Runs or a few examples. Coeval will help you create one reusable Check.
       </div>
       <Card className="mt-5">
         <CardContent className="flex flex-col gap-3.5 py-4">

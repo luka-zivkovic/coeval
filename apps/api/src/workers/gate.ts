@@ -1,7 +1,9 @@
 import { z } from "zod";
-import { GateRunJobSchema, type GateRunJob } from "@coeval/shared";
+import { randomUUID } from "node:crypto";
+import { GateRunJobSchema, type EvalRun, type GateRunJob } from "@coeval/shared";
 import type { Queue } from "@coeval/queue";
 import { GateRunBindingMismatchError, type CoevalRepository } from "../repository.js";
+import { runEvalRunInline } from "./eval-run.js";
 
 // gate.run (M0 C5a): executes the golden-set regression gate for a pending
 // (calibrating) skill version. Provider failures (RegressionGateJudgeError /
@@ -65,13 +67,106 @@ export async function processGateRunJob(
       // an explicit owner activation makes it current and admissible.
       return;
     }
-    for (const caseId of await repository.listCaseIdsForProject(parsed.projectId)) {
-      await queue.send("judge.run", {
-        projectId: parsed.projectId,
-        caseId,
-        skillVersionId: version.id
-      }, { retryLimit: 5, retryBackoff: true });
+    await runExistingCaseBackfill(repository, parsed.projectId, version.id, queue);
+  }
+}
+
+// Existing-case evaluation is a durable EvalRun, not a loose collection of
+// judge.run jobs. The UI can therefore show real pending/running/failed state,
+// resume after reload, and open the exact Result that completed onboarding.
+// Replaying gate.run reuses the version's single backfill run; eval.item
+// delivery has its own deterministic identities and execution claims.
+export async function runExistingCaseBackfill(
+  repository: CoevalRepository,
+  projectId: string,
+  skillVersionId: string,
+  queue?: Queue | undefined
+) {
+  const caseIds = await repository.listCaseIdsForProject(projectId);
+  if (caseIds.length === 0) return null;
+  const existing = (await repository.listEvalRuns(projectId, { limit: 100, skillVersionId }))
+    .find((run) => run.trigger === "backfill");
+  const run = existing ?? await repository.createEvalRun({
+    projectId,
+    skillVersionId,
+    trigger: "backfill",
+    items: caseIds.map((caseId) => ({ caseId }))
+  });
+
+  const dispatchState = await dispatchEvalRunOnce(repository, run, queue);
+  return {
+    run: (await repository.getEvalRun(projectId, run.id)) ?? run,
+    dispatchState
+  };
+}
+
+export type EvalRunDispatchState = "ready" | "busy";
+
+export async function dispatchEvalRunOnce(
+  repository: CoevalRepository,
+  run: EvalRun,
+  queue?: Queue | undefined
+): Promise<EvalRunDispatchState> {
+  if (run.totalItems === 0 || (run.status !== "pending" && run.status !== "running")) return "ready";
+  if (!queue) {
+    await repository.armEvalRunItemDeliveryDeadline(run.projectId, run.id);
+    await runEvalRunInline(repository, run.projectId, run.id);
+    return "ready";
+  }
+
+  const dispatchToken = randomUUID();
+  const dispatch = await repository.claimEvalRunDispatch({
+    projectId: run.projectId,
+    evalRunId: run.id,
+    dispatchToken
+  });
+  if (dispatch.state === "dispatched") return "ready";
+  if (dispatch.state === "busy") {
+    if (!dispatch.jobId || !queue.getJobState) return "busy";
+    const state = await queue.getJobState("eval.run", dispatch.jobId);
+    return state === "created" || state === "retry" || state === "active" || state === "completed"
+      ? "ready"
+      : "busy";
+  }
+  if (dispatch.state !== "claimed" || !dispatch.jobId) return "busy";
+  let jobId = dispatch.jobId;
+
+  try {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const sent = await queue.send("eval.run", { projectId: run.projectId, evalRunId: run.id }, {
+        id: jobId,
+        retryLimit: 5,
+        retryBackoff: true
+      });
+      if (sent !== null) break;
+
+      const state = queue.getJobState ? await queue.getJobState("eval.run", jobId) : null;
+      if (state === "created" || state === "retry" || state === "active" || state === "completed") break;
+      if ((state === "failed" || state === "cancelled") && attempt === 0) {
+        const replacementJobId = await repository.rotateEvalRunDispatchJob({
+          projectId: run.projectId,
+          evalRunId: run.id,
+          dispatchToken
+        });
+        if (!replacementJobId) throw new Error("The evaluation dispatch claim changed before recovery.");
+        jobId = replacementJobId;
+        continue;
+      }
+      throw new Error("The evaluation queue did not accept a live durable run job.");
     }
+    await repository.markEvalRunDispatched({
+      projectId: run.projectId,
+      evalRunId: run.id,
+      dispatchToken
+    });
+    return "ready";
+  } catch (error) {
+    await repository.releaseEvalRunDispatch({
+      projectId: run.projectId,
+      evalRunId: run.id,
+      dispatchToken
+    });
+    throw error;
   }
 }
 

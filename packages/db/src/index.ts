@@ -301,6 +301,7 @@ export function getDemoDashboardSummary(): DashboardSummary {
     project: demoProject,
     skill: demoSkill,
     viewerRole: "owner",
+    currentVersionResultCount: demoProject.autoJudgedTraceCount,
     verdictDistribution: {
       pass: 1037,
       fail: 121,

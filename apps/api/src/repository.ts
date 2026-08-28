@@ -393,8 +393,8 @@ export interface CoevalRepository {
   // Idempotently terminalize a valid gate job that cannot complete. This is
   // called for permanent failures and on the final queue attempt.
   failRegressionGateForVersion(job: GateRunJob, error: unknown): Promise<void>;
-  // support time-scoped skill edits. The route enqueues judge.run for
-  // each case id when timeScope ∈ {existing, both}; the repo just lists ids.
+  // Support time-scoped skill edits. The gate worker snapshots these ids into
+  // one durable backfill EvalRun when timeScope ∈ {existing, both}.
   // Capped at 10k (defensive bound to keep one skill edit from spawning a
   // million-job backfill — operators can split into batches if they really
   // need more).
@@ -549,10 +549,20 @@ export interface CoevalRepository {
     run: EvalRunDetail;
     created: boolean;
   }>;
-  // Durable queue outbox claim for an eval run. Only the claim holder sends
+  // One automatic import evaluation per immutable (project, version, case).
+  // Import retries and concurrent ingestion converge on this durable row.
+  createImportedCaseEvalRun(input: CreateImportedCaseEvalRunInputDb): Promise<{
+    run: EvalRunDetail;
+    created: boolean;
+  }>;
+  // Durable queue outbox claim for any eval run. Only the claim holder sends
   // the deterministic queue job; a send failure releases the claim, while a
   // crash can be recovered after the lease without creating another job id.
   claimEvalRunDispatch(input: EvalRunDispatchInputDb): Promise<EvalRunDispatchClaim>;
+  // A deterministic queue id that reached a terminal queue state cannot be
+  // reinserted by pg-boss. The active DB claim may rotate it exactly once per
+  // recovery attempt before dispatching a replacement delivery.
+  rotateEvalRunDispatchJob(input: EvalRunDispatchInputDb): Promise<string | null>;
   markEvalRunDispatched(input: EvalRunDispatchInputDb): Promise<void>;
   releaseEvalRunDispatch(input: EvalRunDispatchInputDb): Promise<void>;
   armEvalRunItemDeliveryDeadline(projectId: string, evalRunId: string): Promise<void>;
@@ -672,6 +682,12 @@ export interface CreateConvergenceEvalRunInputDb {
   skillVersionId: string;
   caseId: string;
   createdByUserId?: string | undefined;
+}
+
+export interface CreateImportedCaseEvalRunInputDb {
+  projectId: string;
+  skillVersionId: string;
+  caseId: string;
 }
 
 export interface EvalRunDispatchInputDb {
@@ -973,6 +989,7 @@ export interface ListVerdictsInput {
   source?: VerdictSource | undefined;
   skillVersionId?: string | undefined;
   criterionId?: string | undefined;
+  evidenceScope?: "all" | "customer" | undefined;
   limit: number;
 }
 
@@ -1292,6 +1309,7 @@ export class DemoRepository implements CoevalRepository {
   private readonly evalRuns: EvalRun[] = [];
   private readonly evalRunItems: EvalRunItem[] = [];
   private readonly convergenceEvalRuns = new Map<string, Promise<EvalRunDetail>>();
+  private readonly importedCaseEvalRuns = new Map<string, Promise<EvalRunDetail>>();
   private readonly evalRunDispatches = new Map<string, {
     jobId: string;
     dispatchToken: string | null;
@@ -1462,10 +1480,27 @@ export class DemoRepository implements CoevalRepository {
       : [];
     const goldenSetSize = (await this.listGoldenSet(projectId, criterionVersionId)).length;
     const topCapabilityGaps = isLegacyCriterion ? capabilityGapsFromExceptions(exceptions) : [];
+    const dynamicCurrentVersionResultCount = new Set(
+      countedRuns
+        .filter((run) =>
+          run.skillVersionId === skill.currentVersion.id &&
+          // The aggregate demo baseline already includes every built-in
+          // case. A runtime re-judge of one of those identities replaces its
+          // Result; it is not another covered case. Dynamically imported
+          // cases remain outside that baseline and do increase coverage.
+          !(isLegacyCriterion && skill.currentVersion.id === demoSkill.currentVersion.id &&
+            this.syntheticTraceForBuiltinCase(run.caseId))
+        )
+        .map((run) => run.caseId)
+    ).size;
+    const currentVersionResultCount = isLegacyCriterion && skill.currentVersion.id === demoSkill.currentVersion.id
+      ? summary.currentVersionResultCount + dynamicCurrentVersionResultCount
+      : dynamicCurrentVersionResultCount;
     if (countedRuns.length === 0) {
       return {
         ...summary,
         skill,
+        currentVersionResultCount,
         verdictDistribution: isLegacyCriterion
           ? summary.verdictDistribution
           : { pass: 0, fail: 0, ambiguous: 0 },
@@ -1489,6 +1524,7 @@ export class DemoRepository implements CoevalRepository {
     return {
       ...summary,
       skill,
+      currentVersionResultCount,
       exceptions,
       topCapabilityGaps,
       goldenSetSize,
@@ -3745,6 +3781,17 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async createEvalRun(input: CreateEvalRunInputDb): Promise<EvalRunDetail> {
+    if (input.trigger === "backfill") {
+      const existing = this.evalRuns.find((candidate) =>
+        candidate.projectId === input.projectId &&
+        candidate.skillVersionId === input.skillVersionId &&
+        candidate.trigger === "backfill"
+      );
+      if (existing) {
+        const detail = await this.getEvalRunDetail(input.projectId, existing.id);
+        if (detail) return detail;
+      }
+    }
     const createdAt = new Date().toISOString();
     const runId = `evr_${randomUUID()}`;
     const revision = input.datasetRevisionId
@@ -3899,6 +3946,34 @@ export class DemoRepository implements CoevalRepository {
     }
   }
 
+  async createImportedCaseEvalRun(input: CreateImportedCaseEvalRunInputDb): Promise<{
+    run: EvalRunDetail;
+    created: boolean;
+  }> {
+    const key = `${input.projectId}:${input.skillVersionId}:${input.caseId}`;
+    const existing = this.importedCaseEvalRuns.get(key);
+    if (existing) {
+      const original = await existing;
+      return {
+        run: (await this.getEvalRunDetail(input.projectId, original.id)) ?? original,
+        created: false
+      };
+    }
+    const creation = this.createEvalRun({
+      projectId: input.projectId,
+      skillVersionId: input.skillVersionId,
+      trigger: "api_batch",
+      items: [{ caseId: input.caseId }]
+    });
+    this.importedCaseEvalRuns.set(key, creation);
+    try {
+      return { run: await creation, created: true };
+    } catch (error) {
+      if (this.importedCaseEvalRuns.get(key) === creation) this.importedCaseEvalRuns.delete(key);
+      throw error;
+    }
+  }
+
   async claimEvalRunDispatch(input: EvalRunDispatchInputDb): Promise<EvalRunDispatchClaim> {
     const run = this.evalRuns.find((candidate) => candidate.id === input.evalRunId && candidate.projectId === input.projectId);
     if (!run) return { state: "busy", jobId: null };
@@ -3915,6 +3990,13 @@ export class DemoRepository implements CoevalRepository {
     current.dispatchToken = input.dispatchToken;
     current.claimedAt = Date.now();
     return { state: "claimed", jobId: current.jobId };
+  }
+
+  async rotateEvalRunDispatchJob(input: EvalRunDispatchInputDb): Promise<string | null> {
+    const current = this.evalRunDispatches.get(input.evalRunId);
+    if (!current || current.dispatched || current.dispatchToken !== input.dispatchToken) return null;
+    current.jobId = randomUUID();
+    return current.jobId;
   }
 
   async markEvalRunDispatched(input: EvalRunDispatchInputDb): Promise<void> {
@@ -4567,6 +4649,7 @@ export class DemoRepository implements CoevalRepository {
   async listVerdicts(input: ListVerdictsInput): Promise<VerdictRecord[]> {
     return this.verdicts
       .filter((verdict) => verdict.projectId === input.projectId)
+      .filter((verdict) => input.evidenceScope !== "customer" || !this.isEvidenceScaffoldingCase(verdict.caseId))
       .filter((verdict) => !input.caseId || verdict.caseId === input.caseId)
       .filter((verdict) => !input.source || verdict.source === input.source)
       .filter((verdict) => !input.skillVersionId || verdict.skillVersionId === input.skillVersionId)

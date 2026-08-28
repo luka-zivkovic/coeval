@@ -190,6 +190,12 @@ describe("criterion and evaluator-suite API", () => {
       })
     };
     const native = await repository.createCriterion(PROJECT_ID, CreateCriterionInputSchema.parse(criterionInput), {});
+    await repository.signOffSkillVersion(
+      PROJECT_ID,
+      native.evaluator.id,
+      native.evaluator.currentVersion.id,
+      {}
+    );
     for (const provider of ["langsmith", "langfuse", "ironside"] as const) {
       const response = await app.request(`/api/integrations/${provider}/${integrations[provider].id}`, {
         method: "PATCH",
@@ -224,9 +230,10 @@ describe("criterion and evaluator-suite API", () => {
       body: JSON.stringify({ ...manualBody, skillVersionId: native.evaluator.currentVersion.id })
     });
     expect(manual.status).toBe(201);
-    expect(queue.jobs.at(-1)).toMatchObject({
-      name: "judge.run",
-      data: { skillVersionId: native.evaluator.currentVersion.id }
+    expect(queue.jobs.at(-1)).toMatchObject({ name: "eval.run" });
+    const manualEvalRunId = String(queue.jobs.at(-1)?.data.evalRunId);
+    await expect(repository.getEvalRun(PROJECT_ID, manualEvalRunId)).resolves.toMatchObject({
+      skillVersionId: native.evaluator.currentVersion.id
     });
 
     for (const provider of ["langsmith", "langfuse", "ironside"] as const) {

@@ -1,6 +1,5 @@
 import {
   CreatedApiKeySchema,
-  GOLDEN_GATE_ARMS_AT,
   GOLDEN_GATE_RECOMMENDED,
   type CreatedApiKey,
   type DashboardSummary,
@@ -42,31 +41,31 @@ export interface JourneyActStates {
 
 export type SetupJourneyStepState = "done" | "now" | "locked";
 
-export interface BenchSetupStepStates {
-  defineSkill: SetupJourneyStepState;
-  addExamples: SetupJourneyStepState;
-  runSkill: SetupJourneyStepState;
-  enableRegression: SetupJourneyStepState;
+export interface FirstRunSetupStepStates {
+  bringRun: SetupJourneyStepState;
+  chooseCheck: SetupJourneyStepState;
+  seeResult: SetupJourneyStepState;
 }
 
-// The Skill Bench welcome ledger mirrors durable project state. Agent
-// bootstrap, API imports, eval runs, and golden promotion all bypass the UI
-// click path, so no onboarding-specific completion flags are allowed here.
-// Later completed outcomes remain completed even when an earlier setup step is
-// still open. Availability follows prerequisites rather than one global
-// cursor: a starter rubric can still be run over imported examples while it
-// awaits review, so more than one step may be actionable at once.
-export function benchSetupStepStates(dashboard: DashboardSummary): BenchSetupStepStates {
-  const skillReady = !dashboard.skill.isStarter;
-  const hasExamples = dashboard.project.importedTraceCount > 0;
-  const hasJudgedExamples = dashboard.project.autoJudgedTraceCount > 0;
-  const regressionEnabled = dashboard.goldenSetSize >= GOLDEN_GATE_ARMS_AT;
+export function currentCheckIsReady(dashboard: DashboardSummary): boolean {
+  return dashboard.skill.currentVersion.status === "approved" ||
+    dashboard.skill.currentVersion.status === "production";
+}
+
+// The first-run ledger mirrors durable project state for both supplied-example
+// and tracing projects. No click-completion flags are allowed: agent setup,
+// imports, and eval runs can all happen outside the current browser. Later
+// outcomes remain done when work happened out of order, but only the earliest
+// unmet prerequisite is presented as the primary next action.
+export function firstRunSetupStepStates(dashboard: DashboardSummary): FirstRunSetupStepStates {
+  const hasRun = dashboard.project.importedTraceCount > 0;
+  const hasCheck = currentCheckIsReady(dashboard);
+  const hasResult = dashboard.currentVersionResultCount > 0;
 
   return {
-    defineSkill: skillReady ? "done" : "now",
-    addExamples: hasExamples ? "done" : skillReady ? "now" : "locked",
-    runSkill: hasJudgedExamples ? "done" : hasExamples ? "now" : "locked",
-    enableRegression: regressionEnabled ? "done" : hasJudgedExamples ? "now" : "locked"
+    bringRun: hasRun ? "done" : "now",
+    chooseCheck: hasCheck ? "done" : hasRun ? "now" : "locked",
+    seeResult: hasResult ? "done" : hasRun && hasCheck ? "now" : "locked"
   };
 }
 
@@ -75,8 +74,8 @@ export function benchSetupStepStates(dashboard: DashboardSummary): BenchSetupSte
 // are unlocked milestones. Five golden cases is a recommendation, while the
 // actual regression gate still arms on the first promotion.
 export function journeyActStates(dashboard: DashboardSummary): JourneyActStates {
-  const defineGoodDone = !dashboard.skill.isStarter;
-  const judgeRealWorkDone = dashboard.project.autoJudgedTraceCount > 0;
+  const defineGoodDone = currentCheckIsReady(dashboard);
+  const judgeRealWorkDone = dashboard.currentVersionResultCount > 0;
   const earnTrustDone = dashboard.goldenSetSize >= GOLDEN_GATE_RECOMMENDED;
   const completed = [defineGoodDone, judgeRealWorkDone, earnTrustDone];
   const current = completed.findIndex((done) => !done);
@@ -95,6 +94,10 @@ export function journeyActStates(dashboard: DashboardSummary): JourneyActStates 
 // editor.
 export function firstRunEditorPath(): string {
   return "/skill/edit?first=1&starter=task-outcome-quality";
+}
+
+export function firstResultPath(skillVersionId: string): string {
+  return `/first-result?version=${encodeURIComponent(skillVersionId)}`;
 }
 
 const FIRST_PROJECT_KEY = "coeval.first-project-key";

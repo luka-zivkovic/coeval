@@ -10,20 +10,20 @@ import { PROJECT_NAME_MAX_LENGTH, type ProjectMode } from "@coeval/shared";
 // miss the third.
 export const PROJECT_TASK_COPY: Record<ProjectMode, { nameLabel: string; namePlaceholder: string; cta: string; busyCta: string }> = {
   bench: {
-    nameLabel: "Evaluation name",
-    namePlaceholder: "e.g. Checkout skill audit",
-    cta: "Create dataset evaluation",
+    nameLabel: "Project name",
+    namePlaceholder: "e.g. Checkout support",
+    cta: "Create project",
     busyCta: "Creating…"
   },
   tracing: {
     nameLabel: "Agent or workflow name",
     namePlaceholder: "e.g. Checkout Agent",
-    cta: "Create trace evaluation",
+    cta: "Create project",
     busyCta: "Creating…"
   }
 };
 
-export const CHOOSE_TASK_ERROR = "Choose what you want Coeval to judge first.";
+export const CHOOSE_TASK_ERROR = "Choose where your first recorded runs will come from.";
 export const NAME_REQUIRED_ERROR = "Name the agent, workflow, dataset, or skill you are evaluating.";
 
 export function ProjectTaskFork({
@@ -35,26 +35,26 @@ export function ProjectTaskFork({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <Eyebrow>What do you want Coeval to judge?</Eyebrow>
+      <Eyebrow>Where will your first runs come from?</Eyebrow>
       <div className="grid grid-cols-2 gap-2">
         <TaskCard
           active={mode === "tracing"}
           icon={<Activity className="size-3.5" />}
-          title="Production traces"
-          detail="Judge an agent's real conversations as they arrive from LangSmith, Langfuse, or manual imports."
+          title="Recorded production runs"
+          detail="Connect LangSmith or Langfuse, or paste runs from an agent or workflow."
           onPick={() => setMode("tracing")}
         />
         <TaskCard
           active={mode === "bench"}
           icon={<FlaskConical className="size-3.5" />}
-          title="A dataset or agent skill"
-          detail="Run an evaluator that returns a structured verdict over examples you supply. Use this for evaluation datasets or to audit an external agent skill."
+          title="Examples or an Agent Skill"
+          detail="Supply input-and-output examples, or let your coding agent set up a Check for one Agent Skill."
           onPick={() => setMode("bench")}
         />
       </div>
       <div className="text-[11px] leading-[1.5] text-ink-3">
-        This choice creates the right workspace for the job. A bench can connect production traces later
-        without losing its skill versions or golden set.
+        Coeval reads recorded Runs; it does not execute your AI. You can connect another source later
+        without losing Checks or Results.
       </div>
     </div>
   );
@@ -96,14 +96,13 @@ export function ProjectTaskNextSteps({ mode }: { mode: ProjectMode }) {
     <div className="rounded-sm border border-rule-soft bg-paper-2 px-3 py-2.5 text-[11.5px] leading-[1.55] text-ink-2">
       {mode === "bench" ? (
         <>
-          <b>What happens next:</b> Coeval creates a bench and starter evaluator. Choose a template
-          or write the guide, add labeled examples, then run the evaluator and inspect disagreements.
-          To audit a skill that generates arbitrary output, use an evaluator that judges its results.
+          <b>What happens next:</b> Add one example Run, choose one thing to Check, and see the first
+          Result. Expected labels are optional during setup.
         </>
       ) : (
         <>
-          <b>What happens next:</b> Coeval creates a trace workspace and starter evaluator. Connect
-          a tracing platform or paste one trace. Results remain provisional until an owner approves the guide.
+          <b>What happens next:</b> Connect or paste one recorded Run, choose one thing to Check, and
+          see what the starter Check concludes. Its Results remain unvalidated after setup.
         </>
       )}
     </div>

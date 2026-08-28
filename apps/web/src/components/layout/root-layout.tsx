@@ -25,6 +25,7 @@ const CRUMBS: Record<string, string[]> = {
   "/criteria":       ["Criteria"],
   "/skill":          ["Skill"],
   "/skill/versions": ["Skill versions"],
+  "/first-result":   ["First Result"],
   "/golden":         ["Golden set"],
   "/datasets":       ["Datasets"],
   "/integrations":   ["Integrations"],

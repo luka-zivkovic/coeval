@@ -4,6 +4,7 @@ import type { Queue } from "@coeval/queue";
 import type { CoevalRepository, LangfuseImportContext } from "../repository.js";
 import { ImportSkillVersionBindingError, LangfuseCredentialsMissingError, LangfuseIntegrationNotFoundError, NoCurrentSkillError, RecursiveTraceSkippedError } from "../repository.js";
 import { LangfuseClient, type LangfuseTraceFetcher } from "../lib/langfuse.js";
+import { assertImportJudgingAllowed, scheduleImportedCaseJudging } from "./import-judging.js";
 
 export interface LangfuseImportResult {
   imported: number;
@@ -43,11 +44,12 @@ export async function processLangfuseImportJob(
     if (!parsed.skillVersionId) throw new ImportSkillVersionBindingError();
     const version = await repository.getSkillVersion(parsed.projectId, parsed.skillVersionId);
     if (!version) throw new ImportSkillVersionBindingError(`Unknown import skillVersionId for project: ${parsed.skillVersionId}`);
+    await assertImportJudgingAllowed(repository, parsed.projectId, version.id);
     const context = await repository.loadLangfuseImportContext(parsed);
     const traces = await createClient(context).listTraces({ limit: context.limit });
 
     let imported = 0;
-    let queued = 0;
+    const caseIds: string[] = [];
     for (const trace of traces) {
       let row;
       try {
@@ -63,13 +65,17 @@ export async function processLangfuseImportJob(
         throw error;
       }
       if (row.created) imported += 1;
-      const jobId = await queue.send("judge.run", {
-        projectId: context.projectId,
-        caseId: row.caseId,
-        skillVersionId: version.id
-      }, { retryLimit: 5, retryBackoff: true });
-      if (jobId) queued += 1;
+      caseIds.push(row.caseId);
     }
+    const judging = await scheduleImportedCaseJudging(repository, queue, {
+      projectId: context.projectId,
+      skillVersionId: version.id,
+      caseIds
+    });
+    if (judging.dispatchPending) {
+      throw new Error("Imported Runs were saved, but their evaluation is not durably queued yet.");
+    }
+    const queued = judging.scheduledCaseCount;
 
     if (parsed.importJobId) {
       await repository.markImportJobCompleted(parsed.projectId, parsed.importJobId, {

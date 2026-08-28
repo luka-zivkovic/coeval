@@ -14,11 +14,13 @@ import { copyTextToClipboard } from "@/lib/clipboard";
 export function AgentSetupPairingCard({
   onContinue,
   onManualContinue,
-  className
+  className,
+  emphasizeAction = true
 }: {
   onContinue?: () => void;
   onManualContinue?: () => void;
   className?: string;
+  emphasizeAction?: boolean;
 }) {
   const [pairing, setPairing] = useState<CreatedAgentSetupPairing | AgentSetupPairing | null>(null);
   const [busy, setBusy] = useState(false);
@@ -120,7 +122,7 @@ This connection expires at ${pairing.expiresAt} and can be used once.`;
       <CardContent>
         {!pairing ? (
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="primary" onClick={() => void generate()} disabled={busy}>
+            <Button variant={emphasizeAction ? "primary" : "default"} onClick={() => void generate()} disabled={busy}>
               <Link2 /> {busy ? "Creating…" : "Create agent connection"}
             </Button>
             {continueManually ? (
@@ -135,7 +137,7 @@ This connection expires at ${pairing.expiresAt} and can be used once.`;
             <p className="mt-1 text-[12px] leading-[1.55] text-ink-3">
               The connection is closed. Your agent can now use the project key it minted; exceptions are waiting for human review.
             </p>
-            {onContinue ? <Button variant="primary" className="mt-3" onClick={onContinue}>Open the project</Button> : null}
+            {onContinue ? <Button variant={emphasizeAction ? "primary" : "default"} className="mt-3" onClick={onContinue}>Open the project</Button> : null}
           </div>
         ) : unavailable ? (
           <div className="flex flex-wrap items-center gap-2">
@@ -161,7 +163,7 @@ This connection expires at ${pairing.expiresAt} and can be used once.`;
             </pre>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
-                variant="primary"
+                variant={emphasizeAction ? "primary" : "default"}
                 onClick={() => void copyInstructions()}
               >
                 <Copy /> {copied ? "Copied" : "Copy instructions"}

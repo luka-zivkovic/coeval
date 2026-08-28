@@ -1,17 +1,31 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CreatedApiKey, DashboardSummary } from "@coeval/shared";
 import {
-  benchSetupStepStates,
+  firstRunSetupStepStates,
   firstProjectKey,
   forgetFirstProjectKey,
   journeyActStates,
   rememberFirstProjectKey
 } from "../src/lib/journey.js";
 
-function dashboard(input: { starter: boolean; judged: number; golden: number; imported?: number }): DashboardSummary {
+function dashboard(input: {
+  starter: boolean;
+  judged: number;
+  golden: number;
+  imported?: number;
+  currentJudged?: number;
+  status?: "draft" | "approved" | "production" | "failed";
+}): DashboardSummary {
   return {
-    skill: { isStarter: input.starter, currentVersion: { version: "0.1.0", status: "draft" } },
+    skill: {
+      isStarter: input.starter,
+      currentVersion: {
+        version: "0.1.0",
+        status: input.status ?? (input.starter ? "draft" : "approved")
+      }
+    },
     project: { importedTraceCount: input.imported ?? input.judged, autoJudgedTraceCount: input.judged },
+    currentVersionResultCount: input.currentJudged ?? input.judged,
     goldenSetSize: input.golden
   } as DashboardSummary;
 }
@@ -60,42 +74,71 @@ describe("journey state", () => {
     });
   });
 
-  it("derives every Skill Bench setup step from durable project state", () => {
-    expect(benchSetupStepStates(dashboard({ starter: false, imported: 0, judged: 0, golden: 0 }))).toEqual({
-      defineSkill: "done",
-      addExamples: "now",
-      runSkill: "locked",
-      enableRegression: "locked"
+  it("derives every first-run setup step from durable project state", () => {
+    expect(firstRunSetupStepStates(dashboard({ starter: false, imported: 0, judged: 0, golden: 0 }))).toEqual({
+      bringRun: "now",
+      chooseCheck: "done",
+      seeResult: "locked"
     });
-    expect(benchSetupStepStates(dashboard({ starter: false, imported: 8, judged: 0, golden: 0 }))).toEqual({
-      defineSkill: "done",
-      addExamples: "done",
-      runSkill: "now",
-      enableRegression: "locked"
+    expect(firstRunSetupStepStates(dashboard({ starter: false, imported: 8, judged: 0, golden: 0 }))).toEqual({
+      bringRun: "done",
+      chooseCheck: "done",
+      seeResult: "now"
     });
-    expect(benchSetupStepStates(dashboard({ starter: false, imported: 8, judged: 8, golden: 1 }))).toEqual({
-      defineSkill: "done",
-      addExamples: "done",
-      runSkill: "done",
-      enableRegression: "done"
+    expect(firstRunSetupStepStates(dashboard({ starter: false, imported: 8, judged: 8, golden: 0 }))).toEqual({
+      bringRun: "done",
+      chooseCheck: "done",
+      seeResult: "done"
     });
   });
 
   it("keeps later completed outcomes checked when setup happened out of order", () => {
-    expect(benchSetupStepStates(dashboard({ starter: true, imported: 4, judged: 4, golden: 0 }))).toEqual({
-      defineSkill: "now",
-      addExamples: "done",
-      runSkill: "done",
-      enableRegression: "now"
+    expect(firstRunSetupStepStates(dashboard({ starter: true, imported: 4, judged: 4, golden: 0 }))).toEqual({
+      bringRun: "done",
+      chooseCheck: "now",
+      seeResult: "done"
     });
   });
 
-  it("keeps an imported starter dataset runnable while rubric review remains open", () => {
-    expect(benchSetupStepStates(dashboard({ starter: true, imported: 4, judged: 0, golden: 0 }))).toEqual({
-      defineSkill: "now",
-      addExamples: "done",
-      runSkill: "now",
-      enableRegression: "locked"
+  it("makes the Check the next action after a run arrives", () => {
+    expect(firstRunSetupStepStates(dashboard({ starter: true, imported: 4, judged: 0, golden: 0 }))).toEqual({
+      bringRun: "done",
+      chooseCheck: "now",
+      seeResult: "locked"
+    });
+  });
+
+  it("does not treat historical Results or a failed edit as a ready current Check", () => {
+    const failedCurrent = dashboard({
+      starter: false,
+      imported: 4,
+      judged: 4,
+      currentJudged: 0,
+      golden: 0,
+      status: "failed"
+    });
+    expect(firstRunSetupStepStates(failedCurrent)).toEqual({
+      bringRun: "done",
+      chooseCheck: "now",
+      seeResult: "locked"
+    });
+    expect(journeyActStates(failedCurrent)).toEqual({
+      defineGood: "now",
+      judgeRealWork: "next",
+      earnTrust: "next"
+    });
+
+    expect(firstRunSetupStepStates(dashboard({
+      starter: false,
+      imported: 4,
+      judged: 4,
+      currentJudged: 0,
+      golden: 0,
+      status: "approved"
+    }))).toEqual({
+      bringRun: "done",
+      chooseCheck: "done",
+      seeResult: "now"
     });
   });
 

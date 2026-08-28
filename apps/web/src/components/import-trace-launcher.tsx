@@ -116,8 +116,8 @@ function ImportTraceModal({ onClose }: { onClose: () => void }) {
             </CardTitle>
             <CardDescription>
               {result
-                ? "The skill ran on the case you imported. It now appears in Traces and (if flagged) on the Exceptions queue."
-                : "For one-off cases, dry runs, or workspaces without an upstream tracer. The skill runs on it like any other trace."}
+                ? "The recorded Run now appears in Traces. Its Check is queued; a Result or exception appears after evaluation finishes."
+                : "For one-off cases, dry runs, or workspaces without an upstream tracer. Coeval queues the current Check after import."}
             </CardDescription>
           </div>
           <button
