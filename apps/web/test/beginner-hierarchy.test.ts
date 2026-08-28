@@ -34,6 +34,7 @@ describe("beginner-first hierarchy", () => {
       "Summary"
     ]);
     expect(DISPLAY_MODE_BY_VALUE.pm.description).toContain("core evaluator journey");
+    expect(DISPLAY_MODE_BY_VALUE.pm.description).not.toContain("hides secondary diagnostics and system details");
     expect(DISPLAY_MODE_BY_VALUE.exec.description).toContain("does not change your permissions");
   });
 
@@ -46,17 +47,34 @@ describe("beginner-first hierarchy", () => {
 
     expect(tracingRoutes.filter((path) => workspaceRouteVisible(displayModeFromStorage(null), false, path))).toEqual([
       "/", "/criteria", "/skill", "/analyze", "/human-truth", "/traces", "/exceptions",
-      "/golden", "/integrations"
+      "/golden", "/integrations", "/settings"
     ]);
     expect(benchRoutes.filter((path) => workspaceRouteVisible(displayModeFromStorage(null), true, path))).toEqual([
       "/", "/criteria", "/skill", "/analyze", "/human-truth", "/exceptions", "/datasets",
-      "/golden", "/integrations"
+      "/golden", "/integrations", "/settings"
     ]);
     expect(tracingRoutes.every((path) => workspaceRouteVisible("dev", false, path))).toBe(true);
 
     const sidebar = await source("../src/components/layout/sidebar.tsx");
     expect(sidebar).toContain("workspaceRouteVisible(mode, bench, item.to)");
     expect(sidebar).toContain("workspaceRouteVisible(mode, bench, item.to));");
+  });
+
+  it("keeps Settings visible in every workspace display and preserves its direct route", async () => {
+    for (const mode of ["pm", "dev", "exec"] as const) {
+      expect(workspaceRouteVisible(mode, false, "/settings")).toBe(true);
+      expect(workspaceRouteVisible(mode, true, "/settings")).toBe(true);
+    }
+
+    const [app, rootLayout, sidebar] = await Promise.all([
+      source("../src/App.tsx"),
+      source("../src/components/layout/root-layout.tsx"),
+      source("../src/components/layout/sidebar.tsx")
+    ]);
+    expect(app).toContain('{ path: "settings", element: <SettingsScreen /> }');
+    expect(rootLayout).toContain("const criterionSelectionRequiredForRoute = routeRequiresCriterionSelection(location.pathname)");
+    expect(rootLayout).toContain("!dashboard && criterionSelectionRequiredForRoute");
+    expect(sidebar.match(/{ to: "\/settings",\s+label: "Settings",\s+icon: SettingsIcon }/g)).toHaveLength(2);
   });
 
   it("synchronizes a display change across every mounted consumer", async () => {

@@ -12,7 +12,7 @@ export const DISPLAY_MODE_OPTIONS: readonly DisplayModeOption[] = [
   {
     value: "pm",
     label: "Guided",
-    description: "Shows the core evaluator journey and hides secondary diagnostics and system details."
+    description: "Shows the core evaluator journey and hides secondary diagnostics and technical details."
   },
   {
     value: "dev",
@@ -74,12 +74,18 @@ const BENCH_SUMMARY_ROUTES: ReadonlySet<string> = new Set([
   "/golden"
 ]);
 
+// Workspace administration must never become URL-only. Display modes may
+// simplify the evaluator journey, but every user still needs a visible path
+// to credentials, retention, redaction, and other project settings.
+const PERSISTENT_WORKSPACE_ROUTES: ReadonlySet<string> = new Set(["/settings"]);
+
 /**
  * Navigation density only. Direct routes and server authorization are
  * unchanged; Guided keeps the core analyze-to-measure journey and its
  * immediate operational actions visible.
  */
 export function workspaceRouteVisible(mode: DisplayMode, bench: boolean, path: string): boolean {
+  if (PERSISTENT_WORKSPACE_ROUTES.has(path)) return true;
   if (mode === "dev") return true;
   if (mode === "exec") return (bench ? BENCH_SUMMARY_ROUTES : TRACING_SUMMARY_ROUTES).has(path);
   return (bench ? BENCH_GUIDED_ROUTES : TRACING_GUIDED_ROUTES).has(path);

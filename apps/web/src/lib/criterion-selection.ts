@@ -1,5 +1,14 @@
 export const CRITERION_QUERY_PARAM = "criterionId";
 
+const PROJECT_LEVEL_ROUTES: ReadonlySet<string> = new Set([
+  "/criteria",
+  "/settings",
+]);
+
+export function routeRequiresCriterionSelection(pathname: string): boolean {
+  return !PROJECT_LEVEL_ROUTES.has(pathname);
+}
+
 export function resolveCriterionSelection(
   criterionIds: readonly string[],
   queryCriterionId: string | null,
