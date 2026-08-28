@@ -1325,6 +1325,17 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     }
   });
 
+  app.get("/api/skills/:skillId/versions/:versionId/criterion", async (c) => {
+    const projectId = c.get("projectId");
+    const version = await repository.getSkillVersion(projectId, c.req.param("versionId"));
+    if (!version || version.skillId !== c.req.param("skillId")) {
+      return c.json({ error: "Check version not found" }, 404);
+    }
+    const criterionVersion = await repository.getCriterionVersionForSkillVersion(projectId, version.id);
+    if (!criterionVersion) return c.json({ error: "Quality question not found" }, 404);
+    return c.json({ criterionVersion });
+  });
+
   // Beginner first-Check creation. This is deliberately distinct from a
   // normal evaluator edit: the exact quality question visible in onboarding
   // is appended as an immutable criterion definition and bound to the new
@@ -1346,10 +1357,18 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     }
 
     const projectId = c.get("projectId");
+    const requestDigest = sha256Digest({
+      criterion: parsed.data.criterion,
+      evaluator: parsed.data.evaluator
+    });
     const context = {
       projectId,
       actorUserId: c.get("user")?.id,
-      onboardingCriterion: parsed.data.criterion
+      onboardingCriterion: {
+        ...parsed.data.criterion,
+        idempotencyKey: parsed.data.idempotencyKey,
+        requestDigest
+      }
     };
     try {
       if (options.queue) {
@@ -1367,13 +1386,14 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         if (!criterionVersion) {
           throw new DatasetRevisionConflictError("The onboarding Check has no immutable criterion binding.");
         }
-        await options.queue.send("gate.run", {
+        const gateJobId = await options.queue.send("gate.run", {
           projectId,
           skillVersionId: pending.id,
           datasetRevisionId: pending.regressionDatasetRevisionId,
           ...(c.get("user")?.id ? { actorUserId: c.get("user")!.id } : {}),
           timeScope: parsed.data.evaluator.timeScope
         }, { retryLimit: 5, retryBackoff: true });
+        if (!gateJobId) throw new Error("The first Check was saved, but its setup job was not accepted by the queue. Retry the same proposal.");
         return c.json({ criterionVersion, version: pending, regressionRun: null, queued: true }, 202);
       }
 

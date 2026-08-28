@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import { GOLDEN_GATE_RECOMMENDED, type DashboardSummary } from "@coeval/shared";
 import { Button } from "@/components/ui/button";
 import { firstResultPath, firstRunEditorPath, journeyActStates, isBench, type JourneyActState } from "@/lib/journey";
+import { skillVersionStateLabel } from "../../lib/skill-presentation.js";
 import { cn } from "@/lib/utils";
 
 export function JourneyPipeline({
@@ -32,7 +33,7 @@ export function JourneyPipeline({
       title: "Choose what to Check",
       detail: dashboard.skill.isStarter
         ? "Review the starter Check against a recorded Run."
-        : `v${dashboard.skill.currentVersion.version} · ${dashboard.skill.currentVersion.status}`,
+        : skillVersionStateLabel(dashboard.skill.currentVersion),
       action: "Review Check",
       // A still-starter Check routes through the guided choice and proposal;
       // anything already configured opens the full editor.

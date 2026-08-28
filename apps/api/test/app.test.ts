@@ -36,6 +36,26 @@ describe("Coeval Hono API", () => {
     await expect(response.json()).resolves.toMatchObject({ ok: true });
   });
 
+  it("returns the exact quality question bound to a Check version", async () => {
+    const dashboardResponse = await app.request("/api/dashboard");
+    const dashboard = await dashboardResponse.json() as {
+      skill: { id: string; description: string; currentVersion: { id: string; criterionVersionId: string } };
+    };
+    const response = await app.request(
+      `/api/skills/${dashboard.skill.id}/versions/${dashboard.skill.currentVersion.id}/criterion`
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      criterionVersion: {
+        id: dashboard.skill.currentVersion.criterionVersionId,
+        definition: dashboard.skill.description
+      }
+    });
+    expect((await app.request(
+      `/api/skills/skill_wrong/versions/${dashboard.skill.currentVersion.id}/criterion`
+    )).status).toBe(404);
+  });
+
   it("exposes retry guidance to cross-origin browser clients", async () => {
     const response = await app.request("/health", {
       headers: { origin: "http://localhost:5173" }

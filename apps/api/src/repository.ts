@@ -162,6 +162,8 @@ export interface CreateSkillVersionContext {
   onboardingCriterion?: {
     name: string;
     definition: string;
+    idempotencyKey: string;
+    requestDigest: string;
   } | undefined;
   agentSetup?: {
     pairingId?: string | undefined;
@@ -173,7 +175,7 @@ export interface CreateSkillVersionContext {
 
 export class OnboardingCheckConflictError extends Error {
   constructor(
-    readonly code: "project_already_configured" | "criterion_not_native",
+    readonly code: "project_already_configured" | "criterion_not_native" | "idempotency_conflict",
     message: string
   ) {
     super(message);
@@ -1353,6 +1355,7 @@ export class DemoRepository implements CoevalRepository {
     requestDigest: string;
   }> = [];
   private readonly skillVersionCriteria = new Map<string, string>();
+  private readonly onboardingCheckRequests = new Map<string, { requestDigest: string; versionId: string }>();
   private readonly criterionSkills = new Map<string, Skill>();
 
   constructor(
@@ -5229,6 +5232,20 @@ export class DemoRepository implements CoevalRepository {
     const [criterionId, evaluator] = evaluatorBinding;
     let criterionVersion: CriterionVersion | undefined;
     if (context.onboardingCriterion) {
+      const requestKey = `${skillId}:${context.onboardingCriterion.idempotencyKey}`;
+      const priorRequest = this.onboardingCheckRequests.get(requestKey);
+      if (priorRequest) {
+        if (priorRequest.requestDigest !== context.onboardingCriterion.requestDigest) {
+          throw new OnboardingCheckConflictError(
+            "idempotency_conflict",
+            "This first-Check request key was already used with different proposal content."
+          );
+        }
+        const priorVersion = (this.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
+          .find((candidate) => candidate.id === priorRequest.versionId);
+        if (!priorVersion) throw new Error(`Onboarding Check version not found: ${priorRequest.versionId}`);
+        return priorVersion;
+      }
       if (!evaluator.isStarter) {
         throw new OnboardingCheckConflictError(
           "project_already_configured",
@@ -5318,6 +5335,9 @@ export class DemoRepository implements CoevalRepository {
       scalarRange: input.verdictKind === "scalar" ? input.scalarRange ?? null : null,
       categoricalChoiceScores: input.verdictKind === "categorical" ? input.categoricalChoiceScores ?? null : null,
       rubricProvenance: context.rubricProvenance ?? "human-authored",
+      onboardingAssurance: context.onboardingCriterion || context.agentSetup
+        ? "starter_unvalidated"
+        : priorVersions.find((candidate) => candidate.onboardingAssurance)?.onboardingAssurance ?? null,
       regressionDatasetRevisionId: regressionRevision.id,
       createdAt,
       approvedAt: null
@@ -5327,6 +5347,12 @@ export class DemoRepository implements CoevalRepository {
     if (this.skillVersions === null) this.skillVersions = [structuredClone(demoSkill.currentVersion)];
     this.skillVersions.push(version);
     this.skillVersionCriteria.set(version.id, criterionVersion.id);
+    if (context.onboardingCriterion) {
+      this.onboardingCheckRequests.set(`${skillId}:${context.onboardingCriterion.idempotencyKey}`, {
+        requestDigest: context.onboardingCriterion.requestDigest,
+        versionId: version.id
+      });
+    }
     evaluator.isStarter = false;
     if (context.onboardingCriterion) {
       evaluator.name = context.onboardingCriterion.name;

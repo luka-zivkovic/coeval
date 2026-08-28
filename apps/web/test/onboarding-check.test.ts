@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { verdictOutputSchema } from "@coeval/shared";
 
 vi.mock("../src/components/markdown-preview.js", () => ({
   MarkdownPreview: ({ markdown }: { markdown: string }) => markdown
@@ -65,6 +66,8 @@ describe("guided first Check", () => {
       refining: false,
       provider: "anthropic",
       modelId: "claude-sonnet-4-6",
+      modelVersion: "2026-04-15",
+      baseUrl: "",
       providerReady: true,
       preparingProvider: false,
       canCreate: false,
@@ -76,6 +79,9 @@ describe("guided first Check", () => {
       onRefine: vi.fn(),
       onQuestionChange: vi.fn(),
       onRubricChange: vi.fn(),
+      onModelIdChange: vi.fn(),
+      onModelVersionChange: vi.fn(),
+      onBaseUrlChange: vi.fn(),
       onCreate: vi.fn(),
       onBack: vi.fn(),
       onOpenSettings: vi.fn()
@@ -105,6 +111,8 @@ describe("guided first Check", () => {
       refining: false,
       provider: "anthropic",
       modelId: "claude-sonnet-4-6",
+      modelVersion: "2026-04-15",
+      baseUrl: "",
       providerReady: true,
       preparingProvider: false,
       canCreate: true,
@@ -116,6 +124,9 @@ describe("guided first Check", () => {
       onRefine: vi.fn(),
       onQuestionChange: vi.fn(),
       onRubricChange: vi.fn(),
+      onModelIdChange: vi.fn(),
+      onModelVersionChange: vi.fn(),
+      onBaseUrlChange: vi.fn(),
       onCreate: vi.fn(),
       onBack: vi.fn(),
       onOpenSettings: vi.fn()
@@ -124,6 +135,7 @@ describe("guided first Check", () => {
     expect(html).toContain(draft.qualityQuestion.replaceAll("'", "&#x27;"));
     expect(html).toContain("2 saved Runs");
     expect(html).toContain("cannot see missing tool calls");
+    expect(html).toContain("Evidence this focus needs");
     expect(html).toContain("Starter · unvalidated");
     expect(html).toContain("Refine it first");
     expect(html).toContain("Create this Check");
@@ -140,6 +152,8 @@ describe("guided first Check", () => {
       refining: true,
       provider: "anthropic",
       modelId: "claude-sonnet-4-6",
+      modelVersion: "2026-04-15",
+      baseUrl: "",
       providerReady: true,
       preparingProvider: false,
       canCreate: true,
@@ -151,12 +165,70 @@ describe("guided first Check", () => {
       onRefine: vi.fn(),
       onQuestionChange: vi.fn(),
       onRubricChange: vi.fn(),
+      onModelIdChange: vi.fn(),
+      onModelVersionChange: vi.fn(),
+      onBaseUrlChange: vi.fn(),
       onCreate: vi.fn(),
       onBack: vi.fn(),
       onOpenSettings: vi.fn()
     }));
     expect(refiningHtml).toContain("Create with current draft");
     expect(refiningHtml).toContain("Quality question");
+  });
+
+  it("lets a custom-only clean install enter the model identity and endpoint", () => {
+    const draft = draftFromStarter({
+      projectId: "proj_custom",
+      skillId: "skill_custom",
+      starter: taskStarter,
+      decisionSource: "user"
+    });
+    const html = renderToStaticMarkup(createElement(FirstRunCheckSetup, {
+      projectName: "Custom judge",
+      projectMode: "bench",
+      evidenceCount: 0,
+      starters: STARTER_SKILLS,
+      recommendedStarter: taskStarter,
+      draft,
+      refining: false,
+      provider: "custom",
+      modelId: "",
+      modelVersion: "",
+      baseUrl: "",
+      providerReady: false,
+      preparingProvider: false,
+      canCreate: false,
+      submitting: false,
+      error: null,
+      onChoose: vi.fn(),
+      onDecide: vi.fn(),
+      onChangeFocus: vi.fn(),
+      onRefine: vi.fn(),
+      onQuestionChange: vi.fn(),
+      onRubricChange: vi.fn(),
+      onModelIdChange: vi.fn(),
+      onModelVersionChange: vi.fn(),
+      onBaseUrlChange: vi.fn(),
+      onCreate: vi.fn(),
+      onBack: vi.fn(),
+      onOpenSettings: vi.fn()
+    }));
+    expect(html).toContain("Custom judge model ID");
+    expect(html).toContain("Custom judge model version");
+    expect(html).toContain("Custom judge base URL");
+    expect(html).toContain("Enter the custom model ID");
+  });
+
+  it("stores a verdict-kind-aware output contract for categorical starters", () => {
+    const schema = verdictOutputSchema({
+      verdictKind: "categorical",
+      categoricalChoiceScores: { faithful: 1, unsupported: 0, partial: 0.5 }
+    });
+    expect(schema).toMatchObject({
+      required: ["choice", "rationale"],
+      properties: { choice: { enum: ["faithful", "unsupported", "partial"] } }
+    });
+    expect(JSON.stringify(schema)).not.toContain('"label"');
   });
 
   it("keeps a refined proposal scoped to the current project and Check", () => {
@@ -174,6 +246,7 @@ describe("guided first Check", () => {
 
     saveOnboardingCheckDraft(draft);
     expect(loadOnboardingCheckDraft("proj_1", "skill_1")).toEqual(draft);
+    expect(draft.requestId).toMatch(/^web-first-check-/);
     expect(loadOnboardingCheckDraft("proj_1", "skill_other")).toBeNull();
     clearOnboardingCheckDraft("proj_1", "skill_1");
     expect(loadOnboardingCheckDraft("proj_1", "skill_1")).toBeNull();

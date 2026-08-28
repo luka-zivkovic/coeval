@@ -18,6 +18,8 @@ interface FirstRunCheckSetupProps {
   refining: boolean;
   provider: JudgeProviderId;
   modelId: string;
+  modelVersion: string;
+  baseUrl: string;
   providerReady: boolean;
   preparingProvider: boolean;
   canCreate: boolean;
@@ -29,6 +31,9 @@ interface FirstRunCheckSetupProps {
   onRefine: () => void;
   onQuestionChange: (value: string) => void;
   onRubricChange: (value: string) => void;
+  onModelIdChange: (value: string) => void;
+  onModelVersionChange: (value: string) => void;
+  onBaseUrlChange: (value: string) => void;
   onCreate: () => void;
   onBack: () => void;
   onOpenSettings: () => void;
@@ -44,6 +49,8 @@ export function FirstRunCheckSetup({
   refining,
   provider,
   modelId,
+  modelVersion,
+  baseUrl,
   providerReady,
   preparingProvider,
   canCreate,
@@ -55,6 +62,9 @@ export function FirstRunCheckSetup({
   onRefine,
   onQuestionChange,
   onRubricChange,
+  onModelIdChange,
+  onModelVersionChange,
+  onBaseUrlChange,
   onCreate,
   onBack,
   onOpenSettings
@@ -63,7 +73,7 @@ export function FirstRunCheckSetup({
     return (
       <div className="fadeUp mx-auto max-w-[960px]">
         <div className="mb-3">
-          <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft /> Back to onboarding</Button>
+          <Button variant="ghost" size="sm" onClick={onBack} disabled={submitting}><ArrowLeft /> Back to onboarding</Button>
         </div>
         <SectionHead
           eyebrow="Set up your first Check · step 1 of 2"
@@ -77,6 +87,7 @@ export function FirstRunCheckSetup({
               key={starter.id}
               type="button"
               onClick={() => onChoose(starter)}
+              disabled={submitting}
               className={cn(
                 "min-h-32 rounded-sm border border-rule-soft bg-card p-4 text-left transition-colors",
                 "hover:border-rule-strong hover:bg-card-2 focus-visible:border-ink"
@@ -100,7 +111,7 @@ export function FirstRunCheckSetup({
                 Coeval can choose a starting point from “{projectName}” and explain the choice before creating it.
               </p>
             </div>
-            <Button variant="primary" onClick={onDecide}><Sparkles /> Decide for me</Button>
+            <Button variant="primary" onClick={onDecide} disabled={submitting}><Sparkles /> Decide for me</Button>
           </CardContent>
         </Card>
       </div>
@@ -110,7 +121,7 @@ export function FirstRunCheckSetup({
   return (
     <div className="fadeUp mx-auto max-w-[1040px]">
       <div className="mb-3">
-        <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft /> Back to onboarding</Button>
+        <Button variant="ghost" size="sm" onClick={onBack} disabled={submitting}><ArrowLeft /> Back to onboarding</Button>
       </div>
       <SectionHead
         eyebrow="Set up your first Check · step 2 of 2"
@@ -133,7 +144,7 @@ export function FirstRunCheckSetup({
             </div>
             <CardDescription>One Check answers one quality question about each Run.</CardDescription>
           </div>
-          <Button variant="ghost" size="sm" onClick={onChangeFocus}>Change focus</Button>
+          <Button variant="ghost" size="sm" onClick={onChangeFocus} disabled={submitting}>Change focus</Button>
         </CardHeader>
         <CardContent className="space-y-5">
           <div>
@@ -143,6 +154,7 @@ export function FirstRunCheckSetup({
                 aria-label="Quality question"
                 value={draft.qualityQuestion}
                 onChange={(event) => onQuestionChange(event.target.value)}
+                disabled={submitting}
                 className="mt-2 h-10 w-full rounded-sm border border-rule-soft bg-card-2 px-3 text-[13px] text-ink focus-visible:border-ink"
               />
             ) : (
@@ -163,19 +175,28 @@ export function FirstRunCheckSetup({
             </div>
           </div>
 
+          <div className="rounded-sm border border-gold-tint bg-ambig-bg/30 p-3">
+            <Eyebrow>Evidence this focus needs</Eyebrow>
+            <p className="mt-2 text-[12.5px] leading-5 text-ink-2">
+              {starters.find((starter) => starter.id === draft.starterId)?.evidenceRequirements
+                ?? "Capture the request, result, and any context needed to judge this quality question fairly."}
+            </p>
+          </div>
+
           <div>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <Eyebrow>Review guide</Eyebrow>
                 <p className="mt-1 text-[11.5px] text-ink-3">The exact instructions the Check uses to decide.</p>
               </div>
-              {!refining ? <Button variant="outline" size="sm" onClick={onRefine}><Pencil /> Refine it first</Button> : null}
+              {!refining ? <Button variant="outline" size="sm" onClick={onRefine} disabled={submitting}><Pencil /> Refine it first</Button> : null}
             </div>
             {refining ? (
               <textarea
                 aria-label="Review guide Markdown"
                 value={draft.rubricMarkdown}
                 onChange={(event) => onRubricChange(event.target.value)}
+                disabled={submitting}
                 spellCheck={false}
                 className="min-h-[340px] w-full resize-y rounded-sm border border-rule-soft bg-card-2 px-3 py-2.5 font-mono text-[12px] leading-[1.6] text-ink focus-visible:border-ink"
               />
@@ -183,6 +204,50 @@ export function FirstRunCheckSetup({
               <MarkdownPreview markdown={draft.rubricMarkdown} className="max-h-[440px]" />
             )}
           </div>
+
+          {provider === "custom" ? (
+            <div className="rounded-sm border border-rule-soft bg-card-2 p-3">
+              <Eyebrow>Custom judge connection</Eyebrow>
+              <p className="mt-1 text-[11.5px] leading-5 text-ink-3">
+                These values identify the OpenAI-compatible model endpoint. The API key stays in Settings.
+              </p>
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <label className="text-[11.5px] text-ink-2">
+                  Model ID
+                  <input
+                    aria-label="Custom judge model ID"
+                    value={modelId}
+                    onChange={(event) => onModelIdChange(event.target.value)}
+                    disabled={submitting}
+                    placeholder="your-model-id"
+                    className="mt-1 h-9 w-full rounded-sm border border-rule-soft bg-card px-2.5 font-mono text-[12px] text-ink focus-visible:border-ink"
+                  />
+                </label>
+                <label className="text-[11.5px] text-ink-2">
+                  Model version
+                  <input
+                    aria-label="Custom judge model version"
+                    value={modelVersion}
+                    onChange={(event) => onModelVersionChange(event.target.value)}
+                    disabled={submitting}
+                    placeholder="stable name or dated version"
+                    className="mt-1 h-9 w-full rounded-sm border border-rule-soft bg-card px-2.5 font-mono text-[12px] text-ink focus-visible:border-ink"
+                  />
+                </label>
+                <label className="text-[11.5px] text-ink-2 md:col-span-2">
+                  Base URL
+                  <input
+                    aria-label="Custom judge base URL"
+                    value={baseUrl}
+                    onChange={(event) => onBaseUrlChange(event.target.value)}
+                    disabled={submitting}
+                    placeholder="https://api.example.com/v1"
+                    className="mt-1 h-9 w-full rounded-sm border border-rule-soft bg-card px-2.5 font-mono text-[12px] text-ink focus-visible:border-ink"
+                  />
+                </label>
+              </div>
+            </div>
+          ) : null}
 
           <details className="rounded-sm border border-rule-soft bg-card-2 px-3 py-2">
             <summary className="cursor-pointer text-[11.5px] font-medium text-ink-2">Technical details</summary>
@@ -202,13 +267,16 @@ export function FirstRunCheckSetup({
 
       {!preparingProvider && !providerReady ? (
         <MarginNote tone="signal" who="Judge provider needed" className="mb-4">
-          Connect a judge provider before creating this Check. <Button variant="link" size="sm" onClick={onOpenSettings}>Open Settings</Button>
+          {provider === "custom"
+            ? "Enter the custom model ID, version, and full base URL above. "
+            : "Connect a judge provider before creating this Check. "}
+          <Button variant="link" size="sm" onClick={onOpenSettings} disabled={submitting}>Open Settings</Button>
         </MarginNote>
       ) : null}
       {error ? <p role="alert" className="mb-3 text-[12.5px] text-signal">{error}</p> : null}
 
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {refining ? <Button variant="outline" onClick={() => onRefine()}>Preview current draft</Button> : null}
+        {refining ? <Button variant="outline" onClick={() => onRefine()} disabled={submitting}>Preview current draft</Button> : null}
         <Button variant="primary" size="lg" onClick={onCreate} disabled={!canCreate || submitting}>
           {submitting
             ? <><LoaderCircle className="animate-spin" /> Creating Check…</>

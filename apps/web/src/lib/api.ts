@@ -8,6 +8,7 @@ import {
   ConvergenceAuditPageSchema,
   CriterionDetailSchema,
   CriterionSchema,
+  CriterionVersionSchema,
   CreateOnboardingCheckInputSchema,
   CreateOnboardingCheckResponseSchema,
   CreateTraceTestInputSchema,
@@ -55,6 +56,7 @@ import {
   type EvalRunDetail,
   type ImportDatasetExamplesResult,
   type ProjectMode,
+  type CriterionVersion,
   PromoteGoldenSetInputSchema,
   ProjectSchema,
   ProjectSettingsSchema,
@@ -940,6 +942,19 @@ export async function createOnboardingCheck(
   const payload = await response.json().catch(() => null) as unknown;
   if (!response.ok) throw apiError(response, payload, "First Check creation failed");
   return CreateOnboardingCheckResponseSchema.parse(payload);
+}
+
+export async function fetchSkillVersionCriterion(
+  skillId: string,
+  skillVersionId: string
+): Promise<CriterionVersion> {
+  const response = await apiFetch(
+    `${API_BASE}/api/skills/${encodeURIComponent(skillId)}/versions/${encodeURIComponent(skillVersionId)}/criterion`,
+    { credentials: "include" }
+  );
+  if (!response.ok) throw await apiErrorFromResponse(response, "Check quality question request failed");
+  const payload = await response.json() as { criterionVersion?: unknown };
+  return CriterionVersionSchema.parse(payload.criterionVersion);
 }
 
 // The canonical case-detail fetcher — resolves any judged case, exception or

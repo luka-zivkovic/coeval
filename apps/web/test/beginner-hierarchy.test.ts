@@ -153,6 +153,10 @@ describe("beginner-first hierarchy", () => {
 
     expect(skillVersionStateLabel(divergentSkill.currentVersion)).toBe("v3.0.0 · approved");
     expect(skillVersionStateLabel(divergentSkill.currentVersion)).not.toContain(divergentSkill.status);
+    expect(skillVersionStateLabel({
+      ...divergentSkill.currentVersion,
+      onboardingAssurance: "starter_unvalidated"
+    })).toBe("v3.0.0 · Starter · unvalidated");
     const historicalVersion = { regressionDatasetRevisionId: null };
     expect(historicalVersion.regressionDatasetRevisionId).toBeNull();
     expect(skillEditConsequence(2)).toContain("2 current Golden references");

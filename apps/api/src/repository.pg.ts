@@ -1104,6 +1104,7 @@ export class PgRepository implements CoevalRepository {
               sv.scalar_range,
               sv.categorical_choice_scores,
               sv.rubric_provenance,
+              sv.onboarding_assurance,
               sv.regression_dataset_revision_id,
               sv.criterion_version_id as version_criterion_version_id,
               sv.created_at as version_created_at,
@@ -6278,6 +6279,27 @@ export class PgRepository implements CoevalRepository {
       );
       if (!locked.rows[0]) throw new Error(`Skill not found for project: ${skillId}`);
 
+      if (context.onboardingCriterion) {
+        const replay = (await client.query(
+          `select id, onboarding_request_digest
+           from skill_versions
+           where project_id = $1 and skill_id = $2 and onboarding_idempotency_key = $3`,
+          [context.projectId, skillId, context.onboardingCriterion.idempotencyKey]
+        )).rows[0];
+        if (replay) {
+          if (String(replay.onboarding_request_digest) !== context.onboardingCriterion.requestDigest) {
+            throw new OnboardingCheckConflictError(
+              "idempotency_conflict",
+              "This first-Check request key was already used with different proposal content."
+            );
+          }
+          await client.query("commit");
+          const existing = await this.getSkillVersion(context.projectId, String(replay.id));
+          if (!existing) throw new Error(`Onboarding Check version not found: ${String(replay.id)}`);
+          return existing;
+        }
+      }
+
       if (context.agentSetup?.pairingId) {
         const pairing = await client.query(
           `select id
@@ -6418,6 +6440,15 @@ export class PgRepository implements CoevalRepository {
         scalarRange: input.verdictKind === "scalar" ? input.scalarRange ?? null : null,
         categoricalChoiceScores: input.verdictKind === "categorical" ? input.categoricalChoiceScores ?? null : null,
         rubricProvenance: context.rubricProvenance ?? "human-authored",
+        onboardingAssurance: context.onboardingCriterion || context.agentSetup
+          ? "starter_unvalidated"
+          : (await client.query(
+              `select onboarding_assurance
+               from skill_versions
+               where project_id = $1 and skill_id = $2 and onboarding_assurance is not null
+               order by created_at desc, id desc limit 1`,
+              [context.projectId, skillId]
+            )).rows[0]?.onboarding_assurance ?? null,
         regressionDatasetRevisionId,
         createdAt: new Date().toISOString(),
         approvedAt: null
@@ -6438,7 +6469,13 @@ export class PgRepository implements CoevalRepository {
         version,
         context.projectId,
         criterionVersionId,
-        context.actorUserId ?? null
+        context.actorUserId ?? null,
+        context.onboardingCriterion
+          ? {
+              idempotencyKey: context.onboardingCriterion.idempotencyKey,
+              requestDigest: context.onboardingCriterion.requestDigest
+            }
+          : undefined
       );
       await client.query(
         `update skills
@@ -6943,7 +6980,8 @@ export class PgRepository implements CoevalRepository {
     version: SkillVersion,
     projectId: string,
     criterionVersionId: string,
-    actorUserId: string | null
+    actorUserId: string | null,
+    onboardingRequest?: { idempotencyKey: string; requestDigest: string }
   ): Promise<void> {
     const developerSubjectId = actorUserId
       ? await this.getOrCreateGovernedReviewerSubject(client, projectId, actorUserId)
@@ -6955,8 +6993,9 @@ export class PgRepository implements CoevalRepository {
         golden_set_agreement, too_strict_count, too_lenient_count, ambiguous_count, known_limitations,
         verdict_kind, scalar_range, categorical_choice_scores, rubric_provenance,
         regression_dataset_revision_id, created_at, approved_at, criterion_version_id,
-        created_by_user_id, created_by_subject_id, developer_identity_status)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)`,
+        created_by_user_id, created_by_subject_id, developer_identity_status,
+        onboarding_idempotency_key, onboarding_request_digest, onboarding_assurance)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)`,
       [
         version.id,
         version.skillId,
@@ -6982,7 +7021,10 @@ export class PgRepository implements CoevalRepository {
         criterionVersionId,
         recordedActorUserId,
         developerSubjectId,
-        developerSubjectId ? "recorded" : "unknown_legacy"
+        developerSubjectId ? "recorded" : "unknown_legacy",
+        onboardingRequest?.idempotencyKey ?? null,
+        onboardingRequest?.requestDigest ?? null,
+        version.onboardingAssurance ?? null
       ]
     );
   }
@@ -7221,6 +7263,7 @@ function rowToSkill(row: Record<string, unknown>): Skill {
       scalarRange: row.scalar_range == null ? null : parseJson(row.scalar_range),
       categoricalChoiceScores: row.categorical_choice_scores == null ? null : parseJson(row.categorical_choice_scores),
       rubricProvenance: String(row.rubric_provenance),
+      onboardingAssurance: row.onboarding_assurance === "starter_unvalidated" ? "starter_unvalidated" : null,
       regressionDatasetRevisionId: row.regression_dataset_revision_id === null || row.regression_dataset_revision_id === undefined
         ? null
         : String(row.regression_dataset_revision_id),
@@ -7302,6 +7345,7 @@ function rowToSkillVersion(row: Record<string, unknown>): SkillVersion {
     scalarRange: scalarRangeRaw,
     categoricalChoiceScores: categoricalChoiceScoresRaw,
     rubricProvenance: String(row.rubric_provenance),
+    onboardingAssurance: row.onboarding_assurance === "starter_unvalidated" ? "starter_unvalidated" : null,
     regressionDatasetRevisionId: row.regression_dataset_revision_id === null || row.regression_dataset_revision_id === undefined
       ? null
       : String(row.regression_dataset_revision_id),

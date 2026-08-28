@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, buildVerdictExportUrl, createProject, createReviewQueue, createSkillVersion, deleteLangSmithIntegration, ensureSkillVersionBackfill, fetchCaseVerdicts, fetchDatasetRevisionMetadata, fetchGoldenSet, fetchGoldenSetHealth, fetchJudgeHumanCalibration, fetchKappaSummary, fetchProjectVerdicts, fetchReviewQueueDetail, fetchReviewQueues, fetchSkillVersionHistory, recordHumanVerdict, setupOwner, testLangSmithIntegration } from "../src/lib/api.js";
+import { ApiError, buildVerdictExportUrl, createProject, createReviewQueue, createSkillVersion, deleteLangSmithIntegration, ensureSkillVersionBackfill, fetchCaseVerdicts, fetchDatasetRevisionMetadata, fetchGoldenSet, fetchGoldenSetHealth, fetchJudgeHumanCalibration, fetchKappaSummary, fetchProjectVerdicts, fetchReviewQueueDetail, fetchReviewQueues, fetchSkillVersionCriterion, fetchSkillVersionHistory, recordHumanVerdict, setupOwner, testLangSmithIntegration } from "../src/lib/api.js";
 
 const createdKey = {
   id: "apikey_first",
@@ -206,6 +206,26 @@ describe("web API helpers", () => {
       timeScope: "new"
     })).resolves.toEqual({ state: "queued", version });
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("loads the exact quality question bound to a Check version", async () => {
+    const criterionVersion = {
+      id: "criterionv_exact",
+      projectId: "proj_first",
+      criterionId: "criterion_first",
+      revision: 2,
+      name: "RAG faithfulness",
+      definition: "Are the answer's claims supported by the retrieved context?",
+      criterionDigest: `sha256:${"a".repeat(64)}`,
+      sourceKind: "native",
+      createdByUserId: null,
+      createdAt: "2026-08-28T00:00:00.000Z"
+    };
+    const fetchMock = vi.fn(async () => jsonResponse({ criterionVersion }, 200));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchSkillVersionCriterion("skill/one", "version one")).resolves.toEqual(criterionVersion);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/api/skills/skill%2Fone/versions/version%20one/criterion");
   });
 
   it("loads version history receipts and reference counts from metadata-only reads", async () => {

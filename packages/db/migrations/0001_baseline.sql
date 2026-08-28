@@ -11640,7 +11640,12 @@ CREATE TABLE skill_versions (
     created_by_user_id text,
     created_by_subject_id text,
     developer_identity_status text DEFAULT 'unknown_legacy'::text NOT NULL,
+    onboarding_idempotency_key text,
+    onboarding_request_digest text,
+    onboarding_assurance text,
     CONSTRAINT skill_versions_developer_identity_status_check CHECK ((developer_identity_status = ANY (ARRAY['unknown_legacy'::text, 'recorded'::text]))),
+    CONSTRAINT skill_versions_onboarding_assurance_check CHECK ((onboarding_assurance IS NULL OR onboarding_assurance = 'starter_unvalidated'::text)),
+    CONSTRAINT skill_versions_onboarding_identity_check CHECK (((onboarding_idempotency_key IS NULL AND onboarding_request_digest IS NULL) OR (onboarding_idempotency_key IS NOT NULL AND onboarding_request_digest IS NOT NULL AND onboarding_idempotency_key = btrim(onboarding_idempotency_key) AND length(onboarding_idempotency_key) BETWEEN 1 AND 240 AND onboarding_request_digest ~ '^sha256:[a-f0-9]{64}$'::text))),
     -- Starter drafts and human sign-off can be approved without running a
     -- regression gate. Every other current lifecycle status requires the
     -- immutable regression snapshot selected before execution.
@@ -15166,6 +15171,10 @@ CREATE INDEX skill_versions_regression_revision_idx ON skill_versions USING btre
 --
 
 CREATE INDEX skill_versions_skill_idx ON skill_versions USING btree (skill_id);
+
+-- One browser retry or response replay must resolve to the same immutable
+-- first Check instead of appending another criterion/evaluator pair.
+CREATE UNIQUE INDEX skill_versions_onboarding_idempotency_idx ON skill_versions USING btree (project_id, skill_id, onboarding_idempotency_key) WHERE (onboarding_idempotency_key IS NOT NULL);
 
 
 --

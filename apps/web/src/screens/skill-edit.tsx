@@ -19,6 +19,7 @@ import {
   fetchJudgeModels,
   fetchJudgeProviders,
   fetchLatestSkill,
+  fetchSkillVersionCriterion,
   fetchSkillVersionRegression,
   fetchSkillVersions,
   type CompletedSkillVersionResult,
@@ -33,6 +34,7 @@ import {
   clearOnboardingCheckDraft,
   draftFromStarter,
   loadOnboardingCheckDraft,
+  onboardingCheckDraftIdentity,
   recommendationReason,
   recommendStarterSkill,
   saveOnboardingCheckDraft,
@@ -45,6 +47,8 @@ import { skillEditOperationIsCurrent } from "@/lib/skill-edit-flow";
 import {
   compileJudgePrompt,
   regressionDirectionCounts,
+  verdictOutputSchema,
+  type CriterionVersion,
   type CreateSkillVersionInput,
   type JudgeModel,
   type JudgeProviderAvailabilityItem,
@@ -153,6 +157,9 @@ export function SkillEditScreen() {
   const [appliedStarter, setAppliedStarter] = useState<StarterSkill | null>(null);
   const [onboardingDraft, setOnboardingDraft] = useState<OnboardingCheckDraft | null>(null);
   const [refiningOnboardingDraft, setRefiningOnboardingDraft] = useState(false);
+  const [onboardingCriterionVersion, setOnboardingCriterionVersion] = useState<CriterionVersion | null>(null);
+  const onboardingDraftIdentityRef = useRef<string | null>(null);
+  onboardingDraftIdentityRef.current = onboardingDraft ? onboardingCheckDraftIdentity(onboardingDraft) : null;
 
   // Submit / result state.
   const [phase, setPhase] = useState<SkillEditPhase>("edit");
@@ -243,6 +250,7 @@ export function SkillEditScreen() {
     setSubmitting(false);
     setOnboardingDraft(null);
     setRefiningOnboardingDraft(false);
+    setOnboardingCriterionVersion(null);
     try {
       const [s, availability] = await Promise.all([
         fetchLatestSkill(selectedCriterionId ?? undefined),
@@ -288,8 +296,12 @@ export function SkillEditScreen() {
         const resumed = resumeIndex >= 0 ? versions[resumeIndex] : undefined;
         if (resumed) {
           setBaseVersion(versions[resumeIndex + 1] ?? v);
-          const run = await fetchSkillVersionRegression(s.id, resumed.id);
+          const [run, exactCriterion] = await Promise.all([
+            fetchSkillVersionRegression(s.id, resumed.id),
+            firstRun ? fetchSkillVersionCriterion(s.id, resumed.id) : Promise.resolve(null)
+          ]);
           if (generation !== loadGeneration.current) return;
+          if (exactCriterion) setOnboardingCriterionVersion(exactCriterion);
           if (run) {
             setResult({
               version: resumed,
@@ -524,7 +536,9 @@ export function SkillEditScreen() {
           ...(v.modelBinding.topP !== undefined ? { topP: v.modelBinding.topP } : {}),
           ...(provider === "custom" ? { baseUrl: baseUrl.trim() } : {})
         },
-        outputSchema: v.outputSchema,
+        outputSchema: firstRun
+          ? verdictOutputSchema({ verdictKind, scalarRange, categoricalChoiceScores: choiceScores })
+          : v.outputSchema,
         verdictKind,
         timeScope,
         ...(verdictKind === "scalar" && scalarRange ? { scalarRange } : {}),
@@ -535,7 +549,7 @@ export function SkillEditScreen() {
       };
       return input;
     },
-    [skill, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange]
+    [skill, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange, firstRun]
   );
 
   const canSave =
@@ -572,6 +586,9 @@ export function SkillEditScreen() {
       skillId: submittedSkillId
     };
     const recordingOverride = Boolean(extra?.overrideReason);
+    const submittedDraftIdentity = firstRun && onboardingDraft && !recordingOverride
+      ? onboardingCheckDraftIdentity(onboardingDraft)
+      : null;
     const input = buildInput(extra);
     if (!input) {
       setSubmitError("Check the model binding — choose a model, use a temperature from 0 to 2, and complete the custom endpoint fields.");
@@ -582,15 +599,18 @@ export function SkillEditScreen() {
     if (!recordingOverride) setPhase("creating");
     try {
       let res: CreateSkillVersionResult;
+      let createdCriterionVersion: CriterionVersion | null = null;
       if (firstRun && onboardingDraft && !recordingOverride) {
         const { criterionVersionId: _criterionVersionId, overrideReason: _overrideReason, ...evaluator } = input;
         const created = await createOnboardingCheck(skill.id, {
+          idempotencyKey: onboardingDraft.requestId,
           criterion: {
             name: onboardingDraft.criterionName,
             definition: onboardingDraft.qualityQuestion
           },
           evaluator
         });
+        createdCriterionVersion = created.criterionVersion;
         if (created.queued) {
           res = { state: "queued", version: created.version };
         } else {
@@ -610,8 +630,9 @@ export function SkillEditScreen() {
           generation: operationGeneration.current,
           criterionId: criterionScope.current,
           skillId: skillScope.current
-        })
+        }) || submittedDraftIdentity !== onboardingDraftIdentityRef.current
       ) return;
+      if (createdCriterionVersion) setOnboardingCriterionVersion(createdCriterionVersion);
       rememberVersion(res.version.id);
       if (recordingOverride && result) setBaseVersion(result.version);
       if (res.state === "queued") {
@@ -683,6 +704,8 @@ export function SkillEditScreen() {
         skill={skill}
         baseVersion={v.version}
         version={pendingVersion}
+        firstRun={firstRun}
+        criterionVersion={onboardingCriterionVersion}
         referenceCount={pinnedReferenceCount}
         pollError={pollError}
         onOpenHistory={() => navigate("/skill/versions")}
@@ -696,6 +719,8 @@ export function SkillEditScreen() {
         skill={skill}
         baseVersion={v.version}
         result={result}
+        firstRun={firstRun}
+        criterionVersion={onboardingCriterionVersion}
         referenceCount={pinnedReferenceCount ?? (
           result.regressionRun.status === "error" ? null : result.regressionRun.compared
         )}
@@ -771,7 +796,9 @@ export function SkillEditScreen() {
         refining={refiningOnboardingDraft}
         provider={provider}
         modelId={modelId}
-        providerReady={providerAvailable && modelId.trim().length > 0 && modelVersion.trim().length > 0 && !modelsError}
+        modelVersion={modelVersion}
+        baseUrl={baseUrl}
+        providerReady={providerAvailable && modelId.trim().length > 0 && modelVersion.trim().length > 0 && baseUrlValid && !modelsError}
         preparingProvider={modelsLoading}
         canCreate={onboardingCanCreate}
         submitting={submitting}
@@ -786,6 +813,9 @@ export function SkillEditScreen() {
         onRefine={() => setRefiningOnboardingDraft((current) => !current)}
         onQuestionChange={(value) => updateOnboardingDraft({ qualityQuestion: value })}
         onRubricChange={(value) => updateOnboardingDraft({ rubricMarkdown: value })}
+        onModelIdChange={setModelId}
+        onModelVersionChange={setModelVersion}
+        onBaseUrlChange={setBaseUrl}
         onCreate={() => void submit()}
         onBack={() => navigate("/")}
         onOpenSettings={() => navigate("/settings")}
@@ -1244,6 +1274,8 @@ function RegressionRunning({
   skill,
   baseVersion,
   version,
+  firstRun,
+  criterionVersion,
   referenceCount,
   pollError,
   onOpenHistory
@@ -1251,10 +1283,51 @@ function RegressionRunning({
   skill: Skill;
   baseVersion: string;
   version: SkillVersion;
+  firstRun: boolean;
+  criterionVersion: CriterionVersion | null;
   referenceCount: number | null;
   pollError: string | null;
   onOpenHistory: () => void;
 }) {
+  if (firstRun) {
+    return (
+      <div className="fadeUp mx-auto max-w-[900px]">
+        <SectionHead
+          eyebrow="First setup · Check saved"
+          title="Creating your first Result"
+          sub="The quality question and Review guide are now an immutable Check. Coeval is finishing its saved setup step before applying it to a recorded Run."
+        />
+        <Card className="mb-4" role="status" aria-live="polite">
+          <CardHeader>
+            <div>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <CardTitle>{criterionVersion?.name ?? skill.name}</CardTitle>
+                <Chip>Starter · unvalidated</Chip>
+              </div>
+              <CardDescription>The exact quality question bound to Check v{version.version}</CardDescription>
+            </div>
+            <LoaderCircle className="size-5 animate-spin text-ink-2" />
+          </CardHeader>
+          <CardContent>
+            <p className="font-serif text-[21px] leading-7 text-ink">
+              {criterionVersion?.definition ?? skill.description}
+            </p>
+            <p className="mt-4 text-[12.5px] leading-5 text-ink-2">
+              This saved step does not validate the Check. It only records the version and checks any protected Runs already in the project.
+            </p>
+          </CardContent>
+        </Card>
+        {pollError ? (
+          <MarginNote tone="signal" who="Status refresh" className="mb-4">
+            {pollError} The Check is still saved; this page will keep checking.
+          </MarginNote>
+        ) : null}
+        <div className="flex justify-end">
+          <Button variant="ghost" onClick={onOpenHistory}><Clock /> View saved version</Button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="fadeUp max-w-[1200px]">
       <SectionHead
@@ -1319,6 +1392,8 @@ function RegressionResult({
   skill,
   baseVersion,
   result,
+  firstRun,
+  criterionVersion,
   referenceCount,
   overrideReason,
   onOverrideReasonChange,
@@ -1332,6 +1407,8 @@ function RegressionResult({
   skill: Skill;
   baseVersion: string;
   result: CompletedSkillVersionResult;
+  firstRun: boolean;
+  criterionVersion: CriterionVersion | null;
   referenceCount: number | null;
   overrideReason: string;
   onOverrideReasonChange: (v: string) => void;
@@ -1353,6 +1430,51 @@ function RegressionResult({
   const agreed = run.cases.length
     ? run.cases.filter((c) => c.change === "agree").length
     : Math.max(0, run.compared - run.regressed - run.improved);
+
+  if (firstRun) {
+    const couldNotFinish = failed || blocked;
+    return (
+      <div className="fadeUp mx-auto max-w-[900px]">
+        <SectionHead
+          eyebrow={couldNotFinish ? "First setup · Check needs attention" : "First setup · Check ready"}
+          title={couldNotFinish ? "The saved Check could not finish setup" : "Your first Check is ready"}
+          sub={couldNotFinish
+            ? (run.error ?? "A protected Run disagreed with this first Check. Refine it before continuing.")
+            : "The exact quality question and Review guide are saved. The next step is to see what this Check says about a real recorded Run."}
+        />
+        <Card className="mb-4">
+          <CardHeader>
+            <div>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <CardTitle>{criterionVersion?.name ?? skill.name}</CardTitle>
+                <Chip>Starter · unvalidated</Chip>
+              </div>
+              <CardDescription>The quality question bound to Check v{result.version.version}</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="font-serif text-[21px] leading-7 text-ink">
+              {criterionVersion?.definition ?? skill.description}
+            </p>
+            <p className="mt-4 text-[12.5px] leading-5 text-ink-2">
+              “Ready” means the Check can run. It has not been validated against governed human judgment, calibrated, or approved for a release decision.
+            </p>
+          </CardContent>
+        </Card>
+        {submitError ? <MarginNote tone="signal" who="Could not continue" className="mb-4">{submitError}</MarginNote> : null}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {couldNotFinish ? (
+            <Button variant="outline" onClick={onBackToEdit} disabled={submitting}>
+              <ArrowLeft /> Refine the Check
+            </Button>
+          ) : null}
+          <Button variant="primary" onClick={onDone} disabled={submitting || blocked}>
+            {doneLabel}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fadeUp">

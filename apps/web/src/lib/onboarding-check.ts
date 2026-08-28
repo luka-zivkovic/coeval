@@ -2,7 +2,8 @@ import type { ProjectMode } from "@coeval/shared";
 import { findStarterSkill, STARTER_SKILLS, type StarterSkill } from "./starter-skills.js";
 
 export interface OnboardingCheckDraft {
-  schemaVersion: 1;
+  schemaVersion: 2;
+  requestId: string;
   projectId: string;
   skillId: string;
   starterId: string;
@@ -14,6 +15,22 @@ export interface OnboardingCheckDraft {
 }
 
 const STORAGE_PREFIX = "coeval.onboarding-check";
+
+export function newOnboardingCheckRequestId(): string {
+  const suffix = globalThis.crypto?.randomUUID?.()
+    ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `web-first-check-${suffix}`;
+}
+
+export function onboardingCheckDraftIdentity(draft: OnboardingCheckDraft): string {
+  return JSON.stringify({
+    requestId: draft.requestId,
+    starterId: draft.starterId,
+    criterionName: draft.criterionName,
+    qualityQuestion: draft.qualityQuestion,
+    rubricMarkdown: draft.rubricMarkdown
+  });
+}
 
 function storageKey(projectId: string, skillId: string): string {
   return `${STORAGE_PREFIX}.${projectId}.${skillId}`;
@@ -59,7 +76,8 @@ export function draftFromStarter(input: {
   decisionReason?: string | null;
 }): OnboardingCheckDraft {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    requestId: newOnboardingCheckRequestId(),
     projectId: input.projectId,
     skillId: input.skillId,
     starterId: input.starter.id,
@@ -74,7 +92,8 @@ export function draftFromStarter(input: {
 function isDraft(value: unknown, projectId: string, skillId: string): value is OnboardingCheckDraft {
   if (!value || typeof value !== "object") return false;
   const draft = value as Partial<OnboardingCheckDraft>;
-  return draft.schemaVersion === 1 &&
+  return draft.schemaVersion === 2 &&
+    typeof draft.requestId === "string" && draft.requestId.trim().length > 0 && draft.requestId.length <= 240 &&
     draft.projectId === projectId &&
     draft.skillId === skillId &&
     typeof draft.starterId === "string" &&

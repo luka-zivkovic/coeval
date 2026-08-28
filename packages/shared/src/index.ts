@@ -222,6 +222,61 @@ export const MinimumVerdictOutputSchema = {
 export const JsonSchemaSchema = z.record(z.string(), z.unknown());
 export type JsonSchema = z.infer<typeof JsonSchemaSchema>;
 
+// The immutable output contract stored with a version must describe the
+// verdict tool that the runtime actually asks the provider to complete. The
+// legacy MinimumVerdictOutputSchema remains available for historical imports;
+// new guided Checks use this kind-aware contract instead of copying the
+// seeded binary schema into categorical or scalar versions.
+export function verdictOutputSchema(input: {
+  verdictKind: VerdictKind;
+  scalarRange?: [number, number] | null;
+  categoricalChoiceScores?: Record<string, number> | null;
+}): JsonSchema {
+  const rationale = { type: "string", description: "Short rationale grounded in the Review guide and recorded Run." };
+  const failingStep = {
+    type: "integer",
+    minimum: 0,
+    description: "Optional 0-based recorded step where the failure occurred."
+  };
+  if (input.verdictKind === "scalar") {
+    const [minimum, maximum] = input.scalarRange ?? [0, 1];
+    return {
+      type: "object",
+      additionalProperties: false,
+      required: ["score", "rationale"],
+      properties: {
+        score: { type: "number", minimum, maximum },
+        rationale,
+        failingStep
+      }
+    };
+  }
+  if (input.verdictKind === "categorical") {
+    const choices = Object.keys(input.categoricalChoiceScores ?? {});
+    return {
+      type: "object",
+      additionalProperties: false,
+      required: ["choice", "rationale"],
+      properties: {
+        choice: { type: "string", enum: choices },
+        rationale,
+        failingStep
+      }
+    };
+  }
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["label", "score", "rationale"],
+    properties: {
+      label: { type: "string", enum: ["pass", "fail", "ambiguous"] },
+      score: { type: "number", minimum: 0, maximum: 1 },
+      rationale,
+      failingStep
+    }
+  };
+}
+
 // The one template variable a compiled prompt may reference. The trace itself
 // is injected separately by the judge message builder (<trace_to_judge>), so
 // prompts must not carry their own trace placeholders.
@@ -316,6 +371,11 @@ export const SkillVersionSchema = z
     scalarRange: z.tuple([z.number(), z.number()]).nullable(),
     categoricalChoiceScores: z.record(z.string(), z.number().min(0).max(1)).nullable(),
     rubricProvenance: RubricProvenanceSchema,
+    // Beginner assurance is independent from the legacy regression lifecycle:
+    // an empty known-failure gate may approve execution, but it cannot validate
+    // the Check. This marker survives that transition until a future governed
+    // calibration flow replaces it with a scoped assurance state.
+    onboardingAssurance: z.literal("starter_unvalidated").nullable().optional(),
     // Draft and starter-sign-off versions can legitimately have no regression
     // corpus. Every calibrating or gated version carries an immutable pin.
     regressionDatasetRevisionId: z.string().nullable(),
@@ -5093,6 +5153,7 @@ export type CreateSkillVersionInput = z.infer<typeof CreateSkillVersionInputSche
 // the evaluator version atomically. Ordinary evaluator edits keep using
 // CreateSkillVersionInputSchema and cannot change criterion identity.
 export const CreateOnboardingCheckInputSchema = z.object({
+  idempotencyKey: z.string().trim().min(1).max(240),
   criterion: CreateCriterionVersionInputSchema,
   evaluator: CreateSkillVersionInputSchema
 }).strict().superRefine((value, context) => {

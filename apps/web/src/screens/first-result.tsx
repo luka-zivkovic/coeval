@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CircleAlert, LoaderCircle, RefreshCcw } from "lucide-react";
-import { verdictLabelFromPayload, type EvalRunDetail, type VerdictRecord } from "@coeval/shared";
+import { verdictLabelFromPayload, type CriterionVersion, type EvalRunDetail, type VerdictRecord } from "@coeval/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eyebrow, SectionHead, VerdictChip } from "@/components/coeval";
@@ -10,7 +10,8 @@ import {
   fetchCaseVerdicts,
   fetchEvalRunDetail,
   fetchEvalRuns,
-  fetchProjectVerdicts
+  fetchProjectVerdicts,
+  fetchSkillVersionCriterion
 } from "@/lib/api";
 import { useDashboard } from "@/lib/dashboard-context";
 import { backfillRunForVersion, verdictForTrackedItem } from "@/lib/first-result";
@@ -28,10 +29,27 @@ export function FirstResultScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dispatchPending, setDispatchPending] = useState(false);
+  const [criterionVersion, setCriterionVersion] = useState<CriterionVersion | null>(null);
+  const [criterionError, setCriterionError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   const receiptKey = useRef<string | null>(null);
   const loadGeneration = useRef(0);
   const nextEnsureAt = useRef(0);
+
+  useEffect(() => {
+    if (!dashboard || !versionId) return;
+    let cancelled = false;
+    setCriterionVersion(null);
+    setCriterionError(null);
+    void fetchSkillVersionCriterion(dashboard.skill.id, versionId)
+      .then((criterion) => {
+        if (!cancelled) setCriterionVersion(criterion);
+      })
+      .catch((cause) => {
+        if (!cancelled) setCriterionError(cause instanceof Error ? cause.message : String(cause));
+      });
+    return () => { cancelled = true; };
+  }, [dashboard?.skill.id, versionId]);
 
   const load = useCallback(async (generation: number) => {
     const current = () => generation === loadGeneration.current;
@@ -222,7 +240,37 @@ export function FirstResultScreen() {
             : "Coeval is evaluating saved evidence. You can leave this page and return—the progress below is stored."}
       />
 
-      {loading && !run ? (
+      {criterionError ? (
+        <StatusCard
+          urgent
+          icon={<CircleAlert className="size-4" />}
+          title="Could not verify which quality question produced this Result"
+          body={criterionError}
+        />
+      ) : versionId && dashboard && !criterionVersion ? (
+        <StatusCard
+          icon={<LoaderCircle className="size-4 animate-spin" />}
+          title="Loading the saved quality question"
+          body="Coeval is verifying the exact Check definition bound to this Result before showing its verdict."
+        />
+      ) : criterionVersion ? (
+        <Card className="mb-4 border-gold-tint">
+          <CardHeader>
+            <div>
+              <Eyebrow>This Result answers</Eyebrow>
+              <CardTitle className="mt-1">{criterionVersion.name}</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="font-serif text-[20px] leading-7 text-ink">{criterionVersion.definition}</p>
+            <p className="mt-3 text-[12px] leading-5 text-ink-2">
+              Starter · unvalidated. The verdict below is this Check's model opinion, not proof that the Check is accurate.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {criterionError || (versionId && dashboard && !criterionVersion) ? null : loading && !run ? (
         <StatusCard
           icon={<LoaderCircle className="size-4 animate-spin" />}
           title="Preparing the Check run"
