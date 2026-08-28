@@ -114,7 +114,10 @@ describe("beginner-first hierarchy", () => {
     expect(firstResult).toContain("dashboard.skill.currentVersion.id === versionId");
     expect(firstResult).toContain('evidenceScope: "customer"');
     expect(firstResult).toContain("setRetryNonce((value) => value + 1)");
-    expect(firstResult).toContain("Date.now() - lastEnsureAt.current >= 30_000");
+    expect(firstResult).toContain("Date.now() >= nextEnsureAt.current");
+    expect(firstResult).toContain("Run saved, waiting to enter the evaluation queue");
+    expect(firstResult).toContain("No Result exists yet");
+    expect(firstResult).toContain("ensured.dispatchPending");
     expect(firstResult).toContain("Your first Result is ready");
     expect(firstResult).toContain("The first Result could not be produced");
     expect(firstResult).toContain('navigate("/skill/edit")');

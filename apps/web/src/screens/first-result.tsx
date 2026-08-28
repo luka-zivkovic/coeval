@@ -27,10 +27,11 @@ export function FirstResultScreen() {
   const [result, setResult] = useState<{ caseId: string; verdict: VerdictRecord } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dispatchPending, setDispatchPending] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const receiptKey = useRef<string | null>(null);
   const loadGeneration = useRef(0);
-  const lastEnsureAt = useRef(0);
+  const nextEnsureAt = useRef(0);
 
   const load = useCallback(async (generation: number) => {
     const current = () => generation === loadGeneration.current;
@@ -54,19 +55,27 @@ export function FirstResultScreen() {
       if (!current()) return false;
       const summary = backfillRunForVersion(runs, versionId);
       let detail: EvalRunDetail | null;
+      let observedDispatchPending: boolean | undefined;
+      let nextEnsureDelayMs: number | null = null;
       if (summary) {
         const canEnsure = dashboard?.viewerRole === "owner"
           && dashboard.skill.currentVersion.id === versionId
           && (summary.status === "pending" || summary.status === "running")
-          && Date.now() - lastEnsureAt.current >= 30_000;
-        if (canEnsure) lastEnsureAt.current = Date.now();
-        detail = canEnsure
-          ? await ensureSkillVersionBackfill(dashboard.skill.id, versionId)
-          : await fetchEvalRunDetail(summary.id);
+          && Date.now() >= nextEnsureAt.current;
+        if (canEnsure) {
+          const ensured = await ensureSkillVersionBackfill(dashboard.skill.id, versionId);
+          nextEnsureDelayMs = ensured.retryAfterMs;
+          observedDispatchPending = ensured.dispatchPending;
+          detail = ensured.run;
+        } else {
+          detail = await fetchEvalRunDetail(summary.id);
+          if (detail && detail.status !== "pending") observedDispatchPending = false;
+        }
       } else if (recordedVerdicts[0]) {
         const verdict = recordedVerdicts[0];
         setRun(null);
         setResult({ caseId: verdict.caseId, verdict });
+        setDispatchPending(false);
         setError(null);
         setLoading(false);
         if (receiptKey.current !== verdict.id) {
@@ -89,9 +98,14 @@ export function FirstResultScreen() {
         setLoading(false);
         return false;
       } else {
-        detail = await ensureSkillVersionBackfill(dashboard.skill.id, versionId);
+        const ensured = await ensureSkillVersionBackfill(dashboard.skill.id, versionId);
+        nextEnsureDelayMs = ensured.retryAfterMs;
+        observedDispatchPending = ensured.dispatchPending;
+        detail = ensured.run;
       }
       if (!current()) return false;
+      if (nextEnsureDelayMs !== null) nextEnsureAt.current = Date.now() + nextEnsureDelayMs;
+      if (observedDispatchPending !== undefined) setDispatchPending(observedDispatchPending);
       if (!detail) {
         const [recorded] = await fetchProjectVerdicts({
           source: "llm_judge",
@@ -103,6 +117,7 @@ export function FirstResultScreen() {
         if (recorded) {
           setRun(null);
           setResult({ caseId: recorded.caseId, verdict: recorded });
+          setDispatchPending(false);
           setError(null);
           setLoading(false);
           if (receiptKey.current !== recorded.id) {
@@ -163,6 +178,7 @@ export function FirstResultScreen() {
     setRun(null);
     setResult(null);
     setError(null);
+    setDispatchPending(false);
     setLoading(true);
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -194,10 +210,16 @@ export function FirstResultScreen() {
       </div>
       <SectionHead
         eyebrow="First setup · Result"
-        title={result ? "Your first Result is ready" : `Applying ${versionLabel} to a recorded Run`}
+        title={result
+          ? "Your first Result is ready"
+          : dispatchPending
+            ? "Waiting to start the saved Check run"
+            : `Applying ${versionLabel} to a recorded Run`}
         sub={result
           ? "This is the Check's opinion about evidence your AI already produced. It is not a human decision, proof of accuracy, or permission to ship."
-          : "Coeval is evaluating saved evidence. You can leave this page and return—the progress below is stored."}
+          : dispatchPending
+            ? "The Run is saved, but Coeval has not confirmed that evaluation started. No Result exists yet."
+            : "Coeval is evaluating saved evidence. You can leave this page and return—the progress below is stored."}
       />
 
       {loading && !run ? (
@@ -216,10 +238,26 @@ export function FirstResultScreen() {
             <Button size="sm" variant="outline" onClick={() => {
               setLoading(true);
               setError(null);
-              lastEnsureAt.current = 0;
+              nextEnsureAt.current = 0;
               setRetryNonce((value) => value + 1);
             }}>
               <RefreshCcw /> Try again
+            </Button>
+          }
+        />
+      ) : dispatchPending && run && run.status === "pending" ? (
+        <StatusCard
+          urgent
+          icon={<CircleAlert className="size-4" />}
+          title="Run saved, waiting to enter the evaluation queue"
+          body="Coeval has not confirmed a live queue job yet. It will keep checking this saved run; no Result has been produced or queued successfully yet."
+          actions={
+            <Button size="sm" variant="outline" onClick={() => {
+              setLoading(true);
+              nextEnsureAt.current = 0;
+              setRetryNonce((value) => value + 1);
+            }}>
+              <RefreshCcw /> Try queueing again
             </Button>
           }
         />

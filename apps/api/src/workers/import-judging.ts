@@ -93,7 +93,9 @@ export async function scheduleImportedCaseJudging(
       dispatchPending = backfill.dispatchState === "busy";
       const detail = await repository.getEvalRunDetail(input.projectId, backfill.run.id);
       const covered = new Set(detail?.items.map((item) => item.caseId) ?? []);
-      scheduledCaseCount += caseIds.filter((caseId) => covered.has(caseId)).length;
+      if (detail?.status === "pending" || detail?.status === "running") {
+        scheduledCaseCount += caseIds.filter((caseId) => covered.has(caseId)).length;
+      }
       remaining = caseIds.filter((caseId) => !covered.has(caseId));
     }
   }
@@ -115,7 +117,9 @@ export async function scheduleImportedCaseJudging(
     });
     const dispatchState = await dispatchEvalRunOnce(repository, importedRun.run, queue);
     evalRunIds.push(importedRun.run.id);
-    scheduledCaseCount += 1;
+    if (importedRun.run.status === "pending" || importedRun.run.status === "running") {
+      scheduledCaseCount += 1;
+    }
     if (dispatchState === "busy") dispatchPending = true;
   }
 

@@ -124,19 +124,35 @@ export async function dispatchEvalRunOnce(
   if (dispatch.state === "busy") {
     if (!dispatch.jobId || !queue.getJobState) return "busy";
     const state = await queue.getJobState("eval.run", dispatch.jobId);
-    return state === "created" || state === "retry" || state === "active" ? "ready" : "busy";
+    return state === "created" || state === "retry" || state === "active" || state === "completed"
+      ? "ready"
+      : "busy";
   }
   if (dispatch.state !== "claimed" || !dispatch.jobId) return "busy";
-  const jobId = dispatch.jobId;
+  let jobId = dispatch.jobId;
 
   try {
-    const sent = await queue.send("eval.run", { projectId: run.projectId, evalRunId: run.id }, {
-      id: jobId,
-      retryLimit: 5,
-      retryBackoff: true
-    });
-    if (sent === null && queue.getJobState && await queue.getJobState("eval.run", jobId) === null) {
-      throw new Error("The evaluation queue did not accept the durable run job.");
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const sent = await queue.send("eval.run", { projectId: run.projectId, evalRunId: run.id }, {
+        id: jobId,
+        retryLimit: 5,
+        retryBackoff: true
+      });
+      if (sent !== null) break;
+
+      const state = queue.getJobState ? await queue.getJobState("eval.run", jobId) : null;
+      if (state === "created" || state === "retry" || state === "active" || state === "completed") break;
+      if ((state === "failed" || state === "cancelled") && attempt === 0) {
+        const replacementJobId = await repository.rotateEvalRunDispatchJob({
+          projectId: run.projectId,
+          evalRunId: run.id,
+          dispatchToken
+        });
+        if (!replacementJobId) throw new Error("The evaluation dispatch claim changed before recovery.");
+        jobId = replacementJobId;
+        continue;
+      }
+      throw new Error("The evaluation queue did not accept a live durable run job.");
     }
     await repository.markEvalRunDispatched({
       projectId: run.projectId,

@@ -4415,6 +4415,18 @@ export class PgRepository implements CoevalRepository {
     };
   }
 
+  async rotateEvalRunDispatchJob(input: EvalRunDispatchInputDb): Promise<string | null> {
+    const rotated = await this.pool.query(
+      `update eval_runs
+       set queue_job_id = gen_random_uuid()
+       where id = $1 and project_id = $2
+         and queue_dispatched_at is null and queue_dispatch_token = $3
+       returning queue_job_id`,
+      [input.evalRunId, input.projectId, input.dispatchToken]
+    );
+    return rotated.rows[0]?.queue_job_id ? String(rotated.rows[0].queue_job_id) : null;
+  }
+
   async markEvalRunDispatched(input: EvalRunDispatchInputDb): Promise<void> {
     const client = await this.pool.connect();
     try {

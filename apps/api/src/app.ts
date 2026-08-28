@@ -3731,16 +3731,10 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     if (!version || version.skillId !== c.req.param("skillId")) {
       return c.json({ error: "Check version not found" }, 404);
     }
-    const criterionVersion = await repository.getCriterionVersionForSkillVersion(projectId, version.id);
-    const currentSkill = criterionVersion
-      ? await repository.getCurrentSkillForCriterion(projectId, criterionVersion.criterionId)
-      : null;
-    if (
-      !currentSkill ||
-      currentSkill.id !== version.skillId ||
-      currentSkill.currentVersion.id !== version.id ||
-      (version.status !== "approved" && version.status !== "production")
-    ) {
+    try {
+      await assertImportJudgingAllowed(repository, projectId, version.id);
+    } catch (error) {
+      if (!(error instanceof ImportSkillVersionBindingError)) throw error;
       return c.json({ error: "Only the current runnable Check can produce the first Result." }, 409);
     }
     if ((await repository.listCaseIdsForProject(projectId, 1)).length === 0) {

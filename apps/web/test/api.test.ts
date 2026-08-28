@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, buildVerdictExportUrl, createProject, createReviewQueue, createSkillVersion, deleteLangSmithIntegration, fetchCaseVerdicts, fetchDatasetRevisionMetadata, fetchGoldenSet, fetchGoldenSetHealth, fetchJudgeHumanCalibration, fetchKappaSummary, fetchProjectVerdicts, fetchReviewQueueDetail, fetchReviewQueues, fetchSkillVersionHistory, recordHumanVerdict, setupOwner, testLangSmithIntegration } from "../src/lib/api.js";
+import { ApiError, buildVerdictExportUrl, createProject, createReviewQueue, createSkillVersion, deleteLangSmithIntegration, ensureSkillVersionBackfill, fetchCaseVerdicts, fetchDatasetRevisionMetadata, fetchGoldenSet, fetchGoldenSetHealth, fetchJudgeHumanCalibration, fetchKappaSummary, fetchProjectVerdicts, fetchReviewQueueDetail, fetchReviewQueues, fetchSkillVersionHistory, recordHumanVerdict, setupOwner, testLangSmithIntegration } from "../src/lib/api.js";
 
 const createdKey = {
   id: "apikey_first",
@@ -41,6 +41,50 @@ describe("web API helpers", () => {
       message: "Setup failed: 502",
       status: 502,
       body: null
+    });
+  });
+
+  it("keeps a 503 backfill response visibly dispatch-pending and honors Retry-After", async () => {
+    const run = {
+      id: "evr_waiting",
+      projectId: "proj_first",
+      datasetId: null,
+      datasetRevisionId: null,
+      skillVersionId: "skillv_first",
+      trigger: "backfill",
+      status: "pending",
+      blocking: false,
+      totalItems: 1,
+      completedItems: 0,
+      failedItems: 0,
+      agreedItems: 0,
+      error: null,
+      sourceTraceTest: null,
+      createdAt: "2026-08-28T00:00:00.000Z",
+      startedAt: null,
+      finishedAt: null,
+      items: [],
+      spend: {
+        freshItems: 0,
+        cachedItems: 0,
+        inputTokens: null,
+        outputTokens: null,
+        usageMissingCount: 0,
+        totalLatencyMs: null
+      }
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      error: "The Result run is saved but not durably queued yet.",
+      run
+    }), {
+      status: 503,
+      headers: { "content-type": "application/json", "retry-after": "300" }
+    })));
+
+    await expect(ensureSkillVersionBackfill("skill_first", "skillv_first")).resolves.toEqual({
+      run,
+      dispatchPending: true,
+      retryAfterMs: 300_000
     });
   });
 

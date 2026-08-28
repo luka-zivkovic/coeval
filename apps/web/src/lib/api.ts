@@ -1232,7 +1232,16 @@ export async function fetchEvalRunDetail(evalRunId: string): Promise<EvalRunDeta
   return EvalRunDetailSchema.parse(await response.json());
 }
 
-export async function ensureSkillVersionBackfill(skillId: string, skillVersionId: string): Promise<EvalRunDetail | null> {
+export interface SkillVersionBackfillEnsureResult {
+  run: EvalRunDetail | null;
+  dispatchPending: boolean;
+  retryAfterMs: number;
+}
+
+export async function ensureSkillVersionBackfill(
+  skillId: string,
+  skillVersionId: string
+): Promise<SkillVersionBackfillEnsureResult> {
   const response = await apiFetch(
     `${API_BASE}/api/skills/${encodeURIComponent(skillId)}/versions/${encodeURIComponent(skillVersionId)}/backfill`,
     { method: "POST", credentials: "include" }
@@ -1242,8 +1251,22 @@ export async function ensureSkillVersionBackfill(skillId: string, skillVersionId
     existingResult?: boolean;
     error?: string;
   } | null;
-  if ((response.ok || response.status === 503) && payload?.run) return EvalRunDetailSchema.parse(payload.run);
-  if (response.ok && payload?.existingResult === true) return null;
+  if (response.ok && payload?.run) {
+    return { run: EvalRunDetailSchema.parse(payload.run), dispatchPending: false, retryAfterMs: 30_000 };
+  }
+  if (response.status === 503 && payload?.run) {
+    const retryAfterSeconds = Number(response.headers.get("retry-after"));
+    return {
+      run: EvalRunDetailSchema.parse(payload.run),
+      dispatchPending: true,
+      retryAfterMs: Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+        ? retryAfterSeconds * 1000
+        : 30_000
+    };
+  }
+  if (response.ok && payload?.existingResult === true) {
+    return { run: null, dispatchPending: false, retryAfterMs: 30_000 };
+  }
   throw apiError(response, payload, "First Result evaluation could not start");
 }
 

@@ -6,7 +6,7 @@ import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema, type JudgePr
 import { GoldenSetEntryAlreadyRetiredError, RegressionGateJudgeError, RegressionGateUnavailableError } from "../src/repository.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { processFeedbackSyncJob } from "../src/workers/feedback-sync.js";
-import { processGateRunJob } from "../src/workers/gate.js";
+import { dispatchEvalRunOnce, processGateRunJob } from "../src/workers/gate.js";
 import { processJudgeRunJob, registerJudgeRunWorker } from "../src/workers/judge.js";
 import { processLangSmithImportJob } from "../src/workers/langsmith-import.js";
 import { enqueueDueLangSmithImports } from "../src/workers/langsmith-poller.js";
@@ -242,6 +242,32 @@ run("PgRepository smoke", () => {
         [customer.caseId]
       );
       expect(stored.rows).toEqual([{ id: first.run.id, ingestion_case_id: customer.caseId }]);
+
+      const attemptedIds: string[] = [];
+      const exhaustedQueue: Queue = {
+        async start() {},
+        async stop() {},
+        async work() {},
+        async send(_name, _data, options) {
+          attemptedIds.push(String(options?.id));
+          return attemptedIds.length === 1 ? null : String(options?.id);
+        },
+        async getJobState(_name, id) {
+          return id === attemptedIds[0] ? "cancelled" : null;
+        }
+      };
+      await expect(dispatchEvalRunOnce(repo, first.run, exhaustedQueue)).resolves.toBe("ready");
+      expect(attemptedIds).toHaveLength(2);
+      expect(attemptedIds[1]).not.toBe(attemptedIds[0]);
+      const dispatch = await pool.query(
+        `select queue_job_id::text as queue_job_id, queue_dispatched_at
+         from eval_runs where id = $1`,
+        [first.run.id]
+      );
+      expect(dispatch.rows[0]).toMatchObject({
+        queue_job_id: attemptedIds[1],
+        queue_dispatched_at: expect.any(Date)
+      });
     } finally {
       await cleanup();
     }

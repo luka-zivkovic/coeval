@@ -559,6 +559,10 @@ export interface CoevalRepository {
   // the deterministic queue job; a send failure releases the claim, while a
   // crash can be recovered after the lease without creating another job id.
   claimEvalRunDispatch(input: EvalRunDispatchInputDb): Promise<EvalRunDispatchClaim>;
+  // A deterministic queue id that reached a terminal queue state cannot be
+  // reinserted by pg-boss. The active DB claim may rotate it exactly once per
+  // recovery attempt before dispatching a replacement delivery.
+  rotateEvalRunDispatchJob(input: EvalRunDispatchInputDb): Promise<string | null>;
   markEvalRunDispatched(input: EvalRunDispatchInputDb): Promise<void>;
   releaseEvalRunDispatch(input: EvalRunDispatchInputDb): Promise<void>;
   armEvalRunItemDeliveryDeadline(projectId: string, evalRunId: string): Promise<void>;
@@ -3948,7 +3952,13 @@ export class DemoRepository implements CoevalRepository {
   }> {
     const key = `${input.projectId}:${input.skillVersionId}:${input.caseId}`;
     const existing = this.importedCaseEvalRuns.get(key);
-    if (existing) return { run: await existing, created: false };
+    if (existing) {
+      const original = await existing;
+      return {
+        run: (await this.getEvalRunDetail(input.projectId, original.id)) ?? original,
+        created: false
+      };
+    }
     const creation = this.createEvalRun({
       projectId: input.projectId,
       skillVersionId: input.skillVersionId,
@@ -3980,6 +3990,13 @@ export class DemoRepository implements CoevalRepository {
     current.dispatchToken = input.dispatchToken;
     current.claimedAt = Date.now();
     return { state: "claimed", jobId: current.jobId };
+  }
+
+  async rotateEvalRunDispatchJob(input: EvalRunDispatchInputDb): Promise<string | null> {
+    const current = this.evalRunDispatches.get(input.evalRunId);
+    if (!current || current.dispatched || current.dispatchToken !== input.dispatchToken) return null;
+    current.jobId = randomUUID();
+    return current.jobId;
   }
 
   async markEvalRunDispatched(input: EvalRunDispatchInputDb): Promise<void> {
