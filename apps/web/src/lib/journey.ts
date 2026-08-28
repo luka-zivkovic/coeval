@@ -87,17 +87,17 @@ export function journeyActStates(dashboard: DashboardSummary): JourneyActStates 
   return { defineGood: state(0), judgeRealWork: state(1), earnTrust: state(2) };
 }
 
-// The single definition of the first-run editor route: `first=1` mounts the
-// onboarding framing and the worked starter pre-fills the rubric. Three
+// The single definition of the first-run Check route: `first=1` mounts the
+// guided choice and proposal. Three
 // surfaces (project creation, owner setup, the journey pipeline's Act-1 CTA)
 // must all land new users here — a diverging copy strands them on the bare
 // editor.
 export function firstRunEditorPath(): string {
-  return "/skill/edit?first=1&starter=task-outcome-quality";
+  return "/skill/edit?first=1";
 }
 
-export function firstResultPath(skillVersionId: string): string {
-  return `/first-result?version=${encodeURIComponent(skillVersionId)}`;
+export function firstResultPath(skillVersionId: string, skillId: string, criterionId: string): string {
+  return `/first-result?version=${encodeURIComponent(skillVersionId)}&skill=${encodeURIComponent(skillId)}&criterionId=${encodeURIComponent(criterionId)}`;
 }
 
 const FIRST_PROJECT_KEY = "coeval.first-project-key";

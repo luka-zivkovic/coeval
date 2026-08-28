@@ -222,6 +222,61 @@ export const MinimumVerdictOutputSchema = {
 export const JsonSchemaSchema = z.record(z.string(), z.unknown());
 export type JsonSchema = z.infer<typeof JsonSchemaSchema>;
 
+// The immutable output contract stored with a version must describe the
+// verdict tool that the runtime actually asks the provider to complete. The
+// legacy MinimumVerdictOutputSchema remains available for historical imports;
+// new guided Checks use this kind-aware contract instead of copying the
+// seeded binary schema into categorical or scalar versions.
+export function verdictOutputSchema(input: {
+  verdictKind: VerdictKind;
+  scalarRange?: [number, number] | null;
+  categoricalChoiceScores?: Record<string, number> | null;
+}): JsonSchema {
+  const rationale = { type: "string", description: "Short rationale grounded in the Review guide and recorded Run." };
+  const failingStep = {
+    type: "integer",
+    minimum: 0,
+    description: "Optional 0-based recorded step where the failure occurred."
+  };
+  if (input.verdictKind === "scalar") {
+    const [minimum, maximum] = input.scalarRange ?? [0, 1];
+    return {
+      type: "object",
+      additionalProperties: false,
+      required: ["score", "rationale"],
+      properties: {
+        score: { type: "number", minimum, maximum },
+        rationale,
+        failingStep
+      }
+    };
+  }
+  if (input.verdictKind === "categorical") {
+    const choices = Object.keys(input.categoricalChoiceScores ?? {});
+    return {
+      type: "object",
+      additionalProperties: false,
+      required: ["choice", "rationale"],
+      properties: {
+        choice: { type: "string", enum: choices },
+        rationale,
+        failingStep
+      }
+    };
+  }
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["label", "score", "rationale"],
+    properties: {
+      label: { type: "string", enum: ["pass", "fail", "ambiguous"] },
+      score: { type: "number", minimum: 0, maximum: 1 },
+      rationale,
+      failingStep
+    }
+  };
+}
+
 // The one template variable a compiled prompt may reference. The trace itself
 // is injected separately by the judge message builder (<trace_to_judge>), so
 // prompts must not carry their own trace placeholders.
@@ -316,6 +371,11 @@ export const SkillVersionSchema = z
     scalarRange: z.tuple([z.number(), z.number()]).nullable(),
     categoricalChoiceScores: z.record(z.string(), z.number().min(0).max(1)).nullable(),
     rubricProvenance: RubricProvenanceSchema,
+    // Beginner assurance is independent from the legacy regression lifecycle:
+    // an empty known-failure gate may approve execution, but it cannot validate
+    // the Check. This marker survives that transition until a future governed
+    // calibration flow replaces it with a scoped assurance state.
+    onboardingAssurance: z.literal("starter_unvalidated").nullable().optional(),
     // Draft and starter-sign-off versions can legitimately have no regression
     // corpus. Every calibrating or gated version carries an immutable pin.
     regressionDatasetRevisionId: z.string().nullable(),
@@ -5087,6 +5147,55 @@ export const CreateSkillVersionInputSchema = z
   .refine((v) => v.verdictKind === "categorical" || v.categoricalChoiceScores === undefined, { message: "categoricalChoiceScores is only valid for categorical kinds" });
 export type CreateSkillVersionInput = z.infer<typeof CreateSkillVersionInputSchema>;
 
+// Beginner onboarding creates the first real Check over the project's seeded
+// native criterion. The visible quality question and evaluator draft travel in
+// one request so the repository can append the criterion definition and bind
+// the evaluator version atomically. Ordinary evaluator edits keep using
+// CreateSkillVersionInputSchema and cannot change criterion identity.
+export const CreateOnboardingCheckInputSchema = z.object({
+  idempotencyKey: z.string().trim().min(1).max(240),
+  criterion: CreateCriterionVersionInputSchema,
+  evaluator: CreateSkillVersionInputSchema
+}).strict().superRefine((value, context) => {
+  if (value.evaluator.criterionVersionId !== undefined) {
+    context.addIssue({
+      code: "custom",
+      path: ["evaluator", "criterionVersionId"],
+      message: "Onboarding creates and binds its own criterion version"
+    });
+  }
+  if (value.evaluator.overrideReason !== undefined) {
+    context.addIssue({
+      code: "custom",
+      path: ["evaluator", "overrideReason"],
+      message: "Onboarding cannot override a regression result"
+    });
+  }
+});
+export type CreateOnboardingCheckInput = z.infer<typeof CreateOnboardingCheckInputSchema>;
+
+// Exact, project-scoped inventory shown before the beginner creates a Check.
+// Counts describe the customer Runs currently stored after ingestion
+// redaction; they do not imply that missing fields can be reconstructed.
+export const OnboardingEvidenceInventorySchema = z.object({
+  runCount: z.number().int().nonnegative(),
+  inputCount: z.number().int().nonnegative(),
+  outputCount: z.number().int().nonnegative(),
+  stepsCount: z.number().int().nonnegative(),
+  metadataCount: z.number().int().nonnegative()
+}).strict().superRefine((value, context) => {
+  for (const field of ["inputCount", "outputCount", "stepsCount", "metadataCount"] as const) {
+    if (value[field] > value.runCount) {
+      context.addIssue({
+        code: "custom",
+        path: [field],
+        message: `${field} cannot exceed runCount`
+      });
+    }
+  }
+});
+export type OnboardingEvidenceInventory = z.infer<typeof OnboardingEvidenceInventorySchema>;
+
 // Backfill summary returned alongside the regression run when timeScope is
 // 'existing' or 'both'. This aggregate is retained for the synchronous demo
 // response; the EvalRun is the authoritative lifecycle record.
@@ -5165,6 +5274,22 @@ export const RegressionRunResultSchema = z.object({
   createdAt: z.string()
 });
 export type RegressionRunResult = z.infer<typeof RegressionRunResultSchema>;
+
+export const CreateOnboardingCheckResponseSchema = z.discriminatedUnion("queued", [
+  z.object({
+    criterionVersion: CriterionVersionSchema,
+    version: SkillVersionSchema,
+    regressionRun: z.null(),
+    queued: z.literal(true)
+  }).strict(),
+  z.object({
+    criterionVersion: CriterionVersionSchema,
+    version: SkillVersionSchema,
+    regressionRun: RegressionRunResultSchema,
+    queued: z.literal(false)
+  }).strict()
+]);
+export type CreateOnboardingCheckResponse = z.infer<typeof CreateOnboardingCheckResponseSchema>;
 
 export const ApiErrorSchema = z.object({
   error: z.string(),

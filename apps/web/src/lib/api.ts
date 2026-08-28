@@ -8,6 +8,9 @@ import {
   ConvergenceAuditPageSchema,
   CriterionDetailSchema,
   CriterionSchema,
+  CriterionVersionSchema,
+  CreateOnboardingCheckInputSchema,
+  CreateOnboardingCheckResponseSchema,
   CreateTraceTestInputSchema,
   EnableTraceTestInputSchema,
   CreateSkillVersionInputSchema,
@@ -38,6 +41,7 @@ import {
   LangSmithIntegrationInputSchema,
   LangSmithIntegrationSchema,
   ManualTraceImportResultSchema,
+  OnboardingEvidenceInventorySchema,
   RunComparisonDetailSchema,
   RunComparisonSchema,
   type RunComparison,
@@ -53,6 +57,7 @@ import {
   type EvalRunDetail,
   type ImportDatasetExamplesResult,
   type ProjectMode,
+  type CriterionVersion,
   PromoteGoldenSetInputSchema,
   ProjectSchema,
   ProjectSettingsSchema,
@@ -89,6 +94,8 @@ import {
   type ConvergenceAuditPage,
   type Criterion,
   type CriterionDetail,
+  type CreateOnboardingCheckInput,
+  type CreateOnboardingCheckResponse,
   type CreateTraceTestInput,
   type EnableTraceTestInput,
   type CreateSkillVersionInput,
@@ -110,6 +117,7 @@ import {
   type LangSmithIntegrationInput,
   type LangSmithIntegration,
   type ManualTraceImportResult,
+  type OnboardingEvidenceInventory,
   type PromoteGoldenSetInput,
   type ProjectSettings,
   type RetireGoldenSetEntryInput,
@@ -268,6 +276,12 @@ export async function fetchDashboard(criterionId?: string): Promise<DashboardSum
   const response = await apiFetch(path, { credentials: "include" });
   if (!response.ok) throw await apiErrorFromResponse(response, "Dashboard request failed");
   return DashboardSummarySchema.parse(await response.json());
+}
+
+export async function fetchOnboardingEvidenceInventory(): Promise<OnboardingEvidenceInventory> {
+  const response = await apiFetch(`${API_BASE}/api/onboarding/evidence-inventory`, { credentials: "include" });
+  if (!response.ok) throw await apiErrorFromResponse(response, "Run field inventory request failed");
+  return OnboardingEvidenceInventorySchema.parse(await response.json());
 }
 
 export async function fetchCurrentSkill(criterionId?: string): Promise<Skill> {
@@ -920,6 +934,35 @@ export async function createSkillVersion(skillId: string, input: CreateSkillVers
     return { state: "queued", version: SkillVersionSchema.parse(payload.version) };
   }
   throw apiError(response, payload, "Skill version request failed");
+}
+
+export async function createOnboardingCheck(
+  skillId: string,
+  input: CreateOnboardingCheckInput
+): Promise<CreateOnboardingCheckResponse> {
+  const body = CreateOnboardingCheckInputSchema.parse(input);
+  const response = await apiFetch(`${API_BASE}/api/skills/${encodeURIComponent(skillId)}/onboarding-check`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw apiError(response, payload, "First Check creation failed");
+  return CreateOnboardingCheckResponseSchema.parse(payload);
+}
+
+export async function fetchSkillVersionCriterion(
+  skillId: string,
+  skillVersionId: string
+): Promise<CriterionVersion> {
+  const response = await apiFetch(
+    `${API_BASE}/api/skills/${encodeURIComponent(skillId)}/versions/${encodeURIComponent(skillVersionId)}/criterion`,
+    { credentials: "include" }
+  );
+  if (!response.ok) throw await apiErrorFromResponse(response, "Check quality question request failed");
+  const payload = await response.json() as { criterionVersion?: unknown };
+  return CriterionVersionSchema.parse(payload.criterionVersion);
 }
 
 // The canonical case-detail fetcher — resolves any judged case, exception or

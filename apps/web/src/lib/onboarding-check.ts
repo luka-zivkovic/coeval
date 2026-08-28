@@ -1,0 +1,140 @@
+import type { OnboardingEvidenceInventory, ProjectMode } from "@coeval/shared";
+import { findStarterSkill, STARTER_SKILLS, type StarterSkill } from "./starter-skills.js";
+
+export interface OnboardingCheckDraft {
+  schemaVersion: 2;
+  requestId: string;
+  projectId: string;
+  skillId: string;
+  starterId: string;
+  criterionName: string;
+  qualityQuestion: string;
+  rubricMarkdown: string;
+  decisionSource: "user" | "coeval";
+  decisionReason: string | null;
+}
+
+const STORAGE_PREFIX = "coeval.onboarding-check";
+
+export function newOnboardingCheckRequestId(): string {
+  const suffix = globalThis.crypto?.randomUUID?.()
+    ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `web-first-check-${suffix}`;
+}
+
+export function onboardingCheckDraftIdentity(draft: OnboardingCheckDraft): string {
+  return JSON.stringify({
+    requestId: draft.requestId,
+    starterId: draft.starterId,
+    criterionName: draft.criterionName,
+    qualityQuestion: draft.qualityQuestion,
+    rubricMarkdown: draft.rubricMarkdown
+  });
+}
+
+function storageKey(projectId: string, skillId: string): string {
+  return `${STORAGE_PREFIX}.${projectId}.${skillId}`;
+}
+
+export function recommendStarterSkill(projectName: string, mode: ProjectMode): StarterSkill {
+  const name = projectName.toLocaleLowerCase();
+  const match = (pattern: RegExp, id: string): StarterSkill | undefined =>
+    pattern.test(name) ? findStarterSkill(id) : undefined;
+  return match(/support|help.?desk|customer|refund|ticket/, "support-chat-quality")
+    ?? match(/rag|retriev|search|knowledge|docs?/, "rag-faithfulness")
+    ?? match(/code|copilot|pull request|\bpr\b|repo/, "code-gen-safety")
+    ?? match(/skill|harness|codex|claude|cursor/, "agent-skill-audit")
+    ?? (mode === "bench" ? match(/audit/, "agent-skill-audit") : undefined)
+    ?? STARTER_SKILLS[0]!;
+}
+
+export function recommendationReason(starter: StarterSkill, projectName: string): string {
+  if (starter.id === "task-outcome-quality") {
+    return "The project name did not point to a narrower quality question, so this starts with overall task completion.";
+  }
+  return `“${projectName}” looks closest to ${starter.fit.toLocaleLowerCase()}, so this starts with that focused Check.`;
+}
+
+export function evidenceReadDescription(inventory: OnboardingEvidenceInventory | null): string {
+  if (!inventory) {
+    return "Coeval could not inspect the saved Run fields right now. The Check will only read fields that are actually stored.";
+  }
+  if (inventory.runCount === 0) {
+    return "No Run is saved yet. The Check will read only the input, output, steps, and metadata you record later.";
+  }
+  const denominator = inventory.runCount.toLocaleString();
+  return [
+    `${denominator} saved ${inventory.runCount === 1 ? "Run" : "Runs"}`,
+    `input ${inventory.inputCount.toLocaleString()}/${denominator}`,
+    `output ${inventory.outputCount.toLocaleString()}/${denominator}`,
+    `steps ${inventory.stepsCount.toLocaleString()}/${denominator}`,
+    `metadata ${inventory.metadataCount.toLocaleString()}/${denominator}`
+  ].join(" · ");
+}
+
+export function evidenceLimitDescription(): string {
+  return "It cannot see missing tool calls, file changes, policies, or context that were not captured in the Run or written into the Review guide.";
+}
+
+export function draftFromStarter(input: {
+  projectId: string;
+  skillId: string;
+  starter: StarterSkill;
+  decisionSource: OnboardingCheckDraft["decisionSource"];
+  decisionReason?: string | null;
+}): OnboardingCheckDraft {
+  return {
+    schemaVersion: 2,
+    requestId: newOnboardingCheckRequestId(),
+    projectId: input.projectId,
+    skillId: input.skillId,
+    starterId: input.starter.id,
+    criterionName: input.starter.name,
+    qualityQuestion: input.starter.qualityQuestion,
+    rubricMarkdown: input.starter.rubricMarkdown,
+    decisionSource: input.decisionSource,
+    decisionReason: input.decisionReason ?? null
+  };
+}
+
+function isDraft(value: unknown, projectId: string, skillId: string): value is OnboardingCheckDraft {
+  if (!value || typeof value !== "object") return false;
+  const draft = value as Partial<OnboardingCheckDraft>;
+  return draft.schemaVersion === 2 &&
+    typeof draft.requestId === "string" && draft.requestId.trim().length > 0 && draft.requestId.length <= 240 &&
+    draft.projectId === projectId &&
+    draft.skillId === skillId &&
+    typeof draft.starterId === "string" &&
+    typeof draft.criterionName === "string" &&
+    typeof draft.qualityQuestion === "string" &&
+    typeof draft.rubricMarkdown === "string" &&
+    (draft.decisionSource === "user" || draft.decisionSource === "coeval") &&
+    (draft.decisionReason === null || typeof draft.decisionReason === "string");
+}
+
+export function saveOnboardingCheckDraft(draft: OnboardingCheckDraft): void {
+  try {
+    sessionStorage.setItem(storageKey(draft.projectId, draft.skillId), JSON.stringify(draft));
+  } catch {
+    // Draft persistence helps navigation but must not block setup.
+  }
+}
+
+export function loadOnboardingCheckDraft(projectId: string, skillId: string): OnboardingCheckDraft | null {
+  try {
+    const raw = sessionStorage.getItem(storageKey(projectId, skillId));
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    return isDraft(parsed, projectId, skillId) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearOnboardingCheckDraft(projectId: string, skillId: string): void {
+  try {
+    sessionStorage.removeItem(storageKey(projectId, skillId));
+  } catch {
+    // The draft is only session-scoped assistance.
+  }
+}

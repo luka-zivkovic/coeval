@@ -48,7 +48,8 @@ run("PgRepository smoke", () => {
         sourceTraceId: "machine-read-1",
         input: { question: "Q?" },
         output: { answer: "A." },
-        metadata: { stratum: "billing" }
+        metadata: { stratum: "billing" },
+        steps: [{ name: "lookup", input: { q: "Q?" }, output: { found: true } }]
       }, { ingestionPurpose: "analysis_eligible_manual" });
       // Release-evidence scaffolding must stay off the machine surface.
       await repo.importTrace("proj_test", "release_evidence", {
@@ -70,6 +71,13 @@ run("PgRepository smoke", () => {
         }
       });
       expect(new Date(cases[0]!.createdAt).toISOString()).toBe(cases[0]!.createdAt);
+      await expect(repo.getOnboardingEvidenceInventory("proj_test")).resolves.toEqual({
+        runCount: 1,
+        inputCount: 1,
+        outputCount: 1,
+        stepsCount: 1,
+        metadataCount: 1
+      });
 
       const afterNow = await repo.listCases("proj_test", { since: new Date(Date.now() + 60_000).toISOString() });
       expect(afterNow).toEqual([]);

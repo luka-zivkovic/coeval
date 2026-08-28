@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Pool } from "pg";
 import { runMigrations } from "@coeval/db";
-import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema, STARTER_RUBRIC_MARKER } from "@coeval/shared";
+import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema, STARTER_RUBRIC_MARKER, verdictOutputSchema } from "@coeval/shared";
+import { MockJudgeProvider, type JudgeProvider } from "@coeval/audit/runtime";
+import type { Queue, QueueJob, QueueName, QueueSendOptions } from "@coeval/queue";
 import { createApp, type CoevalApi } from "../src/app.js";
 import { claimAgentSetupPairing, createAuth } from "../src/lib/auth.js";
 import { PgRepository } from "../src/repository.pg.js";
@@ -14,6 +16,192 @@ if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !dat
 const run = databaseUrl ? describe : describe.skip;
 
 run("Postgres auth flow", () => {
+  it("replays the same first Check after queue failure instead of stranding setup", async () => {
+    process.env.BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET || "test-secret-for-pg-auth-flow-at-least-32-bytes";
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_onboarding_retry");
+    try {
+      await runMigrations(pool);
+      const mock = new MockJudgeProvider();
+      const namedProvider: JudgeProvider = {
+        name: "anthropic",
+        modelName: "test-anthropic",
+        judge: mock.judge.bind(mock),
+        judgeStructured: mock.judgeStructured.bind(mock)
+      };
+      const queue = new FailFirstQueue();
+      const repository = new PgRepository(pool, () => namedProvider);
+      const app = createApp(repository, { pool, auth: createAuth(pool), queue });
+      const setup = await app.request("/api/auth/setup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "guided-retry@example.com",
+          password: "guided-retry-password",
+          name: "Guided retry",
+          projectName: "Support copilot",
+          mode: "bench"
+        })
+      });
+      expect(setup.status).toBe(200);
+      const cookie = await signIn(app, "guided-retry@example.com", "guided-retry-password");
+      const starter = await repository.getLatestSkill((await setup.json() as { projectId: string }).projectId);
+      const request = {
+        idempotencyKey: "web-first-check-retry-1",
+        criterion: {
+          name: "Support answer quality",
+          definition: "Did the reply answer the customer correctly?"
+        },
+        evaluator: {
+          rubricMarkdown: "# Support answer quality\n\nPass when the reply is correct.",
+          prompt: "Judge the reply using {{rubric_markdown}}.",
+          modelBinding: {
+            provider: "anthropic",
+            modelId: "test-anthropic",
+            modelVersion: "test-anthropic-v1",
+            temperature: 0
+          },
+          outputSchema: verdictOutputSchema({
+            verdictKind: "categorical",
+            categoricalChoiceScores: { faithful: 1, unsupported: 0, partial: 0.5 }
+          }),
+          verdictKind: "categorical",
+          categoricalChoiceScores: { faithful: 1, unsupported: 0, partial: 0.5 },
+          timeScope: "both"
+        }
+      };
+      const first = await app.request(`/api/skills/${starter.id}/onboarding-check`, {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie },
+        body: JSON.stringify(request)
+      });
+      expect(first.status).toBe(500);
+      const saved = await pool.query(
+        `select id, output_schema from skill_versions where skill_id = $1 and onboarding_idempotency_key = $2`,
+        [starter.id, request.idempotencyKey]
+      );
+      expect(saved.rowCount).toBe(1);
+      expect(saved.rows[0]?.output_schema).toMatchObject({
+        required: ["choice", "rationale"],
+        properties: { choice: { enum: ["faithful", "unsupported", "partial"] } }
+      });
+
+      const retry = await app.request(`/api/skills/${starter.id}/onboarding-check`, {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie },
+        body: JSON.stringify(request)
+      });
+      expect(retry.status).toBe(202);
+      await expect(retry.json()).resolves.toMatchObject({
+        queued: true,
+        version: { id: saved.rows[0]!.id, onboardingAssurance: "starter_unvalidated" },
+        criterionVersion: { definition: request.criterion.definition }
+      });
+      expect(queue.jobs).toHaveLength(1);
+      const counts = await pool.query(
+        `select
+           (select count(*)::int from skill_versions where skill_id = $1) as version_count,
+           (select count(*)::int from criterion_versions where criterion_id = $2) as criterion_version_count`,
+        [starter.id, starter.criterionId]
+      );
+      expect(counts.rows[0]).toMatchObject({ version_count: 2, criterion_version_count: 2 });
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("atomically binds the beginner's visible quality question to the first Check", async () => {
+    process.env.BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET || "test-secret-for-pg-auth-flow-at-least-32-bytes";
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_onboarding_check");
+
+    try {
+      await runMigrations(pool);
+      const repository = new PgRepository(pool);
+      const app = createApp(repository, { pool, auth: createAuth(pool) });
+      const setup = await app.request("/api/auth/setup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "guided-check@example.com",
+          password: "guided-check-password",
+          name: "Guided owner",
+          projectName: "Support copilot",
+          mode: "bench"
+        })
+      });
+      expect(setup.status).toBe(200);
+      const { projectId } = await setup.json() as { projectId: string };
+      const starter = await repository.getLatestSkill(projectId);
+      expect(starter.isStarter).toBe(true);
+
+      const evaluator = CreateSkillVersionInputSchema.parse({
+        rubricMarkdown: "# Support answer quality\n\nPass when the reply answers the question within policy.",
+        prompt: "Judge the reply using {{rubric_markdown}}.",
+        modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 },
+        outputSchema: MinimumVerdictOutputSchema,
+        verdictKind: "binary",
+        timeScope: "both"
+      });
+      const visibleCriterion = {
+        name: "Support answer quality",
+        definition: "Did the reply answer the customer's question correctly and stay within policy?",
+        idempotencyKey: "first-check-request-1",
+        requestDigest: `sha256:${"a".repeat(64)}`
+      };
+      const pending = await repository.createSkillVersionPending(starter.id, evaluator, {
+        projectId,
+        onboardingCriterion: visibleCriterion
+      });
+      const bound = await repository.getCriterionVersionForSkillVersion(projectId, pending.id);
+
+      expect(bound).toMatchObject({
+        revision: 2,
+        name: visibleCriterion.name,
+        definition: visibleCriterion.definition,
+        sourceKind: "native"
+      });
+      expect(pending.criterionVersionId).toBe(bound?.id);
+      const persisted = await pool.query(
+        `select s.name, s.description, s.is_starter,
+                (select count(*)::int from skill_versions sv where sv.skill_id = s.id) as version_count,
+                (select count(*)::int from criterion_versions cv where cv.criterion_id = s.criterion_id) as criterion_version_count
+         from skills s where s.id = $1`,
+        [starter.id]
+      );
+      expect(persisted.rows[0]).toMatchObject({
+        name: visibleCriterion.name,
+        description: visibleCriterion.definition,
+        is_starter: false,
+        version_count: 2,
+        criterion_version_count: 2
+      });
+
+      const replay = await repository.createSkillVersionPending(starter.id, evaluator, {
+        projectId,
+        onboardingCriterion: visibleCriterion
+      });
+      expect(replay.id).toBe(pending.id);
+
+      await expect(repository.createSkillVersionPending(starter.id, evaluator, {
+        projectId,
+        onboardingCriterion: {
+          ...visibleCriterion,
+          name: "Conflicting retry",
+          definition: "This must not be appended.",
+          requestDigest: `sha256:${"b".repeat(64)}`
+        }
+      })).rejects.toMatchObject({ code: "idempotency_conflict" });
+      const counts = await pool.query(
+        `select
+           (select count(*)::int from skill_versions where skill_id = $1) as version_count,
+           (select count(*)::int from criterion_versions where criterion_id = $2) as criterion_version_count`,
+        [starter.id, starter.criterionId]
+      );
+      expect(counts.rows[0]).toMatchObject({ version_count: 2, criterion_version_count: 2 });
+    } finally {
+      await cleanup();
+    }
+  });
+
   it("covers setup, owner invite, non-owner rejection, and invite redemption", async () => {
     process.env.BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET || "test-secret-for-pg-auth-flow-at-least-32-bytes";
     const { pool, cleanup } = await openPostgresTestDatabase("pg_auth");
@@ -727,4 +915,20 @@ async function signIn(app: CoevalApi, email: string, password: string): Promise<
     .map((cookie) => cookie.split(";")[0]?.trim())
     .filter(Boolean)
     .join("; ");
+}
+
+class FailFirstQueue implements Queue {
+  readonly jobs: Array<{ name: QueueName; data: object }> = [];
+  private failed = false;
+  async start(): Promise<void> {}
+  async stop(): Promise<void> {}
+  async work<T extends object>(_name: QueueName, _handler: (job: QueueJob<T>) => Promise<void>): Promise<void> {}
+  async send<T extends object>(name: QueueName, data: T, _options?: QueueSendOptions): Promise<string> {
+    if (!this.failed) {
+      this.failed = true;
+      throw new Error("queue unavailable after first-Check commit");
+    }
+    this.jobs.push({ name, data });
+    return `job_${this.jobs.length}`;
+  }
 }

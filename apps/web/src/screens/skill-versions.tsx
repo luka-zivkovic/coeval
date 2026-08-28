@@ -192,6 +192,7 @@ export function SkillVersionsScreen() {
                   <td>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <StatusChip status={v.status} />
+                      {v.onboardingAssurance === "starter_unvalidated" ? <Chip>Starter · unvalidated</Chip> : null}
                       <GateChip state={gateStateForVersion(v)} title={v.knownLimitations.join(" · ")} />
                     </div>
                   </td>
@@ -379,10 +380,13 @@ export function SkillVersionDetailScreen() {
       <SectionHead
         eyebrow={`Judge card · v${v.version}`}
         title={`${v.modelBinding.provider}/${v.modelBinding.modelId}`}
-        sub={`Approved ${v.approvedAt ? new Date(v.approvedAt).toLocaleString() : "—"} · ${v.knownLimitations.length} known limitation${v.knownLimitations.length === 1 ? "" : "s"}`}
+        sub={v.onboardingAssurance === "starter_unvalidated"
+          ? `Starter · unvalidated · runnable does not mean calibrated · ${v.knownLimitations.length} known limitation${v.knownLimitations.length === 1 ? "" : "s"}`
+          : `Approved ${v.approvedAt ? new Date(v.approvedAt).toLocaleString() : "—"} · ${v.knownLimitations.length} known limitation${v.knownLimitations.length === 1 ? "" : "s"}`}
         right={
           <div className="flex items-center gap-2">
             <StatusChip status={v.status} />
+            {v.onboardingAssurance === "starter_unvalidated" ? <Chip>Starter · unvalidated</Chip> : null}
             <GateChip state={gateStateForVersion(v)} title={v.knownLimitations.join(" · ")} />
             {isCurrent ? <Chip>current</Chip> : null}
           </div>

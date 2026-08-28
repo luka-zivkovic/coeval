@@ -82,6 +82,7 @@ import {
   ManualTraceImportInput,
   ManualTraceImportResult,
   MinimumVerdictOutputSchema,
+  OnboardingEvidenceInventory,
   Project,
   ProjectSettings,
   ProviderResponseMetadata,
@@ -157,12 +158,30 @@ export interface CreateSkillVersionContext {
   projectId: string;
   actorUserId?: string | undefined;
   rubricProvenance?: SkillVersion["rubricProvenance"] | undefined;
+  // First-run only: append this exact visible quality question to the seeded
+  // native criterion and bind the new evaluator version in the same write.
+  onboardingCriterion?: {
+    name: string;
+    definition: string;
+    idempotencyKey: string;
+    requestDigest: string;
+  } | undefined;
   agentSetup?: {
     pairingId?: string | undefined;
     skillName: string;
     skillDescription: string;
     providerCredential?: { provider: JudgeKeyProvider; apiKey: string } | undefined;
   } | undefined;
+}
+
+export class OnboardingCheckConflictError extends Error {
+  constructor(
+    readonly code: "project_already_configured" | "criterion_not_native" | "idempotency_conflict",
+    message: string
+  ) {
+    super(message);
+    this.name = "OnboardingCheckConflictError";
+  }
 }
 
 export interface ConvergenceAuditPageInput {
@@ -272,6 +291,7 @@ export interface CoevalRepository {
   pruneExpiredTraces(projectId: string, context: { actorUserId?: string | undefined; now?: Date | undefined }): Promise<RetentionPruneResult>;
   deleteProject(projectId: string, input: { confirmProjectName: string; actorUserId?: string | undefined }): Promise<void>;
   getDashboardSummary(projectId: string, criterionId?: string | undefined): Promise<DashboardSummary>;
+  getOnboardingEvidenceInventory(projectId: string): Promise<OnboardingEvidenceInventory>;
   listCriteria(projectId: string): Promise<Criterion[]>;
   getCriterion(projectId: string, criterionId: string): Promise<CriterionDetail | null>;
   createCriterion(
@@ -1337,6 +1357,7 @@ export class DemoRepository implements CoevalRepository {
     requestDigest: string;
   }> = [];
   private readonly skillVersionCriteria = new Map<string, string>();
+  private readonly onboardingCheckRequests = new Map<string, { requestDigest: string; versionId: string }>();
   private readonly criterionSkills = new Map<string, Skill>();
 
   constructor(
@@ -5091,6 +5112,28 @@ export class DemoRepository implements CoevalRepository {
       .slice(0, limit);
   }
 
+  async getOnboardingEvidenceInventory(projectId: string): Promise<OnboardingEvidenceInventory> {
+    if (projectId !== demoProject.id) {
+      return { runCount: 0, inputCount: 0, outputCount: 0, stepsCount: 0, metadataCount: 0 };
+    }
+    const inventory: OnboardingEvidenceInventory = {
+      runCount: 0,
+      inputCount: 0,
+      outputCount: 0,
+      stepsCount: 0,
+      metadataCount: 0
+    };
+    for (const [caseId, trace] of this.traces.entries()) {
+      if (this.isEvidenceScaffoldingCase(caseId) || !this.traceSources.has(caseId)) continue;
+      inventory.runCount += 1;
+      if (trace.input !== null && trace.input !== undefined) inventory.inputCount += 1;
+      if (trace.output !== null && trace.output !== undefined) inventory.outputCount += 1;
+      if ((trace.steps?.length ?? 0) > 0) inventory.stepsCount += 1;
+      if (Object.keys(trace.metadata ?? {}).length > 0) inventory.metadataCount += 1;
+    }
+    return inventory;
+  }
+
   async listCaseIdsForProject(projectId: string, limit = 10_000): Promise<string[]> {
     // DemoRepo tenancy: all cases (traces + exceptions + golden set) live in
     // the demo project. Return the union, deduped, capped at `limit`.
@@ -5205,29 +5248,84 @@ export class DemoRepository implements CoevalRepository {
     });
   }
 
-  async createSkillVersionPending(skillId: string, input: CreateSkillVersionInput, _context: CreateSkillVersionContext): Promise<SkillVersion> {
+  async createSkillVersionPending(skillId: string, input: CreateSkillVersionInput, context: CreateSkillVersionContext): Promise<SkillVersion> {
     const evaluatorBinding = [...this.criterionSkills.entries()].find(([, skill]) =>
       skill.projectId === demoProject.id && skill.id === skillId
     );
     if (!evaluatorBinding) throw new NoCurrentSkillError(demoProject.id);
     const [criterionId, evaluator] = evaluatorBinding;
-    const definitionCount = this.criterionVersions.filter((candidate) =>
-      candidate.projectId === demoProject.id && candidate.criterionId === criterionId
-    ).length;
-    if (!input.criterionVersionId && definitionCount > 1) {
-      throw new DatasetRevisionConflictError(
-        "Criteria with multiple immutable definitions require an explicit criterionVersionId when creating an evaluator version."
+    let criterionVersion: CriterionVersion | undefined;
+    if (context.onboardingCriterion) {
+      const requestKey = `${skillId}:${context.onboardingCriterion.idempotencyKey}`;
+      const priorRequest = this.onboardingCheckRequests.get(requestKey);
+      if (priorRequest) {
+        if (priorRequest.requestDigest !== context.onboardingCriterion.requestDigest) {
+          throw new OnboardingCheckConflictError(
+            "idempotency_conflict",
+            "This first-Check request key was already used with different proposal content."
+          );
+        }
+        const priorVersion = (this.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
+          .find((candidate) => candidate.id === priorRequest.versionId);
+        if (!priorVersion) throw new Error(`Onboarding Check version not found: ${priorRequest.versionId}`);
+        return priorVersion;
+      }
+      if (!evaluator.isStarter) {
+        throw new OnboardingCheckConflictError(
+          "project_already_configured",
+          "This project's starter Check has already been configured."
+        );
+      }
+      const criterion = this.criteria.find((candidate) =>
+        candidate.projectId === demoProject.id && candidate.id === criterionId
       );
+      if (!criterion || criterion.sourceKind !== "native") {
+        throw new OnboardingCheckConflictError(
+          "criterion_not_native",
+          "Guided onboarding can configure only the project's native starter criterion."
+        );
+      }
+      const prior = this.criterionVersions.filter((candidate) =>
+        candidate.projectId === demoProject.id && candidate.criterionId === criterionId
+      );
+      const id = `criterionv_${randomUUID()}`;
+      criterionVersion = {
+        id,
+        projectId: demoProject.id,
+        criterionId,
+        revision: Math.max(0, ...prior.map((entry) => entry.revision)) + 1,
+        name: context.onboardingCriterion.name,
+        definition: context.onboardingCriterion.definition,
+        criterionDigest: evaluatorSuiteCriterionDigest({
+          criterionId,
+          criterionVersionId: id,
+          criterionName: context.onboardingCriterion.name,
+          criterionDefinition: context.onboardingCriterion.definition
+        }),
+        sourceKind: "native",
+        createdByUserId: context.actorUserId ?? null,
+        createdAt: new Date().toISOString()
+      };
+      this.criterionVersions.push(criterionVersion);
+    } else {
+      const definitionCount = this.criterionVersions.filter((candidate) =>
+        candidate.projectId === demoProject.id && candidate.criterionId === criterionId
+      ).length;
+      if (!input.criterionVersionId && definitionCount > 1) {
+        throw new DatasetRevisionConflictError(
+          "Criteria with multiple immutable definitions require an explicit criterionVersionId when creating an evaluator version."
+        );
+      }
+      criterionVersion = input.criterionVersionId
+        ? this.criterionVersions.find((candidate) =>
+            candidate.projectId === demoProject.id &&
+            candidate.criterionId === criterionId &&
+            candidate.id === input.criterionVersionId
+          )
+        : this.criterionVersions
+            .filter((candidate) => candidate.projectId === demoProject.id && candidate.criterionId === criterionId)
+            .sort((left, right) => right.revision - left.revision)[0];
     }
-    const criterionVersion = input.criterionVersionId
-      ? this.criterionVersions.find((candidate) =>
-          candidate.projectId === demoProject.id &&
-          candidate.criterionId === criterionId &&
-          candidate.id === input.criterionVersionId
-        )
-      : this.criterionVersions
-          .filter((candidate) => candidate.projectId === demoProject.id && candidate.criterionId === criterionId)
-          .sort((left, right) => right.revision - left.revision)[0];
     if (!criterionVersion) {
       throw new DatasetRevisionConflictError(
         `Skill ${skillId} does not own criterion version ${input.criterionVersionId ?? "(latest)"}.`
@@ -5236,7 +5334,7 @@ export class DemoRepository implements CoevalRepository {
     const createdAt = new Date().toISOString();
     const regressionRevision = await this.getOrCreateRegressionDatasetRevision(
       demoProject.id,
-      _context.actorUserId,
+      context.actorUserId,
       criterionVersion.id
     );
     const priorVersions = (this.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
@@ -5260,7 +5358,10 @@ export class DemoRepository implements CoevalRepository {
       verdictKind: input.verdictKind,
       scalarRange: input.verdictKind === "scalar" ? input.scalarRange ?? null : null,
       categoricalChoiceScores: input.verdictKind === "categorical" ? input.categoricalChoiceScores ?? null : null,
-      rubricProvenance: _context.rubricProvenance ?? "human-authored",
+      rubricProvenance: context.rubricProvenance ?? "human-authored",
+      onboardingAssurance: context.onboardingCriterion || context.agentSetup
+        ? "starter_unvalidated"
+        : priorVersions.find((candidate) => candidate.onboardingAssurance)?.onboardingAssurance ?? null,
       regressionDatasetRevisionId: regressionRevision.id,
       createdAt,
       approvedAt: null
@@ -5270,7 +5371,20 @@ export class DemoRepository implements CoevalRepository {
     if (this.skillVersions === null) this.skillVersions = [structuredClone(demoSkill.currentVersion)];
     this.skillVersions.push(version);
     this.skillVersionCriteria.set(version.id, criterionVersion.id);
+    if (context.onboardingCriterion) {
+      this.onboardingCheckRequests.set(`${skillId}:${context.onboardingCriterion.idempotencyKey}`, {
+        requestDigest: context.onboardingCriterion.requestDigest,
+        versionId: version.id
+      });
+    }
     evaluator.isStarter = false;
+    if (context.onboardingCriterion) {
+      evaluator.name = context.onboardingCriterion.name;
+      evaluator.description = context.onboardingCriterion.definition;
+    } else if (context.agentSetup) {
+      evaluator.name = context.agentSetup.skillName;
+      evaluator.description = context.agentSetup.skillDescription;
+    }
     return version;
   }
 

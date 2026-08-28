@@ -61,6 +61,7 @@ import type {
   LangSmithIntegration,
   LangSmithIntegrationInput,
   ManualTraceImportInput,
+  OnboardingEvidenceInventory,
   Project,
   ProjectSettings,
   RunComparison,
@@ -181,6 +182,7 @@ import {
   LangSmithCredentialsMissingError,
   LangSmithIntegrationNotFoundError,
   NoCurrentSkillError,
+  OnboardingCheckConflictError,
   RecursiveTraceSkippedError,
   SkillVersionNotSignableError,
   TraceTestNotFoundError,
@@ -1103,6 +1105,7 @@ export class PgRepository implements CoevalRepository {
               sv.scalar_range,
               sv.categorical_choice_scores,
               sv.rubric_provenance,
+              sv.onboarding_assurance,
               sv.regression_dataset_revision_id,
               sv.criterion_version_id as version_criterion_version_id,
               sv.created_at as version_created_at,
@@ -5300,6 +5303,43 @@ export class PgRepository implements CoevalRepository {
     });
   }
 
+  async getOnboardingEvidenceInventory(projectId: string): Promise<OnboardingEvidenceInventory> {
+    // Keep this aggregate semantically aligned with listCases: only customer
+    // Runs count, never gate or release-evidence scaffolding. A field counts
+    // when its post-redaction stored value is present and useful to a Check.
+    const result = await this.pool.query(
+      `select count(*)::int as run_count,
+              count(*) filter (
+                where c.normalized_payload ? 'input'
+                  and c.normalized_payload->'input' <> 'null'::jsonb
+              )::int as input_count,
+              count(*) filter (
+                where c.normalized_payload ? 'output'
+                  and c.normalized_payload->'output' <> 'null'::jsonb
+              )::int as output_count,
+              count(*) filter (
+                where jsonb_typeof(c.normalized_payload->'steps') = 'array'
+                  and jsonb_array_length(c.normalized_payload->'steps') > 0
+              )::int as steps_count,
+              count(*) filter (
+                where jsonb_typeof(c.normalized_payload->'metadata') = 'object'
+                  and c.normalized_payload->'metadata' <> '{}'::jsonb
+              )::int as metadata_count
+       from cases c
+       where c.project_id = $1
+         and c.case_type not in ('gate_candidate', 'release_evidence')`,
+      [projectId]
+    );
+    const row = result.rows[0] ?? {};
+    return {
+      runCount: Number(row.run_count ?? 0),
+      inputCount: Number(row.input_count ?? 0),
+      outputCount: Number(row.output_count ?? 0),
+      stepsCount: Number(row.steps_count ?? 0),
+      metadataCount: Number(row.metadata_count ?? 0)
+    };
+  }
+
   async listCaseIdsForProject(projectId: string, limit = 10_000): Promise<string[]> {
     // Governed evaluation scaffolding is excluded: this feeds
     // the approval-time judge backfill, which must never re-judge (and pay
@@ -6277,6 +6317,27 @@ export class PgRepository implements CoevalRepository {
       );
       if (!locked.rows[0]) throw new Error(`Skill not found for project: ${skillId}`);
 
+      if (context.onboardingCriterion) {
+        const replay = (await client.query(
+          `select id, onboarding_request_digest
+           from skill_versions
+           where project_id = $1 and skill_id = $2 and onboarding_idempotency_key = $3`,
+          [context.projectId, skillId, context.onboardingCriterion.idempotencyKey]
+        )).rows[0];
+        if (replay) {
+          if (String(replay.onboarding_request_digest) !== context.onboardingCriterion.requestDigest) {
+            throw new OnboardingCheckConflictError(
+              "idempotency_conflict",
+              "This first-Check request key was already used with different proposal content."
+            );
+          }
+          await client.query("commit");
+          const existing = await this.getSkillVersion(context.projectId, String(replay.id));
+          if (!existing) throw new Error(`Onboarding Check version not found: ${String(replay.id)}`);
+          return existing;
+        }
+      }
+
       if (context.agentSetup?.pairingId) {
         const pairing = await client.query(
           `select id
@@ -6306,37 +6367,91 @@ export class PgRepository implements CoevalRepository {
       // Bind the evaluator to an immutable regression corpus before it is
       // persisted or queued. Golden-set edits after this point may advance
       // the criterion pointer, but can never change this version's gate input.
-      await client.query(
-        `select id from criteria where project_id = $1 and id = $2 for update`,
+      const lockedCriterion = await client.query(
+        `select id, source_kind from criteria where project_id = $1 and id = $2 for update`,
         [context.projectId, String(locked.rows[0].criterion_id)]
       );
-      if (!input.criterionVersionId) {
-        const definitionCount = Number((await client.query(
-          `select count(*)::int as count
-           from criterion_versions
-           where project_id = $1 and criterion_id = $2`,
-          [context.projectId, String(locked.rows[0].criterion_id)]
-        )).rows[0]?.count ?? 0);
-        if (definitionCount > 1) {
-          throw new DatasetRevisionConflictError(
-            "Criteria with multiple immutable definitions require an explicit criterionVersionId when creating an evaluator version."
+      if (!lockedCriterion.rows[0]) {
+        throw new DatasetRevisionConflictError(`Skill ${skillId} has no criterion.`);
+      }
+
+      let criterionVersionId: string;
+      if (context.onboardingCriterion) {
+        if (!locked.rows[0].is_starter) {
+          throw new OnboardingCheckConflictError(
+            "project_already_configured",
+            "This project's starter Check has already been configured."
           );
         }
-      }
-      const criterionVersion = (await client.query(
-        `select id from criterion_versions
-         where project_id = $1 and criterion_id = $2
-           and ($3::text is null or id = $3)
-         order by revision desc, id desc
-         limit 1`,
-        [context.projectId, String(locked.rows[0].criterion_id), input.criterionVersionId ?? null]
-      )).rows[0];
-      if (!criterionVersion) {
-        throw new DatasetRevisionConflictError(
-          `Skill ${skillId} does not own criterion version ${input.criterionVersionId ?? "(latest)"}.`
+        if (String(lockedCriterion.rows[0].source_kind) !== "native") {
+          throw new OnboardingCheckConflictError(
+            "criterion_not_native",
+            "Guided onboarding can configure only the project's native starter criterion."
+          );
+        }
+        if (input.criterionVersionId) {
+          throw new DatasetRevisionConflictError(
+            "Guided onboarding creates and binds its own criterion version."
+          );
+        }
+        const criterionId = String(locked.rows[0].criterion_id);
+        const revision = Number((await client.query(
+          `select coalesce(max(revision), 0)::int + 1 as revision
+           from criterion_versions where project_id = $1 and criterion_id = $2`,
+          [context.projectId, criterionId]
+        )).rows[0]?.revision ?? 1);
+        criterionVersionId = `criterionv_${randomUUID()}`;
+        const criterionDigest = evaluatorSuiteCriterionDigest({
+          criterionId,
+          criterionVersionId,
+          criterionName: context.onboardingCriterion.name,
+          criterionDefinition: context.onboardingCriterion.definition
+        });
+        await client.query(
+          `insert into criterion_versions
+            (id, project_id, criterion_id, revision, name, definition,
+             criterion_digest, source_kind, created_by_user_id)
+           values ($1, $2, $3, $4, $5, $6, $7, 'native', $8)`,
+          [
+            criterionVersionId,
+            context.projectId,
+            criterionId,
+            revision,
+            context.onboardingCriterion.name,
+            context.onboardingCriterion.definition,
+            criterionDigest,
+            context.actorUserId ?? null
+          ]
         );
+      } else {
+        if (!input.criterionVersionId) {
+          const definitionCount = Number((await client.query(
+            `select count(*)::int as count
+             from criterion_versions
+             where project_id = $1 and criterion_id = $2`,
+            [context.projectId, String(locked.rows[0].criterion_id)]
+          )).rows[0]?.count ?? 0);
+          if (definitionCount > 1) {
+            throw new DatasetRevisionConflictError(
+              "Criteria with multiple immutable definitions require an explicit criterionVersionId when creating an evaluator version."
+            );
+          }
+        }
+        const criterionVersion = (await client.query(
+          `select id from criterion_versions
+           where project_id = $1 and criterion_id = $2
+             and ($3::text is null or id = $3)
+           order by revision desc, id desc
+           limit 1`,
+          [context.projectId, String(locked.rows[0].criterion_id), input.criterionVersionId ?? null]
+        )).rows[0];
+        if (!criterionVersion) {
+          throw new DatasetRevisionConflictError(
+            `Skill ${skillId} does not own criterion version ${input.criterionVersionId ?? "(latest)"}.`
+          );
+        }
+        criterionVersionId = String(criterionVersion.id);
       }
-      const criterionVersionId = String(criterionVersion.id);
       const regressionDatasetRevisionId = await this.getOrCreateRegressionDatasetRevisionWithClient(
         client,
         context.projectId,
@@ -6363,6 +6478,15 @@ export class PgRepository implements CoevalRepository {
         scalarRange: input.verdictKind === "scalar" ? input.scalarRange ?? null : null,
         categoricalChoiceScores: input.verdictKind === "categorical" ? input.categoricalChoiceScores ?? null : null,
         rubricProvenance: context.rubricProvenance ?? "human-authored",
+        onboardingAssurance: context.onboardingCriterion || context.agentSetup
+          ? "starter_unvalidated"
+          : (await client.query(
+              `select onboarding_assurance
+               from skill_versions
+               where project_id = $1 and skill_id = $2 and onboarding_assurance is not null
+               order by created_at desc, id desc limit 1`,
+              [context.projectId, skillId]
+            )).rows[0]?.onboarding_assurance ?? null,
         regressionDatasetRevisionId,
         createdAt: new Date().toISOString(),
         approvedAt: null
@@ -6383,7 +6507,13 @@ export class PgRepository implements CoevalRepository {
         version,
         context.projectId,
         criterionVersionId,
-        context.actorUserId ?? null
+        context.actorUserId ?? null,
+        context.onboardingCriterion
+          ? {
+              idempotencyKey: context.onboardingCriterion.idempotencyKey,
+              requestDigest: context.onboardingCriterion.requestDigest
+            }
+          : undefined
       );
       await client.query(
         `update skills
@@ -6394,8 +6524,8 @@ export class PgRepository implements CoevalRepository {
         [
           skillId,
           context.projectId,
-          context.agentSetup?.skillName ?? null,
-          context.agentSetup?.skillDescription ?? null
+          context.onboardingCriterion?.name ?? context.agentSetup?.skillName ?? null,
+          context.onboardingCriterion?.definition ?? context.agentSetup?.skillDescription ?? null
         ]
       );
       if (context.agentSetup?.pairingId) {
@@ -6888,7 +7018,8 @@ export class PgRepository implements CoevalRepository {
     version: SkillVersion,
     projectId: string,
     criterionVersionId: string,
-    actorUserId: string | null
+    actorUserId: string | null,
+    onboardingRequest?: { idempotencyKey: string; requestDigest: string }
   ): Promise<void> {
     const developerSubjectId = actorUserId
       ? await this.getOrCreateGovernedReviewerSubject(client, projectId, actorUserId)
@@ -6900,8 +7031,9 @@ export class PgRepository implements CoevalRepository {
         golden_set_agreement, too_strict_count, too_lenient_count, ambiguous_count, known_limitations,
         verdict_kind, scalar_range, categorical_choice_scores, rubric_provenance,
         regression_dataset_revision_id, created_at, approved_at, criterion_version_id,
-        created_by_user_id, created_by_subject_id, developer_identity_status)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)`,
+        created_by_user_id, created_by_subject_id, developer_identity_status,
+        onboarding_idempotency_key, onboarding_request_digest, onboarding_assurance)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)`,
       [
         version.id,
         version.skillId,
@@ -6927,7 +7059,10 @@ export class PgRepository implements CoevalRepository {
         criterionVersionId,
         recordedActorUserId,
         developerSubjectId,
-        developerSubjectId ? "recorded" : "unknown_legacy"
+        developerSubjectId ? "recorded" : "unknown_legacy",
+        onboardingRequest?.idempotencyKey ?? null,
+        onboardingRequest?.requestDigest ?? null,
+        version.onboardingAssurance ?? null
       ]
     );
   }
@@ -7166,6 +7301,7 @@ function rowToSkill(row: Record<string, unknown>): Skill {
       scalarRange: row.scalar_range == null ? null : parseJson(row.scalar_range),
       categoricalChoiceScores: row.categorical_choice_scores == null ? null : parseJson(row.categorical_choice_scores),
       rubricProvenance: String(row.rubric_provenance),
+      onboardingAssurance: row.onboarding_assurance === "starter_unvalidated" ? "starter_unvalidated" : null,
       regressionDatasetRevisionId: row.regression_dataset_revision_id === null || row.regression_dataset_revision_id === undefined
         ? null
         : String(row.regression_dataset_revision_id),
@@ -7247,6 +7383,7 @@ function rowToSkillVersion(row: Record<string, unknown>): SkillVersion {
     scalarRange: scalarRangeRaw,
     categoricalChoiceScores: categoricalChoiceScoresRaw,
     rubricProvenance: String(row.rubric_provenance),
+    onboardingAssurance: row.onboarding_assurance === "starter_unvalidated" ? "starter_unvalidated" : null,
     regressionDatasetRevisionId: row.regression_dataset_revision_id === null || row.regression_dataset_revision_id === undefined
       ? null
       : String(row.regression_dataset_revision_id),

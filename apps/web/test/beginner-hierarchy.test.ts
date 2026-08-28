@@ -108,10 +108,12 @@ describe("beginner-first hierarchy", () => {
     expect(projectCreate).not.toContain("firstRunEditorPath");
     expect(skillEdit).toContain("Starter Check v${result.version.version} created. Add a Run to see its first Result.");
     expect(skillEdit).toContain('useState<SkillVersionTimeScope>(firstRun ? "both" : "new")');
-    expect(skillEdit).toContain("navigate(firstResultPath(result.version.id))");
+    expect(skillEdit).toContain("navigate(firstResultPath(result.version.id, skill.id, skill.criterionId))");
     expect(firstResultState).toContain('run.trigger === "backfill"');
-    expect(firstResult).toContain("ensureSkillVersionBackfill(dashboard.skill.id, versionId)");
-    expect(firstResult).toContain("dashboard.skill.currentVersion.id === versionId");
+    expect(firstResult).toContain("ensureSkillVersionBackfill(skillId, versionId)");
+    expect(firstResult).toContain('const skillId = searchParams.get("skill")');
+    expect(firstResult).toContain('const criterionId = searchParams.get("criterionId")');
+    expect(firstResult).toContain("dashboard?.skill.currentVersion.id === versionId");
     expect(firstResult).toContain('evidenceScope: "customer"');
     expect(firstResult).toContain("setRetryNonce((value) => value + 1)");
     expect(firstResult).toContain("Date.now() >= nextEnsureAt.current");
@@ -123,7 +125,7 @@ describe("beginner-first hierarchy", () => {
     expect(firstResult).toContain('navigate("/skill/edit")');
     expect(firstResult).not.toContain("navigate(firstRunEditorPath())");
     expect(firstResult).toContain('aria-live={urgent ? "assertive" : "polite"}');
-    expect(provisional).toContain("navigate(firstRunEditorPath())");
+    expect(provisional).toContain('navigate(owner ? firstRunEditorPath() : "/skill")');
     expect(dashboard).toContain("setReceipt(takeSetupReceipt())");
     expect(tracingWelcome).toContain("emphasizeAction={false}");
     expect(benchWelcome).toContain("emphasizeAction={false}");
@@ -142,6 +144,7 @@ describe("beginner-first hierarchy", () => {
     expect(loadedView).toContain('eyebrow="Evaluator definition"');
     expect(loadedView).toContain("right={");
     expect(loadedView).toContain("Edit evaluator");
+    expect(loadedView).toContain('dashboard?.viewerRole === "owner"');
     expect(loadedView).toContain("requested model, immutable version, and status");
   });
 
@@ -153,6 +156,10 @@ describe("beginner-first hierarchy", () => {
 
     expect(skillVersionStateLabel(divergentSkill.currentVersion)).toBe("v3.0.0 · approved");
     expect(skillVersionStateLabel(divergentSkill.currentVersion)).not.toContain(divergentSkill.status);
+    expect(skillVersionStateLabel({
+      ...divergentSkill.currentVersion,
+      onboardingAssurance: "starter_unvalidated"
+    })).toBe("v3.0.0 · Starter · unvalidated");
     const historicalVersion = { regressionDatasetRevisionId: null };
     expect(historicalVersion.regressionDatasetRevisionId).toBeNull();
     expect(skillEditConsequence(2)).toContain("2 current Golden references");

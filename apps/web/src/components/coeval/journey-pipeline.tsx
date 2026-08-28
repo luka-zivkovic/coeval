@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import { GOLDEN_GATE_RECOMMENDED, type DashboardSummary } from "@coeval/shared";
 import { Button } from "@/components/ui/button";
 import { firstResultPath, firstRunEditorPath, journeyActStates, isBench, type JourneyActState } from "@/lib/journey";
+import { skillVersionStateLabel } from "../../lib/skill-presentation.js";
 import { cn } from "@/lib/utils";
 
 export function JourneyPipeline({
@@ -31,12 +32,16 @@ export function JourneyPipeline({
       act: "Act 1",
       title: "Choose what to Check",
       detail: dashboard.skill.isStarter
-        ? "Review the starter Check against a recorded Run."
-        : `v${dashboard.skill.currentVersion.version} · ${dashboard.skill.currentVersion.status}`,
-      action: "Review Check",
-      // A still-starter skill routes through the first-run editor (onboarding
-      // framing + worked starter); anything else opens the plain editor.
-      path: dashboard.skill.isStarter ? firstRunEditorPath() : "/skill/edit"
+        ? dashboard.viewerRole === "owner"
+          ? "Review the starter Check against a recorded Run."
+          : "An owner needs to choose the first Check. You can inspect the starter."
+        : skillVersionStateLabel(dashboard.skill.currentVersion),
+      action: dashboard.skill.isStarter && dashboard.viewerRole === "member" ? "View Check" : "Review Check",
+      // A still-starter Check routes through the guided choice and proposal;
+      // anything already configured opens the full editor.
+      path: dashboard.skill.isStarter
+        ? dashboard.viewerRole === "owner" ? firstRunEditorPath() : "/skill"
+        : "/skill/edit"
     },
     {
       state: states.judgeRealWork,
@@ -49,7 +54,7 @@ export function JourneyPipeline({
           : `Add the first ${bench ? "example and run it" : "recorded Run or live source"}.`,
       action: recorded > 0 && dashboard.viewerRole === "owner" ? "Continue to first Result" : bench ? "Open examples" : "Open traces",
       path: recorded > 0 && dashboard.viewerRole === "owner"
-        ? firstResultPath(dashboard.skill.currentVersion.id)
+        ? firstResultPath(dashboard.skill.currentVersion.id, dashboard.skill.id, dashboard.skill.criterionId)
         : bench ? "/datasets" : "/traces"
     },
     {

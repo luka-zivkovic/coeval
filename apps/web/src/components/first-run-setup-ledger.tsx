@@ -17,6 +17,7 @@ export function FirstRunSetupLedger({
   const done = Object.values(states).filter((state) => state === "done").length;
   const imported = project.importedTraceCount;
   const judged = dashboard.currentVersionResultCount;
+  const owner = dashboard.viewerRole === "owner";
   const editPath = skill.isStarter ? firstRunEditorPath() : "/skill/edit";
 
   return (
@@ -46,10 +47,14 @@ export function FirstRunSetupLedger({
           ...(states.chooseCheck === "done"
             ? { foot: `Check v${skill.currentVersion.version} ready` }
             : {
-                detail: "Tell Coeval one quality that matters. Technical settings stay out of the first-run path.",
-                ...(states.chooseCheck === "now"
+                detail: owner
+                  ? "Tell Coeval one quality that matters. Technical settings stay out of the first-run path."
+                  : "An owner needs to choose the project's first Check. You can still inspect the current starter.",
+                ...(states.chooseCheck === "now" && owner
                   ? { cta: "Review the Check", onCta: () => navigate(editPath) }
-                  : {})
+                  : states.chooseCheck === "now"
+                    ? { foot: "Waiting for an owner" }
+                    : {})
               })
         },
         {
@@ -62,7 +67,7 @@ export function FirstRunSetupLedger({
                 ...(states.seeResult === "now"
                   ? dashboard.viewerRole === "owner" ? {
                       cta: "Continue to first Result",
-                      onCta: () => navigate(firstResultPath(skill.currentVersion.id))
+                      onCta: () => navigate(firstResultPath(skill.currentVersion.id, skill.id, skill.criterionId))
                     } : { foot: "An owner needs to start this Result." }
                   : {})
               })

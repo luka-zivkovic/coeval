@@ -9,6 +9,10 @@ export function skillEditConsequence(goldenSetSize: number | null): string {
     : "Editing creates a new immutable version. Add a Golden reference to enable known-failure regression checks.";
 }
 
-export function skillVersionStateLabel(version: Pick<SkillVersion, "version" | "status">): string {
-  return `v${version.version} · ${version.status}`;
+export function skillVersionStateLabel(
+  version: Pick<SkillVersion, "version" | "status" | "onboardingAssurance">
+): string {
+  return `v${version.version} · ${version.onboardingAssurance === "starter_unvalidated"
+    ? "Starter · unvalidated"
+    : version.status}`;
 }

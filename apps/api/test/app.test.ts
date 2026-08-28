@@ -36,6 +36,53 @@ describe("Coeval Hono API", () => {
     await expect(response.json()).resolves.toMatchObject({ ok: true });
   });
 
+  it("reports the exact saved Run fields available to beginner setup", async () => {
+    const repository = new DemoRepository();
+    await repository.importTrace("proj_langsmith_support", "manual", {
+      sourceTraceId: "onboarding-inventory-1",
+      input: { request: "Help" },
+      output: { answer: "Here is help" },
+      metadata: { channel: "test" },
+      steps: [{ name: "lookup", input: { q: "Help" }, output: { found: true } }]
+    }, { ingestionPurpose: "analysis_eligible_manual" });
+    await repository.importTrace("proj_langsmith_support", "manual", {
+      sourceTraceId: "onboarding-inventory-2",
+      input: { request: "No result yet" },
+      output: null,
+      metadata: {}
+    }, { ingestionPurpose: "analysis_eligible_manual" });
+
+    const response = await createApp(repository).request("/api/onboarding/evidence-inventory");
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      runCount: 2,
+      inputCount: 2,
+      outputCount: 1,
+      stepsCount: 1,
+      metadataCount: 1
+    });
+  });
+
+  it("returns the exact quality question bound to a Check version", async () => {
+    const dashboardResponse = await app.request("/api/dashboard");
+    const dashboard = await dashboardResponse.json() as {
+      skill: { id: string; description: string; currentVersion: { id: string; criterionVersionId: string } };
+    };
+    const response = await app.request(
+      `/api/skills/${dashboard.skill.id}/versions/${dashboard.skill.currentVersion.id}/criterion`
+    );
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      criterionVersion: {
+        id: dashboard.skill.currentVersion.criterionVersionId,
+        definition: dashboard.skill.description
+      }
+    });
+    expect((await app.request(
+      `/api/skills/skill_wrong/versions/${dashboard.skill.currentVersion.id}/criterion`
+    )).status).toBe(404);
+  });
+
   it("exposes retry guidance to cross-origin browser clients", async () => {
     const response = await app.request("/health", {
       headers: { origin: "http://localhost:5173" }

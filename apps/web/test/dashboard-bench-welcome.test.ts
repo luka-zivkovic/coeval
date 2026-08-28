@@ -55,6 +55,8 @@ function dashboard(input: {
       autoJudgedTraceCount: input.judged
     },
     skill: {
+      id: "skill_current",
+      criterionId: "criterion_current",
       isStarter: input.starter ?? false,
       currentVersion: {
         id: "skillv_current",
@@ -97,7 +99,7 @@ describe("first-run setup ledger", () => {
     ledgerHarness.steps[0]?.onCta?.();
     ledgerHarness.steps[0]?.onSecondaryCta?.();
     expect(ledgerHarness.navigate).toHaveBeenNthCalledWith(1, "/datasets?add=1");
-    expect(ledgerHarness.navigate).toHaveBeenNthCalledWith(2, "/skill/edit?first=1&starter=task-outcome-quality");
+    expect(ledgerHarness.navigate).toHaveBeenNthCalledWith(2, "/skill/edit?first=1");
   });
 
   it("gives tracing projects an honest recorded-Run path", () => {
@@ -134,7 +136,7 @@ describe("first-run setup ledger", () => {
     }));
     expect(runHtml).toContain("Continue to first Result");
     ledgerHarness.steps[2]?.onCta?.();
-    expect(ledgerHarness.navigate).toHaveBeenCalledWith("/first-result?version=skillv_current");
+    expect(ledgerHarness.navigate).toHaveBeenCalledWith("/first-result?version=skillv_current&skill=skill_current&criterionId=criterion_current");
 
     const starterHtml = renderToStaticMarkup(createElement(FirstRunSetupLedger, {
       dashboard: dashboard({ imported: 6, judged: 0, golden: 0, starter: true })
@@ -150,5 +152,14 @@ describe("first-run setup ledger", () => {
 
     expect(html).toContain("An owner needs to start this Result.");
     expect(html).not.toContain("Continue to first Result");
+  });
+
+  it("does not send members through the owner-only first Check form", () => {
+    const member = dashboard({ imported: 1, judged: 0, golden: 0, starter: true });
+    member.viewerRole = "member";
+    const html = renderToStaticMarkup(createElement(FirstRunSetupLedger, { dashboard: member }));
+
+    expect(html).toContain("Waiting for an owner");
+    expect(html).not.toContain("Review the Check");
   });
 });

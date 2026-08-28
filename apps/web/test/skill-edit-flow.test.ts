@@ -9,8 +9,10 @@ import {
 import {
   knownFailureGateSummary,
   regressionReceiptLabel,
+  shouldRegenerateVerdictOutputSchema,
   skillEditOperationIsCurrent,
-  skillVersionChangeLabels
+  skillVersionChangeLabels,
+  verdictOutputContractChanged
 } from "../src/lib/skill-edit-flow.js";
 import type { RegressionRunResult, SkillVersion } from "@coeval/shared";
 
@@ -106,6 +108,40 @@ describe("guided evaluator editing", () => {
       modelBinding: { ...base.modelBinding, modelId: "mock-v2", modelVersion: "mock-v2" }
     }, base)).toEqual(["review guide", "requested model"]);
     expect(skillVersionChangeLabels(base)).toEqual(["initial version"]);
+  });
+
+  it("keeps a template's changed result contract after its guide is edited", () => {
+    expect(verdictOutputContractChanged(base, {
+      verdictKind: "categorical",
+      scalarRange: null,
+      categoricalChoiceScores: { faithful: 1, partial: 0.5, unsupported: 0 }
+    })).toBe(true);
+    expect(verdictOutputContractChanged(base, {
+      verdictKind: base.verdictKind,
+      scalarRange: base.scalarRange,
+      categoricalChoiceScores: base.categoricalChoiceScores
+    })).toBe(false);
+
+    expect(shouldRegenerateVerdictOutputSchema({
+      firstRun: false,
+      starterSuppliedContract: true,
+      base,
+      current: {
+        verdictKind: base.verdictKind,
+        scalarRange: base.scalarRange,
+        categoricalChoiceScores: base.categoricalChoiceScores
+      }
+    })).toBe(true);
+    expect(shouldRegenerateVerdictOutputSchema({
+      firstRun: false,
+      starterSuppliedContract: false,
+      base,
+      current: {
+        verdictKind: base.verdictKind,
+        scalarRange: base.scalarRange,
+        categoricalChoiceScores: base.categoricalChoiceScores
+      }
+    })).toBe(false);
   });
 
   it("renders terminal blocked and error outcomes without calling them active", () => {

@@ -17,6 +17,7 @@ import { countLegacyHumanCheckedCases } from "@/lib/legacy-human-checks";
 import { useDashboard } from "@/lib/dashboard-context";
 import { useMode } from "@/hooks/use-mode";
 import { isBench, journeyStage, takeSetupReceipt, clearSetupReceipt } from "@/lib/journey";
+import { skillVersionStateLabel } from "../lib/skill-presentation.js";
 import type { CapabilityGap } from "@coeval/shared";
 
 const QUEUE_VOLUME: Record<CapabilityGap["severity"], string> = {
@@ -165,6 +166,9 @@ export function DashboardScreen() {
   const syncBackPct = Math.round(project.syncBackCoverage * 100);
   const agreement = skill.currentVersion.goldenSetAgreement;
   const agreementPct = agreement == null ? null : Math.round(agreement * 100);
+  const versionStateLabel = skill.isStarter
+    ? `v${skill.currentVersion.version} · Starter · unvalidated`
+    : skillVersionStateLabel(skill.currentVersion);
 
   return (
     <div className="fadeUp max-w-[1760px]">
@@ -383,7 +387,7 @@ export function DashboardScreen() {
                   stays "draft" forever while versions move through the gate,
                   which read as "production skill: draft" next to an approved
                   version. */}
-              <Chip>v{skill.currentVersion.version} · {skill.currentVersion.status}</Chip>
+              <Chip>{versionStateLabel}</Chip>
             </div>
             <Separator />
             <div className="flex items-end justify-between">
