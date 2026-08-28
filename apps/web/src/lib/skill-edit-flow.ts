@@ -33,6 +33,15 @@ export function verdictOutputContractChanged(
     JSON.stringify(base.categoricalChoiceScores) !== JSON.stringify(current.categoricalChoiceScores);
 }
 
+export function shouldRegenerateVerdictOutputSchema(input: {
+  firstRun: boolean;
+  starterSuppliedContract: boolean;
+  base: Pick<SkillVersion, "verdictKind" | "scalarRange" | "categoricalChoiceScores">;
+  current: Pick<SkillVersion, "verdictKind" | "scalarRange" | "categoricalChoiceScores">;
+}): boolean {
+  return input.firstRun || input.starterSuppliedContract || verdictOutputContractChanged(input.base, input.current);
+}
+
 export function skillVersionChangeLabels(current: SkillVersion, previous?: SkillVersion | undefined): string[] {
   if (!previous) return ["initial version"];
   const labels: string[] = [];

@@ -9,6 +9,7 @@ import {
 import {
   knownFailureGateSummary,
   regressionReceiptLabel,
+  shouldRegenerateVerdictOutputSchema,
   skillEditOperationIsCurrent,
   skillVersionChangeLabels,
   verdictOutputContractChanged
@@ -119,6 +120,27 @@ describe("guided evaluator editing", () => {
       verdictKind: base.verdictKind,
       scalarRange: base.scalarRange,
       categoricalChoiceScores: base.categoricalChoiceScores
+    })).toBe(false);
+
+    expect(shouldRegenerateVerdictOutputSchema({
+      firstRun: false,
+      starterSuppliedContract: true,
+      base,
+      current: {
+        verdictKind: base.verdictKind,
+        scalarRange: base.scalarRange,
+        categoricalChoiceScores: base.categoricalChoiceScores
+      }
+    })).toBe(true);
+    expect(shouldRegenerateVerdictOutputSchema({
+      firstRun: false,
+      starterSuppliedContract: false,
+      base,
+      current: {
+        verdictKind: base.verdictKind,
+        scalarRange: base.scalarRange,
+        categoricalChoiceScores: base.categoricalChoiceScores
+      }
     })).toBe(false);
   });
 

@@ -44,7 +44,7 @@ import {
 import { STARTER_SKILLS, findStarterSkill, type StarterSkill } from "@/lib/starter-skills";
 import { cn } from "@/lib/utils";
 import { verdictKindDescription } from "@/lib/verdict-kind";
-import { skillEditOperationIsCurrent, verdictOutputContractChanged } from "@/lib/skill-edit-flow";
+import { shouldRegenerateVerdictOutputSchema, skillEditOperationIsCurrent } from "@/lib/skill-edit-flow";
 import {
   compileJudgePrompt,
   regressionDirectionCounts,
@@ -157,6 +157,10 @@ export function SkillEditScreen() {
   const [choiceScores, setChoiceScores] = useState<Record<string, number> | null>(null);
   const [scalarRange, setScalarRange] = useState<[number, number] | null>(null);
   const [appliedStarter, setAppliedStarter] = useState<StarterSkill | null>(null);
+  // This records ownership of the result contract separately from the visual
+  // template marker. Editing the template clears its selected styling, but it
+  // must not make save fall back to a legacy schema from the base version.
+  const [starterSuppliedOutputContract, setStarterSuppliedOutputContract] = useState(false);
   const [onboardingDraft, setOnboardingDraft] = useState<OnboardingCheckDraft | null>(null);
   const [refiningOnboardingDraft, setRefiningOnboardingDraft] = useState(false);
   const [onboardingCriterionVersion, setOnboardingCriterionVersion] = useState<CriterionVersion | null>(null);
@@ -184,6 +188,7 @@ export function SkillEditScreen() {
     setChoiceScores(starter.categoricalChoiceScores ?? null);
     setScalarRange(null);
     setAppliedStarter(starter);
+    setStarterSuppliedOutputContract(true);
   }, []);
 
   // Reset content + verdict-shape fields to the current version.
@@ -198,6 +203,7 @@ export function SkillEditScreen() {
     setChoiceScores(v.categoricalChoiceScores);
     setScalarRange(v.scalarRange);
     setAppliedStarter(null);
+    setStarterSuppliedOutputContract(false);
   }, []);
 
   const resetToCurrent = useCallback(() => {
@@ -219,6 +225,7 @@ export function SkillEditScreen() {
     setChoiceScores(version.categoricalChoiceScores);
     setScalarRange(version.scalarRange);
     setAppliedStarter(null);
+    setStarterSuppliedOutputContract(false);
     const binding = version.modelBinding;
     const { provider: selectedProvider, preservesBinding } = resolveJudgeProviderSelection(
       binding.provider,
@@ -529,10 +536,15 @@ export function SkillEditScreen() {
       if (temperature.trim() === "") return null;
       const temp = Number(temperature);
       if (!Number.isFinite(temp) || temp < 0 || temp > 2) return null;
-      const outputContractChanged = verdictOutputContractChanged(v, {
-        verdictKind,
-        scalarRange,
-        categoricalChoiceScores: choiceScores
+      const regenerateOutputSchema = shouldRegenerateVerdictOutputSchema({
+        firstRun,
+        starterSuppliedContract: starterSuppliedOutputContract,
+        base: v,
+        current: {
+          verdictKind,
+          scalarRange,
+          categoricalChoiceScores: choiceScores
+        }
       });
       const input: CreateSkillVersionInput = {
         ...(skillCriterionVersionId(skill) ? { criterionVersionId: skillCriterionVersionId(skill)! } : {}),
@@ -547,7 +559,7 @@ export function SkillEditScreen() {
           ...(v.modelBinding.topP !== undefined ? { topP: v.modelBinding.topP } : {}),
           ...(provider === "custom" ? { baseUrl: baseUrl.trim() } : {})
         },
-        outputSchema: firstRun || outputContractChanged
+        outputSchema: regenerateOutputSchema
           ? verdictOutputSchema({ verdictKind, scalarRange, categoricalChoiceScores: choiceScores })
           : v.outputSchema,
         verdictKind,
@@ -560,7 +572,7 @@ export function SkillEditScreen() {
       };
       return input;
     },
-    [skill, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange, firstRun]
+    [skill, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange, firstRun, starterSuppliedOutputContract]
   );
 
   const canSave =
