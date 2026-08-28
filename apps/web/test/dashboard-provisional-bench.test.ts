@@ -14,7 +14,8 @@ vi.mock("@/components/coeval", () => ({
   SectionHead: Element,
   KPI: Element,
   KPIRow: Element,
-  ProvBanner: ({ text }: { text?: unknown }) => createElement("div", null, text as never),
+  ProvBanner: ({ text, cta, cta2 }: { text?: unknown; cta?: unknown; cta2?: unknown }) =>
+    createElement("div", null, text as never, cta as never, cta2 as never),
   SetupLedger: ({ steps, description }: {
     steps: Array<{ state: string; title: string; cta?: string; foot?: string }>;
     description?: string;
@@ -55,7 +56,8 @@ function provisionalBench(judged = 0): DashboardSummary {
     },
     currentVersionResultCount: judged,
     goldenSetSize: 0,
-    exceptions: []
+    exceptions: [],
+    viewerRole: "owner"
   } as DashboardSummary;
 }
 
@@ -112,5 +114,19 @@ describe("provisional Skill Bench journey", () => {
 
     expect(html).toContain("1 of 4 examples have a provisional Result");
     expect(html).not.toContain("Nothing has been evaluated yet");
+  });
+
+  it("gives members a read-only Check action instead of owner setup controls", async () => {
+    const { DashboardProvisional } = await import("../src/screens/dashboard-provisional.js");
+    const dashboard = provisionalBench();
+    dashboard.viewerRole = "member";
+    const html = renderToStaticMarkup(createElement(DashboardProvisional, {
+      dashboard,
+      onSignedOff: vi.fn()
+    }));
+
+    expect(html).toContain("View the Check");
+    expect(html).not.toContain("Review the Check");
+    expect(html).not.toContain("Use this starter Check");
   });
 });

@@ -41,6 +41,7 @@ import {
   LangSmithIntegrationInputSchema,
   LangSmithIntegrationSchema,
   ManualTraceImportResultSchema,
+  OnboardingEvidenceInventorySchema,
   RunComparisonDetailSchema,
   RunComparisonSchema,
   type RunComparison,
@@ -116,6 +117,7 @@ import {
   type LangSmithIntegrationInput,
   type LangSmithIntegration,
   type ManualTraceImportResult,
+  type OnboardingEvidenceInventory,
   type PromoteGoldenSetInput,
   type ProjectSettings,
   type RetireGoldenSetEntryInput,
@@ -274,6 +276,12 @@ export async function fetchDashboard(criterionId?: string): Promise<DashboardSum
   const response = await apiFetch(path, { credentials: "include" });
   if (!response.ok) throw await apiErrorFromResponse(response, "Dashboard request failed");
   return DashboardSummarySchema.parse(await response.json());
+}
+
+export async function fetchOnboardingEvidenceInventory(): Promise<OnboardingEvidenceInventory> {
+  const response = await apiFetch(`${API_BASE}/api/onboarding/evidence-inventory`, { credentials: "include" });
+  if (!response.ok) throw await apiErrorFromResponse(response, "Run field inventory request failed");
+  return OnboardingEvidenceInventorySchema.parse(await response.json());
 }
 
 export async function fetchCurrentSkill(criterionId?: string): Promise<Skill> {

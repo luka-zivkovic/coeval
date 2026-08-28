@@ -19,6 +19,7 @@ import {
   fetchJudgeModels,
   fetchJudgeProviders,
   fetchLatestSkill,
+  fetchOnboardingEvidenceInventory,
   fetchSkillVersionCriterion,
   fetchSkillVersionRegression,
   fetchSkillVersions,
@@ -53,6 +54,7 @@ import {
   type JudgeModel,
   type JudgeProviderAvailabilityItem,
   type JudgeProviderId,
+  type OnboardingEvidenceInventory,
   type RegressionCaseDiff,
   type Skill,
   type SkillVersion,
@@ -158,6 +160,7 @@ export function SkillEditScreen() {
   const [onboardingDraft, setOnboardingDraft] = useState<OnboardingCheckDraft | null>(null);
   const [refiningOnboardingDraft, setRefiningOnboardingDraft] = useState(false);
   const [onboardingCriterionVersion, setOnboardingCriterionVersion] = useState<CriterionVersion | null>(null);
+  const [onboardingEvidenceInventory, setOnboardingEvidenceInventory] = useState<OnboardingEvidenceInventory | null>(null);
   const onboardingDraftIdentityRef = useRef<string | null>(null);
   onboardingDraftIdentityRef.current = onboardingDraft ? onboardingCheckDraftIdentity(onboardingDraft) : null;
 
@@ -251,13 +254,16 @@ export function SkillEditScreen() {
     setOnboardingDraft(null);
     setRefiningOnboardingDraft(false);
     setOnboardingCriterionVersion(null);
+    setOnboardingEvidenceInventory(null);
     try {
-      const [s, availability] = await Promise.all([
+      const [s, availability, evidenceInventory] = await Promise.all([
         fetchLatestSkill(selectedCriterionId ?? undefined),
         fetchJudgeProviders(),
+        firstRun ? fetchOnboardingEvidenceInventory().catch(() => null) : Promise.resolve(null)
       ]);
       if (generation !== loadGeneration.current) return;
       setSkill(s);
+      setOnboardingEvidenceInventory(evidenceInventory);
       const v = s.currentVersion;
       setBaseVersion(v);
       setProviderOptions(availability.providers);
@@ -536,7 +542,7 @@ export function SkillEditScreen() {
           ...(v.modelBinding.topP !== undefined ? { topP: v.modelBinding.topP } : {}),
           ...(provider === "custom" ? { baseUrl: baseUrl.trim() } : {})
         },
-        outputSchema: firstRun
+        outputSchema: firstRun || appliedStarter
           ? verdictOutputSchema({ verdictKind, scalarRange, categoricalChoiceScores: choiceScores })
           : v.outputSchema,
         verdictKind,
@@ -549,7 +555,7 @@ export function SkillEditScreen() {
       };
       return input;
     },
-    [skill, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange, firstRun]
+    [skill, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange, firstRun, appliedStarter]
   );
 
   const canSave =
@@ -757,7 +763,7 @@ export function SkillEditScreen() {
               markSetupReceipt(`Starter Check v${result.version.version} created. Add a Run to see its first Result.`);
               navigate("/");
             } else {
-              navigate(firstResultPath(result.version.id));
+              navigate(firstResultPath(result.version.id, skill.id));
             }
             return;
           }
@@ -781,6 +787,20 @@ export function SkillEditScreen() {
     if (!dashboardReady) {
       return <div className="fadeUp"><SectionHead eyebrow="Set up your first Check" title="Loading project" /></div>;
     }
+    if (dashboard.viewerRole !== "owner") {
+      return (
+        <div className="fadeUp mx-auto max-w-[760px]">
+          <SectionHead
+            eyebrow="Set up your first Check"
+            title="An owner needs to create this Check"
+            sub="You can inspect the current starter Check, Runs, and Results. Creating or replacing the project's Check changes shared evaluation behavior, so this setup step is owner-only."
+          />
+          <Button variant="outline" onClick={() => navigate("/skill")}>
+            View the current Check
+          </Button>
+        </div>
+      );
+    }
     const recommendedStarter = recommendStarterSkill(dashboard.project.name, dashboard.project.mode);
     const onboardingCanCreate = canSave && Boolean(
       onboardingDraft?.qualityQuestion.trim() && onboardingDraft.rubricMarkdown.trim()
@@ -788,8 +808,7 @@ export function SkillEditScreen() {
     return (
       <FirstRunCheckSetup
         projectName={dashboard.project.name}
-        projectMode={dashboard.project.mode}
-        evidenceCount={evidenceCount}
+        evidenceInventory={onboardingEvidenceInventory}
         starters={STARTER_SKILLS}
         recommendedStarter={recommendedStarter}
         draft={onboardingDraft}

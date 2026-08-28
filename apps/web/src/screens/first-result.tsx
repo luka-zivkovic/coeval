@@ -15,7 +15,7 @@ import {
 } from "@/lib/api";
 import { useDashboard } from "@/lib/dashboard-context";
 import { backfillRunForVersion, verdictForTrackedItem } from "@/lib/first-result";
-import { markSetupReceipt } from "@/lib/journey";
+import { firstResultPath, markSetupReceipt } from "@/lib/journey";
 
 const POLL_MS = 2000;
 
@@ -23,6 +23,7 @@ export function FirstResultScreen() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const versionId = searchParams.get("version");
+  const skillId = searchParams.get("skill");
   const { dashboard, refresh } = useDashboard();
   const [run, setRun] = useState<EvalRunDetail | null>(null);
   const [result, setResult] = useState<{ caseId: string; verdict: VerdictRecord } | null>(null);
@@ -37,11 +38,11 @@ export function FirstResultScreen() {
   const nextEnsureAt = useRef(0);
 
   useEffect(() => {
-    if (!dashboard || !versionId) return;
+    if (!skillId || !versionId) return;
     let cancelled = false;
     setCriterionVersion(null);
     setCriterionError(null);
-    void fetchSkillVersionCriterion(dashboard.skill.id, versionId)
+    void fetchSkillVersionCriterion(skillId, versionId)
       .then((criterion) => {
         if (!cancelled) setCriterionVersion(criterion);
       })
@@ -49,13 +50,13 @@ export function FirstResultScreen() {
         if (!cancelled) setCriterionError(cause instanceof Error ? cause.message : String(cause));
       });
     return () => { cancelled = true; };
-  }, [dashboard?.skill.id, versionId]);
+  }, [skillId, versionId]);
 
   const load = useCallback(async (generation: number) => {
     const current = () => generation === loadGeneration.current;
-    if (!versionId) {
+    if (!versionId || !skillId) {
       if (current()) {
-        setError("This first-Result link is missing its Check version.");
+        setError("This first-Result link is missing its Check identity.");
         setLoading(false);
       }
       return false;
@@ -77,11 +78,10 @@ export function FirstResultScreen() {
       let nextEnsureDelayMs: number | null = null;
       if (summary) {
         const canEnsure = dashboard?.viewerRole === "owner"
-          && dashboard.skill.currentVersion.id === versionId
           && (summary.status === "pending" || summary.status === "running")
           && Date.now() >= nextEnsureAt.current;
         if (canEnsure) {
-          const ensured = await ensureSkillVersionBackfill(dashboard.skill.id, versionId);
+          const ensured = await ensureSkillVersionBackfill(skillId, versionId);
           nextEnsureDelayMs = ensured.retryAfterMs;
           observedDispatchPending = ensured.dispatchPending;
           detail = ensured.run;
@@ -116,7 +116,7 @@ export function FirstResultScreen() {
         setLoading(false);
         return false;
       } else {
-        const ensured = await ensureSkillVersionBackfill(dashboard.skill.id, versionId);
+        const ensured = await ensureSkillVersionBackfill(skillId, versionId);
         nextEnsureDelayMs = ensured.retryAfterMs;
         observedDispatchPending = ensured.dispatchPending;
         detail = ensured.run;
@@ -189,7 +189,7 @@ export function FirstResultScreen() {
       }
       return false;
     }
-  }, [dashboard, refresh, versionId]);
+  }, [dashboard, refresh, skillId, versionId]);
 
   useEffect(() => {
     const generation = ++loadGeneration.current;
@@ -215,7 +215,9 @@ export function FirstResultScreen() {
   const versionLabel = dashboard?.skill.currentVersion.id === versionId
     ? `v${dashboard.skill.currentVersion.version}`
     : "the saved Check";
-  const completed = run?.completedItems ?? (result ? Math.max(1, dashboard?.currentVersionResultCount ?? 0) : 0);
+  const completed = run?.completedItems ?? (result
+    ? Math.max(1, dashboard?.skill.currentVersion.id === versionId ? dashboard.currentVersionResultCount : 0)
+    : 0);
   const failed = run?.failedItems ?? 0;
   const total = run?.totalItems ?? dashboard?.project.importedTraceCount ?? 0;
 
@@ -247,7 +249,7 @@ export function FirstResultScreen() {
           title="Could not verify which quality question produced this Result"
           body={criterionError}
         />
-      ) : versionId && dashboard && !criterionVersion ? (
+      ) : versionId && skillId && !criterionVersion ? (
         <StatusCard
           icon={<LoaderCircle className="size-4 animate-spin" />}
           title="Loading the saved quality question"
@@ -270,7 +272,7 @@ export function FirstResultScreen() {
         </Card>
       ) : null}
 
-      {criterionError || (versionId && dashboard && !criterionVersion) ? null : loading && !run ? (
+      {criterionError || (versionId && skillId && !criterionVersion) ? null : loading && !run ? (
         <StatusCard
           icon={<LoaderCircle className="size-4 animate-spin" />}
           title="Preparing the Check run"
@@ -357,7 +359,7 @@ export function FirstResultScreen() {
                 size="sm"
                 variant="primary"
                 onClick={() => navigate(`/cases/${result.caseId}`, {
-                  state: { backTo: `/first-result?version=${encodeURIComponent(versionId!)}`, backLabel: "Back to first Result" }
+                  state: { backTo: firstResultPath(versionId!, skillId!), backLabel: "Back to first Result" }
                 })}
               >
                 Open the recorded Run <ArrowRight />

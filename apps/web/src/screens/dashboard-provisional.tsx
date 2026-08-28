@@ -28,6 +28,7 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
   const judged = dashboard.currentVersionResultCount;
   const withoutResult = Math.max(0, imported - judged);
   const version = skill.currentVersion;
+  const owner = dashboard.viewerRole === "owner";
 
   async function signOffAsIs() {
     setSigningOff(true);
@@ -73,14 +74,14 @@ export function DashboardProvisional({ dashboard, onSignedOff }: DashboardProvis
               </span>
             )
           }
-          cta2={
+          cta2={owner ? (
             <Button size="sm" variant="ghost" disabled={signingOff} onClick={() => void signOffAsIs()}>
               {signingOff ? "Signing off…" : "Use this starter Check"}
             </Button>
-          }
+          ) : undefined}
           cta={
-            <Button size="sm" onClick={() => navigate(firstRunEditorPath())}>
-              Review the Check
+            <Button size="sm" onClick={() => navigate(owner ? firstRunEditorPath() : "/skill")}>
+              {owner ? "Review the Check" : "View the Check"}
             </Button>
           }
         />

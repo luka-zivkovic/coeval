@@ -5174,6 +5174,28 @@ export const CreateOnboardingCheckInputSchema = z.object({
 });
 export type CreateOnboardingCheckInput = z.infer<typeof CreateOnboardingCheckInputSchema>;
 
+// Exact, project-scoped inventory shown before the beginner creates a Check.
+// Counts describe the customer Runs currently stored after ingestion
+// redaction; they do not imply that missing fields can be reconstructed.
+export const OnboardingEvidenceInventorySchema = z.object({
+  runCount: z.number().int().nonnegative(),
+  inputCount: z.number().int().nonnegative(),
+  outputCount: z.number().int().nonnegative(),
+  stepsCount: z.number().int().nonnegative(),
+  metadataCount: z.number().int().nonnegative()
+}).strict().superRefine((value, context) => {
+  for (const field of ["inputCount", "outputCount", "stepsCount", "metadataCount"] as const) {
+    if (value[field] > value.runCount) {
+      context.addIssue({
+        code: "custom",
+        path: [field],
+        message: `${field} cannot exceed runCount`
+      });
+    }
+  }
+});
+export type OnboardingEvidenceInventory = z.infer<typeof OnboardingEvidenceInventorySchema>;
+
 // Backfill summary returned alongside the regression run when timeScope is
 // 'existing' or 'both'. This aggregate is retained for the synchronous demo
 // response; the EvalRun is the authoritative lifecycle record.

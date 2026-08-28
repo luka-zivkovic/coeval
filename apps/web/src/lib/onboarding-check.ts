@@ -1,4 +1,4 @@
-import type { ProjectMode } from "@coeval/shared";
+import type { OnboardingEvidenceInventory, ProjectMode } from "@coeval/shared";
 import { findStarterSkill, STARTER_SKILLS, type StarterSkill } from "./starter-skills.js";
 
 export interface OnboardingCheckDraft {
@@ -55,13 +55,21 @@ export function recommendationReason(starter: StarterSkill, projectName: string)
   return `“${projectName}” looks closest to ${starter.fit.toLocaleLowerCase()}, so this starts with that focused Check.`;
 }
 
-export function evidenceReadDescription(mode: ProjectMode, evidenceCount: number): string {
-  const evidence = evidenceCount === 0
-    ? "the first Run you add"
-    : `${evidenceCount} saved ${evidenceCount === 1 ? "Run" : "Runs"}`;
-  return mode === "bench"
-    ? `${evidence}: the request, result, and any saved steps or metadata.`
-    : `${evidence}: the captured input, output, steps, and metadata.`;
+export function evidenceReadDescription(inventory: OnboardingEvidenceInventory | null): string {
+  if (!inventory) {
+    return "Coeval could not inspect the saved Run fields right now. The Check will only read fields that are actually stored.";
+  }
+  if (inventory.runCount === 0) {
+    return "No Run is saved yet. The Check will read only the input, output, steps, and metadata you record later.";
+  }
+  const denominator = inventory.runCount.toLocaleString();
+  return [
+    `${denominator} saved ${inventory.runCount === 1 ? "Run" : "Runs"}`,
+    `input ${inventory.inputCount.toLocaleString()}/${denominator}`,
+    `output ${inventory.outputCount.toLocaleString()}/${denominator}`,
+    `steps ${inventory.stepsCount.toLocaleString()}/${denominator}`,
+    `metadata ${inventory.metadataCount.toLocaleString()}/${denominator}`
+  ].join(" · ");
 }
 
 export function evidenceLimitDescription(): string {

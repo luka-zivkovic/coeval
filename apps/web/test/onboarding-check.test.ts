@@ -58,8 +58,7 @@ describe("guided first Check", () => {
 
     const html = renderToStaticMarkup(createElement(FirstRunCheckSetup, {
       projectName: "Customer support copilot",
-      projectMode: "bench",
-      evidenceCount: 1,
+      evidenceInventory: { runCount: 1, inputCount: 1, outputCount: 1, stepsCount: 0, metadataCount: 0 },
       starters: STARTER_SKILLS,
       recommendedStarter: findStarterSkill("support-chat-quality")!,
       draft: null,
@@ -103,8 +102,7 @@ describe("guided first Check", () => {
     });
     const html = renderToStaticMarkup(createElement(FirstRunCheckSetup, {
       projectName: "My project",
-      projectMode: "bench",
-      evidenceCount: 2,
+      evidenceInventory: { runCount: 2, inputCount: 2, outputCount: 2, stepsCount: 1, metadataCount: 1 },
       starters: STARTER_SKILLS,
       recommendedStarter: taskStarter,
       draft,
@@ -133,7 +131,7 @@ describe("guided first Check", () => {
     }));
 
     expect(html).toContain(draft.qualityQuestion.replaceAll("'", "&#x27;"));
-    expect(html).toContain("2 saved Runs");
+    expect(html).toContain("2 saved Runs · input 2/2 · output 2/2 · steps 1/2 · metadata 1/2");
     expect(html).toContain("cannot see missing tool calls");
     expect(html).toContain("Evidence this focus needs");
     expect(html).toContain("Starter · unvalidated");
@@ -144,8 +142,7 @@ describe("guided first Check", () => {
 
     const refiningHtml = renderToStaticMarkup(createElement(FirstRunCheckSetup, {
       projectName: "My project",
-      projectMode: "bench",
-      evidenceCount: 2,
+      evidenceInventory: { runCount: 2, inputCount: 2, outputCount: 2, stepsCount: 1, metadataCount: 1 },
       starters: STARTER_SKILLS,
       recommendedStarter: taskStarter,
       draft,
@@ -185,8 +182,7 @@ describe("guided first Check", () => {
     });
     const html = renderToStaticMarkup(createElement(FirstRunCheckSetup, {
       projectName: "Custom judge",
-      projectMode: "bench",
-      evidenceCount: 0,
+      evidenceInventory: { runCount: 0, inputCount: 0, outputCount: 0, stepsCount: 0, metadataCount: 0 },
       starters: STARTER_SKILLS,
       recommendedStarter: taskStarter,
       draft,

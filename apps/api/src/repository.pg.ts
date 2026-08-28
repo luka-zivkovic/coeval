@@ -61,6 +61,7 @@ import type {
   LangSmithIntegration,
   LangSmithIntegrationInput,
   ManualTraceImportInput,
+  OnboardingEvidenceInventory,
   Project,
   ProjectSettings,
   RunComparison,
@@ -5300,6 +5301,43 @@ export class PgRepository implements CoevalRepository {
         }
       };
     });
+  }
+
+  async getOnboardingEvidenceInventory(projectId: string): Promise<OnboardingEvidenceInventory> {
+    // Keep this aggregate semantically aligned with listCases: only customer
+    // Runs count, never gate or release-evidence scaffolding. A field counts
+    // when its post-redaction stored value is present and useful to a Check.
+    const result = await this.pool.query(
+      `select count(*)::int as run_count,
+              count(*) filter (
+                where c.normalized_payload ? 'input'
+                  and c.normalized_payload->'input' <> 'null'::jsonb
+              )::int as input_count,
+              count(*) filter (
+                where c.normalized_payload ? 'output'
+                  and c.normalized_payload->'output' <> 'null'::jsonb
+              )::int as output_count,
+              count(*) filter (
+                where jsonb_typeof(c.normalized_payload->'steps') = 'array'
+                  and jsonb_array_length(c.normalized_payload->'steps') > 0
+              )::int as steps_count,
+              count(*) filter (
+                where jsonb_typeof(c.normalized_payload->'metadata') = 'object'
+                  and c.normalized_payload->'metadata' <> '{}'::jsonb
+              )::int as metadata_count
+       from cases c
+       where c.project_id = $1
+         and c.case_type not in ('gate_candidate', 'release_evidence')`,
+      [projectId]
+    );
+    const row = result.rows[0] ?? {};
+    return {
+      runCount: Number(row.run_count ?? 0),
+      inputCount: Number(row.input_count ?? 0),
+      outputCount: Number(row.output_count ?? 0),
+      stepsCount: Number(row.steps_count ?? 0),
+      metadataCount: Number(row.metadata_count ?? 0)
+    };
   }
 
   async listCaseIdsForProject(projectId: string, limit = 10_000): Promise<string[]> {

@@ -1,5 +1,5 @@
 import { ArrowLeft, Check, LoaderCircle, Pencil, Sparkles } from "lucide-react";
-import type { JudgeProviderId, ProjectMode } from "@coeval/shared";
+import type { JudgeProviderId, OnboardingEvidenceInventory } from "@coeval/shared";
 import { MarkdownPreview } from "./markdown-preview.js";
 import { Button } from "./ui/button.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.js";
@@ -10,8 +10,7 @@ import { cn } from "../lib/utils.js";
 
 interface FirstRunCheckSetupProps {
   projectName: string;
-  projectMode: ProjectMode;
-  evidenceCount: number;
+  evidenceInventory: OnboardingEvidenceInventory | null;
   starters: ReadonlyArray<StarterSkill>;
   recommendedStarter: StarterSkill;
   draft: OnboardingCheckDraft | null;
@@ -41,8 +40,7 @@ interface FirstRunCheckSetupProps {
 
 export function FirstRunCheckSetup({
   projectName,
-  projectMode,
-  evidenceCount,
+  evidenceInventory,
   starters,
   recommendedStarter,
   draft,
@@ -166,7 +164,7 @@ export function FirstRunCheckSetup({
             <div className="rounded-sm border border-rule-soft bg-card-2 p-3">
               <Eyebrow>What it reads</Eyebrow>
               <p className="mt-2 text-[12.5px] leading-5 text-ink-2">
-                {evidenceReadDescription(projectMode, evidenceCount)}
+                {evidenceReadDescription(evidenceInventory)}
               </p>
             </div>
             <div className="rounded-sm border border-rule-soft bg-card-2 p-3">

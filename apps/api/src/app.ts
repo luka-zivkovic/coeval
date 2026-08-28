@@ -55,6 +55,7 @@ import {
   LangSmithIntegrationInputSchema,
   ManualTraceImportInputSchema,
   MinimumVerdictOutputSchema,
+  OnboardingEvidenceInventorySchema,
   PromoteGoldenSetInputSchema,
   ReviewQueueStatusSchema,
   JudgeKeyProviderSchema,
@@ -1102,6 +1103,11 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       ? await userProjectRole(options.pool, { userId: user.id, projectId: c.get("projectId") })
       : "owner";
     return c.json({ ...summary, viewerRole: role === "owner" ? "owner" : "member" });
+  });
+
+  app.get("/api/onboarding/evidence-inventory", async (c) => {
+    const inventory = await repository.getOnboardingEvidenceInventory(c.get("projectId"));
+    return c.json(OnboardingEvidenceInventorySchema.parse(inventory));
   });
 
   app.get("/api/skills/current", async (c) => {

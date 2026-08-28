@@ -82,6 +82,7 @@ import {
   ManualTraceImportInput,
   ManualTraceImportResult,
   MinimumVerdictOutputSchema,
+  OnboardingEvidenceInventory,
   Project,
   ProjectSettings,
   ProviderResponseMetadata,
@@ -290,6 +291,7 @@ export interface CoevalRepository {
   pruneExpiredTraces(projectId: string, context: { actorUserId?: string | undefined; now?: Date | undefined }): Promise<RetentionPruneResult>;
   deleteProject(projectId: string, input: { confirmProjectName: string; actorUserId?: string | undefined }): Promise<void>;
   getDashboardSummary(projectId: string, criterionId?: string | undefined): Promise<DashboardSummary>;
+  getOnboardingEvidenceInventory(projectId: string): Promise<OnboardingEvidenceInventory>;
   listCriteria(projectId: string): Promise<Criterion[]>;
   getCriterion(projectId: string, criterionId: string): Promise<CriterionDetail | null>;
   createCriterion(
@@ -5108,6 +5110,28 @@ export class DemoRepository implements CoevalRepository {
     return entries
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.caseId.localeCompare(b.caseId))
       .slice(0, limit);
+  }
+
+  async getOnboardingEvidenceInventory(projectId: string): Promise<OnboardingEvidenceInventory> {
+    if (projectId !== demoProject.id) {
+      return { runCount: 0, inputCount: 0, outputCount: 0, stepsCount: 0, metadataCount: 0 };
+    }
+    const inventory: OnboardingEvidenceInventory = {
+      runCount: 0,
+      inputCount: 0,
+      outputCount: 0,
+      stepsCount: 0,
+      metadataCount: 0
+    };
+    for (const [caseId, trace] of this.traces.entries()) {
+      if (this.isEvidenceScaffoldingCase(caseId) || !this.traceSources.has(caseId)) continue;
+      inventory.runCount += 1;
+      if (trace.input !== null && trace.input !== undefined) inventory.inputCount += 1;
+      if (trace.output !== null && trace.output !== undefined) inventory.outputCount += 1;
+      if ((trace.steps?.length ?? 0) > 0) inventory.stepsCount += 1;
+      if (Object.keys(trace.metadata ?? {}).length > 0) inventory.metadataCount += 1;
+    }
+    return inventory;
   }
 
   async listCaseIdsForProject(projectId: string, limit = 10_000): Promise<string[]> {

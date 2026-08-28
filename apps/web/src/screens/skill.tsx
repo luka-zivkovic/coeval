@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Clock, Pencil, RefreshCcw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eyebrow, SectionHead, Chip } from "@/components/coeval";
+import { Eyebrow, MarginNote, SectionHead, Chip } from "@/components/coeval";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { fetchCurrentSkill } from "@/lib/api";
 import { useCriterion } from "@/lib/criterion-context";
@@ -76,13 +76,16 @@ export function SkillScreen() {
   const agreementPct = v.goldenSetAgreement == null ? null : Math.round(v.goldenSetAgreement * 100);
   const goldenSetSize = dashboard?.goldenSetSize ?? null;
   const editConsequence = skillEditConsequence(goldenSetSize);
+  const starterUnvalidated = skill.isStarter || v.onboardingAssurance === "starter_unvalidated";
 
   return (
     <div className="fadeUp max-w-[1760px]">
       <SectionHead
         eyebrow="Evaluator definition"
         title={skill.name}
-        sub={`${skill.description} Review what this evaluator checks. ${editConsequence}`}
+        sub={starterUnvalidated
+          ? `${skill.description} This Starter Check can run, but it has not been validated against governed human judgment. Review what it checks before relying on its Results.`
+          : `${skill.description} Review what this evaluator checks. ${editConsequence}`}
         right={
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate("/skill/versions")}>
@@ -97,6 +100,12 @@ export function SkillScreen() {
           </div>
         }
       />
+
+      {starterUnvalidated ? (
+        <MarginNote tone="neutral" who="Starter · unvalidated" className="mb-5 max-w-[82ch]">
+          Runnable is not the same as accurate. Results are model opinions until this Check is tested against admissible governed human judgment and receives scoped calibration evidence.
+        </MarginNote>
+      ) : null}
 
       <details className="mb-5 max-w-[82ch] rounded-sm border border-rule-soft bg-paper-2">
         <summary className="cursor-pointer px-3 py-2 text-[11.5px] text-ink-2">
@@ -151,7 +160,9 @@ export function SkillScreen() {
             <Eyebrow>Ownership</Eyebrow>
             <div className="px-2 py-1.5 text-[12px] text-ink-2">Owner · {skill.ownerName}</div>
             <div className="px-2 font-mono text-[11px] text-ink-3">
-              Approved {v.approvedAt ? new Date(v.approvedAt).toLocaleDateString() : "—"}
+              {starterUnvalidated
+                ? "Starter · unvalidated"
+                : `Approved ${v.approvedAt ? new Date(v.approvedAt).toLocaleDateString() : "—"}`}
             </div>
           </div>
         </aside>
