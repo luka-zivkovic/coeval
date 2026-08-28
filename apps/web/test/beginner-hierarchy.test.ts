@@ -66,11 +66,14 @@ describe("beginner-first hierarchy", () => {
       expect(workspaceRouteVisible(mode, true, "/settings")).toBe(true);
     }
 
-    const [app, sidebar] = await Promise.all([
+    const [app, rootLayout, sidebar] = await Promise.all([
       source("../src/App.tsx"),
+      source("../src/components/layout/root-layout.tsx"),
       source("../src/components/layout/sidebar.tsx")
     ]);
     expect(app).toContain('{ path: "settings", element: <SettingsScreen /> }');
+    expect(rootLayout).toContain("const criterionSelectionRequiredForRoute = routeRequiresCriterionSelection(location.pathname)");
+    expect(rootLayout).toContain("!dashboard && criterionSelectionRequiredForRoute");
     expect(sidebar.match(/{ to: "\/settings",\s+label: "Settings",\s+icon: SettingsIcon }/g)).toHaveLength(2);
   });
 

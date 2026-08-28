@@ -13,6 +13,7 @@ import { useMode } from "@/hooks/use-mode";
 import { useAppMode } from "@/lib/app-mode";
 import { DashboardProvider, useDashboard } from "@/lib/dashboard-context";
 import { CriterionProvider, useCriterion } from "@/lib/criterion-context";
+import { routeRequiresCriterionSelection } from "@/lib/criterion-selection";
 import { CriterionPicker } from "@/screens/criteria";
 import { isBench, journeyActStates } from "@/lib/journey";
 
@@ -81,6 +82,8 @@ function RootLayoutInner() {
     : "—";
   const exceptionsCount = dashboard?.exceptions.length ?? 0;
   const importedTotal = dashboard?.project.importedTraceCount ?? 0;
+  const criterionSelectionRequiredForRoute = routeRequiresCriterionSelection(location.pathname);
+  const showCriterionPicker = selectionRequired && criterionSelectionRequiredForRoute;
 
   const crumbs = useMemo(() => crumbsFor(location.pathname, projectName, bench), [location.pathname, projectName, bench]);
 
@@ -203,17 +206,13 @@ function RootLayoutInner() {
           }
         />
         <div className="min-w-0 w-full max-w-none px-5 pt-7 pb-20 sm:px-8 xl:px-12 xl:pt-9">
-          {selectionRequired ? (
-            location.pathname === "/criteria" ? (
-              <Outlet />
-            ) : (
-              <CriterionPicker
-                choices={choices}
-                selectedCriterionId={selectedCriterionId}
-                onSelect={selectCriterion}
-              />
-            )
-          ) : !dashboard ? (
+          {showCriterionPicker ? (
+            <CriterionPicker
+              choices={choices}
+              selectedCriterionId={selectedCriterionId}
+              onSelect={selectCriterion}
+            />
+          ) : !dashboard && criterionSelectionRequiredForRoute ? (
             <div className="max-w-[1760px] rounded-sm border border-rule-soft bg-card p-12 text-center text-[12.5px] text-ink-3">
               Loading the selected criterion’s evaluator and evidence…
             </div>

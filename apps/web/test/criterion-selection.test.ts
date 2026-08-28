@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   criterionSelectionStorageKey,
   resolveCriterionSelection,
+  routeRequiresCriterionSelection,
   withCriterionSearch,
 } from "../src/lib/criterion-selection.js";
 
@@ -30,5 +31,12 @@ describe("criterion selection", () => {
       .toBe("?criterionId=criterion_correctness&from=a");
     expect(withCriterionSearch("?criterionId=criterion_tone", null)).toBe("");
     expect(criterionSelectionStorageKey("project_1")).toBe("coeval.criterion.project_1");
+  });
+
+  it("does not block project-level Settings on an unrelated criterion choice", () => {
+    expect(routeRequiresCriterionSelection("/settings")).toBe(false);
+    expect(routeRequiresCriterionSelection("/criteria")).toBe(false);
+    expect(routeRequiresCriterionSelection("/skill")).toBe(true);
+    expect(routeRequiresCriterionSelection("/datasets")).toBe(true);
   });
 });
