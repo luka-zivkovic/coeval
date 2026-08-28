@@ -144,6 +144,7 @@ describe("beginner-first hierarchy", () => {
     expect(loadedView).toContain('eyebrow="Evaluator definition"');
     expect(loadedView).toContain("right={");
     expect(loadedView).toContain("Edit evaluator");
+    expect(loadedView).toContain('dashboard?.viewerRole === "owner"');
     expect(loadedView).toContain("requested model, immutable version, and status");
   });
 

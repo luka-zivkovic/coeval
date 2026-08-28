@@ -94,9 +94,11 @@ export function SkillScreen() {
             <Button variant="ghost" size="sm" onClick={() => void load()} disabled={loading}>
               <RefreshCcw /> Refresh
             </Button>
-            <Button variant="primary" size="sm" onClick={() => navigate("/skill/edit")}>
-              <Pencil /> Edit evaluator
-            </Button>
+            {dashboard?.viewerRole === "owner" ? (
+              <Button variant="primary" size="sm" onClick={() => navigate("/skill/edit")}>
+                <Pencil /> Edit evaluator
+              </Button>
+            ) : null}
           </div>
         }
       />
