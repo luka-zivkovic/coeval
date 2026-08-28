@@ -34,6 +34,9 @@ vi.mock("@/lib/api", () => ({
 vi.mock("@/components/project-create", () => ({
   NewProjectModal: () => null
 }));
+vi.mock("@/components/coeval-brand", () => ({
+  CoevalBrand: () => createElement("span", null, "coeval")
+}));
 
 const { Sidebar } = await import("../src/components/layout/sidebar.js");
 

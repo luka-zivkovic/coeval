@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";
 import { SkipLink } from "../components/skip-link";
+import { CoevalBrand } from "../components/coeval-brand";
 
 /**
  * Security-sensitive reviewer shell. It intentionally sits outside
@@ -18,10 +19,13 @@ export function BlindReviewLayout() {
         <div className="mx-auto flex min-h-14 max-w-[1080px] items-center gap-4 px-5">
           <Link
             to="/governed-review/tasks"
-            className="font-serif text-[17px] font-semibold tracking-[-0.025em] text-ink"
+            className="text-ink"
             aria-label="Governed review task inbox"
           >
-            <span className="text-signal">c</span>oeval
+            <CoevalBrand
+              markClassName="size-5"
+              nameClassName="font-serif text-[17px] font-semibold tracking-[-0.025em]"
+            />
           </Link>
           <span className="h-5 w-px bg-rule" aria-hidden="true" />
           <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-3">

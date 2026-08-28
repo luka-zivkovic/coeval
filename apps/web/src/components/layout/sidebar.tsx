@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { NewProjectModal } from "@/components/project-create";
+import { CoevalBrand } from "@/components/coeval-brand";
 import { fetchProjects, selectProject, selectedProjectId } from "@/lib/api";
 import { useSession } from "@/lib/auth-client";
 import { useAppMode } from "@/lib/app-mode";
@@ -171,10 +172,11 @@ export function Sidebar({
       )}
       tabIndex={-1}
     >
-      <div className="flex items-baseline gap-2.5 border-b border-rule-soft px-[22px] pt-1 pb-[18px] mb-3.5">
-        <div className="font-serif text-[17px] font-semibold tracking-[-0.025em] text-ink">
-          <span className="text-signal">c</span>oeval
-        </div>
+      <div className="flex items-center gap-2.5 border-b border-rule-soft px-[22px] pt-1 pb-[18px] mb-3.5">
+        <CoevalBrand
+          markClassName="size-5"
+          nameClassName="font-serif text-[17px] font-semibold tracking-[-0.025em] text-ink"
+        />
         <div className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-ink-4">v0.4 · Audit</div>
       </div>
 

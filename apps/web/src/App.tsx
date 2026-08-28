@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { RootLayout } from "@/components/layout/root-layout";
 import { BlindReviewLayout } from "@/layouts/blind-review-layout";
 import { LoginScreen } from "@/screens/login";
+import { CoevalBrand } from "@/components/coeval-brand";
 import { SetupScreen } from "@/screens/setup";
 import { DashboardScreen } from "@/screens/dashboard";
 import { ExceptionsScreen } from "@/screens/exceptions";
@@ -159,7 +160,11 @@ function FullScreen({ title, description }: { title: string; description: string
   return (
     <div className="min-h-screen grid place-items-center px-6">
       <div className="text-center">
-        <div className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-3">Coeval</div>
+        <CoevalBrand
+          className="justify-center"
+          markClassName="size-5"
+          nameClassName="font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-3"
+        />
         <div className="mt-2 font-serif text-[24px] font-medium tracking-[-0.02em]">{title}</div>
         <div className="mt-2 text-[13px] text-ink-3 max-w-md">{description}</div>
       </div>
