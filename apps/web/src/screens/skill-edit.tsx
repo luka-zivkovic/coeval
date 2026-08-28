@@ -780,7 +780,7 @@ export function SkillEditScreen() {
               markSetupReceipt(`Starter Check v${result.version.version} created. Add a Run to see its first Result.`);
               navigate("/");
             } else {
-              navigate(firstResultPath(result.version.id, skill.id));
+              navigate(firstResultPath(result.version.id, skill.id, skill.criterionId));
             }
             return;
           }

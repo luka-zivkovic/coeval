@@ -54,7 +54,7 @@ export function JourneyPipeline({
           : `Add the first ${bench ? "example and run it" : "recorded Run or live source"}.`,
       action: recorded > 0 && dashboard.viewerRole === "owner" ? "Continue to first Result" : bench ? "Open examples" : "Open traces",
       path: recorded > 0 && dashboard.viewerRole === "owner"
-        ? firstResultPath(dashboard.skill.currentVersion.id, dashboard.skill.id)
+        ? firstResultPath(dashboard.skill.currentVersion.id, dashboard.skill.id, dashboard.skill.criterionId)
         : bench ? "/datasets" : "/traces"
     },
     {

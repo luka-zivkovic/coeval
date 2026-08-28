@@ -67,7 +67,7 @@ export function FirstRunSetupLedger({
                 ...(states.seeResult === "now"
                   ? dashboard.viewerRole === "owner" ? {
                       cta: "Continue to first Result",
-                      onCta: () => navigate(firstResultPath(skill.currentVersion.id, skill.id))
+                      onCta: () => navigate(firstResultPath(skill.currentVersion.id, skill.id, skill.criterionId))
                     } : { foot: "An owner needs to start this Result." }
                   : {})
               })

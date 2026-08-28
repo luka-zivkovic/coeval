@@ -24,6 +24,7 @@ export function FirstResultScreen() {
   const [searchParams] = useSearchParams();
   const versionId = searchParams.get("version");
   const skillId = searchParams.get("skill");
+  const criterionId = searchParams.get("criterionId");
   const { dashboard, refresh } = useDashboard();
   const [run, setRun] = useState<EvalRunDetail | null>(null);
   const [result, setResult] = useState<{ caseId: string; verdict: VerdictRecord } | null>(null);
@@ -38,23 +39,28 @@ export function FirstResultScreen() {
   const nextEnsureAt = useRef(0);
 
   useEffect(() => {
-    if (!skillId || !versionId) return;
+    if (!skillId || !versionId || !criterionId) return;
     let cancelled = false;
     setCriterionVersion(null);
     setCriterionError(null);
     void fetchSkillVersionCriterion(skillId, versionId)
       .then((criterion) => {
-        if (!cancelled) setCriterionVersion(criterion);
+        if (cancelled) return;
+        if (criterion.criterionId !== criterionId) {
+          setCriterionError("This first-Result link does not match the Check's quality question.");
+          return;
+        }
+        setCriterionVersion(criterion);
       })
       .catch((cause) => {
         if (!cancelled) setCriterionError(cause instanceof Error ? cause.message : String(cause));
       });
     return () => { cancelled = true; };
-  }, [skillId, versionId]);
+  }, [criterionId, skillId, versionId]);
 
   const load = useCallback(async (generation: number) => {
     const current = () => generation === loadGeneration.current;
-    if (!versionId || !skillId) {
+    if (!versionId || !skillId || !criterionId) {
       if (current()) {
         setError("This first-Result link is missing its Check identity.");
         setLoading(false);
@@ -189,7 +195,7 @@ export function FirstResultScreen() {
       }
       return false;
     }
-  }, [dashboard, refresh, skillId, versionId]);
+  }, [criterionId, dashboard, refresh, skillId, versionId]);
 
   useEffect(() => {
     const generation = ++loadGeneration.current;
@@ -249,7 +255,7 @@ export function FirstResultScreen() {
           title="Could not verify which quality question produced this Result"
           body={criterionError}
         />
-      ) : versionId && skillId && !criterionVersion ? (
+      ) : versionId && skillId && criterionId && !criterionVersion ? (
         <StatusCard
           icon={<LoaderCircle className="size-4 animate-spin" />}
           title="Loading the saved quality question"
@@ -272,7 +278,7 @@ export function FirstResultScreen() {
         </Card>
       ) : null}
 
-      {criterionError || (versionId && skillId && !criterionVersion) ? null : loading && !run ? (
+      {criterionError || (versionId && skillId && criterionId && !criterionVersion) ? null : loading && !run ? (
         <StatusCard
           icon={<LoaderCircle className="size-4 animate-spin" />}
           title="Preparing the Check run"
@@ -359,7 +365,7 @@ export function FirstResultScreen() {
                 size="sm"
                 variant="primary"
                 onClick={() => navigate(`/cases/${result.caseId}`, {
-                  state: { backTo: firstResultPath(versionId!, skillId!), backLabel: "Back to first Result" }
+                  state: { backTo: firstResultPath(versionId!, skillId!, criterionId!), backLabel: "Back to first Result" }
                 })}
               >
                 Open the recorded Run <ArrowRight />

@@ -56,6 +56,7 @@ function dashboard(input: {
     },
     skill: {
       id: "skill_current",
+      criterionId: "criterion_current",
       isStarter: input.starter ?? false,
       currentVersion: {
         id: "skillv_current",
@@ -135,7 +136,7 @@ describe("first-run setup ledger", () => {
     }));
     expect(runHtml).toContain("Continue to first Result");
     ledgerHarness.steps[2]?.onCta?.();
-    expect(ledgerHarness.navigate).toHaveBeenCalledWith("/first-result?version=skillv_current&skill=skill_current");
+    expect(ledgerHarness.navigate).toHaveBeenCalledWith("/first-result?version=skillv_current&skill=skill_current&criterionId=criterion_current");
 
     const starterHtml = renderToStaticMarkup(createElement(FirstRunSetupLedger, {
       dashboard: dashboard({ imported: 6, judged: 0, golden: 0, starter: true })

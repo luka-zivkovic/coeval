@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CreatedApiKey, DashboardSummary } from "@coeval/shared";
 import {
   firstRunSetupStepStates,
+  firstResultPath,
   firstProjectKey,
   forgetFirstProjectKey,
   journeyActStates,
@@ -54,6 +55,11 @@ const apiKey: CreatedApiKey = {
 };
 
 describe("journey state", () => {
+  it("pins the exact criterion so a new viewer can open a multi-criterion Result", () => {
+    expect(firstResultPath("skillv_1", "skill_1", "criterion_1"))
+      .toBe("/first-result?version=skillv_1&skill=skill_1&criterionId=criterion_1");
+  });
+
   afterEach(() => vi.unstubAllGlobals());
 
   it("marks only the first incomplete act as the current action", () => {

@@ -96,8 +96,8 @@ export function firstRunEditorPath(): string {
   return "/skill/edit?first=1";
 }
 
-export function firstResultPath(skillVersionId: string, skillId: string): string {
-  return `/first-result?version=${encodeURIComponent(skillVersionId)}&skill=${encodeURIComponent(skillId)}`;
+export function firstResultPath(skillVersionId: string, skillId: string, criterionId: string): string {
+  return `/first-result?version=${encodeURIComponent(skillVersionId)}&skill=${encodeURIComponent(skillId)}&criterionId=${encodeURIComponent(criterionId)}`;
 }
 
 const FIRST_PROJECT_KEY = "coeval.first-project-key";

@@ -108,10 +108,11 @@ describe("beginner-first hierarchy", () => {
     expect(projectCreate).not.toContain("firstRunEditorPath");
     expect(skillEdit).toContain("Starter Check v${result.version.version} created. Add a Run to see its first Result.");
     expect(skillEdit).toContain('useState<SkillVersionTimeScope>(firstRun ? "both" : "new")');
-    expect(skillEdit).toContain("navigate(firstResultPath(result.version.id, skill.id))");
+    expect(skillEdit).toContain("navigate(firstResultPath(result.version.id, skill.id, skill.criterionId))");
     expect(firstResultState).toContain('run.trigger === "backfill"');
     expect(firstResult).toContain("ensureSkillVersionBackfill(skillId, versionId)");
     expect(firstResult).toContain('const skillId = searchParams.get("skill")');
+    expect(firstResult).toContain('const criterionId = searchParams.get("criterionId")');
     expect(firstResult).toContain("dashboard?.skill.currentVersion.id === versionId");
     expect(firstResult).toContain('evidenceScope: "customer"');
     expect(firstResult).toContain("setRetryNonce((value) => value + 1)");
