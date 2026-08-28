@@ -142,14 +142,18 @@ follow the Guided setup ledger. It uses saved project state to show what is
 complete and what to do next. The API runs migrations when `DATABASE_URL` is
 configured.
 
-To onboard with an external AI agent, choose **Create agent connection** after
-creating the owner account (or from a new project's Overview) and paste the
-generated instructions into Claude, Codex, or another agent. The connection is
-project-scoped, single-use, and expires after 15 minutes; no deployment secret
-is required. The returned `coeval_sk_` key is project-scoped and shown exactly
-once. `COEVAL_BOOTSTRAP_TOKEN` remains an optional advanced fallback for fully
-headless administration. Agents may scaffold rubrics and submit runs, but
-human adjudication and golden-set promotion remain session-only.
+To onboard with an external AI agent, copy the no-secret setup prompt after
+creating the owner account (or from a new project's Overview). The bundled
+`coeval-setup` skill inspects safe project context, asks one short question,
+and shows a plain-language proposed Check. After you choose **Finish setup**,
+create the private agent connection and paste those instructions into Claude,
+Codex, or another agent. The connection is project-scoped, single-use, and
+expires after 15 minutes; no deployment secret is required. The returned
+`coeval_sk_` key is project-scoped and shown exactly once.
+`COEVAL_BOOTSTRAP_TOKEN` remains an optional advanced fallback for fully
+headless administration. Agents may create an explicitly unvalidated Check
+and submit real Runs, but human adjudication and Golden promotion remain
+session-only.
 
 ### Submit a first batch
 
@@ -387,16 +391,35 @@ The intended runtime and sequencing are documented in
 [ADR-0010](docs/decisions/0010-representative-analysis-and-taxonomy-lifecycle.md),
 and the accepted [pre-launch database policy](docs/decisions/0011-prelaunch-blank-slate-database-policy.md).
 
-## Audit your skills from Claude Code (and other agents)
+## Set up and audit from Claude Code (and other agents)
 
-The repository also ships [`skills/coeval-audit/`](skills/coeval-audit/), a portable Agent Skills folder (SKILL.md format) that lets a coding agent audit the developer's own agent skills against a Coeval project: connect a repo to a bench-mode project, capture real skill runs as example lines, submit them through `POST /api/v1/judge/batch`, and report the verdicts. It complements the CI gate above: `gate.mjs` gates the judging skill against labeled examples in CI (its legacy `--product` mode is deprecated in favor of release-evidence receipts), while `coeval-audit` submits an external skill's day-to-day runs for judgment interactively.
+The repository ships two portable Agent Skills folders (SKILL.md format).
+[`skills/coeval-setup/`](skills/coeval-setup/) gives beginners a short,
+context-aware first setup: it inspects safe project text, asks only a
+decision-changing question, proposes one Check, and waits for **Finish setup**
+before requesting a connection. [`skills/coeval-audit/`](skills/coeval-audit/)
+then captures real agent-skill Runs as example lines, submits them through
+`POST /api/v1/judge/batch`, and reports the Results honestly. It complements
+the CI gate above: `gate.mjs` gates the judging skill against labeled examples
+in CI, while `coeval-audit` submits an external skill's day-to-day Runs
+interactively.
 
-To install, copy the folder into your agent's skills directory:
+To install, copy both folders into your agent's skills directory:
 
-- Claude Code: `~/.claude/skills/coeval-audit/` (personal) or `.claude/skills/coeval-audit/` (per repository)
+- Claude Code: `~/.claude/skills/{coeval-setup,coeval-audit}/` (personal) or `.claude/skills/{coeval-setup,coeval-audit}/` (per repository)
 - Other SKILL.md-compatible tools (Codex CLI, Gemini CLI, Cursor, and others): the tool's documented skills directory
 
-Then ask the agent to "audit my skill with coeval". Configuration is `COEVAL_URL` plus a `coeval_sk_` key in `COEVAL_API_KEY`, from the environment or `.env` — the bundled script parses `.env` itself and never prints the key. Three modes are supported: manual capture, automatic capture with explicit submission (recommended; via a Claude Code Stop hook), and full auto-submit behind an explicit `COEVAL_AUTO_SUBMIT=1` opt-in. Automatic capture is Claude Code-only; everything else is tool-agnostic. The bundled scripts require Node.js 18 or newer.
+Then ask the agent to "initialize Coeval for this project". It will inspect the
+repository before asking you to repeat context, present a Check as **Starter ·
+unvalidated**, and offer **Finish setup** or **Refine the Check**. For ongoing
+use, ask it to "audit my skill with Coeval". Configuration is `COEVAL_URL`
+plus a `coeval_sk_` key in `COEVAL_API_KEY`, from the environment or `.env` —
+the bundled script parses `.env` itself and never prints the key. Three capture
+modes are supported: manual, automatic capture with explicit submission
+(recommended; via a Claude Code Stop hook), and full auto-submit behind an
+explicit `COEVAL_AUTO_SUBMIT=1` opt-in. Automatic capture is Claude Code-only;
+everything else is tool-agnostic. The bundled scripts require Node.js 18 or
+newer.
 
 Unlabeled submissions are reported as the judging skill's opinions, never as verified correctness. `skills/coeval-audit/examples/results.example.jsonl` is for demo instances only — verdicts are append-only, so sample data submitted to a real project stays there.
 

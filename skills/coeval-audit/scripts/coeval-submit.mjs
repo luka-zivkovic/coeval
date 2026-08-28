@@ -215,6 +215,12 @@ if (command === "setup") {
   if (typeof setupInput !== "object" || setupInput === null || Array.isArray(setupInput)) {
     fail(2, `${fileArg} must contain one JSON object`);
   }
+  if (
+    typeof setupInput.check?.name !== "string" || !setupInput.check.name.trim() ||
+    typeof setupInput.check?.question !== "string" || !setupInput.check.question.trim()
+  ) {
+    fail(2, `${fileArg} requires check.name and check.question from the approved Check proposal`);
+  }
   if (setupInput.owner?.password !== undefined || setupInput.providerApiKey !== undefined) {
     fail(2, `${fileArg} must not contain owner.password or providerApiKey; pass their environment variable names as flags`);
   }
@@ -246,8 +252,14 @@ if (command === "setup") {
   saveProjectKey(keyVarName, minted);
   console.log(
     `coeval-submit: configured ${result.mode ?? "bench"} project "${result.projectId}" · ` +
-    `agent-drafted skill version ${result.skillVersionId} · saved project key as ${keyVarName} in ./.env`
+    `Check "${result.check?.question ?? "unknown quality question"}" · ` +
+    `agent-drafted version ${result.skillVersionId} · saved project key as ${keyVarName} in ./.env`
   );
+  if (result.check?.criterionVersionId) {
+    console.log(
+      `coeval-submit: exact Check binding ${result.check.criterionVersionId} · ${result.check.digest ?? "digest unavailable"} · Starter · unvalidated`
+    );
+  }
   console.log("coeval-submit: setup stops before adjudication — submit runs next; a human must label exceptions and promote golden cases");
   // The server's `connect` block carries the same wiring snippets the app
   // shows at the key-mint moment, PRE-FILLED with the one-time key. "The API

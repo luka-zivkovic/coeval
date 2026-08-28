@@ -125,6 +125,7 @@ describe("Coeval Hono API", () => {
     const base = {
       owner: { email: "owner@example.com" },
       project: { name: "Skill audit" },
+      check: { name: "Follows contract", question: "Did this Run follow the contract?" },
       skill: {
         rubricMarkdown: "# Skill audit\n\nPass when the contract is followed.",
         model: { provider: "anthropic" as const }
@@ -181,6 +182,7 @@ describe("Coeval Hono API", () => {
         body: JSON.stringify({
           owner: { email: "owner@example.com" },
           project: { name: "Retryable setup" },
+          check: { name: "Correctness", question: "Was this Run correct?" },
           skill: {
             rubricMarkdown: "# Retryable setup\n\nPass when correct.",
             model: { provider: "custom", modelId: "judge-model", baseUrl: "https://judge.example/v1" }

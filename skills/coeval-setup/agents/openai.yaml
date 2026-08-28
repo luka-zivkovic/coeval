@@ -1,0 +1,4 @@
+interface:
+  display_name: "Set Up Coeval"
+  short_description: "Build a useful first Check without eval jargon"
+  default_prompt: "Use $coeval-setup to set up Coeval for this project with a short, context-aware interview."

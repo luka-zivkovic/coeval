@@ -1908,6 +1908,10 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       // trivially retryable and the post-mutation failure window stays small.
       const project = await repository.getProjectSettings(projectId);
       const skill = await repository.getLatestSkill(projectId);
+      const bootstrapRequestDigest = sha256Digest({
+        check: input.check,
+        skill: input.skill
+      });
       const versionInput = CreateSkillVersionInputSchema.parse({
         rubricMarkdown: input.skill.rubricMarkdown,
         prompt,
@@ -1924,6 +1928,12 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         projectId,
         actorUserId: owner!.id,
         rubricProvenance: "agent-drafted",
+        onboardingCriterion: {
+          name: input.check.name,
+          definition: input.check.question,
+          idempotencyKey: `agent-bootstrap:${pairing?.id ?? bootstrapRequestDigest}`,
+          requestDigest: bootstrapRequestDigest
+        },
         agentSetup: {
           ...(pairing ? { pairingId: pairing.id } : {}),
           skillName: input.skill.name ?? `${projectName} Judge`,
@@ -1946,6 +1956,10 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         actorUserId: owner!.id,
         timeScope: "new"
       });
+      const criterionVersion = await repository.getCriterionVersionForSkillVersion(projectId, version.id);
+      if (!criterionVersion) {
+        throw new DatasetRevisionConflictError("The agent-created Check has no immutable criterion binding.");
+      }
       const apiKey = await repository.createApiKey({
         projectId,
         name: input.project.apiKeyName,
@@ -1956,6 +1970,13 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         projectId,
         skillId: skill.id,
         skillVersionId: version.id,
+        check: {
+          criterionId: criterionVersion.criterionId,
+          criterionVersionId: criterionVersion.id,
+          name: criterionVersion.name,
+          question: criterionVersion.definition,
+          digest: criterionVersion.criterionDigest
+        },
         mode: project.mode,
         rubricProvenance: "agent-drafted",
         modelBinding,

@@ -490,6 +490,7 @@ run("Postgres auth flow", () => {
         body: JSON.stringify({
           owner: { email: "agent-owner@example.com", password: "agent-owner-password" },
           project: { name: "Disconnected audit" },
+          check: { name: "Follows contract", question: "Did this Run follow the skill contract?" },
           skill: {
             rubricMarkdown: "# Rubric that must be injected",
             prompt: "Judge the run without the rubric variable.",
@@ -521,6 +522,10 @@ run("Postgres auth flow", () => {
             name: "Agent Owner"
           },
           project: { name: "External skill audit", apiKeyName: "Audit agent" },
+          check: {
+            name: "Follows contract",
+            question: "Did this Run follow the external skill contract?"
+          },
           skill: {
             name: "External skill judge",
             rubricMarkdown: "# External skill judge\n\nPass when the run follows the skill contract.",
@@ -539,11 +544,15 @@ run("Postgres auth flow", () => {
       const body = await response.json() as {
         projectId: string;
         skillVersionId: string;
+        check: { criterionVersionId: string; question: string; digest: string };
         rubricProvenance: string;
         apiKey: { key: string; keyPrefix: string };
         connect: { claudeCode: string; mcpJson: string; cli: string };
       };
-      expect(body).toMatchObject({ rubricProvenance: "agent-drafted" });
+      expect(body).toMatchObject({
+        rubricProvenance: "agent-drafted",
+        check: { question: "Did this Run follow the external skill contract?" }
+      });
       expect(body.apiKey.key).toMatch(/^coeval_sk_/);
       expect(body.apiKey.key.startsWith(body.apiKey.keyPrefix.slice(0, -1))).toBe(true);
       // Issue #15: the completion response wires the agent, not just keys it —
@@ -553,18 +562,24 @@ run("Postgres auth flow", () => {
       expect(body.connect.cli).toContain(body.apiKey.key);
 
       const persisted = await pool.query(
-        `select p.mode, s.name, sv.status, sv.rubric_provenance
+        `select p.mode, s.name, sv.status, sv.rubric_provenance,
+                cv.id as criterion_version_id, cv.definition as criterion_definition,
+                cv.criterion_digest
          from projects p
          join skills s on s.project_id = p.id
          join skill_versions sv on sv.skill_id = s.id
+         join criterion_versions cv on cv.id = sv.criterion_version_id
          where p.id = $1 and sv.id = $2`,
         [body.projectId, body.skillVersionId]
       );
       expect(persisted.rows[0]).toMatchObject({
         mode: "bench",
-        name: "External skill judge",
+        name: "Follows contract",
         status: "approved",
-        rubric_provenance: "agent-drafted"
+        rubric_provenance: "agent-drafted",
+        criterion_version_id: body.check.criterionVersionId,
+        criterion_definition: "Did this Run follow the external skill contract?",
+        criterion_digest: body.check.digest
       });
 
       const project = await app.request("/api/v1/project", {
@@ -614,6 +629,7 @@ run("Postgres auth flow", () => {
         body: JSON.stringify({
           owner: { email: "mock-agent-owner@example.com", password: "mock-agent-password" },
           project: { name: "Keyless wiring test" },
+          check: { name: "Wiring correctness", question: "Did this Run produce the expected wiring?" },
           skill: {
             rubricMarkdown: "# Wiring rubric\n\nPass correct answers.",
             model: { provider: "mock" }
@@ -723,6 +739,10 @@ run("Postgres auth flow", () => {
           // which existing onboarding project is configured.
           owner: { email: "ignored-but-valid@example.com" },
           project: { name: "Must not create a second project", apiKeyName: "Paired agent" },
+          check: {
+            name: "Follows contract",
+            question: "Did this Run follow the target skill's contract?"
+          },
           skill: {
             name: "Friendly onboarding judge",
             rubricMarkdown: "# Friendly onboarding\n\nPass when the target skill follows its contract.",
@@ -739,6 +759,7 @@ run("Postgres auth flow", () => {
       const body = await response.json() as {
         projectId: string;
         skillVersionId: string;
+        check: { criterionVersionId: string; question: string };
         mode: string;
         rubricProvenance: string;
         apiKey: { key: string };
@@ -746,7 +767,8 @@ run("Postgres auth flow", () => {
       expect(body).toMatchObject({
         projectId: pairing.projectId,
         mode: "bench",
-        rubricProvenance: "agent-drafted"
+        rubricProvenance: "agent-drafted",
+        check: { question: "Did this Run follow the target skill's contract?" }
       });
       expect(body.apiKey.key).toMatch(/^coeval_sk_/);
 
@@ -755,12 +777,14 @@ run("Postgres auth flow", () => {
            (select count(*)::int from projects) as project_count,
            (select consumed_at from agent_setup_pairings where id = $1) as consumed_at,
            (select rubric_provenance from skill_versions where id = $2) as rubric_provenance,
+           (select criterion_version_id from skill_versions where id = $2) as criterion_version_id,
            (select is_starter from skills where project_id = $3) as is_starter`,
         [pairing.id, body.skillVersionId, pairing.projectId]
       );
       expect(persisted.rows[0]?.project_count).toBe(1);
       expect(persisted.rows[0]?.consumed_at).not.toBeNull();
       expect(persisted.rows[0]?.rubric_provenance).toBe("agent-drafted");
+      expect(persisted.rows[0]?.criterion_version_id).toBe(body.check.criterionVersionId);
       expect(persisted.rows[0]?.is_starter).toBe(false);
 
       const status = await app.request(`/api/agent-setup/pairings/${pairing.id}`, {

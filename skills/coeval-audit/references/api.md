@@ -56,6 +56,10 @@ curl -s -X POST "$COEVAL_URL/api/v1/bootstrap" \
   -d '{
     "owner": { "email": "owner@example.com" },
     "project": { "name": "my-skill audit", "apiKeyName": "audit agent" },
+    "check": {
+      "name": "Follows the skill contract",
+      "question": "Did this Run follow the target skill's required workflow and constraints?"
+    },
     "skill": {
       "name": "My skill audit",
       "rubricMarkdown": "# My skill audit\n\n## Pass when\n- The run follows the skill contract.\n\n## Fail when\n- It violates a required constraint.",
@@ -71,7 +75,9 @@ unsupported variables is rejected. Omit `modelId` for catalog providers to
 let the server choose and pin the first compatible model; custom providers
 require `modelId`, `baseUrl`, and a provider key.
 
-The `201` response includes project/skill/version ids, the pinned model,
+The server appends `check.question` as an immutable criterion definition and
+atomically binds the new evaluator version to it. The `201` response includes
+that exact Check id, version, question, and digest alongside project/skill/version ids, the pinned model,
 `rubricProvenance: "agent-drafted"`, `apiKey`, and `connect` — ready-to-paste
 agent wiring snippets (Claude Code one-liner, generic `mcp.json` block, plain
 CLI) with the URL and the one-time key pre-filled. The raw
