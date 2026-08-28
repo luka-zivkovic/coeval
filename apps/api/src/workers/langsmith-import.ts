@@ -4,7 +4,7 @@ import type { Queue } from "@coeval/queue";
 import type { CoevalRepository, LangSmithImportContext } from "../repository.js";
 import { ImportSkillVersionBindingError, LangSmithCredentialsMissingError, LangSmithIntegrationNotFoundError, NoCurrentSkillError, RecursiveTraceSkippedError } from "../repository.js";
 import { LangSmithClient, type LangSmithTraceFetcher } from "../lib/langsmith.js";
-import { scheduleImportedCaseJudging } from "./import-judging.js";
+import { assertImportJudgingAllowed, scheduleImportedCaseJudging } from "./import-judging.js";
 
 export interface LangSmithImportResult {
   imported: number;
@@ -44,6 +44,7 @@ export async function processLangSmithImportJob(
     if (!parsed.skillVersionId) throw new ImportSkillVersionBindingError();
     const version = await repository.getSkillVersion(parsed.projectId, parsed.skillVersionId);
     if (!version) throw new ImportSkillVersionBindingError(`Unknown import skillVersionId for project: ${parsed.skillVersionId}`);
+    await assertImportJudgingAllowed(repository, parsed.projectId, version.id);
     const context = await repository.loadLangSmithImportContext(parsed);
     const traces = await createClient(context).listRuns({ projectName: context.projectName, limit: context.limit });
 
@@ -63,8 +64,8 @@ export async function processLangSmithImportJob(
       } catch (error) {
         if (error instanceof RecursiveTraceSkippedError) {
           // Anti-recursion guard (PR #46): upstream tagged this trace as
-          // coeval-internal. Don't import, don't enqueue judge.run — just count
-          // it as skipped so the import-job counters stay honest.
+          // coeval-internal. Don't import or evaluate it — just count it as
+          // skipped so the import-job counters stay honest.
           skipped += 1;
           continue;
         }
@@ -78,6 +79,9 @@ export async function processLangSmithImportJob(
       skillVersionId: version.id,
       caseIds
     });
+    if (judging.dispatchPending) {
+      throw new Error("Imported Runs were saved, but their evaluation is not durably queued yet.");
+    }
     const queued = judging.scheduledCaseCount;
 
     if (parsed.importJobId) {

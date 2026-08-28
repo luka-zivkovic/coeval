@@ -10471,6 +10471,7 @@ CREATE TABLE eval_runs (
     source_trace_test_dataset_item_id text,
     dataset_revision_id text,
     convergence_case_id text,
+    ingestion_case_id text,
     queue_job_id uuid,
     queue_dispatch_token text,
     queue_dispatch_claimed_at timestamp with time zone,
@@ -14531,6 +14532,13 @@ CREATE UNIQUE INDEX eval_runs_convergence_case_idx ON eval_runs USING btree (pro
 
 
 --
+-- Name: eval_runs_ingestion_case_idx; Type: INDEX; Schema: current; Owner: -
+--
+
+CREATE UNIQUE INDEX eval_runs_ingestion_case_idx ON eval_runs USING btree (project_id, skill_version_id, ingestion_case_id) WHERE (ingestion_case_id IS NOT NULL);
+
+
+--
 -- Name: eval_runs_source_trace_test_idx; Type: INDEX; Schema: current; Owner: -
 --
 
@@ -17804,6 +17812,14 @@ ALTER TABLE ONLY eval_runs
 
 ALTER TABLE ONLY eval_runs
     ADD CONSTRAINT eval_runs_convergence_case_id_fkey FOREIGN KEY (convergence_case_id) REFERENCES cases(id) ON DELETE CASCADE;
+
+
+--
+-- Name: eval_runs eval_runs_ingestion_case_id_fkey; Type: FK CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY eval_runs
+    ADD CONSTRAINT eval_runs_ingestion_case_id_fkey FOREIGN KEY (ingestion_case_id) REFERENCES cases(id) ON DELETE CASCADE;
 
 
 --

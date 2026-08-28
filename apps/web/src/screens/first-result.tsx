@@ -27,8 +27,10 @@ export function FirstResultScreen() {
   const [result, setResult] = useState<{ caseId: string; verdict: VerdictRecord } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
   const receiptKey = useRef<string | null>(null);
   const loadGeneration = useRef(0);
+  const lastEnsureAt = useRef(0);
 
   const load = useCallback(async (generation: number) => {
     const current = () => generation === loadGeneration.current;
@@ -42,13 +44,23 @@ export function FirstResultScreen() {
     try {
       const [runs, recordedVerdicts] = await Promise.all([
         fetchEvalRuns(100),
-        fetchProjectVerdicts({ source: "llm_judge", skillVersionId: versionId, limit: 1 })
+        fetchProjectVerdicts({
+          source: "llm_judge",
+          skillVersionId: versionId,
+          evidenceScope: "customer",
+          limit: 1
+        })
       ]);
       if (!current()) return false;
       const summary = backfillRunForVersion(runs, versionId);
       let detail: EvalRunDetail | null;
       if (summary) {
-        detail = dashboard?.viewerRole === "owner" && (summary.status === "pending" || summary.status === "running")
+        const canEnsure = dashboard?.viewerRole === "owner"
+          && dashboard.skill.currentVersion.id === versionId
+          && (summary.status === "pending" || summary.status === "running")
+          && Date.now() - lastEnsureAt.current >= 30_000;
+        if (canEnsure) lastEnsureAt.current = Date.now();
+        detail = canEnsure
           ? await ensureSkillVersionBackfill(dashboard.skill.id, versionId)
           : await fetchEvalRunDetail(summary.id);
       } else if (recordedVerdicts[0]) {
@@ -84,6 +96,7 @@ export function FirstResultScreen() {
         const [recorded] = await fetchProjectVerdicts({
           source: "llm_judge",
           skillVersionId: versionId,
+          evidenceScope: "customer",
           limit: 1
         });
         if (!current()) return false;
@@ -163,7 +176,7 @@ export function FirstResultScreen() {
       if (loadGeneration.current === generation) loadGeneration.current += 1;
       if (timer) clearTimeout(timer);
     };
-  }, [load]);
+  }, [load, retryNonce]);
 
   const versionLabel = dashboard?.skill.currentVersion.id === versionId
     ? `v${dashboard.skill.currentVersion.version}`
@@ -203,8 +216,8 @@ export function FirstResultScreen() {
             <Button size="sm" variant="outline" onClick={() => {
               setLoading(true);
               setError(null);
-              const generation = ++loadGeneration.current;
-              void load(generation);
+              lastEnsureAt.current = 0;
+              setRetryNonce((value) => value + 1);
             }}>
               <RefreshCcw /> Try again
             </Button>

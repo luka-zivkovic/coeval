@@ -111,6 +111,10 @@ describe("beginner-first hierarchy", () => {
     expect(skillEdit).toContain("navigate(firstResultPath(result.version.id))");
     expect(firstResultState).toContain('run.trigger === "backfill"');
     expect(firstResult).toContain("ensureSkillVersionBackfill(dashboard.skill.id, versionId)");
+    expect(firstResult).toContain("dashboard.skill.currentVersion.id === versionId");
+    expect(firstResult).toContain('evidenceScope: "customer"');
+    expect(firstResult).toContain("setRetryNonce((value) => value + 1)");
+    expect(firstResult).toContain("Date.now() - lastEnsureAt.current >= 30_000");
     expect(firstResult).toContain("Your first Result is ready");
     expect(firstResult).toContain("The first Result could not be produced");
     expect(firstResult).toContain('navigate("/skill/edit")');

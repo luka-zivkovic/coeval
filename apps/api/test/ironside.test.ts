@@ -329,9 +329,9 @@ describe("Ironside import worker (reconcile sweep)", () => {
     expect(listCalls).toEqual([{ to: settledTo, limit: 25 }]);
     expect(queue.jobs).toEqual([
       {
-        name: "judge.run",
-        data: { projectId: PROJECT_ID, caseId: expect.any(String), skillVersionId: "skillv_1_2_0" },
-        options: { retryLimit: 5, retryBackoff: true }
+        name: "eval.run",
+        data: { projectId: PROJECT_ID, evalRunId: expect.any(String) },
+        options: { id: expect.any(String), retryLimit: 5, retryBackoff: true }
       }
     ]);
 

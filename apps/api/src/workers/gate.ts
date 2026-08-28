@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
-import { GateRunJobSchema, type GateRunJob } from "@coeval/shared";
+import { GateRunJobSchema, type EvalRun, type GateRunJob } from "@coeval/shared";
 import type { Queue } from "@coeval/queue";
 import { GateRunBindingMismatchError, type CoevalRepository } from "../repository.js";
 import { runEvalRunInline } from "./eval-run.js";
@@ -93,32 +93,65 @@ export async function runExistingCaseBackfill(
     items: caseIds.map((caseId) => ({ caseId }))
   });
 
-  if (run.totalItems === 0 || (run.status !== "pending" && run.status !== "running")) return run;
-  if (queue) {
-    const dispatchToken = randomUUID();
-    const dispatch = await repository.claimEvalRunDispatch({
-      projectId,
+  const dispatchState = await dispatchEvalRunOnce(repository, run, queue);
+  return {
+    run: (await repository.getEvalRun(projectId, run.id)) ?? run,
+    dispatchState
+  };
+}
+
+export type EvalRunDispatchState = "ready" | "busy";
+
+export async function dispatchEvalRunOnce(
+  repository: CoevalRepository,
+  run: EvalRun,
+  queue?: Queue | undefined
+): Promise<EvalRunDispatchState> {
+  if (run.totalItems === 0 || (run.status !== "pending" && run.status !== "running")) return "ready";
+  if (!queue) {
+    await repository.armEvalRunItemDeliveryDeadline(run.projectId, run.id);
+    await runEvalRunInline(repository, run.projectId, run.id);
+    return "ready";
+  }
+
+  const dispatchToken = randomUUID();
+  const dispatch = await repository.claimEvalRunDispatch({
+    projectId: run.projectId,
+    evalRunId: run.id,
+    dispatchToken
+  });
+  if (dispatch.state === "dispatched") return "ready";
+  if (dispatch.state === "busy") {
+    if (!dispatch.jobId || !queue.getJobState) return "busy";
+    const state = await queue.getJobState("eval.run", dispatch.jobId);
+    return state === "created" || state === "retry" || state === "active" ? "ready" : "busy";
+  }
+  if (dispatch.state !== "claimed" || !dispatch.jobId) return "busy";
+  const jobId = dispatch.jobId;
+
+  try {
+    const sent = await queue.send("eval.run", { projectId: run.projectId, evalRunId: run.id }, {
+      id: jobId,
+      retryLimit: 5,
+      retryBackoff: true
+    });
+    if (sent === null && queue.getJobState && await queue.getJobState("eval.run", jobId) === null) {
+      throw new Error("The evaluation queue did not accept the durable run job.");
+    }
+    await repository.markEvalRunDispatched({
+      projectId: run.projectId,
       evalRunId: run.id,
       dispatchToken
     });
-    if (dispatch.state === "claimed") {
-      try {
-        await queue.send("eval.run", { projectId, evalRunId: run.id }, {
-          id: dispatch.jobId,
-          retryLimit: 5,
-          retryBackoff: true
-        });
-        await repository.markEvalRunDispatched({ projectId, evalRunId: run.id, dispatchToken });
-      } catch (error) {
-        await repository.releaseEvalRunDispatch({ projectId, evalRunId: run.id, dispatchToken });
-        throw error;
-      }
-    }
-  } else {
-    await repository.armEvalRunItemDeliveryDeadline(projectId, run.id);
-    await runEvalRunInline(repository, projectId, run.id);
+    return "ready";
+  } catch (error) {
+    await repository.releaseEvalRunDispatch({
+      projectId: run.projectId,
+      evalRunId: run.id,
+      dispatchToken
+    });
+    throw error;
   }
-  return (await repository.getEvalRun(projectId, run.id)) ?? run;
 }
 
 function isPermanentGateError(error: unknown): boolean {

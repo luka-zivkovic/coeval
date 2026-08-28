@@ -4,7 +4,7 @@ import type { Queue } from "@coeval/queue";
 import type { CoevalRepository, IronsideImportContext } from "../repository.js";
 import { ImportSkillVersionBindingError, IronsideCredentialsMissingError, IronsideIntegrationNotFoundError, NoCurrentSkillError, RecursiveTraceSkippedError } from "../repository.js";
 import { IronsideClient, ironsideTraceToTraceImport, type IronsideTraceSource } from "../lib/ironside.js";
-import { scheduleImportedCaseJudging } from "./import-judging.js";
+import { assertImportJudgingAllowed, scheduleImportedCaseJudging } from "./import-judging.js";
 
 // Reconcile sweep over ironside's native GET /api/v1/traces (issue #153).
 //
@@ -60,6 +60,7 @@ export async function processIronsideImportJob(
     if (!parsed.skillVersionId) throw new ImportSkillVersionBindingError();
     const version = await repository.getSkillVersion(parsed.projectId, parsed.skillVersionId);
     if (!version) throw new ImportSkillVersionBindingError(`Unknown import skillVersionId for project: ${parsed.skillVersionId}`);
+    await assertImportJudgingAllowed(repository, parsed.projectId, version.id);
     const context = await repository.loadIronsideImportContext(parsed);
     const client = createClient(context);
 
@@ -124,6 +125,9 @@ export async function processIronsideImportJob(
       skillVersionId: version.id,
       caseIds
     });
+    if (judging.dispatchPending) {
+      throw new Error("Imported Runs were saved, but their evaluation is not durably queued yet.");
+    }
     const queued = judging.scheduledCaseCount;
 
     await repository.saveIronsideSyncState(context.projectId, context.id, drained

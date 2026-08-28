@@ -91,7 +91,7 @@ import {
 } from "@coeval/shared";
 import { traceTestRunOutcome } from "@coeval/shared";
 import type { Queue, QueueSendOptions } from "@coeval/queue";
-import { AgentSetupEligibilityError, AmbiguousProjectSkillError, AssessmentReceiptIntegrityError, AssessmentReceiptUnavailableError, CaseNotFoundError, CoevalRepository, CriterionStableKeyConflictError, DatasetNameTakenError, DatasetNotFoundError, DatasetRevisionConflictError, DatasetRevisionNotFoundError, DemoRepository, EvaluatorSuiteBindingError, EvaluatorSuiteIdempotencyConflictError, GoldenSetEntryAlreadyRetiredError, GoldenSetEntryNotFoundError, GoldenSetLabelConflictError, InvalidConvergenceCursorError, IronsideIntegrationNotFoundError, LangfuseIntegrationNotFoundError, LangSmithIntegrationNotFoundError, NoCurrentSkillError, RecursiveTraceSkippedError, RegressionGateJudgeError, RegressionGateUnavailableError, SealedValidationUnavailableError, SkillVersionNotSignableError, TraceTestNotFoundError, TraceTestRevisionConflictError, TraceTestSourceNotFoundError, TraceTestValidationNotReadyError, type IronsideImportContext, type LangfuseImportContext, type LangSmithImportContext } from "./repository.js";
+import { AgentSetupEligibilityError, AmbiguousProjectSkillError, AssessmentReceiptIntegrityError, AssessmentReceiptUnavailableError, CaseNotFoundError, CoevalRepository, CriterionStableKeyConflictError, DatasetNameTakenError, DatasetNotFoundError, DatasetRevisionConflictError, DatasetRevisionNotFoundError, DemoRepository, EvaluatorSuiteBindingError, EvaluatorSuiteIdempotencyConflictError, GoldenSetEntryAlreadyRetiredError, GoldenSetEntryNotFoundError, GoldenSetLabelConflictError, ImportSkillVersionBindingError, InvalidConvergenceCursorError, IronsideIntegrationNotFoundError, LangfuseIntegrationNotFoundError, LangSmithIntegrationNotFoundError, NoCurrentSkillError, RecursiveTraceSkippedError, RegressionGateJudgeError, RegressionGateUnavailableError, SealedValidationUnavailableError, SkillVersionNotSignableError, TraceTestNotFoundError, TraceTestRevisionConflictError, TraceTestSourceNotFoundError, TraceTestValidationNotReadyError, type IronsideImportContext, type LangfuseImportContext, type LangSmithImportContext } from "./repository.js";
 import type { CoevalAuth } from "./lib/auth.js";
 import {
   bootstrapOwnerUserByEmail,
@@ -171,7 +171,7 @@ import { contentDigest, sha256Digest } from "./lib/assessment-receipt.js";
 import { canonicalEvaluatorSuiteManifestBytes } from "./lib/evaluator-suite.js";
 import { runEvalRunInline } from "./workers/eval-run.js";
 import { runExistingCaseBackfill } from "./workers/gate.js";
-import { scheduleImportedCaseJudging } from "./workers/import-judging.js";
+import { assertImportJudgingAllowed, scheduleImportedCaseJudging } from "./workers/import-judging.js";
 import { judgeAndRecord } from "./workers/judge.js";
 import {
   buildTraceTestDraftPrompt,
@@ -1434,11 +1434,11 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         // path. Their accepted lifecycle decides when evaluation is allowed.
       }
       if (authorized) {
-        const run = await runExistingCaseBackfill(repository, projectId, result.version.id);
-        if (run) {
+        const backfillRun = await runExistingCaseBackfill(repository, projectId, result.version.id);
+        if (backfillRun) {
           backfill = {
             timeScope,
-            cases: run.totalItems,
+            cases: backfillRun.run.totalItems,
             enqueued: 0,
             skipped: 0
           };
@@ -1479,6 +1479,14 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       return c.json({ error: resolvedVersion.invalid, code: "skill_version_required" },
         parsed.data.skillVersionId === undefined && resolvedVersion.invalid.includes("multiple criteria") ? 409 : 400);
     }
+    try {
+      await assertImportJudgingAllowed(repository, projectId, resolvedVersion.id);
+    } catch (error) {
+      if (error instanceof ImportSkillVersionBindingError) {
+        return c.json({ error: error.message, code: "skill_version_not_runnable" }, 409);
+      }
+      throw error;
+    }
 
     let imported;
     try {
@@ -1496,16 +1504,40 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       }
       throw error;
     }
-    const judging = await scheduleImportedCaseJudging(repository, options.queue, {
-      projectId,
-      skillVersionId: resolvedVersion.id,
-      caseIds: [imported.caseId]
-    });
+    let judging;
+    try {
+      judging = await scheduleImportedCaseJudging(repository, options.queue, {
+        projectId,
+        skillVersionId: resolvedVersion.id,
+        caseIds: [imported.caseId]
+      });
+    } catch (error) {
+      if (error instanceof ImportSkillVersionBindingError) {
+        return c.json({
+          ...imported,
+          queued: false,
+          queueJobId: null,
+          error: "The Run was saved, but the selected Check changed before evaluation could start.",
+          code: "skill_version_not_runnable"
+        }, 409);
+      }
+      throw error;
+    }
+
+    if (judging.dispatchPending) {
+      c.header("Retry-After", "300");
+      return c.json({
+        ...imported,
+        queued: false,
+        queueJobId: null,
+        error: "The Run was saved, but its evaluation is not durably queued yet. Retry this import."
+      }, 503);
+    }
 
     return c.json({
       ...imported,
       queued: judging.scheduledCaseCount > 0,
-      queueJobId: judging.queueJobIds[0] ?? null
+      queueJobId: null
     }, 201);
   });
 
@@ -3735,22 +3767,37 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     if (existingBackfill) {
       const resumed = await runExistingCaseBackfill(repository, projectId, version.id, options.queue);
       const detail = resumed
-        ? await repository.getEvalRunDetail(projectId, resumed.id)
+        ? await repository.getEvalRunDetail(projectId, resumed.run.id)
         : null;
       if (!detail) throw new Error(`Backfill run vanished after creation: ${existingBackfill.id}`);
+      if (resumed?.dispatchState === "busy") {
+        c.header("Retry-After", "300");
+        return c.json({
+          error: "The Result run is saved but not durably queued yet. Retry this request.",
+          run: detail
+        }, 503);
+      }
       return c.json({ run: detail }, detail.status === "pending" || detail.status === "running" ? 202 : 200);
     }
     const existingResult = await repository.listVerdicts({
       projectId,
       source: "llm_judge",
       skillVersionId: version.id,
+      evidenceScope: "customer",
       limit: 1
     });
     if (existingResult[0]) return c.json({ run: null, existingResult: true }, 200);
-    const run = await runExistingCaseBackfill(repository, projectId, version.id, options.queue);
-    if (!run) return c.json({ error: "Add a recorded Run before asking for the first Result." }, 409);
-    const detail = await repository.getEvalRunDetail(projectId, run.id);
-    if (!detail) throw new Error(`Backfill run vanished after creation: ${run.id}`);
+    const backfill = await runExistingCaseBackfill(repository, projectId, version.id, options.queue);
+    if (!backfill) return c.json({ error: "Add a recorded Run before asking for the first Result." }, 409);
+    const detail = await repository.getEvalRunDetail(projectId, backfill.run.id);
+    if (!detail) throw new Error(`Backfill run vanished after creation: ${backfill.run.id}`);
+    if (backfill.dispatchState === "busy") {
+      c.header("Retry-After", "300");
+      return c.json({
+        error: "The Result run is saved but not durably queued yet. Retry this request.",
+        run: detail
+      }, 503);
+    }
     return c.json({ run: detail }, detail.status === "pending" || detail.status === "running" ? 202 : 200);
   });
 
@@ -4987,6 +5034,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         caseId: z.string().min(1).optional(),
         skillVersionId: z.string().min(1).optional(),
         criterionId: z.string().min(1).optional(),
+        evidenceScope: z.enum(["all", "customer"]).default("all"),
         limit: z.coerce.number().int().positive().max(VERDICT_LIST_MAX_LIMIT).default(20)
       })
       .safeParse({
@@ -4994,6 +5042,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         caseId: c.req.query("caseId") ?? undefined,
         skillVersionId: c.req.query("skillVersionId") ?? undefined,
         criterionId: c.req.query("criterionId") ?? undefined,
+        evidenceScope: c.req.query("evidenceScope") ?? undefined,
         limit: c.req.query("limit") ?? undefined
       });
     if (!parsed.success) {
@@ -5006,6 +5055,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         ...(parsed.data.source ? { source: parsed.data.source } : {}),
         ...(parsed.data.skillVersionId ? { skillVersionId: parsed.data.skillVersionId } : {}),
         ...(parsed.data.criterionId ? { criterionId: parsed.data.criterionId } : {}),
+        evidenceScope: parsed.data.evidenceScope,
         limit: parsed.data.limit
       })
     });

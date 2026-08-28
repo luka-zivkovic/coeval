@@ -549,6 +549,12 @@ export interface CoevalRepository {
     run: EvalRunDetail;
     created: boolean;
   }>;
+  // One automatic import evaluation per immutable (project, version, case).
+  // Import retries and concurrent ingestion converge on this durable row.
+  createImportedCaseEvalRun(input: CreateImportedCaseEvalRunInputDb): Promise<{
+    run: EvalRunDetail;
+    created: boolean;
+  }>;
   // Durable queue outbox claim for any eval run. Only the claim holder sends
   // the deterministic queue job; a send failure releases the claim, while a
   // crash can be recovered after the lease without creating another job id.
@@ -672,6 +678,12 @@ export interface CreateConvergenceEvalRunInputDb {
   skillVersionId: string;
   caseId: string;
   createdByUserId?: string | undefined;
+}
+
+export interface CreateImportedCaseEvalRunInputDb {
+  projectId: string;
+  skillVersionId: string;
+  caseId: string;
 }
 
 export interface EvalRunDispatchInputDb {
@@ -973,6 +985,7 @@ export interface ListVerdictsInput {
   source?: VerdictSource | undefined;
   skillVersionId?: string | undefined;
   criterionId?: string | undefined;
+  evidenceScope?: "all" | "customer" | undefined;
   limit: number;
 }
 
@@ -1292,6 +1305,7 @@ export class DemoRepository implements CoevalRepository {
   private readonly evalRuns: EvalRun[] = [];
   private readonly evalRunItems: EvalRunItem[] = [];
   private readonly convergenceEvalRuns = new Map<string, Promise<EvalRunDetail>>();
+  private readonly importedCaseEvalRuns = new Map<string, Promise<EvalRunDetail>>();
   private readonly evalRunDispatches = new Map<string, {
     jobId: string;
     dispatchToken: string | null;
@@ -3928,6 +3942,28 @@ export class DemoRepository implements CoevalRepository {
     }
   }
 
+  async createImportedCaseEvalRun(input: CreateImportedCaseEvalRunInputDb): Promise<{
+    run: EvalRunDetail;
+    created: boolean;
+  }> {
+    const key = `${input.projectId}:${input.skillVersionId}:${input.caseId}`;
+    const existing = this.importedCaseEvalRuns.get(key);
+    if (existing) return { run: await existing, created: false };
+    const creation = this.createEvalRun({
+      projectId: input.projectId,
+      skillVersionId: input.skillVersionId,
+      trigger: "api_batch",
+      items: [{ caseId: input.caseId }]
+    });
+    this.importedCaseEvalRuns.set(key, creation);
+    try {
+      return { run: await creation, created: true };
+    } catch (error) {
+      if (this.importedCaseEvalRuns.get(key) === creation) this.importedCaseEvalRuns.delete(key);
+      throw error;
+    }
+  }
+
   async claimEvalRunDispatch(input: EvalRunDispatchInputDb): Promise<EvalRunDispatchClaim> {
     const run = this.evalRuns.find((candidate) => candidate.id === input.evalRunId && candidate.projectId === input.projectId);
     if (!run) return { state: "busy", jobId: null };
@@ -4596,6 +4632,7 @@ export class DemoRepository implements CoevalRepository {
   async listVerdicts(input: ListVerdictsInput): Promise<VerdictRecord[]> {
     return this.verdicts
       .filter((verdict) => verdict.projectId === input.projectId)
+      .filter((verdict) => input.evidenceScope !== "customer" || !this.isEvidenceScaffoldingCase(verdict.caseId))
       .filter((verdict) => !input.caseId || verdict.caseId === input.caseId)
       .filter((verdict) => !input.source || verdict.source === input.source)
       .filter((verdict) => !input.skillVersionId || verdict.skillVersionId === input.skillVersionId)

@@ -1,44 +1,86 @@
 import type { Queue } from "@coeval/queue";
-import type { CoevalRepository } from "../repository.js";
-import { runExistingCaseBackfill } from "./gate.js";
+import {
+  ImportSkillVersionBindingError,
+  NoCurrentSkillError,
+  type CoevalRepository
+} from "../repository.js";
+import { dispatchEvalRunOnce, runExistingCaseBackfill } from "./gate.js";
 
 export interface ImportedCaseJudgingResult {
   scheduledCaseCount: number;
-  queueJobIds: string[];
+  evalRunIds: string[];
   backfillRunId: string | null;
+  dispatchPending: boolean;
 }
 
-// The first imported evidence for a Check belongs to the durable onboarding
-// backfill. Importing the same case and starting First Result may happen in
-// either order, so both paths converge on the unique per-version run before a
-// loose judge job is allowed. Once the Check already has a Result, imports use
-// the ordinary per-case path.
+export async function assertImportJudgingAllowed(
+  repository: CoevalRepository,
+  projectId: string,
+  skillVersionId: string
+): Promise<void> {
+  const version = await repository.getSkillVersion(projectId, skillVersionId);
+  const criterionVersion = version
+    ? await repository.getCriterionVersionForSkillVersion(projectId, skillVersionId)
+    : null;
+  let currentSkill = null;
+  if (criterionVersion) {
+    try {
+      currentSkill = await repository.getCurrentSkillForCriterion(projectId, criterionVersion.criterionId);
+    } catch (error) {
+      if (!(error instanceof NoCurrentSkillError)) throw error;
+    }
+  }
+  const starterDraft = currentSkill?.isStarter === true && version?.status === "draft";
+  if (
+    !version ||
+    !currentSkill ||
+    currentSkill.currentVersion.id !== version.id ||
+    (!starterDraft && version.status !== "approved" && version.status !== "production")
+  ) {
+    throw new ImportSkillVersionBindingError(
+      "Imported Runs can be evaluated only by the current runnable Check."
+    );
+  }
+}
+
+// Before the first customer-evidence Result, every importer converges on the
+// unique backfill run. Later cases use one durable, unique run per
+// (project, Check version, case), so concurrent imports and worker retries
+// cannot enqueue a second provider call.
 export async function scheduleImportedCaseJudging(
   repository: CoevalRepository,
   queue: Queue | undefined,
   input: { projectId: string; skillVersionId: string; caseIds: string[] }
 ): Promise<ImportedCaseJudgingResult> {
+  await assertImportJudgingAllowed(repository, input.projectId, input.skillVersionId);
   const caseIds = [...new Set(input.caseIds)];
   if (caseIds.length === 0) {
-    return { scheduledCaseCount: 0, queueJobIds: [], backfillRunId: null };
+    return {
+      scheduledCaseCount: 0,
+      evalRunIds: [],
+      backfillRunId: null,
+      dispatchPending: false
+    };
   }
 
   const [existingResult] = await repository.listVerdicts({
     projectId: input.projectId,
     source: "llm_judge",
     skillVersionId: input.skillVersionId,
+    evidenceScope: "customer",
     limit: 1
   });
   const existingBackfill = (await repository.listEvalRuns(input.projectId, {
     limit: 100,
     skillVersionId: input.skillVersionId
   })).find((run) => run.trigger === "backfill");
-  const importedCaseIds = new Set(caseIds);
-  const projectCaseIds = await repository.listCaseIdsForProject(input.projectId);
-  const isInitialEvidenceBatch = projectCaseIds.length > 0
-    && projectCaseIds.every((caseId) => importedCaseIds.has(caseId));
 
-  if (existingBackfill || (!existingResult && isInitialEvidenceBatch)) {
+  let remaining = caseIds;
+  let scheduledCaseCount = 0;
+  let backfillRunId: string | null = null;
+  let dispatchPending = false;
+  const evalRunIds: string[] = [];
+  if (existingBackfill || !existingResult) {
     const backfill = await runExistingCaseBackfill(
       repository,
       input.projectId,
@@ -46,48 +88,41 @@ export async function scheduleImportedCaseJudging(
       queue
     );
     if (backfill) {
-      const detail = await repository.getEvalRunDetail(input.projectId, backfill.id);
+      backfillRunId = backfill.run.id;
+      evalRunIds.push(backfill.run.id);
+      dispatchPending = backfill.dispatchState === "busy";
+      const detail = await repository.getEvalRunDetail(input.projectId, backfill.run.id);
       const covered = new Set(detail?.items.map((item) => item.caseId) ?? []);
-      const uncovered = caseIds.filter((caseId) => !covered.has(caseId));
-      const queueJobIds = await sendLooseJudgeJobs(repository, queue, input, uncovered);
-      return {
-        scheduledCaseCount: caseIds.length - uncovered.length + queueJobIds.length,
-        queueJobIds,
-        backfillRunId: backfill.id
-      };
+      scheduledCaseCount += caseIds.filter((caseId) => covered.has(caseId)).length;
+      remaining = caseIds.filter((caseId) => !covered.has(caseId));
     }
   }
 
-  const queueJobIds = await sendLooseJudgeJobs(repository, queue, input, caseIds);
-  return {
-    scheduledCaseCount: queueJobIds.length,
-    queueJobIds,
-    backfillRunId: null
-  };
-}
-
-async function sendLooseJudgeJobs(
-  repository: CoevalRepository,
-  queue: Queue | undefined,
-  input: { projectId: string; skillVersionId: string },
-  caseIds: string[]
-): Promise<string[]> {
-  const queueJobIds: string[] = [];
-  for (const caseId of caseIds) {
+  for (const caseId of remaining) {
     const [recorded] = await repository.listVerdicts({
       projectId: input.projectId,
       caseId,
       source: "llm_judge",
       skillVersionId: input.skillVersionId,
+      evidenceScope: "customer",
       limit: 1
     });
     if (recorded) continue;
-    const jobId = await queue?.send("judge.run", {
+    const importedRun = await repository.createImportedCaseEvalRun({
       projectId: input.projectId,
-      caseId,
-      skillVersionId: input.skillVersionId
-    }, { retryLimit: 5, retryBackoff: true });
-    if (jobId) queueJobIds.push(jobId);
+      skillVersionId: input.skillVersionId,
+      caseId
+    });
+    const dispatchState = await dispatchEvalRunOnce(repository, importedRun.run, queue);
+    evalRunIds.push(importedRun.run.id);
+    scheduledCaseCount += 1;
+    if (dispatchState === "busy") dispatchPending = true;
   }
-  return queueJobIds;
+
+  return {
+    scheduledCaseCount,
+    evalRunIds: [...new Set(evalRunIds)],
+    backfillRunId,
+    dispatchPending
+  };
 }

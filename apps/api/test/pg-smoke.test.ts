@@ -178,6 +178,75 @@ run("PgRepository smoke", () => {
     }
   });
 
+  it("keeps imported-case evaluation unique and excludes scaffolding from customer Result probes", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_smoke");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      await seedSkill(pool);
+
+      const customer = await repo.importTrace("proj_test", "manual", {
+        sourceTraceId: "customer-result-case",
+        input: { question: "Customer?" },
+        output: { answer: "Customer." },
+        metadata: {}
+      }, { ingestionPurpose: "analysis_eligible_manual" });
+      const scaffolding = await repo.importTrace("proj_test", "release_evidence", {
+        sourceTraceId: "scaffolding-result-case",
+        input: { question: "Gate?" },
+        output: { answer: "Gate." },
+        metadata: {}
+      }, { ingestionPurpose: "release_evidence" });
+
+      await repo.recordVerdict({
+        projectId: "proj_test",
+        caseId: scaffolding.caseId,
+        skillVersionId: "skillv_test",
+        source: "llm_judge",
+        payload: { kind: "binary", pass: true, rationale: "release-only result" }
+      });
+      await expect(repo.listVerdicts({
+        projectId: "proj_test",
+        skillVersionId: "skillv_test",
+        source: "llm_judge",
+        evidenceScope: "customer",
+        limit: 10
+      })).resolves.toEqual([]);
+      await expect(repo.listVerdicts({
+        projectId: "proj_test",
+        skillVersionId: "skillv_test",
+        source: "llm_judge",
+        evidenceScope: "all",
+        limit: 10
+      })).resolves.toHaveLength(1);
+
+      const [first, second] = await Promise.all([
+        repo.createImportedCaseEvalRun({
+          projectId: "proj_test",
+          skillVersionId: "skillv_test",
+          caseId: customer.caseId
+        }),
+        repo.createImportedCaseEvalRun({
+          projectId: "proj_test",
+          skillVersionId: "skillv_test",
+          caseId: customer.caseId
+        })
+      ]);
+      expect(first.run.id).toBe(second.run.id);
+      expect([first.created, second.created].sort()).toEqual([false, true]);
+      const stored = await pool.query(
+        `select id, ingestion_case_id from eval_runs
+         where project_id = 'proj_test' and skill_version_id = 'skillv_test' and ingestion_case_id = $1`,
+        [customer.caseId]
+      );
+      expect(stored.rows).toEqual([{ id: first.run.id, ingestion_case_id: customer.caseId }]);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it("M2 T1: steps[] round-trip — stored redacted in normalized_payload, served on the judge-bound trace", async () => {
     const { pool, cleanup } = await openPostgresTestDatabase("pg_smoke");
     try {
@@ -1215,6 +1284,7 @@ run("PgRepository smoke", () => {
       await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
       await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
       await seedSkill(pool);
+      await pool.query(`update skill_versions set status = 'approved', approved_at = now() where id = 'skillv_test'`);
 
       const integration = await repo.createLangSmithIntegration("proj_test", { apiKey: "ls_test_key", projectName: "Support Agent" });
       const importJob = await repo.createImportJob({
@@ -1243,7 +1313,7 @@ run("PgRepository smoke", () => {
         limit: 1,
         importJobId: importJob.id
       }, createClient)).resolves.toEqual({ imported: 1, queued: 1 });
-      const firstCaseId = (queue.jobs[0]?.data as { caseId?: string } | undefined)?.caseId;
+      const firstEvalRunId = (queue.jobs[0]?.data as { evalRunId?: string } | undefined)?.evalRunId;
 
       const retryJob = await repo.createImportJob({
         projectId: "proj_test",
@@ -1258,9 +1328,14 @@ run("PgRepository smoke", () => {
         limit: 1,
         importJobId: retryJob.id
       }, createClient)).resolves.toEqual({ imported: 0, queued: 1 });
-      const secondCaseId = (queue.jobs[1]?.data as { caseId?: string } | undefined)?.caseId;
-
-      expect(secondCaseId).toBe(firstCaseId);
+      expect(queue.jobs.filter((job) => job.name === "eval.run")).toHaveLength(1);
+      const runs = await repo.listEvalRuns("proj_test", { skillVersionId: "skillv_test" });
+      expect(runs).toHaveLength(1);
+      expect(runs[0]?.id).toBe(firstEvalRunId);
+      const runDetail = await repo.getEvalRunDetail("proj_test", runs[0]!.id);
+      expect(runDetail?.items).toEqual([
+        expect.objectContaining({ caseId: expect.any(String) })
+      ]);
       const counts = await pool.query(
         `select
            (select count(*)::int from raw_traces) as raw_count,
@@ -1304,6 +1379,7 @@ run("PgRepository smoke", () => {
       await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
       await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
       await seedSkill(pool);
+      await pool.query(`update skill_versions set status = 'approved', approved_at = now() where id = 'skillv_test'`);
 
       const integration = await repo.createLangSmithIntegration("proj_test", { apiKey: "ls_test_key", projectName: "Support Agent" });
       const importJob = await repo.createImportJob({

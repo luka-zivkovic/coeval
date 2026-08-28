@@ -207,6 +207,7 @@ import {
   type CreateDatasetInputDb,
   type CreateDatasetRevisionDbInput,
   type CreateConvergenceEvalRunInputDb,
+  type CreateImportedCaseEvalRunInputDb,
   type CreateEvalRunInputDb,
   type CreateGateCheckInputDb,
   type CreateImportJobInput,
@@ -2978,14 +2979,21 @@ export class PgRepository implements CoevalRepository {
              and version.project_id = verdict.project_id
              and skill.criterion_id = $5
          ))
+         and ($6::text = 'all' or exists (
+           select 1 from cases verdict_case
+           where verdict_case.id = verdict.case_id
+             and verdict_case.project_id = verdict.project_id
+             and verdict_case.case_type not in ('gate_candidate', 'release_evidence')
+         ))
        order by verdict.created_at desc
-       limit $6`,
+       limit $7`,
       [
         input.projectId,
         input.caseId ?? null,
         input.source ?? null,
         input.skillVersionId ?? null,
         input.criterionId ?? null,
+        input.evidenceScope ?? "all",
         input.limit
       ]
     );
@@ -4198,8 +4206,24 @@ export class PgRepository implements CoevalRepository {
     });
   }
 
+  async createImportedCaseEvalRun(input: CreateImportedCaseEvalRunInputDb): Promise<{
+    run: EvalRunDetail;
+    created: boolean;
+  }> {
+    return this.createEvalRunOnce({
+      projectId: input.projectId,
+      skillVersionId: input.skillVersionId,
+      trigger: "api_batch",
+      items: [{ caseId: input.caseId }],
+      ingestionCaseId: input.caseId
+    });
+  }
+
   private async createEvalRunOnce(
-    input: CreateEvalRunInputDb & { convergenceCaseId?: string | undefined }
+    input: CreateEvalRunInputDb & {
+      convergenceCaseId?: string | undefined;
+      ingestionCaseId?: string | undefined;
+    }
   ): Promise<{ run: EvalRunDetail; created: boolean }> {
     const runId = `evr_${randomUUID()}`;
     let resolvedRunId = runId;
@@ -4247,9 +4271,9 @@ export class PgRepository implements CoevalRepository {
           total_items, completed_items, failed_items, agreed_items, created_by_user_id, finished_at,
           source_trace_test_id, source_trace_test_revision, source_trace_test_validation_id,
           source_trace_test_validation_revision, source_trace_test_case_ref,
-          source_trace_test_case_id, source_trace_test_dataset_item_id, convergence_case_id)
+          source_trace_test_case_id, source_trace_test_dataset_item_id, convergence_case_id, ingestion_case_id)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,0,$11,$12, case when $7 = 'completed' then now() else null end,
-                 $13,$14,$15,$16,$17,$18,$19,$20)
+                 $13,$14,$15,$16,$17,$18,$19,$20,$21)
          on conflict do nothing
          returning id`,
         [
@@ -4272,7 +4296,8 @@ export class PgRepository implements CoevalRepository {
           input.sourceTraceTest?.sourceCaseRef ?? null,
           input.sourceTraceTest?.caseId ?? null,
           input.sourceTraceTest?.datasetItemId ?? null,
-          input.convergenceCaseId ?? null
+          input.convergenceCaseId ?? null,
+          input.ingestionCaseId ?? null
         ]
       );
       if (insertedRun.rowCount === 0) {
@@ -4282,7 +4307,13 @@ export class PgRepository implements CoevalRepository {
                where project_id = $1 and skill_version_id = $2 and trigger = 'backfill'`,
               [input.projectId, input.skillVersionId]
             )
-          : await client.query(
+          : input.ingestionCaseId
+            ? await client.query(
+                `select id from eval_runs
+                 where project_id = $1 and skill_version_id = $2 and ingestion_case_id = $3`,
+                [input.projectId, input.skillVersionId, input.ingestionCaseId]
+              )
+            : await client.query(
               `select id from eval_runs
                where project_id = $1 and skill_version_id = $2 and convergence_case_id = $3
                  and status in ('pending', 'running')`,

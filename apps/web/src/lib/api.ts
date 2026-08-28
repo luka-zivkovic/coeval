@@ -437,6 +437,7 @@ export async function fetchProjectVerdicts(opts?: {
   caseId?: string;
   criterionId?: string;
   skillVersionId?: string;
+  evidenceScope?: "all" | "customer";
   limit?: number;
 }): Promise<VerdictRecord[]> {
   const params = new URLSearchParams();
@@ -444,6 +445,7 @@ export async function fetchProjectVerdicts(opts?: {
   if (opts?.caseId) params.set("caseId", opts.caseId);
   if (opts?.criterionId) params.set("criterionId", opts.criterionId);
   if (opts?.skillVersionId) params.set("skillVersionId", opts.skillVersionId);
+  if (opts?.evidenceScope) params.set("evidenceScope", opts.evidenceScope);
   if (opts?.limit !== undefined) params.set("limit", String(opts.limit));
   const suffix = params.toString();
   const response = await apiFetch(`${API_BASE}/api/projects/verdicts${suffix ? `?${suffix}` : ""}`, { credentials: "include" });
@@ -1240,7 +1242,7 @@ export async function ensureSkillVersionBackfill(skillId: string, skillVersionId
     existingResult?: boolean;
     error?: string;
   } | null;
-  if (response.ok && payload?.run) return EvalRunDetailSchema.parse(payload.run);
+  if ((response.ok || response.status === 503) && payload?.run) return EvalRunDetailSchema.parse(payload.run);
   if (response.ok && payload?.existingResult === true) return null;
   throw apiError(response, payload, "First Result evaluation could not start");
 }

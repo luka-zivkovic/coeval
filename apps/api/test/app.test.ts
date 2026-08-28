@@ -8,6 +8,8 @@ import type { AgentSetupPairingRecord } from "../src/lib/auth.js";
 import { DemoRepository, NoCurrentSkillError, buildGoldenSetHealthSummary, runGoldenSetRegression } from "../src/repository.js";
 import { isPermanentFeedbackSyncError, processFeedbackSyncJob } from "../src/workers/feedback-sync.js";
 import { processGateRunJob, runExistingCaseBackfill } from "../src/workers/gate.js";
+import { processEvalItemJob, processEvalRunJob } from "../src/workers/eval-run.js";
+import { scheduleImportedCaseJudging } from "../src/workers/import-judging.js";
 import { processJudgeRunJob } from "../src/workers/judge.js";
 import { processLangfuseImportJob } from "../src/workers/langfuse-import.js";
 import { enqueueDueLangfuseImports } from "../src/workers/langfuse-poller.js";
@@ -1006,11 +1008,14 @@ describe("Coeval Hono API", () => {
     }));
 
     // Only one trace was actually imported; the coeval-internal one was skipped
-    // without enqueueing a judge.run.
+    // without creating another tracked evaluation.
     expect(result.imported).toBe(1);
     expect(result.queued).toBe(1);
     expect(queue.jobs).toHaveLength(1);
-    expect((queue.jobs[0]?.data as { caseId: string }).caseId).toBeTruthy();
+    expect(queue.jobs[0]).toMatchObject({
+      name: "eval.run",
+      data: { projectId: "proj_langsmith_support", evalRunId: expect.any(String) }
+    });
   });
 
   it("creates and lists annotation queues with counters + per-item ordering", async () => {
@@ -1697,9 +1702,9 @@ describe("Coeval Hono API", () => {
     })).resolves.toHaveLength(0);
 
     repository.empty = false;
-    const run = await runExistingCaseBackfill(repository, "proj_langsmith_support", "skillv_1_2_0");
-    expect(run).toMatchObject({ trigger: "backfill", status: "completed" });
-    expect(run!.totalItems).toBeGreaterThan(0);
+    const backfill = await runExistingCaseBackfill(repository, "proj_langsmith_support", "skillv_1_2_0");
+    expect(backfill?.run).toMatchObject({ trigger: "backfill", status: "completed" });
+    expect(backfill!.run.totalItems).toBeGreaterThan(0);
   });
 
   it("idempotently starts the first Result when a Check existed before its Runs", async () => {
@@ -1772,6 +1777,155 @@ describe("Coeval Hono API", () => {
     expect(queue.jobs.filter((job) => job.name === "judge.run")).toHaveLength(0);
   });
 
+  it("converges concurrent first imports on durable runs without loose judge jobs", async () => {
+    class CleanInstallRepository extends DemoRepository {
+      readonly importedCaseIds: string[] = [];
+
+      override async importTrace(...args: Parameters<DemoRepository["importTrace"]>) {
+        const result = await super.importTrace(...args);
+        if (!this.importedCaseIds.includes(result.caseId)) this.importedCaseIds.push(result.caseId);
+        return result;
+      }
+
+      override async listCaseIdsForProject(
+        _projectId: string,
+        limit?: number | undefined
+      ): Promise<string[]> {
+        return limit === undefined
+          ? [...this.importedCaseIds]
+          : this.importedCaseIds.slice(0, limit);
+      }
+
+      override async listVerdicts(input: Parameters<DemoRepository["listVerdicts"]>[0]) {
+        if (input.evidenceScope === "customer" && input.source === "llm_judge") return [];
+        return super.listVerdicts(input);
+      }
+    }
+    const repository = new CleanInstallRepository();
+    const queue = new CapturingQueue();
+    const first = await repository.importTrace("proj_langsmith_support", "manual", {
+      sourceTraceId: "concurrent-first-a",
+      input: { question: "A?" },
+      output: { answer: "A." },
+      metadata: {}
+    }, { ingestionPurpose: "analysis_eligible_manual" });
+    const second = await repository.importTrace("proj_langsmith_support", "manual", {
+      sourceTraceId: "concurrent-first-b",
+      input: { question: "B?" },
+      output: { answer: "B." },
+      metadata: {}
+    }, { ingestionPurpose: "analysis_eligible_manual" });
+
+    await Promise.all([
+      scheduleImportedCaseJudging(repository, queue, {
+        projectId: "proj_langsmith_support",
+        skillVersionId: "skillv_1_2_0",
+        caseIds: [first.caseId]
+      }),
+      scheduleImportedCaseJudging(repository, queue, {
+        projectId: "proj_langsmith_support",
+        skillVersionId: "skillv_1_2_0",
+        caseIds: [second.caseId]
+      })
+    ]);
+
+    const runs = await repository.listEvalRuns("proj_langsmith_support", {
+      skillVersionId: "skillv_1_2_0"
+    });
+    const details = await Promise.all(runs.map((run) => repository.getEvalRunDetail(
+      "proj_langsmith_support",
+      run.id
+    )));
+    const evaluatedCaseIds = details.flatMap((detail) => detail?.items.map((item) => item.caseId) ?? []);
+    expect(evaluatedCaseIds.sort()).toEqual([first.caseId, second.caseId].sort());
+    expect(new Set(evaluatedCaseIds).size).toBe(2);
+    expect(runs.filter((run) => run.trigger === "backfill")).toHaveLength(1);
+    expect(queue.jobs.filter((job) => job.name === "eval.run")).toHaveLength(1);
+    expect(queue.jobs.filter((job) => job.name === "judge.run")).toHaveLength(0);
+  });
+
+  it("uses one durable per-case run when concurrent import retries follow an existing Result", async () => {
+    const repository = new DemoRepository();
+    const queue = new CapturingQueue();
+    await repository.recordVerdict({
+      projectId: "proj_langsmith_support",
+      caseId: "case_exc_001",
+      skillVersionId: "skillv_1_2_0",
+      source: "llm_judge",
+      payload: { kind: "binary", pass: true, rationale: "Existing customer Result." }
+    });
+    const imported = await repository.importTrace("proj_langsmith_support", "manual", {
+      sourceTraceId: "concurrent-later-case",
+      input: { question: "Later?" },
+      output: { answer: "Later." },
+      metadata: {}
+    }, { ingestionPurpose: "analysis_eligible_manual" });
+
+    await Promise.all([
+      scheduleImportedCaseJudging(repository, queue, {
+        projectId: "proj_langsmith_support",
+        skillVersionId: "skillv_1_2_0",
+        caseIds: [imported.caseId]
+      }),
+      scheduleImportedCaseJudging(repository, queue, {
+        projectId: "proj_langsmith_support",
+        skillVersionId: "skillv_1_2_0",
+        caseIds: [imported.caseId]
+      })
+    ]);
+
+    const runs = await repository.listEvalRuns("proj_langsmith_support", {
+      skillVersionId: "skillv_1_2_0"
+    });
+    const matching = [];
+    for (const run of runs) {
+      const detail = await repository.getEvalRunDetail("proj_langsmith_support", run.id);
+      if (detail?.items.some((item) => item.caseId === imported.caseId)) matching.push(detail);
+    }
+    expect(matching).toHaveLength(1);
+    expect(matching[0]).toMatchObject({ trigger: "api_batch", totalItems: 1 });
+    expect(queue.jobs.filter((job) => job.name === "eval.run")).toHaveLength(1);
+    expect(queue.jobs.filter((job) => job.name === "judge.run")).toHaveLength(0);
+  });
+
+  it("does not claim an undispatched Result run is queued and recovers on retry", async () => {
+    const queue = new CapturingQueue();
+    const repository = new DemoRepository();
+    const [caseId] = await repository.listCaseIdsForProject("proj_langsmith_support", 1);
+    const run = await repository.createEvalRun({
+      projectId: "proj_langsmith_support",
+      skillVersionId: "skillv_1_2_0",
+      trigger: "backfill",
+      items: [{ caseId: caseId! }]
+    });
+    const abandonedToken = "abandoned-first-result-dispatch";
+    await expect(repository.claimEvalRunDispatch({
+      projectId: "proj_langsmith_support",
+      evalRunId: run.id,
+      dispatchToken: abandonedToken
+    })).resolves.toMatchObject({ state: "claimed" });
+    const localApp = createApp(repository, { queue });
+    const path = "/api/skills/skill_support_quality/versions/skillv_1_2_0/backfill";
+
+    const busy = await localApp.request(path, { method: "POST" });
+    expect(busy.status).toBe(503);
+    expect(busy.headers.get("retry-after")).toBe("300");
+    await expect(busy.json()).resolves.toMatchObject({
+      error: expect.stringContaining("not durably queued"),
+      run: { id: run.id, status: "pending" }
+    });
+    expect(queue.jobs).toHaveLength(0);
+
+    await repository.releaseEvalRunDispatch({
+      projectId: "proj_langsmith_support",
+      evalRunId: run.id,
+      dispatchToken: abandonedToken
+    });
+    const recovered = await localApp.request(path, { method: "POST" });
+    expect(recovered.status).toBe(202);
+    expect(queue.jobs.filter((job) => job.name === "eval.run")).toHaveLength(1);
+  });
+
   it("PR #56/C5a: blocked gate leaves the version regressing and skips backfill even when timeScope=existing", async () => {
     const queue = new CapturingQueue();
     const repository = new DemoRepository();
@@ -1798,6 +1952,24 @@ describe("Coeval Hono API", () => {
     const versions = await repository.listSkillVersions("proj_langsmith_support", "skill_support_quality");
     expect(versions.find((v) => v.id === body.version.id)?.status).toBe("regressing");
     expect(queue.jobs.filter((job) => job.name === "judge.run")).toHaveLength(0);
+    expect(queue.jobs.filter((job) => job.name === "eval.run")).toHaveLength(0);
+
+    const rejectedImport = await appWithQueue.request("/api/traces/manual", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        skillVersionId: body.version.id,
+        sourceTraceId: "blocked-version-import",
+        input: { question: "Should not run" },
+        output: { answer: "Should not be judged" },
+        metadata: {}
+      })
+    });
+    expect(rejectedImport.status).toBe(409);
+    await expect(rejectedImport.json()).resolves.toMatchObject({
+      code: "skill_version_not_runnable",
+      error: "Imported Runs can be evaluated only by the current runnable Check."
+    });
     expect(queue.jobs.filter((job) => job.name === "eval.run")).toHaveLength(0);
 
     const rejected = await appWithQueue.request(
@@ -2016,7 +2188,7 @@ describe("Coeval Hono API", () => {
     expect(badSource.status).toBe(400);
   });
 
-  it("imports a manual trace and enqueues a judge.run job", async () => {
+  it("imports a manual trace and enqueues one durable evaluation run", async () => {
     const queue = new CapturingQueue();
     const appWithQueue = createApp(new DemoRepository(), { queue });
     const response = await appWithQueue.request("/api/traces/manual", {
@@ -2033,18 +2205,62 @@ describe("Coeval Hono API", () => {
     expect(response.status).toBe(201);
     const body = (await response.json()) as { caseId: string; queued: boolean; queueJobId: string | null };
     expect(body.queued).toBe(true);
-    expect(body.queueJobId).toBe("job_1");
+    expect(body.queueJobId).toBeNull();
     expect(queue.jobs).toEqual([
       {
-        name: "judge.run",
+        name: "eval.run",
         data: {
           projectId: "proj_langsmith_support",
-          caseId: body.caseId,
-          skillVersionId: "skillv_1_2_0"
+          evalRunId: expect.any(String)
         },
-        options: { retryLimit: 5, retryBackoff: true }
+        options: { id: expect.any(String), retryLimit: 5, retryBackoff: true }
       }
     ]);
+  });
+
+  it("keeps a Run saved but does not evaluate it if the current Check changes during import", async () => {
+    class CheckChangesDuringImportRepository extends DemoRepository {
+      changed = false;
+
+      override async importTrace(...args: Parameters<DemoRepository["importTrace"]>) {
+        const imported = await super.importTrace(...args);
+        this.changed = true;
+        return imported;
+      }
+
+      override async getCurrentSkillForCriterion(...args: Parameters<DemoRepository["getCurrentSkillForCriterion"]>) {
+        const current = await super.getCurrentSkillForCriterion(...args);
+        return this.changed
+          ? {
+              ...current,
+              currentVersion: { ...current.currentVersion, id: "skillv_replaced_during_import" }
+            }
+          : current;
+      }
+    }
+    const repository = new CheckChangesDuringImportRepository();
+    const queue = new CapturingQueue();
+    const response = await createApp(repository, { queue }).request("/api/traces/manual", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        skillVersionId: "skillv_1_2_0",
+        sourceTraceId: "check-changed-mid-import",
+        input: { question: "Was this saved?" },
+        output: { answer: "Yes, without judging the old Check." },
+        metadata: {}
+      })
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      created: true,
+      queued: false,
+      queueJobId: null,
+      code: "skill_version_not_runnable",
+      error: "The Run was saved, but the selected Check changed before evaluation could start."
+    });
+    expect(queue.jobs).toHaveLength(0);
   });
 
   it("updates demo retention settings and prunes with no-op result", async () => {
@@ -3158,13 +3374,12 @@ describe("LangSmith import worker", () => {
     expect(repository.importedPurposes).toEqual(["analysis_eligible_langsmith"]);
     expect(queue.jobs).toEqual([
       {
-        name: "judge.run",
+        name: "eval.run",
         data: {
           projectId: "proj_langsmith_support",
-          caseId: expect.any(String),
-          skillVersionId: "skillv_1_2_0"
+          evalRunId: expect.any(String)
         },
-        options: { retryLimit: 5, retryBackoff: true }
+        options: { id: expect.any(String), retryLimit: 5, retryBackoff: true }
       }
     ]);
   });
@@ -3177,7 +3392,7 @@ describe("LangSmith import worker", () => {
       projectName: "Support Agent"
     });
 
-    // 1. Import from the mocked LangSmith server -> case + judge.run enqueued.
+    // 1. Import from the mocked LangSmith server -> case + durable eval run.
     const imported = await processLangSmithImportJob(repository, queue, {
       projectId: "proj_langsmith_support",
       integrationId: integration.id,
@@ -3194,7 +3409,7 @@ describe("LangSmith import worker", () => {
       }
     }));
     expect(imported).toEqual({ imported: 1, queued: 1 });
-    const judgeJob = queue.jobs.find((job) => job.name === "judge.run")!;
+    const evalRunJob = queue.jobs.find((job) => job.name === "eval.run")!;
 
     // 2. Judge the imported case -> verdict recorded + feedback.sync enqueued.
     const judgeProvider = {
@@ -3206,7 +3421,15 @@ describe("LangSmith import worker", () => {
         return { verdict: { kind: "binary" as const, label: "pass" as const, score: 0.9, rationale: "policy applied" } };
       }
     };
-    await processJudgeRunJob(repository, judgeJob.data as { projectId: string; caseId: string; skillVersionId: string }, judgeProvider, queue);
+    await processEvalRunJob(repository, queue, evalRunJob.data as { projectId: string; evalRunId: string });
+    const itemJob = queue.jobs.find((job) => job.name === "eval.item")!;
+    await processEvalItemJob(
+      repository,
+      itemJob.data as { projectId: string; evalRunId: string; evalRunItemId: string; caseId: string; skillVersionId: string },
+      judgeProvider,
+      "langsmith-e2e",
+      queue
+    );
     const syncJob = queue.jobs.find((job) => job.name === "feedback.sync")!;
     expect(syncJob).toBeDefined();
 
@@ -3315,7 +3538,7 @@ describe("LangSmith import worker", () => {
       importJobId: retryJob.id
     }, createClient)).resolves.toEqual({ imported: 0, queued: 1 });
 
-    expect(queue.jobs[1]?.data).toMatchObject({ caseId: (queue.jobs[0]?.data as { caseId?: string } | undefined)?.caseId });
+    expect(queue.jobs.filter((job) => job.name === "eval.run")).toHaveLength(1);
     await expect(repository.listImportJobs({ projectId: "proj_langsmith_support", limit: 5 })).resolves.toMatchObject([
       {
         id: retryJob.id,
@@ -3485,7 +3708,8 @@ describe("LangSmith import worker", () => {
       }
     }));
 
-    const caseId = (queue.jobs[0]!.data as { caseId: string }).caseId;
+    const evalRunId = (queue.jobs[0]!.data as { evalRunId: string }).evalRunId;
+    const caseId = (await repository.getEvalRunDetail("proj_langsmith_support", evalRunId))!.items[0]!.caseId;
     await expect(repository.loadJudgeRunContext({
       projectId: "proj_langsmith_support",
       caseId,
@@ -3617,13 +3841,12 @@ describe("Langfuse import worker", () => {
     expect(repository.importedPurposes).toEqual(["analysis_eligible_langfuse"]);
     expect(queue.jobs).toEqual([
       {
-        name: "judge.run",
+        name: "eval.run",
         data: {
           projectId: "proj_langsmith_support",
-          caseId: expect.any(String),
-          skillVersionId: "skillv_1_2_0"
+          evalRunId: expect.any(String)
         },
-        options: { retryLimit: 5, retryBackoff: true }
+        options: { id: expect.any(String), retryLimit: 5, retryBackoff: true }
       }
     ]);
   });
