@@ -181,6 +181,7 @@ import {
   LangSmithCredentialsMissingError,
   LangSmithIntegrationNotFoundError,
   NoCurrentSkillError,
+  OnboardingCheckConflictError,
   RecursiveTraceSkippedError,
   SkillVersionNotSignableError,
   TraceTestNotFoundError,
@@ -6306,37 +6307,91 @@ export class PgRepository implements CoevalRepository {
       // Bind the evaluator to an immutable regression corpus before it is
       // persisted or queued. Golden-set edits after this point may advance
       // the criterion pointer, but can never change this version's gate input.
-      await client.query(
-        `select id from criteria where project_id = $1 and id = $2 for update`,
+      const lockedCriterion = await client.query(
+        `select id, source_kind from criteria where project_id = $1 and id = $2 for update`,
         [context.projectId, String(locked.rows[0].criterion_id)]
       );
-      if (!input.criterionVersionId) {
-        const definitionCount = Number((await client.query(
-          `select count(*)::int as count
-           from criterion_versions
-           where project_id = $1 and criterion_id = $2`,
-          [context.projectId, String(locked.rows[0].criterion_id)]
-        )).rows[0]?.count ?? 0);
-        if (definitionCount > 1) {
-          throw new DatasetRevisionConflictError(
-            "Criteria with multiple immutable definitions require an explicit criterionVersionId when creating an evaluator version."
+      if (!lockedCriterion.rows[0]) {
+        throw new DatasetRevisionConflictError(`Skill ${skillId} has no criterion.`);
+      }
+
+      let criterionVersionId: string;
+      if (context.onboardingCriterion) {
+        if (!locked.rows[0].is_starter) {
+          throw new OnboardingCheckConflictError(
+            "project_already_configured",
+            "This project's starter Check has already been configured."
           );
         }
-      }
-      const criterionVersion = (await client.query(
-        `select id from criterion_versions
-         where project_id = $1 and criterion_id = $2
-           and ($3::text is null or id = $3)
-         order by revision desc, id desc
-         limit 1`,
-        [context.projectId, String(locked.rows[0].criterion_id), input.criterionVersionId ?? null]
-      )).rows[0];
-      if (!criterionVersion) {
-        throw new DatasetRevisionConflictError(
-          `Skill ${skillId} does not own criterion version ${input.criterionVersionId ?? "(latest)"}.`
+        if (String(lockedCriterion.rows[0].source_kind) !== "native") {
+          throw new OnboardingCheckConflictError(
+            "criterion_not_native",
+            "Guided onboarding can configure only the project's native starter criterion."
+          );
+        }
+        if (input.criterionVersionId) {
+          throw new DatasetRevisionConflictError(
+            "Guided onboarding creates and binds its own criterion version."
+          );
+        }
+        const criterionId = String(locked.rows[0].criterion_id);
+        const revision = Number((await client.query(
+          `select coalesce(max(revision), 0)::int + 1 as revision
+           from criterion_versions where project_id = $1 and criterion_id = $2`,
+          [context.projectId, criterionId]
+        )).rows[0]?.revision ?? 1);
+        criterionVersionId = `criterionv_${randomUUID()}`;
+        const criterionDigest = evaluatorSuiteCriterionDigest({
+          criterionId,
+          criterionVersionId,
+          criterionName: context.onboardingCriterion.name,
+          criterionDefinition: context.onboardingCriterion.definition
+        });
+        await client.query(
+          `insert into criterion_versions
+            (id, project_id, criterion_id, revision, name, definition,
+             criterion_digest, source_kind, created_by_user_id)
+           values ($1, $2, $3, $4, $5, $6, $7, 'native', $8)`,
+          [
+            criterionVersionId,
+            context.projectId,
+            criterionId,
+            revision,
+            context.onboardingCriterion.name,
+            context.onboardingCriterion.definition,
+            criterionDigest,
+            context.actorUserId ?? null
+          ]
         );
+      } else {
+        if (!input.criterionVersionId) {
+          const definitionCount = Number((await client.query(
+            `select count(*)::int as count
+             from criterion_versions
+             where project_id = $1 and criterion_id = $2`,
+            [context.projectId, String(locked.rows[0].criterion_id)]
+          )).rows[0]?.count ?? 0);
+          if (definitionCount > 1) {
+            throw new DatasetRevisionConflictError(
+              "Criteria with multiple immutable definitions require an explicit criterionVersionId when creating an evaluator version."
+            );
+          }
+        }
+        const criterionVersion = (await client.query(
+          `select id from criterion_versions
+           where project_id = $1 and criterion_id = $2
+             and ($3::text is null or id = $3)
+           order by revision desc, id desc
+           limit 1`,
+          [context.projectId, String(locked.rows[0].criterion_id), input.criterionVersionId ?? null]
+        )).rows[0];
+        if (!criterionVersion) {
+          throw new DatasetRevisionConflictError(
+            `Skill ${skillId} does not own criterion version ${input.criterionVersionId ?? "(latest)"}.`
+          );
+        }
+        criterionVersionId = String(criterionVersion.id);
       }
-      const criterionVersionId = String(criterionVersion.id);
       const regressionDatasetRevisionId = await this.getOrCreateRegressionDatasetRevisionWithClient(
         client,
         context.projectId,
@@ -6394,8 +6449,8 @@ export class PgRepository implements CoevalRepository {
         [
           skillId,
           context.projectId,
-          context.agentSetup?.skillName ?? null,
-          context.agentSetup?.skillDescription ?? null
+          context.onboardingCriterion?.name ?? context.agentSetup?.skillName ?? null,
+          context.onboardingCriterion?.definition ?? context.agentSetup?.skillDescription ?? null
         ]
       );
       if (context.agentSetup?.pairingId) {

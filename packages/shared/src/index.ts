@@ -5087,6 +5087,32 @@ export const CreateSkillVersionInputSchema = z
   .refine((v) => v.verdictKind === "categorical" || v.categoricalChoiceScores === undefined, { message: "categoricalChoiceScores is only valid for categorical kinds" });
 export type CreateSkillVersionInput = z.infer<typeof CreateSkillVersionInputSchema>;
 
+// Beginner onboarding creates the first real Check over the project's seeded
+// native criterion. The visible quality question and evaluator draft travel in
+// one request so the repository can append the criterion definition and bind
+// the evaluator version atomically. Ordinary evaluator edits keep using
+// CreateSkillVersionInputSchema and cannot change criterion identity.
+export const CreateOnboardingCheckInputSchema = z.object({
+  criterion: CreateCriterionVersionInputSchema,
+  evaluator: CreateSkillVersionInputSchema
+}).strict().superRefine((value, context) => {
+  if (value.evaluator.criterionVersionId !== undefined) {
+    context.addIssue({
+      code: "custom",
+      path: ["evaluator", "criterionVersionId"],
+      message: "Onboarding creates and binds its own criterion version"
+    });
+  }
+  if (value.evaluator.overrideReason !== undefined) {
+    context.addIssue({
+      code: "custom",
+      path: ["evaluator", "overrideReason"],
+      message: "Onboarding cannot override a regression result"
+    });
+  }
+});
+export type CreateOnboardingCheckInput = z.infer<typeof CreateOnboardingCheckInputSchema>;
+
 // Backfill summary returned alongside the regression run when timeScope is
 // 'existing' or 'both'. This aggregate is retained for the synchronous demo
 // response; the EvalRun is the authoritative lifecycle record.
@@ -5165,6 +5191,22 @@ export const RegressionRunResultSchema = z.object({
   createdAt: z.string()
 });
 export type RegressionRunResult = z.infer<typeof RegressionRunResultSchema>;
+
+export const CreateOnboardingCheckResponseSchema = z.discriminatedUnion("queued", [
+  z.object({
+    criterionVersion: CriterionVersionSchema,
+    version: SkillVersionSchema,
+    regressionRun: z.null(),
+    queued: z.literal(true)
+  }).strict(),
+  z.object({
+    criterionVersion: CriterionVersionSchema,
+    version: SkillVersionSchema,
+    regressionRun: RegressionRunResultSchema,
+    queued: z.literal(false)
+  }).strict()
+]);
+export type CreateOnboardingCheckResponse = z.infer<typeof CreateOnboardingCheckResponseSchema>;
 
 export const ApiErrorSchema = z.object({
   error: z.string(),

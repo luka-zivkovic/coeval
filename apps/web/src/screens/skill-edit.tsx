@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Clock, LoaderCircle, RefreshCcw, ShieldAlert, Sparkle
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MarkdownPreview } from "@/components/markdown-preview";
+import { FirstRunCheckSetup } from "@/components/first-run-check-setup";
 import {
   SkillChangeReview,
   SkillEditFlow,
@@ -13,19 +14,30 @@ import {
 import { Chip, Eyebrow, GateStrip, KPI, KPIRow, MarginNote, RegressionDiffTable, SectionHead } from "@/components/coeval";
 import {
   createSkillVersion,
+  createOnboardingCheck,
   fetchDatasetRevisionMetadata,
   fetchJudgeModels,
   fetchJudgeProviders,
   fetchLatestSkill,
   fetchSkillVersionRegression,
   fetchSkillVersions,
-  type CompletedSkillVersionResult
+  type CompletedSkillVersionResult,
+  type CreateSkillVersionResult
 } from "@/lib/api";
 import { useDashboard } from "@/lib/dashboard-context";
 import { useCriterion } from "@/lib/criterion-context";
 import { skillCriterionVersionId } from "@/lib/criterion-scope";
 import { resolveJudgeProviderSelection } from "@/lib/judge-provider-selection";
 import { firstResultPath, isBench, markSetupReceipt } from "@/lib/journey";
+import {
+  clearOnboardingCheckDraft,
+  draftFromStarter,
+  loadOnboardingCheckDraft,
+  recommendationReason,
+  recommendStarterSkill,
+  saveOnboardingCheckDraft,
+  type OnboardingCheckDraft
+} from "@/lib/onboarding-check";
 import { STARTER_SKILLS, findStarterSkill, type StarterSkill } from "@/lib/starter-skills";
 import { cn } from "@/lib/utils";
 import { verdictKindDescription } from "@/lib/verdict-kind";
@@ -139,6 +151,8 @@ export function SkillEditScreen() {
   const [choiceScores, setChoiceScores] = useState<Record<string, number> | null>(null);
   const [scalarRange, setScalarRange] = useState<[number, number] | null>(null);
   const [appliedStarter, setAppliedStarter] = useState<StarterSkill | null>(null);
+  const [onboardingDraft, setOnboardingDraft] = useState<OnboardingCheckDraft | null>(null);
+  const [refiningOnboardingDraft, setRefiningOnboardingDraft] = useState(false);
 
   // Submit / result state.
   const [phase, setPhase] = useState<SkillEditPhase>("edit");
@@ -227,6 +241,8 @@ export function SkillEditScreen() {
     setPollError(null);
     setOverrideReason("");
     setSubmitting(false);
+    setOnboardingDraft(null);
+    setRefiningOnboardingDraft(false);
     try {
       const [s, availability] = await Promise.all([
         fetchLatestSkill(selectedCriterionId ?? undefined),
@@ -247,9 +263,21 @@ export function SkillEditScreen() {
       setBaseUrl(preservesBinding && selectedProvider === "custom" ? v.modelBinding.baseUrl ?? "" : "");
       setTemperature(String(v.modelBinding.temperature));
 
-      const starter = findStarterSkill(starterParam);
-      if (starter) applyStarter(starter);
-      else applyCurrentVersion(s);
+      if (firstRun) {
+        const savedDraft = loadOnboardingCheckDraft(s.projectId, s.id);
+        const savedStarter = savedDraft ? findStarterSkill(savedDraft.starterId) : undefined;
+        if (savedDraft && savedStarter) {
+          applyStarter(savedStarter);
+          setRubric(savedDraft.rubricMarkdown);
+          setOnboardingDraft(savedDraft);
+        } else {
+          applyCurrentVersion(s);
+        }
+      } else {
+        const starter = findStarterSkill(starterParam);
+        if (starter) applyStarter(starter);
+        else applyCurrentVersion(s);
+      }
 
       // A queued version id stays in the URL, so a reload resumes the exact
       // immutable version instead of silently returning to an editable form.
@@ -290,7 +318,33 @@ export function SkillEditScreen() {
     } finally {
       if (generation === loadGeneration.current) setLoading(false);
     }
-  }, [starterParam, applyStarter, applyCurrentVersion, selectedCriterionId, resumeVersionId, setSearchParams]);
+  }, [starterParam, firstRun, applyStarter, applyCurrentVersion, selectedCriterionId, resumeVersionId, setSearchParams]);
+
+  const chooseOnboardingStarter = useCallback((starter: StarterSkill, source: OnboardingCheckDraft["decisionSource"]) => {
+    if (!skill) return;
+    applyStarter(starter);
+    const projectName = dashboard?.project.name ?? "this project";
+    const draft = draftFromStarter({
+      projectId: skill.projectId,
+      skillId: skill.id,
+      starter,
+      decisionSource: source,
+      decisionReason: source === "coeval" ? recommendationReason(starter, projectName) : null
+    });
+    setOnboardingDraft(draft);
+    setRefiningOnboardingDraft(false);
+    saveOnboardingCheckDraft(draft);
+  }, [skill, dashboard?.project.name, applyStarter]);
+
+  const updateOnboardingDraft = useCallback((change: Partial<Pick<OnboardingCheckDraft, "qualityQuestion" | "rubricMarkdown">>) => {
+    if (change.rubricMarkdown !== undefined) setRubric(change.rubricMarkdown);
+    setOnboardingDraft((current) => {
+      if (!current) return current;
+      const next = { ...current, ...change };
+      saveOnboardingCheckDraft(next);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     void load();
@@ -527,7 +581,29 @@ export function SkillEditScreen() {
     setSubmitError(null);
     if (!recordingOverride) setPhase("creating");
     try {
-      const res = await createSkillVersion(skill.id, input);
+      let res: CreateSkillVersionResult;
+      if (firstRun && onboardingDraft && !recordingOverride) {
+        const { criterionVersionId: _criterionVersionId, overrideReason: _overrideReason, ...evaluator } = input;
+        const created = await createOnboardingCheck(skill.id, {
+          criterion: {
+            name: onboardingDraft.criterionName,
+            definition: onboardingDraft.qualityQuestion
+          },
+          evaluator
+        });
+        if (created.queued) {
+          res = { state: "queued", version: created.version };
+        } else {
+          res = {
+            state: "complete",
+            version: created.version,
+            regressionRun: created.regressionRun,
+            blocked: created.regressionRun.status === "blocked"
+          };
+        }
+      } else {
+        res = await createSkillVersion(skill.id, input);
+      }
       if (
         !mountedRef.current ||
         !skillEditOperationIsCurrent(submittedScope, {
@@ -629,6 +705,11 @@ export function SkillEditScreen() {
         submitError={submitError}
         onPublishOverride={() => void submit({ overrideReason })}
         onBackToEdit={() => {
+          if (firstRun) {
+            clearOnboardingCheckDraft(skill.projectId, skill.id);
+            navigate("/skill/edit", { replace: true });
+            return;
+          }
           setBaseVersion(result.version);
           editFromVersion(result.version);
           setPhase("edit");
@@ -646,6 +727,7 @@ export function SkillEditScreen() {
           : "View skill versions"}
         onDone={() => {
           if (firstRun && result.regressionRun.status !== "error" && result.regressionRun.status !== "blocked") {
+            clearOnboardingCheckDraft(skill.projectId, skill.id);
             if (evidenceCount === 0) {
               markSetupReceipt(`Starter Check v${result.version.version} created. Add a Run to see its first Result.`);
               navigate("/");
@@ -669,6 +751,47 @@ export function SkillEditScreen() {
   const selectedProviderOption = availableProviderOptions.find((option) => option.provider === provider);
   const hasConfiguredRealProvider = availableProviderOptions.some((option) => option.provider !== "mock");
   const changeInput = buildInput();
+
+  if (firstRun) {
+    if (!dashboardReady) {
+      return <div className="fadeUp"><SectionHead eyebrow="Set up your first Check" title="Loading project" /></div>;
+    }
+    const recommendedStarter = recommendStarterSkill(dashboard.project.name, dashboard.project.mode);
+    const onboardingCanCreate = canSave && Boolean(
+      onboardingDraft?.qualityQuestion.trim() && onboardingDraft.rubricMarkdown.trim()
+    );
+    return (
+      <FirstRunCheckSetup
+        projectName={dashboard.project.name}
+        projectMode={dashboard.project.mode}
+        evidenceCount={evidenceCount}
+        starters={STARTER_SKILLS}
+        recommendedStarter={recommendedStarter}
+        draft={onboardingDraft}
+        refining={refiningOnboardingDraft}
+        provider={provider}
+        modelId={modelId}
+        providerReady={providerAvailable && modelId.trim().length > 0 && modelVersion.trim().length > 0 && !modelsError}
+        preparingProvider={modelsLoading}
+        canCreate={onboardingCanCreate}
+        submitting={submitting}
+        error={submitError}
+        onChoose={(starter) => chooseOnboardingStarter(starter, "user")}
+        onDecide={() => chooseOnboardingStarter(recommendedStarter, "coeval")}
+        onChangeFocus={() => {
+          setOnboardingDraft(null);
+          setRefiningOnboardingDraft(false);
+          clearOnboardingCheckDraft(skill.projectId, skill.id);
+        }}
+        onRefine={() => setRefiningOnboardingDraft((current) => !current)}
+        onQuestionChange={(value) => updateOnboardingDraft({ qualityQuestion: value })}
+        onRubricChange={(value) => updateOnboardingDraft({ rubricMarkdown: value })}
+        onCreate={() => void submit()}
+        onBack={() => navigate("/")}
+        onOpenSettings={() => navigate("/settings")}
+      />
+    );
+  }
 
   return (
     <div className="fadeUp max-w-[1600px]">

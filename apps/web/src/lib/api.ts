@@ -8,6 +8,8 @@ import {
   ConvergenceAuditPageSchema,
   CriterionDetailSchema,
   CriterionSchema,
+  CreateOnboardingCheckInputSchema,
+  CreateOnboardingCheckResponseSchema,
   CreateTraceTestInputSchema,
   EnableTraceTestInputSchema,
   CreateSkillVersionInputSchema,
@@ -89,6 +91,8 @@ import {
   type ConvergenceAuditPage,
   type Criterion,
   type CriterionDetail,
+  type CreateOnboardingCheckInput,
+  type CreateOnboardingCheckResponse,
   type CreateTraceTestInput,
   type EnableTraceTestInput,
   type CreateSkillVersionInput,
@@ -920,6 +924,22 @@ export async function createSkillVersion(skillId: string, input: CreateSkillVers
     return { state: "queued", version: SkillVersionSchema.parse(payload.version) };
   }
   throw apiError(response, payload, "Skill version request failed");
+}
+
+export async function createOnboardingCheck(
+  skillId: string,
+  input: CreateOnboardingCheckInput
+): Promise<CreateOnboardingCheckResponse> {
+  const body = CreateOnboardingCheckInputSchema.parse(input);
+  const response = await apiFetch(`${API_BASE}/api/skills/${encodeURIComponent(skillId)}/onboarding-check`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw apiError(response, payload, "First Check creation failed");
+  return CreateOnboardingCheckResponseSchema.parse(payload);
 }
 
 // The canonical case-detail fetcher — resolves any judged case, exception or

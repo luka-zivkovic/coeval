@@ -6,14 +6,16 @@ import type { VerdictKind } from "@coeval/shared";
 // finished product and NOT training wheels for solo devs — they're a way for a
 // team that hasn't written a shared rubric yet to start from something real.
 //
-// Presentation-layer content only: clicking a starter routes to /skill/edit
-// with the fields pre-loaded, and the normal regression-gated Save path takes
-// over. No server endpoint, no install flow — the editor is the install.
+// The guided first-run flow shows each template's quality question before it
+// creates anything, then lets the user inspect or refine the Review guide.
+// Later edits can still apply these templates inside the full editor.
 
 export interface StarterSkill {
   id: string;
   name: string;
   tagline: string;
+  /** The single criterion definition shown before the evaluator is created. */
+  qualityQuestion: string;
   /** Which kind of B2B SaaS team this fits. */
   fit: string;
   verdictKind: VerdictKind;
@@ -30,6 +32,7 @@ const TASK_OUTCOME_QUALITY: StarterSkill = {
   id: "task-outcome-quality",
   name: "Task outcome quality",
   tagline: "A general baseline for whether an agent completed the requested task correctly and safely.",
+  qualityQuestion: "Did the AI complete the user's request correctly, safely, and with evidence the user can rely on?",
   fit: "Any agent or workflow · first project",
   verdictKind: "binary",
   rubricMarkdown: `# Task outcome quality
@@ -76,6 +79,7 @@ const SUPPORT_CHAT: StarterSkill = {
   id: "support-chat-quality",
   name: "Support answer quality",
   tagline: "Judge a support reply against policy, tone, and the customer's actual question.",
+  qualityQuestion: "Did the reply answer the customer's question correctly, stay within policy, and give a clear next step?",
   fit: "Support-agent teams · helpdesk copilots",
   verdictKind: "categorical",
   categoricalChoiceScores: { pass: 1, fail: 0, ambiguous: 0.5 },
@@ -119,6 +123,7 @@ const RAG_FAITHFULNESS: StarterSkill = {
   id: "rag-faithfulness",
   name: "RAG faithfulness",
   tagline: "Check that every claim in the answer is grounded in the retrieved context.",
+  qualityQuestion: "Are the answer's factual claims supported by the retrieved context?",
   fit: "RAG assistants · doc-Q&A · knowledge-base copilots",
   verdictKind: "categorical",
   categoricalChoiceScores: { faithful: 1, unsupported: 0, partial: 0.5 },
@@ -166,6 +171,7 @@ const CODE_GEN_SAFETY: StarterSkill = {
   id: "code-gen-safety",
   name: "Code-gen safety",
   tagline: "Flag generated code that's unsafe to ship before a human reads it.",
+  qualityQuestion: "Does the generated change avoid obvious security and correctness hazards?",
   fit: "Code copilots · AI PR-review · eng-productivity tools",
   verdictKind: "categorical",
   categoricalChoiceScores: { safe: 1, unsafe: 0, needs_review: 0.5 },
@@ -215,6 +221,7 @@ const AGENT_SKILL_AUDIT: StarterSkill = {
   id: "agent-skill-audit",
   name: "Agent skill audit",
   tagline: "Judge whether an external agent skill followed its purpose, constraints, and output contract.",
+  qualityQuestion: "Did the agent follow the skill's purpose, required workflow, constraints, and output contract?",
   fit: "Claude Code · Codex · Cursor · any SKILL.md-compatible agent",
   verdictKind: "binary",
   rubricMarkdown: `# Agent skill audit

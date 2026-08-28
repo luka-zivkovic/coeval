@@ -157,12 +157,28 @@ export interface CreateSkillVersionContext {
   projectId: string;
   actorUserId?: string | undefined;
   rubricProvenance?: SkillVersion["rubricProvenance"] | undefined;
+  // First-run only: append this exact visible quality question to the seeded
+  // native criterion and bind the new evaluator version in the same write.
+  onboardingCriterion?: {
+    name: string;
+    definition: string;
+  } | undefined;
   agentSetup?: {
     pairingId?: string | undefined;
     skillName: string;
     skillDescription: string;
     providerCredential?: { provider: JudgeKeyProvider; apiKey: string } | undefined;
   } | undefined;
+}
+
+export class OnboardingCheckConflictError extends Error {
+  constructor(
+    readonly code: "project_already_configured" | "criterion_not_native",
+    message: string
+  ) {
+    super(message);
+    this.name = "OnboardingCheckConflictError";
+  }
 }
 
 export interface ConvergenceAuditPageInput {
@@ -5205,29 +5221,70 @@ export class DemoRepository implements CoevalRepository {
     });
   }
 
-  async createSkillVersionPending(skillId: string, input: CreateSkillVersionInput, _context: CreateSkillVersionContext): Promise<SkillVersion> {
+  async createSkillVersionPending(skillId: string, input: CreateSkillVersionInput, context: CreateSkillVersionContext): Promise<SkillVersion> {
     const evaluatorBinding = [...this.criterionSkills.entries()].find(([, skill]) =>
       skill.projectId === demoProject.id && skill.id === skillId
     );
     if (!evaluatorBinding) throw new NoCurrentSkillError(demoProject.id);
     const [criterionId, evaluator] = evaluatorBinding;
-    const definitionCount = this.criterionVersions.filter((candidate) =>
-      candidate.projectId === demoProject.id && candidate.criterionId === criterionId
-    ).length;
-    if (!input.criterionVersionId && definitionCount > 1) {
-      throw new DatasetRevisionConflictError(
-        "Criteria with multiple immutable definitions require an explicit criterionVersionId when creating an evaluator version."
+    let criterionVersion: CriterionVersion | undefined;
+    if (context.onboardingCriterion) {
+      if (!evaluator.isStarter) {
+        throw new OnboardingCheckConflictError(
+          "project_already_configured",
+          "This project's starter Check has already been configured."
+        );
+      }
+      const criterion = this.criteria.find((candidate) =>
+        candidate.projectId === demoProject.id && candidate.id === criterionId
       );
+      if (!criterion || criterion.sourceKind !== "native") {
+        throw new OnboardingCheckConflictError(
+          "criterion_not_native",
+          "Guided onboarding can configure only the project's native starter criterion."
+        );
+      }
+      const prior = this.criterionVersions.filter((candidate) =>
+        candidate.projectId === demoProject.id && candidate.criterionId === criterionId
+      );
+      const id = `criterionv_${randomUUID()}`;
+      criterionVersion = {
+        id,
+        projectId: demoProject.id,
+        criterionId,
+        revision: Math.max(0, ...prior.map((entry) => entry.revision)) + 1,
+        name: context.onboardingCriterion.name,
+        definition: context.onboardingCriterion.definition,
+        criterionDigest: evaluatorSuiteCriterionDigest({
+          criterionId,
+          criterionVersionId: id,
+          criterionName: context.onboardingCriterion.name,
+          criterionDefinition: context.onboardingCriterion.definition
+        }),
+        sourceKind: "native",
+        createdByUserId: context.actorUserId ?? null,
+        createdAt: new Date().toISOString()
+      };
+      this.criterionVersions.push(criterionVersion);
+    } else {
+      const definitionCount = this.criterionVersions.filter((candidate) =>
+        candidate.projectId === demoProject.id && candidate.criterionId === criterionId
+      ).length;
+      if (!input.criterionVersionId && definitionCount > 1) {
+        throw new DatasetRevisionConflictError(
+          "Criteria with multiple immutable definitions require an explicit criterionVersionId when creating an evaluator version."
+        );
+      }
+      criterionVersion = input.criterionVersionId
+        ? this.criterionVersions.find((candidate) =>
+            candidate.projectId === demoProject.id &&
+            candidate.criterionId === criterionId &&
+            candidate.id === input.criterionVersionId
+          )
+        : this.criterionVersions
+            .filter((candidate) => candidate.projectId === demoProject.id && candidate.criterionId === criterionId)
+            .sort((left, right) => right.revision - left.revision)[0];
     }
-    const criterionVersion = input.criterionVersionId
-      ? this.criterionVersions.find((candidate) =>
-          candidate.projectId === demoProject.id &&
-          candidate.criterionId === criterionId &&
-          candidate.id === input.criterionVersionId
-        )
-      : this.criterionVersions
-          .filter((candidate) => candidate.projectId === demoProject.id && candidate.criterionId === criterionId)
-          .sort((left, right) => right.revision - left.revision)[0];
     if (!criterionVersion) {
       throw new DatasetRevisionConflictError(
         `Skill ${skillId} does not own criterion version ${input.criterionVersionId ?? "(latest)"}.`
@@ -5236,7 +5293,7 @@ export class DemoRepository implements CoevalRepository {
     const createdAt = new Date().toISOString();
     const regressionRevision = await this.getOrCreateRegressionDatasetRevision(
       demoProject.id,
-      _context.actorUserId,
+      context.actorUserId,
       criterionVersion.id
     );
     const priorVersions = (this.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
@@ -5260,7 +5317,7 @@ export class DemoRepository implements CoevalRepository {
       verdictKind: input.verdictKind,
       scalarRange: input.verdictKind === "scalar" ? input.scalarRange ?? null : null,
       categoricalChoiceScores: input.verdictKind === "categorical" ? input.categoricalChoiceScores ?? null : null,
-      rubricProvenance: _context.rubricProvenance ?? "human-authored",
+      rubricProvenance: context.rubricProvenance ?? "human-authored",
       regressionDatasetRevisionId: regressionRevision.id,
       createdAt,
       approvedAt: null
@@ -5271,6 +5328,13 @@ export class DemoRepository implements CoevalRepository {
     this.skillVersions.push(version);
     this.skillVersionCriteria.set(version.id, criterionVersion.id);
     evaluator.isStarter = false;
+    if (context.onboardingCriterion) {
+      evaluator.name = context.onboardingCriterion.name;
+      evaluator.description = context.onboardingCriterion.definition;
+    } else if (context.agentSetup) {
+      evaluator.name = context.agentSetup.skillName;
+      evaluator.description = context.agentSetup.skillDescription;
+    }
     return version;
   }
 

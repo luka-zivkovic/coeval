@@ -14,6 +14,84 @@ if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !dat
 const run = databaseUrl ? describe : describe.skip;
 
 run("Postgres auth flow", () => {
+  it("atomically binds the beginner's visible quality question to the first Check", async () => {
+    process.env.BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET || "test-secret-for-pg-auth-flow-at-least-32-bytes";
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_onboarding_check");
+
+    try {
+      await runMigrations(pool);
+      const repository = new PgRepository(pool);
+      const app = createApp(repository, { pool, auth: createAuth(pool) });
+      const setup = await app.request("/api/auth/setup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "guided-check@example.com",
+          password: "guided-check-password",
+          name: "Guided owner",
+          projectName: "Support copilot",
+          mode: "bench"
+        })
+      });
+      expect(setup.status).toBe(200);
+      const { projectId } = await setup.json() as { projectId: string };
+      const starter = await repository.getLatestSkill(projectId);
+      expect(starter.isStarter).toBe(true);
+
+      const evaluator = CreateSkillVersionInputSchema.parse({
+        rubricMarkdown: "# Support answer quality\n\nPass when the reply answers the question within policy.",
+        prompt: "Judge the reply using {{rubric_markdown}}.",
+        modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 },
+        outputSchema: MinimumVerdictOutputSchema,
+        verdictKind: "binary",
+        timeScope: "both"
+      });
+      const visibleCriterion = {
+        name: "Support answer quality",
+        definition: "Did the reply answer the customer's question correctly and stay within policy?"
+      };
+      const pending = await repository.createSkillVersionPending(starter.id, evaluator, {
+        projectId,
+        onboardingCriterion: visibleCriterion
+      });
+      const bound = await repository.getCriterionVersionForSkillVersion(projectId, pending.id);
+
+      expect(bound).toMatchObject({ revision: 2, ...visibleCriterion, sourceKind: "native" });
+      expect(pending.criterionVersionId).toBe(bound?.id);
+      const persisted = await pool.query(
+        `select s.name, s.description, s.is_starter,
+                (select count(*)::int from skill_versions sv where sv.skill_id = s.id) as version_count,
+                (select count(*)::int from criterion_versions cv where cv.criterion_id = s.criterion_id) as criterion_version_count
+         from skills s where s.id = $1`,
+        [starter.id]
+      );
+      expect(persisted.rows[0]).toMatchObject({
+        name: visibleCriterion.name,
+        description: visibleCriterion.definition,
+        is_starter: false,
+        version_count: 2,
+        criterion_version_count: 2
+      });
+
+      await expect(repository.createSkillVersionPending(starter.id, evaluator, {
+        projectId,
+        onboardingCriterion: {
+          name: "Conflicting retry",
+          definition: "This must not be appended."
+        }
+      })).rejects.toMatchObject({ code: "project_already_configured" });
+      const counts = await pool.query(
+        `select
+           (select count(*)::int from skill_versions where skill_id = $1) as version_count,
+           (select count(*)::int from criterion_versions where criterion_id = $2) as criterion_version_count`,
+        [starter.id, starter.criterionId]
+      );
+      expect(counts.rows[0]).toMatchObject({ version_count: 2, criterion_version_count: 2 });
+    } finally {
+      await cleanup();
+    }
+  });
+
   it("covers setup, owner invite, non-owner rejection, and invite redemption", async () => {
     process.env.BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET || "test-secret-for-pg-auth-flow-at-least-32-bytes";
     const { pool, cleanup } = await openPostgresTestDatabase("pg_auth");

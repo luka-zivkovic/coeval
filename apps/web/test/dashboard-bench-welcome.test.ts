@@ -97,7 +97,7 @@ describe("first-run setup ledger", () => {
     ledgerHarness.steps[0]?.onCta?.();
     ledgerHarness.steps[0]?.onSecondaryCta?.();
     expect(ledgerHarness.navigate).toHaveBeenNthCalledWith(1, "/datasets?add=1");
-    expect(ledgerHarness.navigate).toHaveBeenNthCalledWith(2, "/skill/edit?first=1&starter=task-outcome-quality");
+    expect(ledgerHarness.navigate).toHaveBeenNthCalledWith(2, "/skill/edit?first=1");
   });
 
   it("gives tracing projects an honest recorded-Run path", () => {

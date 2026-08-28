@@ -34,8 +34,8 @@ export function JourneyPipeline({
         ? "Review the starter Check against a recorded Run."
         : `v${dashboard.skill.currentVersion.version} · ${dashboard.skill.currentVersion.status}`,
       action: "Review Check",
-      // A still-starter skill routes through the first-run editor (onboarding
-      // framing + worked starter); anything else opens the plain editor.
+      // A still-starter Check routes through the guided choice and proposal;
+      // anything already configured opens the full editor.
       path: dashboard.skill.isStarter ? firstRunEditorPath() : "/skill/edit"
     },
     {

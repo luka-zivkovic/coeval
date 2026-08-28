@@ -26,6 +26,7 @@ import {
   CreateEvalRunInputSchema,
   CreateReviewQueueInputSchema,
   CreateRunComparisonInputSchema,
+  CreateOnboardingCheckInputSchema,
   CreateSkillVersionInputSchema,
   CreateEvaluatorSuiteManifestInputSchema,
   DeleteProjectInputSchema,
@@ -91,7 +92,7 @@ import {
 } from "@coeval/shared";
 import { traceTestRunOutcome } from "@coeval/shared";
 import type { Queue, QueueSendOptions } from "@coeval/queue";
-import { AgentSetupEligibilityError, AmbiguousProjectSkillError, AssessmentReceiptIntegrityError, AssessmentReceiptUnavailableError, CaseNotFoundError, CoevalRepository, CriterionStableKeyConflictError, DatasetNameTakenError, DatasetNotFoundError, DatasetRevisionConflictError, DatasetRevisionNotFoundError, DemoRepository, EvaluatorSuiteBindingError, EvaluatorSuiteIdempotencyConflictError, GoldenSetEntryAlreadyRetiredError, GoldenSetEntryNotFoundError, GoldenSetLabelConflictError, ImportSkillVersionBindingError, InvalidConvergenceCursorError, IronsideIntegrationNotFoundError, LangfuseIntegrationNotFoundError, LangSmithIntegrationNotFoundError, NoCurrentSkillError, RecursiveTraceSkippedError, RegressionGateJudgeError, RegressionGateUnavailableError, SealedValidationUnavailableError, SkillVersionNotSignableError, TraceTestNotFoundError, TraceTestRevisionConflictError, TraceTestSourceNotFoundError, TraceTestValidationNotReadyError, type IronsideImportContext, type LangfuseImportContext, type LangSmithImportContext } from "./repository.js";
+import { AgentSetupEligibilityError, AmbiguousProjectSkillError, AssessmentReceiptIntegrityError, AssessmentReceiptUnavailableError, CaseNotFoundError, CoevalRepository, CriterionStableKeyConflictError, DatasetNameTakenError, DatasetNotFoundError, DatasetRevisionConflictError, DatasetRevisionNotFoundError, DemoRepository, EvaluatorSuiteBindingError, EvaluatorSuiteIdempotencyConflictError, GoldenSetEntryAlreadyRetiredError, GoldenSetEntryNotFoundError, GoldenSetLabelConflictError, ImportSkillVersionBindingError, InvalidConvergenceCursorError, IronsideIntegrationNotFoundError, LangfuseIntegrationNotFoundError, LangSmithIntegrationNotFoundError, NoCurrentSkillError, OnboardingCheckConflictError, RecursiveTraceSkippedError, RegressionGateJudgeError, RegressionGateUnavailableError, SealedValidationUnavailableError, SkillVersionNotSignableError, TraceTestNotFoundError, TraceTestRevisionConflictError, TraceTestSourceNotFoundError, TraceTestValidationNotReadyError, type IronsideImportContext, type LangfuseImportContext, type LangSmithImportContext } from "./repository.js";
 import type { CoevalAuth } from "./lib/auth.js";
 import {
   bootstrapOwnerUserByEmail,
@@ -1319,6 +1320,94 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     } catch (error) {
       if (error instanceof SkillVersionNotSignableError) {
         return c.json({ error: error.message }, 409);
+      }
+      throw error;
+    }
+  });
+
+  // Beginner first-Check creation. This is deliberately distinct from a
+  // normal evaluator edit: the exact quality question visible in onboarding
+  // is appended as an immutable criterion definition and bound to the new
+  // evaluator version in the same repository transaction.
+  app.post("/api/skills/:skillId/onboarding-check", async (c) => {
+    if (options.pool) {
+      const user = c.get("user");
+      if (!user) return c.json({ error: "Unauthorized" }, 401);
+      const role = await userProjectRole(options.pool, { userId: user.id, projectId: c.get("projectId") });
+      if (role !== "owner") return c.json({ error: "Only owners can create the first Check" }, 403);
+    }
+    const body = await c.req.json().catch(() => null);
+    const parsed = CreateOnboardingCheckInputSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "Invalid onboarding Check input", details: z.treeifyError(parsed.error) }, 400);
+    }
+    if (options.pool && parsed.data.evaluator.modelBinding.provider === "mock") {
+      return c.json({ error: "The mock judge is only available in local demo mode. Configure a real judge provider first." }, 400);
+    }
+
+    const projectId = c.get("projectId");
+    const context = {
+      projectId,
+      actorUserId: c.get("user")?.id,
+      onboardingCriterion: parsed.data.criterion
+    };
+    try {
+      if (options.queue) {
+        const pending = await repository.createSkillVersionPending(
+          c.req.param("skillId"),
+          parsed.data.evaluator,
+          context
+        );
+        if (!pending.regressionDatasetRevisionId) {
+          throw new DatasetRevisionConflictError(
+            `Skill version ${pending.id} has no immutable regression dataset binding.`
+          );
+        }
+        const criterionVersion = await repository.getCriterionVersionForSkillVersion(projectId, pending.id);
+        if (!criterionVersion) {
+          throw new DatasetRevisionConflictError("The onboarding Check has no immutable criterion binding.");
+        }
+        await options.queue.send("gate.run", {
+          projectId,
+          skillVersionId: pending.id,
+          datasetRevisionId: pending.regressionDatasetRevisionId,
+          ...(c.get("user")?.id ? { actorUserId: c.get("user")!.id } : {}),
+          timeScope: parsed.data.evaluator.timeScope
+        }, { retryLimit: 5, retryBackoff: true });
+        return c.json({ criterionVersion, version: pending, regressionRun: null, queued: true }, 202);
+      }
+
+      const result = await repository.createSkillVersion(
+        c.req.param("skillId"),
+        parsed.data.evaluator,
+        context
+      );
+      const criterionVersion = await repository.getCriterionVersionForSkillVersion(projectId, result.version.id);
+      if (!criterionVersion) {
+        throw new DatasetRevisionConflictError("The onboarding Check has no immutable criterion binding.");
+      }
+      return c.json({
+        criterionVersion,
+        version: result.version,
+        regressionRun: result.regressionRun,
+        queued: false
+      }, 201);
+    } catch (error) {
+      if (error instanceof OnboardingCheckConflictError) {
+        return c.json({ error: error.message, code: error.code }, 409);
+      }
+      if (error instanceof DatasetRevisionConflictError) {
+        return c.json({ error: error.message, code: "criterion_binding_conflict" }, 409);
+      }
+      if (error instanceof RegressionGateUnavailableError) {
+        return c.json({
+          error: error.message,
+          unavailableProvider: error.provider,
+          availableProviders: judgeProviderAvailability(
+            await projectKeyProviders(projectId),
+            !options.pool
+          ).filter((provider) => provider.available).map((provider) => provider.provider)
+        }, 503);
       }
       throw error;
     }
