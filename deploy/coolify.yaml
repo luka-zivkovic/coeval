@@ -1,0 +1,62 @@
+# documentation: https://github.com/luka-zivkovic/coeval/blob/main/docs/self-hosting.md
+# slogan: Governed evaluators and verifiable assessment evidence for AI systems.
+# category: ai
+# tags: ai,evaluation,llm,governance,observability
+# logo: svgs/coeval.svg
+# port: 80
+
+services:
+  web:
+    image: ghcr.io/luka-zivkovic/coeval-web:${COEVAL_VERSION:?}
+    environment:
+      - SERVICE_URL_WEB_80
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  api:
+    image: ghcr.io/luka-zivkovic/coeval-api:${COEVAL_VERSION:?}
+    environment:
+      PORT: "8787"
+      DATABASE_URL: postgresql://coeval:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-coeval}
+      BETTER_AUTH_SECRET: ${SERVICE_REALBASE64_64_AUTHSECRET}
+      BETTER_AUTH_URL: ${SERVICE_URL_WEB}
+      TRUSTED_ORIGINS: ${SERVICE_URL_WEB}
+      COEVAL_TRUST_PROXY: "1"
+      COEVAL_BOOTSTRAP_TOKEN: ${SERVICE_PASSWORD_64_BOOTSTRAP}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  postgres:
+    image: postgres:17.11-alpine
+    environment:
+      POSTGRES_USER: coeval
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}
+      POSTGRES_DB: ${POSTGRES_DB:-coeval}
+    volumes:
+      - coeval_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  coeval_postgres_data:

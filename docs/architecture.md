@@ -285,18 +285,20 @@ Session-authenticated `/api/*` routes resolve a project membership before access
 
 ## Database migrations
 
-Coeval is pre-launch. `packages/db/migrations/0001_baseline.sql` is the only
-supported database starting point and PostgreSQL 17 is the development and CI
-target. The API applies that baseline on startup. If `coeval_migrations`
-contains any upgrade-era identifier, startup fails with instructions to drop
-and recreate the database; there is no supported `0001`–`0055` upgrade path.
+The first persistent external deployment on 2026-08-28 froze
+`packages/db/migrations/0001_baseline.sql`; PostgreSQL 17 is the development
+and CI target. The API applies ordered migrations on startup under a database
+advisory lock, records their SHA-256 checksums, and rejects changed, missing,
+or incompatible applied history. There remains no supported upgrade from the
+old `0001`–`0055` development history to the frozen baseline.
 
-Schema changes update the baseline and its invariant tests directly. Runtime
-writers must supply current required identities—criterion bindings, regression
-pins, ingestion purpose, validation method, and immutable content identity—at
-creation time. They must not add backfills, nullable compatibility branches,
-late pinning, or plaintext credential fallbacks for hypothetical deployed
-data. This policy is governed by
+Every later schema change adds a new append-only forward migration and upgrade
+coverage. Runtime writers continue to supply current required identities—
+criterion bindings, regression pins, ingestion purpose, validation method,
+and immutable content identity—at creation time. Compatibility, backfill,
+deployment, and recovery behavior must now be designed for persistent stored
+data rather than by editing the baseline. This transition is the recorded exit
+condition in
 [ADR-0011](decisions/0011-prelaunch-blank-slate-database-policy.md).
 
 `pnpm test:pg` creates one migrated template database in a disposable
