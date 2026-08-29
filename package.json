@@ -1,6 +1,6 @@
 {
   "name": "coeval",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Governed evaluators and verifiable assessment evidence for AI systems.",
   "license": "SEE LICENSE IN LICENSE.md",
