@@ -8,14 +8,19 @@ if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !dat
 }
 const run = databaseUrl ? describe : describe.skip;
 
-run("pre-launch database baseline", () => {
-  it("is idempotent and records only the current baseline", async () => {
+run("frozen database baseline", () => {
+  it("is idempotent and records the immutable baseline checksum", async () => {
     const { pool, cleanup } = await openPostgresTestDatabase("baseline_idempotent");
     try {
       await runMigrations(pool);
       await runMigrations(pool);
-      const applied = await pool.query<{ id: string }>("select id from coeval_migrations order by id");
-      expect(applied.rows).toEqual([{ id: "0001_baseline" }]);
+      const applied = await pool.query<{ id: string; checksum: string }>(
+        "select id, checksum from coeval_migrations order by id",
+      );
+      expect(applied.rows).toEqual([{
+        id: "0001_baseline",
+        checksum: "a2d3f9fd5322303b444c56e6c092ff2fa9f4a8318a07514989aee3a844814973",
+      }]);
     } finally {
       await cleanup();
     }
@@ -80,22 +85,44 @@ run("pre-launch database baseline", () => {
     }
   });
 
-  it("rejects an upgrade-era migration ledger instead of mutating it", async () => {
+  it("rejects migration history from a newer or incompatible release without mutating it", async () => {
     const { pool, cleanup } = await openPostgresTestDatabase("baseline_stale_ledger");
     try {
       // Template clones are already migrated; CI's schema-isolated fallback is
       // empty. Establish the same current starting point in both modes before
       // poisoning the ledger with an upgrade-era identifier.
       await runMigrations(pool);
-      await pool.query("insert into coeval_migrations (id) values ('0055_evaluator_lifecycle')");
+      await pool.query(
+        "insert into coeval_migrations (id, checksum) values ('0055_evaluator_lifecycle', 'unknown')",
+      );
       await expect(runMigrations(pool)).rejects.toThrow(
-        /Pre-baseline database detected.*0055_evaluator_lifecycle.*dropped and recreated/s,
+        /migration history is newer than or incompatible.*0055_evaluator_lifecycle.*do not reset/s,
       );
       const applied = await pool.query<{ id: string }>("select id from coeval_migrations order by id");
       expect(applied.rows).toEqual([
         { id: "0001_baseline" },
         { id: "0055_evaluator_lifecycle" },
       ]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("backfills the accepted checksum on an id-only pre-freeze ledger", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("baseline_checksum_backfill");
+    try {
+      await runMigrations(pool);
+      await pool.query("alter table coeval_migrations alter column checksum drop not null");
+      await pool.query("update coeval_migrations set checksum = null where id = '0001_baseline'");
+
+      await runMigrations(pool);
+
+      const applied = await pool.query<{ checksum: string }>(
+        "select checksum from coeval_migrations where id = '0001_baseline'",
+      );
+      expect(applied.rows).toEqual([{
+        checksum: "a2d3f9fd5322303b444c56e6c092ff2fa9f4a8318a07514989aee3a844814973",
+      }]);
     } finally {
       await cleanup();
     }

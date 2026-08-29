@@ -4,6 +4,13 @@ Status: **Accepted**
 
 Date: 2026-08-26
 
+Exit recorded: **2026-08-28**. The first persistent external Coeval
+installation was deployed. The `0001_baseline.sql` bytes at SHA-256
+`a2d3f9fd5322303b444c56e6c092ff2fa9f4a8318a07514989aee3a844814973`
+are frozen from this point. Later schema changes use new append-only forward
+migrations; the blank-slate behavior below remains the authoritative history
+for databases created before this exit.
+
 ## Context
 
 Coeval has no external users, production data, or deployed database that must

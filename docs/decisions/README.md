@@ -21,4 +21,4 @@ Status meanings:
 - [0008 — Governed human truth and sealed collection](0008-governed-human-truth-and-sealed-collection.md) — Accepted; ADR-0011 narrowly supersedes its pre-launch unresolved historical-identity path
 - [0009 — Binary calibration artifact contract](0009-binary-calibration-artifact-contract.md) — Accepted
 - [0010 — Representative analysis and taxonomy lifecycle](0010-representative-analysis-and-taxonomy-lifecycle.md) — Accepted
-- [0011 — Pre-launch blank-slate database policy](0011-prelaunch-blank-slate-database-policy.md) — Accepted
+- [0011 — Pre-launch blank-slate database policy](0011-prelaunch-blank-slate-database-policy.md) — Accepted; exit recorded 2026-08-28 and baseline frozen for forward migrations
