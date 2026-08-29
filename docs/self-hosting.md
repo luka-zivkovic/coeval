@@ -70,12 +70,14 @@ checksum and render, then publishes amd64 and arm64 API/web images with:
 - OCI source, revision, and version metadata; and
 - build provenance and an SBOM.
 
-Only after every image publishes does the workflow create a **draft** GitHub
-release. After the first workflow run, an owner must make both GHCR packages
-public; package visibility persists for later versions. Verify an anonymous
-pull of both exact tags, complete the migration declaration below, and publish
-the draft. Default trustctl installs and update checks see only that published
-release, so the draft is the release-readiness gate.
+After every image publishes, the workflow pulls those exact tags into the
+generic Compose bundle, boots a disposable stack, and verifies the public
+health route. Only then does it create a **draft** GitHub release. After the
+first workflow run, an owner must make both GHCR packages public; package
+visibility persists for later versions. Verify an anonymous pull of both exact
+tags, complete the migration declaration below, and publish the draft. Default
+trustctl installs and update checks see only that published release, so the
+draft is the release-readiness gate.
 
 Every release note must declare one of:
 

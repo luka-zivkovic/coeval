@@ -129,8 +129,59 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
-  draft-release:
+  smoke-release:
     needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Boot and verify the published release bundle
+        shell: bash
+        env:
+          COEVAL_VERSION: ${{ github.ref_name }}
+          COEVAL_BIND_ADDRESS: 127.0.0.1
+          COEVAL_PORT: 18081
+          COEVAL_PUBLIC_URL: http://127.0.0.1:18081
+          COEVAL_POSTGRES_PASSWORD: release-smoke-postgres
+          COEVAL_AUTH_SECRET: release-smoke-auth-secret-at-least-32-bytes
+          COEVAL_BOOTSTRAP_TOKEN: release-smoke-bootstrap-token
+        run: |
+          COEVAL_VERSION="${COEVAL_VERSION#v}"
+          export COEVAL_VERSION
+          project="coeval-release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            status=$?
+            if ((status != 0)); then
+              docker compose --project-name "$project" -f deploy/self-host/compose.yaml logs --no-color || true
+            fi
+            docker compose --project-name "$project" -f deploy/self-host/compose.yaml down -v --remove-orphans || true
+            exit "$status"
+          }
+          trap cleanup EXIT
+          docker compose --project-name "$project" -f deploy/self-host/compose.yaml pull
+          docker compose --project-name "$project" -f deploy/self-host/compose.yaml up -d
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 5 http://127.0.0.1:18081/health >/dev/null; then
+              docker compose --project-name "$project" -f deploy/self-host/compose.yaml ps
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+
+  draft-release:
+    needs: smoke-release
     runs-on: ubuntu-latest
     permissions:
       contents: write
