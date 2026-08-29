@@ -2,22 +2,15 @@ import { z } from "zod";
 import { IronsideImportJobSchema, type IronsideImportJob } from "@coeval/shared";
 import type { Queue } from "@coeval/queue";
 import type { CoevalRepository, IronsideImportContext } from "../repository.js";
-import { ImportSkillVersionBindingError, IronsideCredentialsMissingError, IronsideIntegrationNotFoundError, NoCurrentSkillError, RecursiveTraceSkippedError } from "../repository.js";
-import { IronsideClient, ironsideTraceToTraceImport, type IronsideTraceSource } from "../lib/ironside.js";
+import {
+  ImportSkillVersionBindingError,
+  IronsideCredentialsMissingError,
+  IronsideIntegrationNotFoundError,
+  NoCurrentSkillError,
+  RecursiveTraceSkippedError
+} from "../repository.js";
+import { IronsideClient, IronsideHttpError, ironsideTraceToTraceImport, type IronsideTraceSource } from "../lib/ironside.js";
 import { assertImportJudgingAllowed, scheduleImportedCaseJudging } from "./import-judging.js";
-
-// Reconcile sweep over ironside's native GET /api/v1/traces (issue #153).
-//
-// The invariant: coeval imports only SETTLED traces — those older than the
-// connection's quiet period (ironside spec/trace-envelope-v1.md; interim
-// approximation keyed on the trace's own timestamp until ironside ships
-// explicit finalization semantics). Each job sweeps one window
-// (watermark, now - quietPeriod] with the API's keyset cursor:
-//   - window drained  -> watermark advances to the window end
-//   - budget hit      -> the cursor + window end persist, and the NEXT job
-//                        resumes the same window instead of restarting it
-// Overlap at window boundaries is safe: importTrace dedupes on
-// (project, source_trace_id) — at-least-once, never lossy.
 
 export interface IronsideImportResult {
   imported: number;
@@ -26,7 +19,7 @@ export interface IronsideImportResult {
   drained: boolean;
 }
 
-export type IronsideClientFactory = (context: IronsideImportContext) => IronsideTraceSource;
+export type IronsideClientFactory = (context: Pick<IronsideImportContext, "url" | "apiKey">) => IronsideTraceSource;
 
 export async function registerIronsideImportWorker(
   queue: Queue,
@@ -51,7 +44,7 @@ export async function processIronsideImportJob(
   queue: Queue,
   job: IronsideImportJob,
   createClient: IronsideClientFactory = defaultIronsideClientFactory,
-  now: Date = new Date()
+  _now: Date = new Date()
 ): Promise<IronsideImportResult> {
   const parsed = IronsideImportJobSchema.parse(job);
   if (parsed.importJobId) await repository.markImportJobRunning(parsed.projectId, parsed.importJobId);
@@ -64,48 +57,38 @@ export async function processIronsideImportJob(
     const context = await repository.loadIronsideImportContext(parsed);
     const client = createClient(context);
 
-    const settledTo = new Date(now.getTime() - context.quietPeriodSeconds * 1000).toISOString();
-    const state = context.syncState;
-    const resuming = state.cursor !== null && state.windowTo !== null;
-    // A resumed window keeps its ORIGINAL end: the keyset cursor was minted
-    // against that ordering, and the watermark may only advance to a bound
-    // the sweep actually covered.
-    const windowTo = resuming ? state.windowTo! : settledTo;
-    const from = state.watermark ?? undefined;
-    let cursor = resuming ? state.cursor : null;
-
+    let cursor = context.syncState.cursor;
     let imported = 0;
     let scanned = 0;
+    let drained = false;
     const caseIds: string[] = [];
 
-    if (from !== undefined && from >= windowTo) {
-      // Nothing settled since the last sweep. The watermark must not move
-      // (especially not BACKWARDS if the quiet period grew).
-      if (parsed.importJobId) {
-        await repository.markImportJobCompleted(parsed.projectId, parsed.importJobId, { importedCount: 0, queuedJudgeCount: 0 });
-      }
-      return { imported: 0, queued: 0, scanned: 0, drained: true };
-    }
-
-    let drained = false;
     while (!drained && scanned < context.limit) {
       const page = await client.listTraces({
-        ...(from !== undefined ? { from } : {}),
-        to: windowTo,
         ...(cursor ? { cursor } : {}),
         limit: Math.min(context.limit - scanned, 100)
       });
 
       for (const summary of page.traces) {
         scanned += 1;
-        const tree = await client.getTrace(summary.id);
+        let tree;
+        try {
+          tree = await client.getTrace(summary.traceId, summary.traceVersion);
+        } catch (error) {
+          // A trace can reopen between the feed page and detail request. The
+          // old version is no longer settled; Ironside publishes the newer
+          // version as another feed activity, so advancing this cursor is safe.
+          if (error instanceof IronsideHttpError && error.status === 409) continue;
+          throw error;
+        }
         let row;
         try {
           row = await repository.importTrace(context.projectId, "ironside", ironsideTraceToTraceImport(tree), {
             ingestionPurpose: "analysis_eligible_ironside",
             sourceIntegrationId: context.id,
+            sourceTraceVersion: tree.traceVersion,
             importJobId: parsed.importJobId,
-            normalizationVersion: "ironside-v1",
+            normalizationVersion: "ironside-evaluator-v1",
             redactionConfig: context.redactionConfig
           });
         } catch (error) {
@@ -113,11 +96,15 @@ export async function processIronsideImportJob(
           throw error;
         }
         if (row.created) imported += 1;
+        // Include no-op imports too: a worker retry may have committed the
+        // trace snapshot immediately before failing to durably queue judging.
         caseIds.push(row.caseId);
       }
 
+      const previousCursor = cursor;
       cursor = page.nextCursor;
-      if (!cursor) drained = true;
+      drained = !page.hasMore;
+      if (!drained && page.traces.length === 0 && cursor === previousCursor) break;
     }
 
     const judging = await scheduleImportedCaseJudging(repository, queue, {
@@ -130,10 +117,7 @@ export async function processIronsideImportJob(
     }
     const queued = judging.scheduledCaseCount;
 
-    await repository.saveIronsideSyncState(context.projectId, context.id, drained
-      ? { watermark: windowTo, cursor: null, windowTo: null }
-      : { watermark: state.watermark ?? null, cursor, windowTo });
-
+    await repository.saveIronsideSyncState(context.projectId, context.id, { cursor });
     if (parsed.importJobId) {
       await repository.markImportJobCompleted(parsed.projectId, parsed.importJobId, {
         importedCount: imported,
@@ -147,7 +131,7 @@ export async function processIronsideImportJob(
   }
 }
 
-export function defaultIronsideClientFactory(context: IronsideImportContext): IronsideTraceSource {
+export function defaultIronsideClientFactory(context: Pick<IronsideImportContext, "url" | "apiKey">): IronsideTraceSource {
   return new IronsideClient({ url: context.url, apiKey: context.apiKey });
 }
 

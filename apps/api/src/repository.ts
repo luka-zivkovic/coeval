@@ -66,6 +66,7 @@ import {
   IronsideImportTarget,
   IronsideIntegration,
   IronsideIntegrationInput,
+  type IronsideEvaluatorContext,
   IronsideSyncState,
   RuntimeIngestionPurpose,
   UpdateIronsideIntegrationInput,
@@ -382,14 +383,13 @@ export interface CoevalRepository {
   claimDueLangfuseImportTargets(input: ClaimLangfuseImportTargetsInput): Promise<LangfuseImportTarget[]>;
   loadLangfuseImportContext(job: LangfuseImportJob): Promise<LangfuseImportContext>;
   listIronsideIntegrations(projectId: string): Promise<IronsideIntegration[]>;
-  createIronsideIntegration(projectId: string, input: IronsideIntegrationInput): Promise<IronsideIntegration>;
-  updateIronsideIntegration(projectId: string, integrationId: string, input: UpdateIronsideIntegrationInput): Promise<IronsideIntegration>;
+  createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration>;
+  updateIronsideIntegration(projectId: string, integrationId: string, input: UpdateIronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration>;
   recordIronsideConnectionTest(projectId: string, integrationId: string, result: IronsideConnectionTestResult): Promise<void>;
   deleteIronsideIntegration(projectId: string, integrationId: string, context: { actorUserId?: string | undefined }): Promise<void>;
   claimDueIronsideImportTargets(input: ClaimIronsideImportTargetsInput): Promise<IronsideImportTarget[]>;
   loadIronsideImportContext(job: IronsideImportJob): Promise<IronsideImportContext>;
-  // Persists the reconciliation state (settlement watermark + mid-window
-  // keyset cursor) for one ironside connection.
+  // Persists Ironside's opaque evaluator-feed continuation cursor.
   saveIronsideSyncState(projectId: string, integrationId: string, state: IronsideSyncState): Promise<void>;
   loadJudgeRunContext(job: JudgeRunJob): Promise<JudgeRunContext>;
   recordJudgeRun(input: RecordJudgeRunInput): Promise<JudgeRun>;
@@ -1246,6 +1246,7 @@ export class DemoRepository implements CoevalRepository {
   private readonly traceSources = new Map<string, {
     source: CaseSource;
     sourceTraceId: string;
+    sourceTraceVersion?: string | undefined;
     rawTraceId: string;
     ingestionPurpose: RuntimeIngestionPurpose;
     createdAt: string;
@@ -2270,7 +2271,11 @@ export class DemoRepository implements CoevalRepository {
     // later product path that sees the same trace reuses the first case
     // without reclassifying it; Map iteration keeps that choice deterministic.
     for (const [existingCaseId, traceSource] of this.traceSources.entries()) {
-      if (traceSource.source === source && traceSource.sourceTraceId === sourceTraceId) {
+      if (
+        traceSource.source === source
+        && traceSource.sourceTraceId === sourceTraceId
+        && (traceSource.sourceTraceVersion ?? null) === (context.sourceTraceVersion ?? null)
+      ) {
         return {
           rawTraceId: traceSource.rawTraceId,
           caseId: existingCaseId,
@@ -2290,6 +2295,7 @@ export class DemoRepository implements CoevalRepository {
     this.traceSources.set(caseId, {
       source,
       sourceTraceId,
+      sourceTraceVersion: context.sourceTraceVersion,
       rawTraceId,
       ingestionPurpose: context.ingestionPurpose,
       createdAt: new Date().toISOString(),
@@ -2670,23 +2676,28 @@ export class DemoRepository implements CoevalRepository {
     return { ...integration, limit: job.limit };
   }
 
-  async createIronsideIntegration(projectId: string, input: IronsideIntegrationInput): Promise<IronsideIntegration> {
+  async createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration> {
     const id = `int_${randomUUID()}`;
     const createdAt = new Date().toISOString();
     const pollEnabled = input.pollEnabled ?? true;
     const pollIntervalSeconds = input.pollIntervalSeconds ?? 300;
     const pollLimit = input.pollLimit ?? 25;
-    const skillVersionId = await this.resolveIntegrationSkillVersionId(projectId, input.skillVersionId);
+    const skillVersionId = input.skillVersionId === undefined
+      ? null
+      : await this.resolveImportSkillVersionId(projectId, input.skillVersionId);
     const integration: IronsideIntegration = {
       id,
       projectId,
       provider: "ironside",
       skillVersionId,
       url: input.url,
+      remoteProjectId: remote?.project.id ?? projectId,
+      remoteProjectName: remote?.project.name ?? "Ironside project",
+      protocolVersion: remote?.protocolVersion ?? "ironside/evaluator/v1",
+      settlementQuietPeriodSeconds: remote?.settlement.quietPeriodSeconds ?? 0,
       pollEnabled,
       pollIntervalSeconds,
       pollLimit,
-      quietPeriodSeconds: input.quietPeriodSeconds ?? 300,
       lastTestedAt: null,
       lastTestResult: null,
       createdAt
@@ -2698,7 +2709,7 @@ export class DemoRepository implements CoevalRepository {
       pollEnabled,
       pollIntervalMs: pollIntervalSeconds * 1000,
       redactionConfig: input.redaction ?? {},
-      syncState: { watermark: null, cursor: null, windowTo: null }
+      syncState: { cursor: null }
     });
     return integration;
   }
@@ -2709,9 +2720,17 @@ export class DemoRepository implements CoevalRepository {
       .map(toPublicIronsideIntegration);
   }
 
-  async updateIronsideIntegration(projectId: string, integrationId: string, input: UpdateIronsideIntegrationInput): Promise<IronsideIntegration> {
+  async updateIronsideIntegration(projectId: string, integrationId: string, input: UpdateIronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration> {
     const integration = this.ironsideIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new IronsideIntegrationNotFoundError(integrationId);
+    if (input.url !== undefined) integration.url = input.url;
+    if (input.apiKey !== undefined) integration.apiKey = input.apiKey;
+    if (remote) {
+      integration.remoteProjectId = remote.project.id;
+      integration.remoteProjectName = remote.project.name;
+      integration.protocolVersion = remote.protocolVersion;
+      integration.settlementQuietPeriodSeconds = remote.settlement.quietPeriodSeconds;
+    }
     if (input.pollEnabled !== undefined) integration.pollEnabled = input.pollEnabled;
     if (input.pollIntervalSeconds !== undefined) {
       integration.pollIntervalSeconds = input.pollIntervalSeconds;
@@ -5187,6 +5206,8 @@ export class DemoRepository implements CoevalRepository {
       provider: input.provider,
       judgeRun: { ...run, modelBinding: demoSkill.currentVersion.modelBinding },
       sourceTraceId: traceSource.sourceTraceId,
+      sourceTraceVersion: traceSource.sourceTraceVersion ?? null,
+      criterionStableKey: "response-quality",
       integration,
       status: "pending"
     });
@@ -5592,6 +5613,7 @@ function gateFailureMessage(error: unknown): string {
 export interface TraceImportContext {
   ingestionPurpose: RuntimeIngestionPurpose;
   sourceIntegrationId?: string | undefined;
+  sourceTraceVersion?: string | undefined;
   importJobId?: string | undefined;
   normalizationVersion?: string | undefined;
   redactionConfig?: TraceRedactionConfig | undefined;
@@ -5727,6 +5749,8 @@ export interface FeedbackSyncContext {
   provider: FeedbackSyncProvider;
   judgeRun: JudgeRun & { modelBinding: SkillVersion["modelBinding"] };
   sourceTraceId: string;
+  sourceTraceVersion: string | null;
+  criterionStableKey: string;
   integration: LangSmithCredentials | LangfuseCredentials | IronsideCredentials;
 }
 
@@ -5771,10 +5795,13 @@ function toPublicIronsideIntegration(integration: IronsideImportContext): Ironsi
     provider: "ironside",
     skillVersionId: integration.skillVersionId,
     url: integration.url,
+    remoteProjectId: integration.remoteProjectId,
+    remoteProjectName: integration.remoteProjectName,
+    protocolVersion: integration.protocolVersion,
+    settlementQuietPeriodSeconds: integration.settlementQuietPeriodSeconds,
     pollEnabled: integration.pollEnabled,
     pollIntervalSeconds: integration.pollIntervalSeconds,
     pollLimit: integration.pollLimit,
-    quietPeriodSeconds: integration.quietPeriodSeconds,
     lastTestedAt: integration.lastTestedAt,
     lastTestResult: integration.lastTestResult,
     createdAt: integration.createdAt

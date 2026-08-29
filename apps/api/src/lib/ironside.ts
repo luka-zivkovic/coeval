@@ -1,11 +1,17 @@
-import { z } from "zod";
-import { MAX_TRACE_STEPS, type ManualTraceImportInput, type TraceStep } from "@coeval/shared";
+import {
+  IRONSIDE_EVALUATOR_PROTOCOL_VERSION,
+  IronsideEvaluatorContextSchema,
+  IronsideEvaluatorTraceFeedSchema,
+  IronsideEvaluatorTraceSchema,
+  MAX_TRACE_STEPS,
+  type IronsideEvaluatorContext,
+  type IronsideEvaluatorObservationNode,
+  type IronsideEvaluatorTrace,
+  type IronsideEvaluatorTraceFeed,
+  type ManualTraceImportInput,
+  type TraceStep
+} from "@coeval/shared";
 import type { CreateLangSmithFeedbackInput, LangSmithFeedbackWriter } from "./langsmith.js";
-
-// Client for ironside's NATIVE API (issue #153) — not the Langfuse-compat
-// tier. Auth is a single Bearer API key; trace listing uses stable keyset
-// cursors ((timestamp, id) DESC) instead of compat page numbers, which is the
-// whole reason this source type exists.
 
 export interface IronsideClientOptions {
   url: string;
@@ -17,7 +23,7 @@ export class IronsideHttpError extends Error {
   constructor(
     message: string,
     readonly status: number,
-    readonly operation: "listTraces" | "getTrace" | "ingestScore"
+    readonly operation: "getContext" | "listTraces" | "getTrace" | "createScore"
   ) {
     super(message);
     this.name = "IronsideHttpError";
@@ -25,100 +31,14 @@ export class IronsideHttpError extends Error {
 }
 
 export interface ListIronsideTracesInput {
-  // ISO timestamps filtering the trace's own `timestamp` (inclusive on both
-  // ends server-side; boundary overlap is deduped by the importer).
-  from?: string | undefined;
-  to?: string | undefined;
-  // Opaque keyset cursor from the previous page's nextCursor.
   cursor?: string | undefined;
   limit: number;
 }
 
-const IronsideTraceSummarySchema = z.object({
-  id: z.string(),
-  timestamp: z.string(),
-  name: z.string().nullish(),
-  userId: z.string().nullish(),
-  sessionId: z.string().nullish(),
-  tags: z.array(z.string()).default([]),
-  metadata: z.record(z.string(), z.string()).default({})
-});
-export type IronsideTraceSummary = z.infer<typeof IronsideTraceSummarySchema>;
-
-const IronsideListTracesResponseSchema = z.object({
-  traces: z.array(IronsideTraceSummarySchema),
-  nextCursor: z.string().nullable()
-});
-
-export interface IronsideObservationNode {
-  id: string;
-  parentObservationId?: string | null | undefined;
-  type: string;
-  name?: string | null | undefined;
-  startTime: string;
-  endTime?: string | null | undefined;
-  level?: string | null | undefined;
-  statusMessage?: string | null | undefined;
-  model?: string | null | undefined;
-  modelParameters?: Record<string, string> | undefined;
-  input?: unknown;
-  output?: unknown;
-  usageDetails?: Record<string, number> | undefined;
-  costDetails?: Record<string, number> | undefined;
-  completionStartTime?: string | null | undefined;
-  metadata?: Record<string, string> | undefined;
-  children: IronsideObservationNode[];
-}
-
-const IronsideObservationNodeSchema: z.ZodType<IronsideObservationNode> = z.lazy(() =>
-  z.object({
-    id: z.string(),
-    parentObservationId: z.string().nullish(),
-    type: z.string(),
-    name: z.string().nullish(),
-    startTime: z.string(),
-    endTime: z.string().nullish(),
-    level: z.string().nullish(),
-    statusMessage: z.string().nullish(),
-    model: z.string().nullish(),
-    modelParameters: z.record(z.string(), z.string()).optional(),
-    input: z.unknown().optional(),
-    output: z.unknown().optional(),
-    usageDetails: z.record(z.string(), z.number()).optional(),
-    costDetails: z.record(z.string(), z.number()).optional(),
-    completionStartTime: z.string().nullish(),
-    metadata: z.record(z.string(), z.string()).optional(),
-    children: z.array(IronsideObservationNodeSchema)
-  })
-);
-
-const IronsideTraceTreeSchema = z.object({
-  id: z.string(),
-  timestamp: z.string(),
-  name: z.string().nullish(),
-  userId: z.string().nullish(),
-  sessionId: z.string().nullish(),
-  environment: z.string().nullish(),
-  release: z.string().nullish(),
-  version: z.string().nullish(),
-  tags: z.array(z.string()).default([]),
-  metadata: z.record(z.string(), z.string()).default({}),
-  input: z.unknown().optional(),
-  output: z.unknown().optional(),
-  observations: z.array(IronsideObservationNodeSchema).default([])
-});
-export type IronsideTraceTree = z.infer<typeof IronsideTraceTreeSchema>;
-
-export interface IronsideTracesPage {
-  traces: IronsideTraceSummary[];
-  nextCursor: string | null;
-}
-
-// The worker's client surface: list summaries in a window, then fetch the
-// full tree per trace (the list projection has no input/output/observations).
 export interface IronsideTraceSource {
-  listTraces(input: ListIronsideTracesInput): Promise<IronsideTracesPage>;
-  getTrace(traceId: string): Promise<IronsideTraceTree>;
+  getContext(): Promise<IronsideEvaluatorContext>;
+  listTraces(input: ListIronsideTracesInput): Promise<IronsideEvaluatorTraceFeed>;
+  getTrace(traceId: string, traceVersion: string): Promise<IronsideEvaluatorTrace>;
 }
 
 export class IronsideClient implements IronsideTraceSource, LangSmithFeedbackWriter {
@@ -130,81 +50,83 @@ export class IronsideClient implements IronsideTraceSource, LangSmithFeedbackWri
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
 
-  async listTraces(input: ListIronsideTracesInput): Promise<IronsideTracesPage> {
-    const url = new URL(`${this.baseUrl}/api/v1/traces`);
-    if (input.from) url.searchParams.set("from", input.from);
-    if (input.to) url.searchParams.set("to", input.to);
-    if (input.cursor) url.searchParams.set("cursor", input.cursor);
-    url.searchParams.set("limit", String(input.limit));
-
-    const response = await this.fetchImpl(url, { headers: this.headers() });
-    if (!response.ok) {
-      throw new IronsideHttpError(`Ironside traces request failed: ${response.status}`, response.status, "listTraces");
-    }
-    return IronsideListTracesResponseSchema.parse(await response.json());
-  }
-
-  async getTrace(traceId: string): Promise<IronsideTraceTree> {
-    const response = await this.fetchImpl(`${this.baseUrl}/api/v1/traces/${encodeURIComponent(traceId)}`, {
+  async getContext(): Promise<IronsideEvaluatorContext> {
+    const response = await this.fetchImpl(`${this.baseUrl}/api/v1/evaluator/context`, {
       headers: this.headers()
     });
     if (!response.ok) {
-      throw new IronsideHttpError(`Ironside trace request failed: ${response.status}`, response.status, "getTrace");
+      throw new IronsideHttpError(`Ironside evaluator context request failed: ${response.status}`, response.status, "getContext");
     }
-    return IronsideTraceTreeSchema.parse(await response.json());
+    const context = IronsideEvaluatorContextSchema.parse(await response.json());
+    if (!context.capabilities.includes("traces:read") || !context.capabilities.includes("scores:write")) {
+      throw new IronsideHttpError("Ironside key must grant traces:read and scores:write", 403, "getContext");
+    }
+    return context;
   }
 
-  // Verdict writeback through the native ingest edge: one score-upsert event.
-  // Ironside's contract makes this safe to retry (idempotencyKey + score-id
-  // upsert) and score writes never reopen a settled trace, so the judge's own
-  // verdict cannot create an import feedback loop.
-  async createFeedback(input: CreateLangSmithFeedbackInput): Promise<void> {
-    const metadata: Record<string, string> = { verdict: input.value };
-    for (const [key, value] of Object.entries(input.sourceInfo ?? {})) {
-      if (value === undefined || value === null) continue;
-      metadata[key] = typeof value === "string" ? value : JSON.stringify(value);
+  async listTraces(input: ListIronsideTracesInput): Promise<IronsideEvaluatorTraceFeed> {
+    const url = new URL(`${this.baseUrl}/api/v1/evaluator/traces`);
+    if (input.cursor) url.searchParams.set("cursor", input.cursor);
+    url.searchParams.set("limit", String(input.limit));
+    const response = await this.fetchImpl(url, { headers: this.headers() });
+    if (!response.ok) {
+      throw new IronsideHttpError(`Ironside evaluator feed request failed: ${response.status}`, response.status, "listTraces");
     }
-    const response = await this.fetchImpl(`${this.baseUrl}/api/v1/ingest`, {
+    return IronsideEvaluatorTraceFeedSchema.parse(await response.json());
+  }
+
+  async getTrace(traceId: string, traceVersion: string): Promise<IronsideEvaluatorTrace> {
+    const url = new URL(`${this.baseUrl}/api/v1/evaluator/traces/${encodeURIComponent(traceId)}`);
+    url.searchParams.set("version", traceVersion);
+    const response = await this.fetchImpl(url, { headers: this.headers() });
+    if (!response.ok) {
+      throw new IronsideHttpError(`Ironside evaluator trace request failed: ${response.status}`, response.status, "getTrace");
+    }
+    const trace = IronsideEvaluatorTraceSchema.parse(await response.json());
+    if (trace.traceVersion !== traceVersion) {
+      throw new Error(`Ironside returned trace version ${trace.traceVersion}; expected ${traceVersion}`);
+    }
+    return trace;
+  }
+
+  async createFeedback(input: CreateLangSmithFeedbackInput): Promise<void> {
+    const versionId = String(input.sourceInfo?.skillVersionId ?? "");
+    const criterionKey = String(input.sourceInfo?.criterionKey ?? "");
+    if (!input.feedbackId || !versionId || !criterionKey) {
+      throw new Error("Native Ironside feedback requires an id, evaluator version, and criterion key");
+    }
+    const response = await this.fetchImpl(`${this.baseUrl}/api/v1/evaluator/scores`, {
       method: "POST",
       headers: { ...this.headers(), "content-type": "application/json" },
       body: JSON.stringify({
-        events: [
-          {
-            type: "score-upsert",
-            ...(input.feedbackId ? { idempotencyKey: input.feedbackId } : {}),
-            body: {
-              ...(input.feedbackId ? { id: input.feedbackId } : {}),
-              traceId: input.runId,
-              name: input.key,
-              dataType: "numeric",
-              value: input.score,
-              source: "api",
-              comment: `${input.value}: ${input.comment}`,
-              metadata
-            }
-          }
-        ]
+        id: input.feedbackId,
+        traceId: input.runId,
+        name: input.key,
+        value: input.score,
+        assessmentLabel: input.value,
+        comment: input.comment,
+        evaluator: { provider: "coeval", versionId, criterionKey },
+        metadata: {
+          judgeRunId: input.sourceInfo?.judgeRunId,
+          sourceTraceVersion: input.sourceInfo?.sourceTraceVersion,
+          modelBinding: input.sourceInfo?.modelBinding,
+          protocolVersion: IRONSIDE_EVALUATOR_PROTOCOL_VERSION
+        }
       })
     });
     if (!response.ok) {
-      throw new IronsideHttpError(`Ironside score ingest failed: ${response.status}`, response.status, "ingestScore");
+      throw new IronsideHttpError(`Ironside evaluator score request failed: ${response.status}`, response.status, "createScore");
     }
   }
 
   private headers(): Record<string, string> {
-    return {
-      authorization: `Bearer ${this.options.apiKey}`,
-      accept: "application/json"
-    };
+    return { authorization: `Bearer ${this.options.apiKey}`, accept: "application/json" };
   }
 }
 
-// Maps a native trace tree into coeval's normalized case shape. The
-// observation tree flattens depth-first into TraceStep[] per the envelope
-// spec, capped at the shared MAX_TRACE_STEPS so a huge trace still imports.
-export function ironsideTraceToTraceImport(trace: IronsideTraceTree): ManualTraceImportInput {
+export function ironsideTraceToTraceImport(trace: IronsideEvaluatorTrace): ManualTraceImportInput {
   const steps: TraceStep[] = [];
-  const flatten = (nodes: IronsideObservationNode[]): void => {
+  const flatten = (nodes: IronsideEvaluatorObservationNode[]): void => {
     for (const node of nodes) {
       if (steps.length >= MAX_TRACE_STEPS) return;
       steps.push({
@@ -233,6 +155,7 @@ export function ironsideTraceToTraceImport(trace: IronsideTraceTree): ManualTrac
     output: trace.output ?? {},
     metadata: {
       source: "ironside",
+      sourceTraceVersion: trace.traceVersion,
       ...(trace.name != null ? { name: trace.name } : {}),
       timestamp: trace.timestamp,
       ...(trace.userId != null ? { userId: trace.userId } : {}),

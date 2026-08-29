@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, buildVerdictExportUrl, createProject, createReviewQueue, createSkillVersion, deleteLangSmithIntegration, ensureSkillVersionBackfill, fetchCaseVerdicts, fetchDatasetRevisionMetadata, fetchGoldenSet, fetchGoldenSetHealth, fetchJudgeHumanCalibration, fetchKappaSummary, fetchProjectVerdicts, fetchReviewQueueDetail, fetchReviewQueues, fetchSkillVersionCriterion, fetchSkillVersionHistory, recordHumanVerdict, setupOwner, testLangSmithIntegration } from "../src/lib/api.js";
+import { ApiError, buildVerdictExportUrl, createIronsideIntegration, createProject, createReviewQueue, createSkillVersion, deleteLangSmithIntegration, ensureSkillVersionBackfill, fetchCaseVerdicts, fetchDatasetRevisionMetadata, fetchGoldenSet, fetchGoldenSetHealth, fetchJudgeHumanCalibration, fetchKappaSummary, fetchProjectVerdicts, fetchReviewQueueDetail, fetchReviewQueues, fetchSkillVersionCriterion, fetchSkillVersionHistory, recordHumanVerdict, setupOwner, testLangSmithIntegration } from "../src/lib/api.js";
 
 const createdKey = {
   id: "apikey_first",
@@ -13,6 +13,44 @@ const createdKey = {
 };
 
 describe("web API helpers", () => {
+  it("creates a verified native Ironside connection", async () => {
+    const integration = {
+      id: "int_ironside",
+      projectId: "proj_first",
+      provider: "ironside" as const,
+      skillVersionId: "skillv_first",
+      url: "https://ironside.example.com",
+      remoteProjectId: "remote_agents",
+      remoteProjectName: "Production agents",
+      protocolVersion: "ironside/evaluator/v1" as const,
+      settlementQuietPeriodSeconds: 300,
+      pollEnabled: true,
+      pollIntervalSeconds: 300,
+      pollLimit: 25,
+      lastTestedAt: null,
+      lastTestResult: null,
+      createdAt: "2026-08-28T00:00:00.000Z"
+    };
+    const fetchMock = vi.fn(async () => jsonResponse({ integration }, 201));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(createIronsideIntegration({
+      skillVersionId: "skillv_first",
+      url: "https://ironside.example.com",
+      apiKey: "ironside_sc_secret"
+    })).resolves.toEqual(integration);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/integrations/ironside",
+      expect.objectContaining({ method: "POST", credentials: "include" })
+    );
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+    expect(JSON.parse(String(init?.body))).toEqual({
+      skillVersionId: "skillv_first",
+      url: "https://ironside.example.com",
+      apiKey: "ironside_sc_secret"
+    });
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });

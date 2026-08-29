@@ -45,6 +45,7 @@ import {
   LangfuseImportRequestSchema,
   LangfuseIntegrationInputSchema,
   type IronsideConnectionTestResult,
+  type IronsideEvaluatorContext,
   type IronsideImportEnqueueResult,
   IronsideImportRequestSchema,
   IronsideIntegrationInputSchema,
@@ -332,7 +333,7 @@ export interface CreateAppOptions {
   queue?: Queue | undefined;
   langSmithClientFactory?: ((context: LangSmithImportContext) => LangSmithTraceFetcher) | undefined;
   langfuseClientFactory?: ((context: LangfuseImportContext) => LangfuseTraceFetcher) | undefined;
-  ironsideClientFactory?: ((context: IronsideImportContext) => IronsideTraceSource) | undefined;
+  ironsideClientFactory?: ((context: Pick<IronsideImportContext, "url" | "apiKey">) => IronsideTraceSource) | undefined;
   traceTestDraftGenerator?: TraceTestDraftGenerator | undefined;
   traceTestValidationRunner?: TraceTestValidationRunner | undefined;
   governedReviewRepository?: GovernedReviewRepository | null | undefined;
@@ -4537,9 +4538,21 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     if (pollFloorError) return c.json({ error: pollFloorError }, 400);
 
     try {
-      const integration = await repository.createIronsideIntegration(c.get("projectId"), parsed.data);
+      const client = (options.ironsideClientFactory ?? defaultIronsideAppClientFactory)({
+        url: parsed.data.url,
+        apiKey: parsed.data.apiKey
+      });
+      const remote = await client.getContext();
+      const integration = await repository.createIronsideIntegration(c.get("projectId"), parsed.data, remote);
       return c.json({ integration }, 201);
     } catch (error) {
+      if (error instanceof IronsideHttpError || error instanceof z.ZodError || error instanceof TypeError) {
+        return c.json({
+          error: error instanceof Error ? error.message : "Ironside connection validation failed",
+          code: "ironside_connection_failed",
+          ...(error instanceof IronsideHttpError ? { status: error.status } : {})
+        }, 502);
+      }
       if (error instanceof AmbiguousProjectSkillError) {
         return c.json({ error: error.message, code: "skill_version_required" }, 409);
       }
@@ -4568,9 +4581,33 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     if (pollFloorError) return c.json({ error: pollFloorError }, 400);
 
     try {
-      const integration = await repository.updateIronsideIntegration(c.get("projectId"), c.req.param("integrationId"), parsed.data);
+      const projectId = c.get("projectId");
+      const integrationId = c.req.param("integrationId");
+      let remote: IronsideEvaluatorContext | undefined;
+      if (parsed.data.url !== undefined || parsed.data.apiKey !== undefined) {
+        const current = await repository.loadIronsideImportContext({ projectId, integrationId, limit: 1 });
+        const client = (options.ironsideClientFactory ?? defaultIronsideAppClientFactory)({
+          url: parsed.data.url ?? current.url,
+          apiKey: parsed.data.apiKey ?? current.apiKey
+        });
+        remote = await client.getContext();
+        if (!current.remoteProjectId.startsWith("unverified:") && remote.project.id !== current.remoteProjectId) {
+          return c.json({
+            error: "The replacement credentials belong to a different Ironside project. Disconnect and create a new connection instead.",
+            code: "ironside_project_mismatch"
+          }, 409);
+        }
+      }
+      const integration = await repository.updateIronsideIntegration(projectId, integrationId, parsed.data, remote);
       return c.json({ integration });
     } catch (error) {
+      if (error instanceof IronsideHttpError || error instanceof z.ZodError || error instanceof TypeError) {
+        return c.json({
+          error: error instanceof Error ? error.message : "Ironside connection validation failed",
+          code: "ironside_connection_failed",
+          ...(error instanceof IronsideHttpError ? { status: error.status } : {})
+        }, 502);
+      }
       if (error instanceof AmbiguousProjectSkillError) {
         return c.json({ error: error.message, code: "skill_version_required" }, 409);
       }
@@ -4634,12 +4671,9 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     }
 
     const client = (options.ironsideClientFactory ?? defaultIronsideAppClientFactory)(context);
-    let sampleRunCount: number;
+    let remote: IronsideEvaluatorContext;
     try {
-      // The native list is a live view — fine for a connection test, which
-      // only proves the URL + key work (import settlement is the worker's job).
-      const page = await client.listTraces({ limit: 1 });
-      sampleRunCount = page.traces.length;
+      remote = await client.getContext();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const status = error instanceof IronsideHttpError ? error.status : undefined;
@@ -4656,7 +4690,9 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     const result: IronsideConnectionTestResult = {
       ok: true,
       checkedAt,
-      sampleRunCount
+      protocolVersion: remote.protocolVersion,
+      remoteProjectId: remote.project.id,
+      remoteProjectName: remote.project.name
     };
     await repository.recordIronsideConnectionTest(projectId, integrationId, result);
     return c.json(result);
@@ -5540,7 +5576,7 @@ function validateIronsidePollFloor(pollIntervalSeconds: number | undefined): str
   return null;
 }
 
-function defaultIronsideAppClientFactory(context: IronsideImportContext): IronsideTraceSource {
+function defaultIronsideAppClientFactory(context: Pick<IronsideImportContext, "url" | "apiKey">): IronsideTraceSource {
   return new IronsideClient({ url: context.url, apiKey: context.apiKey });
 }
 

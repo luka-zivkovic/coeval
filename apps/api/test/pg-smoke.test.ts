@@ -1403,6 +1403,48 @@ run("PgRepository smoke", () => {
     }
   });
 
+  it("deduplicates Ironside snapshots by trace id and remote trace version", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_ironside_versions");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      const input = {
+        sourceTraceId: "ironside_reopened",
+        input: { question: "Refund?" },
+        output: { answer: "Within 30 days." },
+        metadata: { source: "ironside" }
+      };
+      const firstContext = {
+        ingestionPurpose: "analysis_eligible_ironside" as const,
+        sourceTraceVersion: "2026-08-01T12:00:00.000Z"
+      };
+      const first = await repo.importTrace("proj_test", "ironside", input, firstContext);
+      const retry = await repo.importTrace("proj_test", "ironside", input, firstContext);
+      const reopened = await repo.importTrace("proj_test", "ironside", input, {
+        ...firstContext,
+        sourceTraceVersion: "2026-08-01T12:05:00.000Z"
+      });
+
+      expect(first.created).toBe(true);
+      expect(retry).toMatchObject({ created: false, caseId: first.caseId });
+      expect(reopened).toMatchObject({ created: true });
+      expect(reopened.caseId).not.toBe(first.caseId);
+      const rows = await pool.query(
+        `select source_trace_version from raw_traces
+         where project_id = 'proj_test' and source_trace_id = 'ironside_reopened'
+         order by source_trace_version`
+      );
+      expect(rows.rows).toEqual([
+        { source_trace_version: "2026-08-01T12:00:00.000Z" },
+        { source_trace_version: "2026-08-01T12:05:00.000Z" }
+      ]);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it("counts all net-new traces for the same import job across worker retries", async () => {
     process.env.BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET || "test-secret-for-pg-import-retry-count-at-least-32-bytes";
     const { pool, cleanup } = await openPostgresTestDatabase("pg_smoke");

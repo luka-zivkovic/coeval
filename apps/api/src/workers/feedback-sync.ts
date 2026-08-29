@@ -37,17 +37,20 @@ export async function processFeedbackSyncJob(
   const context = await repository.loadFeedbackSyncContext(parsed);
   try {
     await createWriter(context).createFeedback({
-      // LangSmith/Langfuse accept a caller-provided score/feedback id. Reusing
-      // the durable feedback_sync_jobs id makes retries idempotent instead of
-      // creating duplicate `coeval_verdict` rows.
+      // Every writer accepts a caller-provided score/feedback id. Reusing the
+      // durable feedback_sync_jobs id makes retries idempotent.
       feedbackId: context.id,
       runId: context.sourceTraceId,
-      key: "coeval_verdict",
+      key: context.provider === "ironside"
+        ? `coeval_assessment/${context.criterionStableKey}`
+        : "coeval_verdict",
       score: context.judgeRun.score,
       value: context.judgeRun.verdict,
       comment: context.judgeRun.reasoning,
       sourceInfo: {
         skillVersionId: context.judgeRun.skillVersionId,
+        criterionKey: context.criterionStableKey,
+        sourceTraceVersion: context.sourceTraceVersion,
         modelBinding: context.judgeRun.modelBinding,
         judgeRunId: context.judgeRun.id,
         provider: "coeval"

@@ -23,6 +23,11 @@ import {
   JudgeHumanDisagreementSummarySchema,
   KappaSummarySchema,
   ImportJobRecordSchema,
+  IronsideConnectionTestResultSchema,
+  IronsideImportEnqueueResultSchema,
+  IronsideImportRequestSchema,
+  IronsideIntegrationInputSchema,
+  IronsideIntegrationSchema,
   LangfuseConnectionTestResultSchema,
   LangfuseImportEnqueueResultSchema,
   LangfuseImportRequestSchema,
@@ -82,6 +87,7 @@ import {
   TraceTestValidationSchema,
   TraceTestRunResultSchema,
   UpdateLangfuseIntegrationInputSchema,
+  UpdateIronsideIntegrationInputSchema,
   UpdateLangSmithIntegrationInputSchema,
   UpdateProjectSettingsInputSchema,
   VerdictRecordSchema,
@@ -108,6 +114,10 @@ import {
   type JudgeHumanDisagreementSummary,
   type KappaSummary,
   type ImportJobRecord,
+  type IronsideConnectionTestResult,
+  type IronsideImportEnqueueResult,
+  type IronsideIntegrationInput,
+  type IronsideIntegration,
   type LangfuseConnectionTestResult,
   type LangfuseImportEnqueueResult,
   type LangfuseIntegrationInput,
@@ -137,6 +147,7 @@ import {
   type ReviewQueue,
   type ReviewQueueDetail,
   type UpdateLangfuseIntegrationInput,
+  type UpdateIronsideIntegrationInput,
   type UpdateLangSmithIntegrationInput,
   type UpdateProjectSettingsInput,
   type VerdictPayload,
@@ -547,6 +558,13 @@ export async function fetchLangfuseIntegrations(): Promise<LangfuseIntegration[]
   return LangfuseIntegrationSchema.array().parse(body.integrations ?? []);
 }
 
+export async function fetchIronsideIntegrations(): Promise<IronsideIntegration[]> {
+  const response = await apiFetch(`${API_BASE}/api/integrations/ironside`, { credentials: "include" });
+  if (!response.ok) throw await apiErrorFromResponse(response, "Ironside integrations request failed");
+  const body = (await response.json()) as { integrations?: unknown };
+  return IronsideIntegrationSchema.array().parse(body.integrations ?? []);
+}
+
 export async function fetchImportJobs(limit = 10): Promise<ImportJobRecord[]> {
   const response = await apiFetch(`${API_BASE}/api/import-jobs?limit=${limit}`, { credentials: "include" });
   if (!response.ok) throw await apiErrorFromResponse(response, "Import jobs request failed");
@@ -611,6 +629,32 @@ export async function updateLangfuseIntegration(integrationId: string, input: Up
   const payload = await response.json().catch(() => null) as { integration?: LangfuseIntegration; error?: string } | null;
   if (response.ok && payload?.integration) return LangfuseIntegrationSchema.parse(payload.integration);
   throw apiError(response, payload, "Langfuse integration update failed");
+}
+
+export async function createIronsideIntegration(input: IronsideIntegrationInput): Promise<IronsideIntegration> {
+  const body = IronsideIntegrationInputSchema.parse(input);
+  const response = await apiFetch(`${API_BASE}/api/integrations/ironside`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => null) as { integration?: unknown; error?: string } | null;
+  if (response.ok && payload?.integration) return IronsideIntegrationSchema.parse(payload.integration);
+  throw apiError(response, payload, "Ironside integration create failed");
+}
+
+export async function updateIronsideIntegration(integrationId: string, input: UpdateIronsideIntegrationInput): Promise<IronsideIntegration> {
+  const body = UpdateIronsideIntegrationInputSchema.parse(input);
+  const response = await apiFetch(`${API_BASE}/api/integrations/ironside/${integrationId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => null) as { integration?: unknown; error?: string } | null;
+  if (response.ok && payload?.integration) return IronsideIntegrationSchema.parse(payload.integration);
+  throw apiError(response, payload, "Ironside integration update failed");
 }
 
 // BYO judge provider keys. The raw key goes up once and never comes
@@ -706,6 +750,17 @@ export async function deleteLangfuseIntegration(integrationId: string): Promise<
   }
 }
 
+export async function deleteIronsideIntegration(integrationId: string): Promise<void> {
+  const response = await apiFetch(`${API_BASE}/api/integrations/ironside/${integrationId}`, {
+    method: "DELETE",
+    credentials: "include"
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { error?: string } | null;
+    throw apiError(response, payload, "Ironside integration disconnect failed");
+  }
+}
+
 export async function testLangSmithIntegration(integrationId: string): Promise<LangSmithConnectionTestResult> {
   const response = await apiFetch(`${API_BASE}/api/integrations/langsmith/${integrationId}/test`, {
     method: "POST",
@@ -770,6 +825,36 @@ export async function triggerLangfuseImport(
   const payload = await response.json().catch(() => null) as { error?: string } | unknown;
   if (response.ok) return LangfuseImportEnqueueResultSchema.parse(payload);
   throw apiError(response, payload, "Langfuse import request failed");
+}
+
+export async function testIronsideIntegration(integrationId: string): Promise<IronsideConnectionTestResult> {
+  const response = await apiFetch(`${API_BASE}/api/integrations/ironside/${integrationId}/test`, {
+    method: "POST",
+    credentials: "include"
+  });
+  const payload = await response.json().catch(() => null) as unknown;
+  if (payload && typeof payload === "object" && "ok" in payload) {
+    return IronsideConnectionTestResultSchema.parse(payload);
+  }
+  if (!response.ok) throw apiError(response, payload, "Ironside connection test failed");
+  return IronsideConnectionTestResultSchema.parse(payload);
+}
+
+export async function triggerIronsideImport(
+  integrationId: string,
+  limit: number,
+  skillVersionId?: string
+): Promise<IronsideImportEnqueueResult> {
+  const body = IronsideImportRequestSchema.parse({ limit, skillVersionId });
+  const response = await apiFetch(`${API_BASE}/api/integrations/ironside/${integrationId}/import`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => null) as { error?: string } | unknown;
+  if (response.ok) return IronsideImportEnqueueResultSchema.parse(payload);
+  throw apiError(response, payload, "Ironside import request failed");
 }
 
 export async function updateProjectSettings(input: UpdateProjectSettingsInput): Promise<ProjectSettings> {

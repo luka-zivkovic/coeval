@@ -35,7 +35,7 @@ Without `DATABASE_URL`, the API uses `DemoRepository`. It contains representativ
 
 ### Trace ingestion
 
-1. A trace arrives through the manual endpoint, the judge API, LangSmith, Langfuse, or Ironside with an exact evaluator-version pin. Singleton projects may resolve that pin when the request is accepted; multi-criterion projects require it explicitly.
+1. A trace arrives through the manual endpoint, the judge API, LangSmith, Langfuse, or Ironside with an exact evaluator-version pin. Ironside supplies a settled remote trace-version identity and an opaque continuation cursor; Coeval does not reproduce Ironside's settlement policy. Singleton projects may resolve the evaluator pin when the request is accepted; multi-criterion projects require it explicitly.
 2. The raw provider payload is retained for auditability.
 3. A normalized case is created with configured exclusions and sensitive-key redaction.
 4. A `judge.run` job is queued.

@@ -9,7 +9,7 @@ if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !dat
 const run = databaseUrl ? describe : describe.skip;
 
 run("frozen database baseline", () => {
-  it("is idempotent and records the immutable baseline checksum", async () => {
+  it("is idempotent and records immutable migration checksums", async () => {
     const { pool, cleanup } = await openPostgresTestDatabase("baseline_idempotent");
     try {
       await runMigrations(pool);
@@ -17,10 +17,16 @@ run("frozen database baseline", () => {
       const applied = await pool.query<{ id: string; checksum: string }>(
         "select id, checksum from coeval_migrations order by id",
       );
-      expect(applied.rows).toEqual([{
-        id: "0001_baseline",
-        checksum: "a2d3f9fd5322303b444c56e6c092ff2fa9f4a8318a07514989aee3a844814973",
-      }]);
+      expect(applied.rows).toEqual([
+        {
+          id: "0001_baseline",
+          checksum: "a2d3f9fd5322303b444c56e6c092ff2fa9f4a8318a07514989aee3a844814973",
+        },
+        {
+          id: "0002_ironside_trace_versions",
+          checksum: "799d15dcdc5b346d728f0eb17e8080e6bba0ca9e94962498403256e0dbf18fe6",
+        }
+      ]);
     } finally {
       await cleanup();
     }
@@ -101,6 +107,7 @@ run("frozen database baseline", () => {
       const applied = await pool.query<{ id: string }>("select id from coeval_migrations order by id");
       expect(applied.rows).toEqual([
         { id: "0001_baseline" },
+        { id: "0002_ironside_trace_versions" },
         { id: "0055_evaluator_lifecycle" },
       ]);
     } finally {
