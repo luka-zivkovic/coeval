@@ -195,15 +195,29 @@ describe("Ironside versioned feed import", () => {
     const integration = await repository.createIronsideIntegration(PROJECT_ID, {
       url: "http://ironside.test:18788", apiKey: "ironside_sk_test"
     }, remoteContext);
+    const initial = await repository.loadIronsideImportContext({
+      projectId: PROJECT_ID,
+      integrationId: integration.id,
+      limit: 1
+    });
     await repository.quarantineIronsideIntegration(
       PROJECT_ID,
       integration.id,
-      remoteContext.project.id,
+      {
+        remoteProjectId: remoteContext.project.id,
+        connectionRevision: initial.connectionRevision
+      },
       { ok: false, checkedAt: new Date().toISOString(), error: "drift" }
     );
+    const quarantined = await repository.loadIronsideImportContext({
+      projectId: PROJECT_ID,
+      integrationId: integration.id,
+      limit: 1
+    });
     const expected = {
       remoteProjectId: remoteContext.project.id,
-      revalidationRequired: true
+      revalidationRequired: true,
+      connectionRevision: quarantined.connectionRevision
     };
     await repository.updateIronsideIntegration(
       PROJECT_ID,
@@ -219,6 +233,20 @@ describe("Ironside versioned feed import", () => {
       remoteContext,
       expected
     )).rejects.toBeInstanceOf(IronsideIntegrationChangedError);
+    await expect(repository.quarantineIronsideIntegration(
+      PROJECT_ID,
+      integration.id,
+      {
+        remoteProjectId: remoteContext.project.id,
+        connectionRevision: quarantined.connectionRevision
+      },
+      { ok: false, checkedAt: new Date().toISOString(), error: "stale mismatch response" }
+    )).resolves.toBe(false);
+    await expect(repository.loadIronsideImportContext({
+      projectId: PROJECT_ID,
+      integrationId: integration.id,
+      limit: 1
+    })).resolves.toMatchObject({ revalidationRequired: false });
   });
 
   it("quarantines a connection before importing when the live remote identity drifts", async () => {
@@ -584,6 +612,46 @@ describe("Ironside polling and feedback", () => {
       feedbackJob!.data as { projectId: string; feedbackSyncJobId: string },
       () => { throw new Error("must not create a writer while revalidation is required"); }
     )).rejects.toBeInstanceOf(IronsideIntegrationRevalidationRequiredError);
+    await expect(repository.listFeedbackSyncJobs({
+      projectId: PROJECT_ID,
+      status: "blocked",
+      limit: 10
+    })).resolves.toHaveLength(1);
+
+    const quarantined = await repository.loadIronsideImportContext({
+      projectId: PROJECT_ID,
+      integrationId: integration.id,
+      limit: 25
+    });
+    await repository.updateIronsideIntegration(
+      PROJECT_ID,
+      integration.id,
+      {},
+      remoteContext,
+      {
+        remoteProjectId: quarantined.remoteProjectId,
+        revalidationRequired: true,
+        connectionRevision: quarantined.connectionRevision
+      }
+    );
+    const blocked = await repository.listBlockedIronsideFeedbackSyncJobs(PROJECT_ID, integration.id);
+    expect(blocked).toEqual([feedbackJob!.data]);
+    await repository.markFeedbackSyncPending(blocked[0]!);
+    await processFeedbackSyncJob(repository, blocked[0]!, () => new IronsideClient({
+      url: "http://ironside.test:18788",
+      apiKey: "ironside_sk_test",
+      fetchImpl: (async (input: string | URL | Request) => {
+        if (new URL(String(input)).pathname.endsWith("/context")) {
+          return new Response(JSON.stringify(remoteContext), { status: 200 });
+        }
+        return new Response(JSON.stringify({ id: "score_recovered" }), { status: 201 });
+      }) as typeof fetch
+    }));
+    await expect(repository.listFeedbackSyncJobs({
+      projectId: PROJECT_ID,
+      status: "synced",
+      limit: 10
+    })).resolves.toHaveLength(1);
   });
 
   it("parses poll configuration defensively", () => {

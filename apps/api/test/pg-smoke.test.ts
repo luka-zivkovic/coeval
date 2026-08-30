@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { runMigrations } from "@coeval/db";
 import { createQueue, type Queue, type QueueName } from "@coeval/queue";
 import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema, type JudgeProviderId } from "@coeval/shared";
-import { GoldenSetEntryAlreadyRetiredError, IronsideIntegrationAlreadyExistsError, RegressionGateJudgeError, RegressionGateUnavailableError } from "../src/repository.js";
+import { GoldenSetEntryAlreadyRetiredError, IronsideIntegrationAlreadyExistsError, IronsideIntegrationRevalidationRequiredError, RegressionGateJudgeError, RegressionGateUnavailableError } from "../src/repository.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { processFeedbackSyncJob } from "../src/workers/feedback-sync.js";
 import { dispatchEvalRunOnce, processGateRunJob } from "../src/workers/gate.js";
@@ -1553,7 +1553,49 @@ run("PgRepository smoke", () => {
         limit: 1
       })).resolves.toMatchObject({
         url: "https://ironside-a.example",
-        remoteProjectId: "remote_a"
+        remoteProjectId: "remote_a",
+        connectionRevision: 1
+      });
+      const initial = await repo.loadIronsideImportContext({
+        projectId: "proj_test",
+        integrationId: first.id,
+        limit: 1
+      });
+      await expect(repo.quarantineIronsideIntegration(
+        "proj_test",
+        first.id,
+        { remoteProjectId: "remote_a", connectionRevision: initial.connectionRevision },
+        { ok: false, checkedAt: new Date().toISOString(), error: "drift" }
+      )).resolves.toBe(true);
+      const quarantined = await repo.loadIronsideImportContext({
+        projectId: "proj_test",
+        integrationId: first.id,
+        limit: 1
+      });
+      await repo.updateIronsideIntegration(
+        "proj_test",
+        first.id,
+        {},
+        context("remote_a"),
+        {
+          remoteProjectId: "remote_a",
+          revalidationRequired: true,
+          connectionRevision: quarantined.connectionRevision
+        }
+      );
+      await expect(repo.quarantineIronsideIntegration(
+        "proj_test",
+        first.id,
+        { remoteProjectId: "remote_a", connectionRevision: quarantined.connectionRevision },
+        { ok: false, checkedAt: new Date().toISOString(), error: "stale response" }
+      )).resolves.toBe(false);
+      await expect(repo.loadIronsideImportContext({
+        projectId: "proj_test",
+        integrationId: first.id,
+        limit: 1
+      })).resolves.toMatchObject({
+        revalidationRequired: false,
+        connectionRevision: quarantined.connectionRevision + 1
       });
     } finally {
       await cleanup();
@@ -1792,6 +1834,85 @@ run("PgRepository smoke", () => {
       });
       const dashboard = await repo.getDashboardSummary("proj_test");
       expect(dashboard.project.syncBackCoverage).toBe(1);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("parks and re-drives Ironside feedback after connection revalidation", async () => {
+    process.env.BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET || "test-secret-for-pg-ironside-feedback-at-least-32-bytes";
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_ironside_feedback_redrive");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      const queue = new CapturingQueue();
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      await seedSkill(pool);
+      const remote = {
+        protocolVersion: "ironside/evaluator/v1" as const,
+        project: { id: "remote_feedback", name: "Remote feedback" },
+        capabilities: ["traces:read" as const, "scores:write" as const],
+        settlement: { kind: "quiet_period" as const, quietPeriodSeconds: 0 }
+      };
+      const integration = await repo.createIronsideIntegration("proj_test", {
+        url: "https://ironside.example",
+        apiKey: "key_feedback"
+      }, remote);
+      const imported = await repo.importTrace("proj_test", "ironside", {
+        sourceTraceId: "ironside_feedback_pg",
+        input: { question: "Refund?" },
+        output: { answer: "Yes." },
+        metadata: { source: "ironside" }
+      }, {
+        ingestionPurpose: "analysis_eligible_ironside",
+        sourceIntegrationId: integration.id,
+        sourceRemoteProjectId: remote.project.id,
+        sourceTraceVersion: "2026-08-30T12:00:00.000001Z"
+      });
+      await processJudgeRunJob(repo, {
+        projectId: "proj_test",
+        caseId: imported.caseId,
+        skillVersionId: "skillv_test"
+      }, undefined, queue);
+      const job = queue.jobs[0]!.data as { projectId: string; feedbackSyncJobId: string };
+
+      await expect(processFeedbackSyncJob(repo, job, () => ({
+        async getContext() {
+          return { ...remote, project: { id: "remote_other", name: "Other" } };
+        },
+        async createFeedback() {
+          throw new Error("must not write after drift");
+        }
+      }))).rejects.toBeInstanceOf(IronsideIntegrationRevalidationRequiredError);
+      expect((await repo.listFeedbackSyncJobs({
+        projectId: "proj_test",
+        status: "blocked",
+        limit: 10
+      }))).toHaveLength(1);
+
+      const quarantined = await repo.loadIronsideImportContext({
+        projectId: "proj_test",
+        integrationId: integration.id,
+        limit: 1
+      });
+      await repo.updateIronsideIntegration("proj_test", integration.id, {}, remote, {
+        remoteProjectId: quarantined.remoteProjectId,
+        revalidationRequired: true,
+        connectionRevision: quarantined.connectionRevision
+      });
+      const blocked = await repo.listBlockedIronsideFeedbackSyncJobs("proj_test", integration.id);
+      expect(blocked).toEqual([job]);
+      await repo.markFeedbackSyncPending(job);
+      await processFeedbackSyncJob(repo, job, () => ({
+        async getContext() { return remote; },
+        async createFeedback() {}
+      }));
+      expect((await repo.listFeedbackSyncJobs({
+        projectId: "proj_test",
+        status: "synced",
+        limit: 10
+      }))).toHaveLength(1);
     } finally {
       await cleanup();
     }

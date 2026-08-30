@@ -2598,6 +2598,7 @@ export class PgRepository implements CoevalRepository {
           remoteProjectName: remote?.project.name ?? "Ironside project",
           protocolVersion: remote?.protocolVersion ?? "ironside/evaluator/v1",
           settlementQuietPeriodSeconds: remote?.settlement.quietPeriodSeconds ?? 0,
+          connectionRevision: 1,
           skillVersionId,
           sync: { cursor: null }
         }),
@@ -2628,7 +2629,7 @@ export class PgRepository implements CoevalRepository {
     integrationId: string,
     input: UpdateIronsideIntegrationInput,
     remote?: IronsideEvaluatorContext,
-    expected?: { remoteProjectId: string; revalidationRequired: boolean }
+    expected?: { remoteProjectId: string; revalidationRequired: boolean; connectionRevision: number }
   ): Promise<IronsideIntegration> {
     const skillVersionId = input.skillVersionId === undefined
       ? null
@@ -2649,6 +2650,7 @@ export class PgRepository implements CoevalRepository {
                'settlementQuietPeriodSeconds', $12::integer
              ))
            ) || case when $9::text is null then '{}'::jsonb else jsonb_build_object(
+             'connectionRevision', coalesce((config ->> 'connectionRevision')::bigint, 0) + 1,
              'nativeUpgrade',
              coalesce(config -> 'nativeUpgrade', '{}'::jsonb) || jsonb_build_object(
                'requiresRevalidation', false,
@@ -2664,6 +2666,7 @@ export class PgRepository implements CoevalRepository {
                (config #>> '{nativeUpgrade,requiresRevalidation}')::boolean,
                false
              ) = $14::boolean
+             and coalesce((config ->> 'connectionRevision')::bigint, 0) = $15::bigint
            )
          )
        returning id, project_id, provider, config, poll_enabled, poll_interval_seconds, poll_limit, last_tested_at, last_test_result, created_at`,
@@ -2681,7 +2684,8 @@ export class PgRepository implements CoevalRepository {
         remote?.protocolVersion ?? null,
         remote?.settlement.quietPeriodSeconds ?? null,
         expected?.remoteProjectId ?? null,
-        expected?.revalidationRequired ?? false
+        expected?.revalidationRequired ?? false,
+        expected?.connectionRevision ?? 0
       ]
     );
     const row = result.rows[0];
@@ -2716,7 +2720,7 @@ export class PgRepository implements CoevalRepository {
   async quarantineIronsideIntegration(
     projectId: string,
     integrationId: string,
-    expectedRemoteProjectId: string,
+    expected: { remoteProjectId: string; connectionRevision: number },
     result: IronsideConnectionTestResult
   ): Promise<boolean> {
     const updated = await this.pool.query(
@@ -2725,6 +2729,7 @@ export class PgRepository implements CoevalRepository {
            last_tested_at = $3::timestamptz,
            last_test_result = $4::jsonb,
            config = config || jsonb_build_object(
+             'connectionRevision', coalesce((config ->> 'connectionRevision')::bigint, 0) + 1,
              'nativeUpgrade',
              coalesce(config -> 'nativeUpgrade', '{}'::jsonb) || jsonb_build_object(
                'requiresRevalidation', true,
@@ -2733,13 +2738,15 @@ export class PgRepository implements CoevalRepository {
              )
            )
        where id = $1 and project_id = $2 and provider = 'ironside'
-         and coalesce(config ->> 'remoteProjectId', 'unverified:' || id) = $5`,
+         and coalesce(config ->> 'remoteProjectId', 'unverified:' || id) = $5
+         and coalesce((config ->> 'connectionRevision')::bigint, 0) = $6::bigint`,
       [
         integrationId,
         projectId,
         result.checkedAt,
         JSON.stringify(result),
-        expectedRemoteProjectId
+        expected.remoteProjectId,
+        expected.connectionRevision
       ]
     );
     if (updated.rowCount) return true;
@@ -2885,6 +2892,7 @@ export class PgRepository implements CoevalRepository {
       remoteProjectName?: string;
       protocolVersion?: string;
       settlementQuietPeriodSeconds?: number;
+      connectionRevision?: number;
       sync?: unknown;
       nativeUpgrade?: { requiresRevalidation?: boolean };
     };
@@ -2928,7 +2936,8 @@ export class PgRepository implements CoevalRepository {
       limit: job.limit,
       redactionConfig: config.redaction ?? {},
       syncState,
-      revalidationRequired: config.nativeUpgrade?.requiresRevalidation === true
+      revalidationRequired: config.nativeUpgrade?.requiresRevalidation === true,
+      connectionRevision: Number(config.connectionRevision ?? 0)
     };
   }
 
@@ -6395,6 +6404,7 @@ export class PgRepository implements CoevalRepository {
       remoteProjectName?: string;
       protocolVersion?: string;
       settlementQuietPeriodSeconds?: number;
+      connectionRevision?: number;
       skillVersionId?: string | null;
       nativeUpgrade?: { requiresRevalidation?: boolean };
     };
@@ -6449,6 +6459,7 @@ export class PgRepository implements CoevalRepository {
             protocolVersion: "ironside/evaluator/v1",
             settlementQuietPeriodSeconds: Number(config.settlementQuietPeriodSeconds ?? 0),
             revalidationRequired: config.nativeUpgrade?.requiresRevalidation === true,
+            connectionRevision: Number(config.connectionRevision ?? 0),
             pollEnabled: true,
             pollIntervalSeconds: 300,
             pollLimit: 25,
@@ -6510,6 +6521,48 @@ export class PgRepository implements CoevalRepository {
       [job.feedbackSyncJobId, job.projectId, error instanceof Error ? error.message : String(error)]
     );
     await this.refreshSyncBackCoverage(job.projectId);
+  }
+
+  async markFeedbackSyncBlocked(job: FeedbackSyncJob, error: unknown): Promise<void> {
+    await this.pool.query(
+      `update feedback_sync_jobs
+          set status = 'blocked', last_error = $3
+        where id = $1 and project_id = $2`,
+      [job.feedbackSyncJobId, job.projectId, error instanceof Error ? error.message : String(error)]
+    );
+    await this.refreshSyncBackCoverage(job.projectId);
+  }
+
+  async markFeedbackSyncPending(job: FeedbackSyncJob): Promise<void> {
+    await this.pool.query(
+      `update feedback_sync_jobs
+          set status = 'pending', last_error = null
+        where id = $1 and project_id = $2 and status = 'blocked'`,
+      [job.feedbackSyncJobId, job.projectId]
+    );
+  }
+
+  async listBlockedIronsideFeedbackSyncJobs(
+    projectId: string,
+    integrationId: string
+  ): Promise<FeedbackSyncJob[]> {
+    const result = await this.pool.query(
+      `select fsj.id
+         from feedback_sync_jobs fsj
+         join judge_runs jr on jr.id = fsj.judge_run_id and jr.project_id = fsj.project_id
+         join cases c on c.id = jr.case_id and c.project_id = fsj.project_id
+         join raw_traces rt on rt.id = c.raw_trace_id and rt.project_id = fsj.project_id
+        where fsj.project_id = $1
+          and fsj.provider = 'ironside'
+          and fsj.status = 'blocked'
+          and rt.source_integration_id = $2
+        order by fsj.created_at asc, fsj.id asc`,
+      [projectId, integrationId]
+    );
+    return result.rows.map((row) => ({
+      projectId,
+      feedbackSyncJobId: String(row.id)
+    }));
   }
 
   // Sync path (demo / no-queue): pending insert + inline gate. The queue path
@@ -8345,7 +8398,7 @@ function gateFailureMessage(error: unknown): string {
 
 function toFeedbackSyncStatus(value: unknown): FeedbackSyncStatus {
   const status = String(value);
-  return ["pending", "sending", "synced", "failed"].includes(status)
+  return ["pending", "sending", "synced", "failed", "blocked"].includes(status)
     ? status as FeedbackSyncStatus
     : "pending";
 }

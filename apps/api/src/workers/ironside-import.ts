@@ -79,7 +79,10 @@ export async function processIronsideImportJob(
       const quarantined = await repository.quarantineIronsideIntegration(
         context.projectId,
         context.id,
-        context.remoteProjectId,
+        {
+          remoteProjectId: context.remoteProjectId,
+          connectionRevision: context.connectionRevision
+        },
         {
         ok: false,
         checkedAt,

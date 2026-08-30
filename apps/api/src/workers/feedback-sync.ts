@@ -23,6 +23,10 @@ export async function registerFeedbackSyncWorker(
     try {
       await processFeedbackSyncJob(repository, data, createWriter);
     } catch (error) {
+      if (error instanceof IronsideIntegrationRevalidationRequiredError) {
+        console.warn(`feedback.sync job ${id} parked until Ironside revalidation`);
+        return;
+      }
       if (isPermanentFeedbackSyncError(error)) {
         console.error(`feedback.sync job ${id} permanently failed; dropping:`, error);
         return;
@@ -63,7 +67,10 @@ export async function processFeedbackSyncJob(
         const quarantined = await repository.quarantineIronsideIntegration(
           context.projectId,
           integration.id,
-          integration.remoteProjectId,
+          {
+            remoteProjectId: integration.remoteProjectId,
+            connectionRevision: integration.connectionRevision
+          },
           {
             ok: false,
             checkedAt,
@@ -96,7 +103,14 @@ export async function processFeedbackSyncJob(
     });
     await repository.markFeedbackSyncSucceeded(parsed);
   } catch (error) {
-    await repository.markFeedbackSyncFailed(parsed, error);
+    if (error instanceof IronsideIntegrationRevalidationRequiredError) {
+      // Quarantine is an operator-recoverable pause, not a terminal delivery
+      // failure. Park the durable job so a successful connection test can
+      // enqueue it again without spending through a finite queue retry budget.
+      await repository.markFeedbackSyncBlocked(parsed, error);
+    } else {
+      await repository.markFeedbackSyncFailed(parsed, error);
+    }
     throw error;
   }
 }

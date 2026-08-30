@@ -82,8 +82,11 @@ polling state for every connection that still requires revalidation. The API,
 poll scheduler, and UI all enforce the same flag. A credential or URL cannot be
 changed while that flag is set; revalidate the unchanged connection or
 disconnect it explicitly. Remote-mismatch quarantine uses the expected stored
-identity as a compare-and-set guard, so a stale worker cannot undo a newer
-successful revalidation.
+identity and a monotonic connection revision as compare-and-set guards, so a
+stale worker cannot undo a newer successful revalidation. Feedback writeback
+that encounters quarantine is parked durably rather than exhausted through the
+queue retry budget; the next successful connection test re-enqueues those jobs
+with their original idempotent feedback ids.
 
 Only one verified Ironside connection may exist per Coeval project. Repeating
 the create request returns 409; credential rotation uses update, and changing

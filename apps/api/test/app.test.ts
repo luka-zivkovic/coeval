@@ -28,6 +28,22 @@ class PurposeCapturingRepository extends DemoRepository {
   }
 }
 
+class BlockedIronsideFeedbackRepository extends DemoRepository {
+  readonly blockedFeedback: FeedbackSyncJob[] = [{
+    projectId: "proj_langsmith_support",
+    feedbackSyncJobId: "fsync_blocked_revalidation"
+  }];
+  readonly redispatched: FeedbackSyncJob[] = [];
+
+  override async listBlockedIronsideFeedbackSyncJobs(): Promise<FeedbackSyncJob[]> {
+    return [...this.blockedFeedback];
+  }
+
+  override async markFeedbackSyncPending(job: FeedbackSyncJob): Promise<void> {
+    this.redispatched.push(job);
+  }
+}
+
 describe("Coeval Hono API", () => {
   const app = createApp();
 
@@ -4882,9 +4898,11 @@ describe("dataset examples (Skill Bench ingestion)", () => {
   });
 
   it("verifies an Ironside project before saving and rejects cross-project credential rotation", async () => {
-    const repository = new DemoRepository();
+    const repository = new BlockedIronsideFeedbackRepository();
+    const queue = new CapturingQueue();
     let forceRemoteMismatch = false;
     const appWithIronside = createApp(repository, {
+      queue,
       ironsideClientFactory: ({ apiKey }) => {
         const projectId = forceRemoteMismatch || apiKey === "key_other_project"
           ? "remote_other"
@@ -5013,6 +5031,12 @@ describe("dataset examples (Skill Bench ingestion)", () => {
       { method: "POST" }
     );
     expect(revalidated.status).toBe(200);
+    expect(queue.jobs).toContainEqual({
+      name: "feedback.sync",
+      data: repository.blockedFeedback[0],
+      options: { retryLimit: 5, retryBackoff: true }
+    });
+    expect(repository.redispatched).toEqual(repository.blockedFeedback);
     const enabled = await appWithIronside.request(
       `/api/integrations/ironside/${created.integration.id}`,
       {

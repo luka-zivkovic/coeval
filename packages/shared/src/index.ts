@@ -5115,7 +5115,7 @@ export const EvalItemJobSchema = z.object({
 });
 export type EvalItemJob = z.infer<typeof EvalItemJobSchema>;
 
-export const FeedbackSyncStatusSchema = z.enum(["pending", "sending", "synced", "failed"]);
+export const FeedbackSyncStatusSchema = z.enum(["pending", "sending", "synced", "failed", "blocked"]);
 export type FeedbackSyncStatus = z.infer<typeof FeedbackSyncStatusSchema>;
 
 export const FeedbackSyncJobListItemSchema = z.object({

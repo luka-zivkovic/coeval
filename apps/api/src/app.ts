@@ -4630,7 +4630,8 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         remote,
         {
           remoteProjectId: current.remoteProjectId,
-          revalidationRequired: current.revalidationRequired
+          revalidationRequired: current.revalidationRequired,
+          connectionRevision: current.connectionRevision
         }
       );
       return c.json({ integration });
@@ -4746,7 +4747,10 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       await repository.quarantineIronsideIntegration(
         projectId,
         integrationId,
-        context.remoteProjectId,
+        {
+          remoteProjectId: context.remoteProjectId,
+          connectionRevision: context.connectionRevision
+        },
         failed
       );
       return c.json(failed, 409);
@@ -4759,7 +4763,8 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         remote,
         {
           remoteProjectId: context.remoteProjectId,
-          revalidationRequired: context.revalidationRequired
+          revalidationRequired: context.revalidationRequired,
+          connectionRevision: context.connectionRevision
         }
       );
     } catch (error) {
@@ -4771,6 +4776,25 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       }, 409);
     }
     await repository.recordIronsideConnectionTest(projectId, integrationId, result);
+    if (options.queue) {
+      const blockedFeedback = await repository.listBlockedIronsideFeedbackSyncJobs(
+        projectId,
+        integrationId
+      );
+      for (const job of blockedFeedback) {
+        try {
+          await options.queue.send("feedback.sync", job, { retryLimit: 5, retryBackoff: true });
+          // The worker may finish before this conditional transition. PG only
+          // changes `blocked` rows, so a fast `synced` result cannot regress.
+          await repository.markFeedbackSyncPending(job);
+        } catch (error) {
+          // Keep the durable row blocked. A later successful connection test
+          // retries dispatch without losing the assessment or duplicating the
+          // upstream score id.
+          console.error(`Unable to requeue blocked Ironside feedback ${job.feedbackSyncJobId}:`, error);
+        }
+      }
+    }
     return c.json(result);
   });
 

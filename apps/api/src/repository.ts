@@ -389,13 +389,13 @@ export interface CoevalRepository {
     integrationId: string,
     input: UpdateIronsideIntegrationInput,
     remote?: IronsideEvaluatorContext,
-    expected?: { remoteProjectId: string; revalidationRequired: boolean }
+    expected?: { remoteProjectId: string; revalidationRequired: boolean; connectionRevision: number }
   ): Promise<IronsideIntegration>;
   recordIronsideConnectionTest(projectId: string, integrationId: string, result: IronsideConnectionTestResult): Promise<void>;
   quarantineIronsideIntegration(
     projectId: string,
     integrationId: string,
-    expectedRemoteProjectId: string,
+    expected: { remoteProjectId: string; connectionRevision: number },
     result: IronsideConnectionTestResult
   ): Promise<boolean>;
   deleteIronsideIntegration(projectId: string, integrationId: string, context: { actorUserId?: string | undefined }): Promise<void>;
@@ -410,6 +410,9 @@ export interface CoevalRepository {
   listFeedbackSyncJobs(input: ListFeedbackSyncJobsInput): Promise<FeedbackSyncJobListItem[]>;
   markFeedbackSyncSucceeded(job: FeedbackSyncJob): Promise<void>;
   markFeedbackSyncFailed(job: FeedbackSyncJob, error: unknown): Promise<void>;
+  markFeedbackSyncBlocked(job: FeedbackSyncJob, error: unknown): Promise<void>;
+  markFeedbackSyncPending(job: FeedbackSyncJob): Promise<void>;
+  listBlockedIronsideFeedbackSyncJobs(projectId: string, integrationId: string): Promise<FeedbackSyncJob[]>;
   createSkillVersion(skillId: string, input: CreateSkillVersionInput, context: CreateSkillVersionContext): Promise<{
     version: SkillVersion;
     regressionRun: RegressionRunResult;
@@ -2750,7 +2753,8 @@ export class DemoRepository implements CoevalRepository {
       pollIntervalMs: pollIntervalSeconds * 1000,
       redactionConfig: input.redaction ?? {},
       syncState: { cursor: null },
-      revalidationRequired: false
+      revalidationRequired: false,
+      connectionRevision: 1
     });
     return integration;
   }
@@ -2766,7 +2770,7 @@ export class DemoRepository implements CoevalRepository {
     integrationId: string,
     input: UpdateIronsideIntegrationInput,
     remote?: IronsideEvaluatorContext,
-    expected?: { remoteProjectId: string; revalidationRequired: boolean }
+    expected?: { remoteProjectId: string; revalidationRequired: boolean; connectionRevision: number }
   ): Promise<IronsideIntegration> {
     const integration = this.ironsideIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new IronsideIntegrationNotFoundError(integrationId);
@@ -2774,7 +2778,8 @@ export class DemoRepository implements CoevalRepository {
       expected &&
       (
         integration.remoteProjectId !== expected.remoteProjectId ||
-        integration.revalidationRequired !== expected.revalidationRequired
+        integration.revalidationRequired !== expected.revalidationRequired ||
+        integration.connectionRevision !== expected.connectionRevision
       )
     ) {
       throw new IronsideIntegrationChangedError(integrationId);
@@ -2787,6 +2792,7 @@ export class DemoRepository implements CoevalRepository {
       integration.protocolVersion = remote.protocolVersion;
       integration.settlementQuietPeriodSeconds = remote.settlement.quietPeriodSeconds;
       integration.revalidationRequired = false;
+      integration.connectionRevision += 1;
     }
     if (input.pollEnabled !== undefined) integration.pollEnabled = input.pollEnabled;
     if (input.pollIntervalSeconds !== undefined) {
@@ -2813,16 +2819,20 @@ export class DemoRepository implements CoevalRepository {
   async quarantineIronsideIntegration(
     projectId: string,
     integrationId: string,
-    expectedRemoteProjectId: string,
+    expected: { remoteProjectId: string; connectionRevision: number },
     result: IronsideConnectionTestResult
   ): Promise<boolean> {
     const integration = this.ironsideIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) {
       throw new IronsideIntegrationNotFoundError(integrationId);
     }
-    if (integration.remoteProjectId !== expectedRemoteProjectId) return false;
+    if (
+      integration.remoteProjectId !== expected.remoteProjectId ||
+      integration.connectionRevision !== expected.connectionRevision
+    ) return false;
     integration.pollEnabled = false;
     integration.revalidationRequired = true;
+    integration.connectionRevision += 1;
     integration.lastTestedAt = result.checkedAt;
     integration.lastTestResult = result;
     return true;
@@ -5332,6 +5342,33 @@ export class DemoRepository implements CoevalRepository {
     this.feedbackJobLastError.set(job.feedbackSyncJobId, error instanceof Error ? error.message : String(error));
   }
 
+  async markFeedbackSyncBlocked(job: FeedbackSyncJob, error: unknown): Promise<void> {
+    const context = await this.loadFeedbackSyncContext(job);
+    this.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "blocked" });
+    this.feedbackJobLastError.set(job.feedbackSyncJobId, error instanceof Error ? error.message : String(error));
+  }
+
+  async markFeedbackSyncPending(job: FeedbackSyncJob): Promise<void> {
+    const context = this.feedbackJobs.get(job.feedbackSyncJobId);
+    if (!context || context.projectId !== job.projectId) {
+      throw new FeedbackSyncJobNotFoundError(job.feedbackSyncJobId);
+    }
+    if (context.status !== "blocked") return;
+    this.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "pending" });
+    this.feedbackJobLastError.delete(job.feedbackSyncJobId);
+  }
+
+  async listBlockedIronsideFeedbackSyncJobs(projectId: string, integrationId: string): Promise<FeedbackSyncJob[]> {
+    return [...this.feedbackJobs.values()]
+      .filter((job) =>
+        job.projectId === projectId &&
+        job.provider === "ironside" &&
+        job.integration.id === integrationId &&
+        job.status === "blocked"
+      )
+      .map((job) => ({ projectId: job.projectId, feedbackSyncJobId: job.id }));
+  }
+
   async createSkillVersion(skillId: string, input: CreateSkillVersionInput, context: CreateSkillVersionContext): Promise<{
     version: SkillVersion;
     regressionRun: RegressionRunResult;
@@ -5795,6 +5832,8 @@ export interface IronsideImportContext extends IronsideIntegration {
   redactionConfig?: TraceRedactionConfig | undefined;
   syncState: IronsideSyncState;
   revalidationRequired: boolean;
+  /** Monotonic connection identity CAS; never exposed through the public API. */
+  connectionRevision: number;
 }
 
 export interface ClaimIronsideImportTargetsInput {
@@ -5815,10 +5854,11 @@ export interface LangfuseCredentials extends LangfuseIntegration {
 
 export interface IronsideCredentials extends IronsideIntegration {
   apiKey: string;
+  connectionRevision: number;
 }
 
 export type FeedbackSyncProvider = "langsmith" | "langfuse" | "ironside";
-export type FeedbackSyncStatus = "pending" | "sending" | "synced" | "failed";
+export type FeedbackSyncStatus = "pending" | "sending" | "synced" | "failed" | "blocked";
 
 export interface FeedbackSyncJobRecord {
   id: string;
