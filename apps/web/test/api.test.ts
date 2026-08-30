@@ -24,6 +24,7 @@ describe("web API helpers", () => {
       remoteProjectName: "Production agents",
       protocolVersion: "ironside/evaluator/v1" as const,
       settlementQuietPeriodSeconds: 300,
+      revalidationRequired: false,
       pollEnabled: true,
       pollIntervalSeconds: 300,
       pollLimit: 25,

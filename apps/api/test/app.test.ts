@@ -4980,5 +4980,47 @@ describe("dataset examples (Skill Bench ingestion)", () => {
       revalidationRequired: true,
       lastTestResult: { ok: false }
     });
+
+    const blockedRebind = await appWithIronside.request(
+      `/api/integrations/ironside/${created.integration.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ apiKey: "key_primary" })
+      }
+    );
+    expect(blockedRebind.status).toBe(409);
+    await expect(blockedRebind.json()).resolves.toMatchObject({
+      code: "ironside_revalidation_requires_disconnect"
+    });
+
+    const blockedPolling = await appWithIronside.request(
+      `/api/integrations/ironside/${created.integration.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pollEnabled: true })
+      }
+    );
+    expect(blockedPolling.status).toBe(409);
+    await expect(blockedPolling.json()).resolves.toMatchObject({
+      code: "ironside_revalidation_required"
+    });
+
+    forceRemoteMismatch = false;
+    const revalidated = await appWithIronside.request(
+      `/api/integrations/ironside/${created.integration.id}/test`,
+      { method: "POST" }
+    );
+    expect(revalidated.status).toBe(200);
+    const enabled = await appWithIronside.request(
+      `/api/integrations/ironside/${created.integration.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pollEnabled: true })
+      }
+    );
+    expect(enabled.status).toBe(200);
   });
 });

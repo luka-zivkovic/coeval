@@ -4589,9 +4589,28 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     try {
       const projectId = c.get("projectId");
       const integrationId = c.req.param("integrationId");
+      const current = await repository.loadIronsideImportContext({
+        projectId,
+        integrationId,
+        limit: 1
+      });
+      if (
+        current.revalidationRequired &&
+        (parsed.data.url !== undefined || parsed.data.apiKey !== undefined)
+      ) {
+        return c.json({
+          error: "Legacy Ironside credentials cannot be rebound safely. Test the existing connection, or disconnect it before connecting new credentials.",
+          code: "ironside_revalidation_requires_disconnect"
+        }, 409);
+      }
+      if (current.revalidationRequired && parsed.data.pollEnabled === true) {
+        return c.json({
+          error: "Test this Ironside connection successfully before enabling polling.",
+          code: "ironside_revalidation_required"
+        }, 409);
+      }
       let remote: IronsideEvaluatorContext | undefined;
       if (parsed.data.url !== undefined || parsed.data.apiKey !== undefined) {
-        const current = await repository.loadIronsideImportContext({ projectId, integrationId, limit: 1 });
         const client = (options.ironsideClientFactory ?? defaultIronsideAppClientFactory)({
           url: parsed.data.url ?? current.url,
           apiKey: parsed.data.apiKey ?? current.apiKey
@@ -4709,7 +4728,12 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         checkedAt,
         error: "The configured credentials now resolve to a different Ironside project."
       };
-      await repository.quarantineIronsideIntegration(projectId, integrationId, failed);
+      await repository.quarantineIronsideIntegration(
+        projectId,
+        integrationId,
+        context.remoteProjectId,
+        failed
+      );
       return c.json(failed, 409);
     }
     await repository.updateIronsideIntegration(projectId, integrationId, {}, remote);

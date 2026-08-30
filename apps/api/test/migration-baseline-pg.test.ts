@@ -26,6 +26,10 @@ run("frozen database baseline", () => {
         {
           id: "0002_ironside_trace_versions",
           checksum: "67dce4c0e4d362602ec0bfc752632ee8b43f52ce441186ce208a1b10a4a09842",
+        },
+        {
+          id: "0003_ironside_revalidation_hardening",
+          checksum: "e7c6affebd1fe3d59bbb1c981e313345f5065a1917df5f11cf3dd7d1e935fe23",
         }
       ]);
     } finally {
@@ -110,6 +114,7 @@ run("frozen database baseline", () => {
            drop column source_trace_cutover_matched`
       );
       await pool.query("delete from coeval_migrations where id = '0002_ironside_trace_versions'");
+      await pool.query("delete from coeval_migrations where id = '0003_ironside_revalidation_hardening'");
 
       await pool.query("insert into organizations (id, name) values ('org_upgrade', 'Upgrade')");
       await pool.query(
@@ -224,6 +229,7 @@ run("frozen database baseline", () => {
       expect(applied.rows).toEqual([
         { id: "0001_baseline" },
         { id: "0002_ironside_trace_versions" },
+        { id: "0003_ironside_revalidation_hardening" },
         { id: "0055_evaluator_lifecycle" },
       ]);
     } finally {

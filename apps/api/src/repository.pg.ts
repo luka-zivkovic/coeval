@@ -2583,15 +2583,7 @@ export class PgRepository implements CoevalRepository {
       `insert into integrations (id, project_id, provider, encrypted_credentials, config, poll_enabled, poll_interval_seconds, poll_limit)
        values ($1,$2,$3,$4,$5,$6,$7,$8)
        on conflict (project_id, provider)
-       do update set encrypted_credentials = excluded.encrypted_credentials,
-                     config = excluded.config,
-                     poll_enabled = $6,
-                     poll_interval_seconds = $7,
-                     poll_limit = $8,
-                     last_tested_at = null,
-                     last_test_result = null
-       where integrations.config ->> 'remoteProjectId' is null
-          or integrations.config ->> 'remoteProjectId' like 'unverified:%'
+       do nothing
        returning id, project_id, provider, config, poll_enabled, poll_interval_seconds, poll_limit, last_tested_at, last_test_result, created_at`,
       [
         `int_${randomUUID()}`,
@@ -2697,8 +2689,9 @@ export class PgRepository implements CoevalRepository {
   async quarantineIronsideIntegration(
     projectId: string,
     integrationId: string,
+    expectedRemoteProjectId: string,
     result: IronsideConnectionTestResult
-  ): Promise<void> {
+  ): Promise<boolean> {
     const updated = await this.pool.query(
       `update integrations
        set poll_enabled = false,
@@ -2712,10 +2705,24 @@ export class PgRepository implements CoevalRepository {
                'quarantineReason', coalesce($4::jsonb ->> 'error', 'remote project mismatch')
              )
            )
-       where id = $1 and project_id = $2 and provider = 'ironside'`,
-      [integrationId, projectId, result.checkedAt, JSON.stringify(result)]
+       where id = $1 and project_id = $2 and provider = 'ironside'
+         and coalesce(config ->> 'remoteProjectId', 'unverified:' || id) = $5`,
+      [
+        integrationId,
+        projectId,
+        result.checkedAt,
+        JSON.stringify(result),
+        expectedRemoteProjectId
+      ]
     );
-    if (!updated.rowCount) throw new IronsideIntegrationNotFoundError(integrationId);
+    if (updated.rowCount) return true;
+    const exists = await this.pool.query(
+      `select 1 from integrations
+        where id = $1 and project_id = $2 and provider = 'ironside'`,
+      [integrationId, projectId]
+    );
+    if (!exists.rowCount) throw new IronsideIntegrationNotFoundError(integrationId);
+    return false;
   }
 
   async deleteIronsideIntegration(projectId: string, integrationId: string, context: { actorUserId?: string | undefined }): Promise<void> {
@@ -2771,6 +2778,10 @@ export class PgRepository implements CoevalRepository {
          from integrations i
          where i.provider = 'ironside'
            and i.poll_enabled = true
+           and coalesce(
+             (i.config #>> '{nativeUpgrade,requiresRevalidation}')::boolean,
+             false
+           ) = false
            and exists (
              select 1
              from skill_versions sv
@@ -2790,6 +2801,10 @@ export class PgRepository implements CoevalRepository {
        where i.id = due.id
          and i.provider = 'ironside'
          and i.poll_enabled = true
+         and coalesce(
+           (i.config #>> '{nativeUpgrade,requiresRevalidation}')::boolean,
+           false
+         ) = false
          and (
            i.last_polled_at is null
            or i.last_polled_at <= $1::timestamptz - (greatest(i.poll_interval_seconds, 1) || ' seconds')::interval
@@ -6354,6 +6369,7 @@ export class PgRepository implements CoevalRepository {
       protocolVersion?: string;
       settlementQuietPeriodSeconds?: number;
       skillVersionId?: string | null;
+      nativeUpgrade?: { requiresRevalidation?: boolean };
     };
     const credentials = decryptJson<{ apiKey?: string; publicKey?: string; secretKey?: string }>(String(row.encrypted_credentials));
     if (provider === "langsmith" && !credentials.apiKey) throw new FeedbackSyncCredentialsMissingError(job.feedbackSyncJobId);
@@ -6405,6 +6421,7 @@ export class PgRepository implements CoevalRepository {
             remoteProjectName: config.remoteProjectName ?? "Unverified Ironside project",
             protocolVersion: "ironside/evaluator/v1",
             settlementQuietPeriodSeconds: Number(config.settlementQuietPeriodSeconds ?? 0),
+            revalidationRequired: config.nativeUpgrade?.requiresRevalidation === true,
             pollEnabled: true,
             pollIntervalSeconds: 300,
             pollLimit: 25,
@@ -8146,6 +8163,7 @@ function rowToIronsideIntegration(row: Record<string, unknown>): IronsideIntegra
     protocolVersion?: string;
     settlementQuietPeriodSeconds?: number;
     skillVersionId?: string | null;
+    nativeUpgrade?: { requiresRevalidation?: boolean };
   };
   const lastTestResult = row.last_test_result == null
     ? null
@@ -8160,6 +8178,7 @@ function rowToIronsideIntegration(row: Record<string, unknown>): IronsideIntegra
     remoteProjectName: config.remoteProjectName ?? "Unverified Ironside project",
     protocolVersion: "ironside/evaluator/v1",
     settlementQuietPeriodSeconds: Number(config.settlementQuietPeriodSeconds ?? 0),
+    revalidationRequired: config.nativeUpgrade?.requiresRevalidation === true,
     pollEnabled: row.poll_enabled !== false,
     pollIntervalSeconds: Number(row.poll_interval_seconds ?? 300),
     pollLimit: Number(row.poll_limit ?? 25),

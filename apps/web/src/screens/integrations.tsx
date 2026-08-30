@@ -179,13 +179,18 @@ function IntegrationCard({
   const [actionError, setActionError] = useState<string | null>(null);
 
   const lastResult = integration.lastTestResult;
-  const ok = lastResult?.ok ?? false;
+  const revalidationRequired = integration.provider === "ironside" && integration.revalidationRequired;
+  const ok = (lastResult?.ok ?? false) && !revalidationRequired;
   const statusVariant: "pass" | "fail" | "outline" = lastResult
     ? ok
       ? "pass"
       : "fail"
     : "outline";
-  const statusLabel = lastResult ? (ok ? "connected" : "error") : "untested";
+  const statusLabel = revalidationRequired
+    ? "revalidation required"
+    : lastResult
+      ? (ok ? "connected" : "error")
+      : "untested";
 
   const test = async () => {
     setTesting(true);

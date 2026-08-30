@@ -6,6 +6,7 @@ import {
   IRONSIDE_SCORE_COMMENT_MAX_CHARS,
   IronsideClient,
   IronsideHttpError,
+  IronsideTraceTooLargeError,
   IronsideTraceVersionMismatchError,
   ironsideTraceToTraceImport
 } from "../src/lib/ironside.js";
@@ -249,7 +250,7 @@ describe("Ironside versioned feed import", () => {
       .resolves.toMatchObject({ syncState: { cursor: "cursor_v2" } });
   });
 
-  it.each([404, 409] as const)("advances past a version whose detail becomes unavailable (%s)", async (status) => {
+  it.each([404, 409] as const)("retains the page cursor when detail becomes unavailable (%s)", async (status) => {
     const queue = new CapturingQueue();
     const repository = new DemoRepository();
     const integration = await repository.createIronsideIntegration(PROJECT_ID, {
@@ -264,9 +265,69 @@ describe("Ironside versioned feed import", () => {
       },
       async getTrace() { throw new IronsideHttpError("changed", status, "getTrace"); }
     }));
-    expect(result).toEqual({ imported: 0, queued: 0, scanned: 1, drained: true });
+    expect(result).toEqual({ imported: 0, queued: 0, scanned: 1, drained: false });
     await expect(repository.loadIronsideImportContext({ projectId: PROJECT_ID, integrationId: integration.id, limit: 25 }))
-      .resolves.toMatchObject({ syncState: { cursor: "cursor_after" } });
+      .resolves.toMatchObject({ syncState: { cursor: null } });
+  });
+
+  it("skips an oversized trace explicitly instead of judging truncated context", async () => {
+    const queue = new CapturingQueue();
+    const repository = new PurposeCapturingRepository();
+    const integration = await repository.createIronsideIntegration(PROJECT_ID, {
+      url: "http://ironside.test:18788", apiKey: "ironside_sk_test"
+    }, remoteContext);
+    const observations = Array.from({ length: 51 }, (_, index) => ({
+      id: `obs_${index}`,
+      parentObservationId: null,
+      type: "span" as const,
+      name: `step-${index}`,
+      startTime: "2026-08-18T15:00:00.000Z",
+      endTime: null,
+      level: "default" as const,
+      statusMessage: null,
+      model: null,
+      modelParameters: {},
+      input: null,
+      output: null,
+      usageDetails: {},
+      costDetails: {},
+      completionStartTime: null,
+      metadata: {},
+      children: []
+    }));
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const result = await processIronsideImportJob(repository, queue, {
+        projectId: PROJECT_ID,
+        integrationId: integration.id,
+        skillVersionId: "skillv_1_2_0",
+        limit: 25
+      }, () => ({
+        async getContext() { return remoteContext; },
+        async listTraces() {
+          return {
+            protocolVersion: "ironside/evaluator/v1",
+            traces: [summary()],
+            nextCursor: "cursor_after_oversized",
+            hasMore: false
+          } as const;
+        },
+        async getTrace() { return traceTree({ observations }); }
+      }));
+      expect(result).toEqual({ imported: 0, queued: 0, scanned: 1, drained: true });
+      expect(repository.imports).toEqual([]);
+      expect(errorLog).toHaveBeenCalledWith(
+        expect.stringContaining("Skipping Ironside trace trace_1 instead of truncating it"),
+        expect.any(IronsideTraceTooLargeError)
+      );
+      await expect(repository.loadIronsideImportContext({
+        projectId: PROJECT_ID,
+        integrationId: integration.id,
+        limit: 25
+      })).resolves.toMatchObject({ syncState: { cursor: "cursor_after_oversized" } });
+    } finally {
+      errorLog.mockRestore();
+    }
   });
 
   it("bounds adversarial empty pagination while preserving the latest cursor", async () => {
@@ -493,5 +554,29 @@ describe("Ironside trace mapping", () => {
     expect(imported.sourceTraceId).toBe("trace_1");
     expect(imported.metadata).toMatchObject({ source: "ironside", sourceTraceVersion: TRACE_VERSION_1 });
     expect(imported.steps?.map((step) => step.name)).toEqual(["turn"]);
+  });
+
+  it("rejects an oversized observation tree instead of silently truncating it", () => {
+    const observations = Array.from({ length: 51 }, (_, index) => ({
+      id: `obs_${index}`,
+      parentObservationId: null,
+      type: "span" as const,
+      name: `step-${index}`,
+      startTime: "2026-08-18T15:00:00.000Z",
+      endTime: null,
+      level: "default" as const,
+      statusMessage: null,
+      model: null,
+      modelParameters: {},
+      input: null,
+      output: null,
+      usageDetails: {},
+      costDetails: {},
+      completionStartTime: null,
+      metadata: {},
+      children: []
+    }));
+    expect(() => ironsideTraceToTraceImport(traceTree({ observations })))
+      .toThrow(IronsideTraceTooLargeError);
   });
 });

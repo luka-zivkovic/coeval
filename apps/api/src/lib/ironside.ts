@@ -41,6 +41,20 @@ export class IronsideTraceVersionMismatchError extends Error {
   }
 }
 
+export class IronsideTraceTooLargeError extends Error {
+  constructor(
+    readonly traceId: string,
+    readonly observationCount: number,
+    readonly maximumObservationCount: number
+  ) {
+    super(
+      `Ironside trace ${traceId} has ${observationCount} observations; ` +
+      `Coeval accepts at most ${maximumObservationCount} without truncation`
+    );
+    this.name = "IronsideTraceTooLargeError";
+  }
+}
+
 export interface ListIronsideTracesInput {
   cursor?: string | undefined;
   limit: number;
@@ -153,10 +167,20 @@ function boundedIronsideScoreComment(comment: string | undefined): string | unde
 }
 
 export function ironsideTraceToTraceImport(trace: IronsideEvaluatorTrace): ManualTraceImportInput {
+  const pending = [...trace.observations];
+  let observationCount = 0;
+  while (pending.length > 0) {
+    const node = pending.pop()!;
+    observationCount += 1;
+    if (observationCount > MAX_TRACE_STEPS) {
+      throw new IronsideTraceTooLargeError(trace.id, observationCount, MAX_TRACE_STEPS);
+    }
+    pending.push(...node.children);
+  }
+
   const steps: TraceStep[] = [];
   const flatten = (nodes: IronsideEvaluatorObservationNode[]): void => {
     for (const node of nodes) {
-      if (steps.length >= MAX_TRACE_STEPS) return;
       steps.push({
         ...(node.name ? { name: node.name } : {}),
         input: node.input ?? null,

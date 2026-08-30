@@ -386,7 +386,12 @@ export interface CoevalRepository {
   createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration>;
   updateIronsideIntegration(projectId: string, integrationId: string, input: UpdateIronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration>;
   recordIronsideConnectionTest(projectId: string, integrationId: string, result: IronsideConnectionTestResult): Promise<void>;
-  quarantineIronsideIntegration(projectId: string, integrationId: string, result: IronsideConnectionTestResult): Promise<void>;
+  quarantineIronsideIntegration(
+    projectId: string,
+    integrationId: string,
+    expectedRemoteProjectId: string,
+    result: IronsideConnectionTestResult
+  ): Promise<boolean>;
   deleteIronsideIntegration(projectId: string, integrationId: string, context: { actorUserId?: string | undefined }): Promise<void>;
   claimDueIronsideImportTargets(input: ClaimIronsideImportTargetsInput): Promise<IronsideImportTarget[]>;
   loadIronsideImportContext(job: IronsideImportJob): Promise<IronsideImportContext>;
@@ -2697,11 +2702,9 @@ export class DemoRepository implements CoevalRepository {
   async createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration> {
     const existing = [...this.ironsideIntegrations.values()]
       .find((integration) => integration.projectId === projectId);
-    if (existing && !existing.remoteProjectId.startsWith("unverified:")) {
-      throw new IronsideIntegrationAlreadyExistsError(projectId);
-    }
-    const id = existing?.id ?? `int_${randomUUID()}`;
-    const createdAt = existing?.createdAt ?? new Date().toISOString();
+    if (existing) throw new IronsideIntegrationAlreadyExistsError(projectId);
+    const id = `int_${randomUUID()}`;
+    const createdAt = new Date().toISOString();
     const pollEnabled = input.pollEnabled ?? true;
     const pollIntervalSeconds = input.pollIntervalSeconds ?? 300;
     const pollLimit = input.pollLimit ?? 25;
@@ -2718,6 +2721,7 @@ export class DemoRepository implements CoevalRepository {
       remoteProjectName: remote?.project.name ?? "Ironside project",
       protocolVersion: remote?.protocolVersion ?? "ironside/evaluator/v1",
       settlementQuietPeriodSeconds: remote?.settlement.quietPeriodSeconds ?? 0,
+      revalidationRequired: false,
       pollEnabled,
       pollIntervalSeconds,
       pollLimit,
@@ -2781,16 +2785,19 @@ export class DemoRepository implements CoevalRepository {
   async quarantineIronsideIntegration(
     projectId: string,
     integrationId: string,
+    expectedRemoteProjectId: string,
     result: IronsideConnectionTestResult
-  ): Promise<void> {
+  ): Promise<boolean> {
     const integration = this.ironsideIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) {
       throw new IronsideIntegrationNotFoundError(integrationId);
     }
+    if (integration.remoteProjectId !== expectedRemoteProjectId) return false;
     integration.pollEnabled = false;
     integration.revalidationRequired = true;
     integration.lastTestedAt = result.checkedAt;
     integration.lastTestResult = result;
+    return true;
   }
 
   async deleteIronsideIntegration(projectId: string, integrationId: string): Promise<void> {
@@ -5849,6 +5856,7 @@ function toPublicIronsideIntegration(integration: IronsideImportContext): Ironsi
     remoteProjectName: integration.remoteProjectName,
     protocolVersion: integration.protocolVersion,
     settlementQuietPeriodSeconds: integration.settlementQuietPeriodSeconds,
+    revalidationRequired: integration.revalidationRequired,
     pollEnabled: integration.pollEnabled,
     pollIntervalSeconds: integration.pollIntervalSeconds,
     pollLimit: integration.pollLimit,

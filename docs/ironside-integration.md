@@ -26,11 +26,13 @@ item by `(traceId, traceVersion)`. Coeval stores that pair as the source
 identity, so a reopened trace creates a new immutable case snapshot instead of
 being discarded as a duplicate.
 
-If a trace reopens between listing and detail retrieval, Ironside returns 409.
-Coeval skips that obsolete version and continues: Ironside publishes the newer
-settled version as a subsequent feed activity. A 404 is also skipped because
-retention may remove a trace between list and detail. Cursor state is committed
-only after imported cases have durable judging work. Poll requests have a
+If a trace reopens, is retained away, or becomes unsettled between listing and
+detail retrieval, Ironside returns 404 or 409. Coeval retains the page-start
+cursor and yields. Exact source dedupe makes the already imported prefix safe
+to replay; the next list either exposes the settled version or advances past a
+retention orphan. This also prevents a quiet-period configuration increase from
+silently skipping a trace that produces no new feed activity. Cursor state is
+committed only after imported cases have durable judging work. Poll requests have a
 15-second transport timeout, and one import job yields after 100 pages or a
 30-second aggregate budget (plus at most the one in-flight request timeout) so
 an upstream that keeps returning empty changing pages cannot monopolize a
@@ -39,6 +41,10 @@ exact source dedupe makes its already-visited prefix safe to replay.
 Concurrent workers update the opaque cursor with compare-and-set semantics, so
 a slower stale run cannot move the connection behind a cursor already saved by
 a newer run.
+
+Coeval does not silently flatten only part of a trace. A detail tree exceeding
+the current 50-observation case limit is logged and skipped explicitly, with no
+assessment scheduled over incomplete context.
 
 Source identity is `(remote project, traceId, traceVersion)`, including after a
 disconnect and later reconnect. This prevents colliding IDs in two Ironside
@@ -64,6 +70,14 @@ the protocol, remote project, and settlement settings. Polling can then be
 re-enabled from the integration card. Imports never run under a synthetic
 remote identity, and enabling polling is unavailable until the latest
 connection test succeeds.
+
+Migration `0003_ironside_revalidation_hardening` clears legacy test success and
+polling state for every connection that still requires revalidation. The API,
+poll scheduler, and UI all enforce the same flag. A credential or URL cannot be
+changed while that flag is set; revalidate the unchanged connection or
+disconnect it explicitly. Remote-mismatch quarantine uses the expected stored
+identity as a compare-and-set guard, so a stale worker cannot undo a newer
+successful revalidation.
 
 Only one verified Ironside connection may exist per Coeval project. Repeating
 the create request returns 409; credential rotation uses update, and changing

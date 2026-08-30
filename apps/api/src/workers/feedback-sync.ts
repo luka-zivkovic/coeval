@@ -53,15 +53,17 @@ export async function processFeedbackSyncJob(
       }
       if (remote.project.id !== integration.remoteProjectId) {
         const checkedAt = new Date().toISOString();
-        await repository.quarantineIronsideIntegration(
+        const quarantined = await repository.quarantineIronsideIntegration(
           context.projectId,
           integration.id,
+          integration.remoteProjectId,
           {
             ok: false,
             checkedAt,
             error: `Configured credentials resolve to Ironside project ${remote.project.id}, expected ${integration.remoteProjectId}`
           }
         );
+        if (!quarantined) throw new Error("Ironside integration changed during identity check");
         throw new IronsideIntegrationRevalidationRequiredError(integration.id);
       }
     }

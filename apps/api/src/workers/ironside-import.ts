@@ -13,6 +13,7 @@ import {
 import {
   IronsideClient,
   IronsideHttpError,
+  IronsideTraceTooLargeError,
   ironsideTraceToTraceImport,
   type IronsideTraceSource
 } from "../lib/ironside.js";
@@ -71,11 +72,17 @@ export async function processIronsideImportJob(
     const remote = await client.getContext();
     if (remote.project.id !== context.remoteProjectId) {
       const checkedAt = new Date().toISOString();
-      await repository.quarantineIronsideIntegration(context.projectId, context.id, {
+      const quarantined = await repository.quarantineIronsideIntegration(
+        context.projectId,
+        context.id,
+        context.remoteProjectId,
+        {
         ok: false,
         checkedAt,
         error: `Configured credentials resolve to Ironside project ${remote.project.id}, expected ${context.remoteProjectId}`
-      });
+        }
+      );
+      if (!quarantined) throw new Error("Ironside integration changed during identity check");
       throw new IronsideIntegrationRevalidationRequiredError(context.id);
     }
 
@@ -113,9 +120,16 @@ export async function processIronsideImportJob(
           tree = await client.getTrace(summary.traceId, summary.traceVersion);
         } catch (error) {
           // A trace can reopen between the feed page and detail request. The
-          // old version is no longer settled; Ironside publishes the newer
-          // version as another feed activity, so advancing this cursor is safe.
-          if (error instanceof IronsideHttpError && (error.status === 404 || error.status === 409)) continue;
+          // old version may be replaced, retained away, or temporarily become
+          // unsettled after a quiet-period change. Retain the page-start cursor
+          // for every 404/409: exact source dedupe makes the prefix replay safe,
+          // and a later list either serves the settled version or advances the
+          // retention orphan itself. Advancing here could permanently skip a
+          // version that receives no new publication.
+          if (error instanceof IronsideHttpError && (error.status === 404 || error.status === 409)) {
+            completedPage = false;
+            break;
+          }
           throw error;
         }
         let row;
@@ -131,6 +145,10 @@ export async function processIronsideImportJob(
           });
         } catch (error) {
           if (error instanceof RecursiveTraceSkippedError) continue;
+          if (error instanceof IronsideTraceTooLargeError) {
+            console.error(`Skipping Ironside trace ${summary.traceId} instead of truncating it:`, error);
+            continue;
+          }
           throw error;
         }
         if (row.created) imported += 1;

@@ -4874,6 +4874,7 @@ export const IronsideIntegrationSchema = z.object({
   remoteProjectName: z.string().min(1),
   protocolVersion: z.literal(IRONSIDE_EVALUATOR_PROTOCOL_VERSION),
   settlementQuietPeriodSeconds: z.number().int().nonnegative(),
+  revalidationRequired: z.boolean(),
   pollEnabled: z.boolean(),
   pollIntervalSeconds: z.number().int().positive(),
   pollLimit: z.number().int().positive().max(100),
