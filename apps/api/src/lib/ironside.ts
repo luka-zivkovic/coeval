@@ -41,6 +41,13 @@ export class IronsideTraceVersionMismatchError extends Error {
   }
 }
 
+export class IronsideTraceIdentityMismatchError extends Error {
+  constructor(readonly expectedTraceId: string, readonly actualTraceId: string) {
+    super(`Ironside returned trace ${actualTraceId}; expected ${expectedTraceId}`);
+    this.name = "IronsideTraceIdentityMismatchError";
+  }
+}
+
 export class IronsideTraceTooLargeError extends Error {
   constructor(
     readonly traceId: string,
@@ -108,6 +115,9 @@ export class IronsideClient implements IronsideTraceSource, LangSmithFeedbackWri
       throw new IronsideHttpError(`Ironside evaluator trace request failed: ${response.status}`, response.status, "getTrace");
     }
     const trace = IronsideEvaluatorTraceSchema.parse(await response.json());
+    if (trace.id !== traceId) {
+      throw new IronsideTraceIdentityMismatchError(traceId, trace.id);
+    }
     if (trace.traceVersion !== traceVersion) {
       throw new IronsideTraceVersionMismatchError(traceVersion, trace.traceVersion);
     }
@@ -185,7 +195,7 @@ export function ironsideTraceToTraceImport(trace: IronsideEvaluatorTrace): Manua
   const flatten = (nodes: IronsideEvaluatorObservationNode[]): void => {
     for (const node of nodes) {
       steps.push({
-        ...(node.name ? { name: node.name } : {}),
+        ...(node.name ? { name: postgresJsonSafeString(node.name) } : {}),
         input: postgresJsonSafeValue(node.input ?? null),
         output: postgresJsonSafeValue(node.output ?? null),
         metadata: postgresJsonSafeValue({
@@ -226,21 +236,48 @@ export function ironsideTraceToTraceImport(trace: IronsideEvaluatorTrace): Manua
 }
 
 /**
- * PostgreSQL jsonb cannot represent U+0000, even though it is legal in JSON
- * strings and can arrive in evaluator payloads. Escape it deterministically
- * in both values and object keys before the raw/normalized payloads reach the
- * repository, so one trace cannot pin the opaque feed cursor forever.
+ * PostgreSQL jsonb cannot represent U+0000 or unpaired UTF-16 surrogates,
+ * even though either can arrive in parsed evaluator payload strings. Encode
+ * them before raw/normalized payloads reach the repository. Backslashes are
+ * escaped first, making the mapping injective: real NUL cannot collide with a
+ * pre-existing literal `\\0`, and encoded object keys cannot overwrite one
+ * another in Object.fromEntries.
  */
 function postgresJsonSafeValue(value: unknown): unknown {
-  if (typeof value === "string") return value.replaceAll("\0", "\\u0000");
+  if (typeof value === "string") return postgresJsonSafeString(value);
   if (Array.isArray(value)) return value.map(postgresJsonSafeValue);
   if (value && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
-        key.replaceAll("\0", "\\u0000"),
+        postgresJsonSafeString(key),
         postgresJsonSafeValue(entry)
       ])
     );
   }
   return value;
+}
+
+function postgresJsonSafeString(value: string): string {
+  let encoded = "";
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code === 0x5c) {
+      encoded += "\\\\";
+    } else if (code === 0) {
+      encoded += "\\0";
+    } else if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        encoded += value.slice(index, index + 2);
+        index += 1;
+      } else {
+        encoded += `\\u${code.toString(16).padStart(4, "0")}`;
+      }
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      encoded += `\\u${code.toString(16).padStart(4, "0")}`;
+    } else {
+      encoded += value.charAt(index);
+    }
+  }
+  return encoded;
 }

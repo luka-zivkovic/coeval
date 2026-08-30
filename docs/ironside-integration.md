@@ -24,7 +24,8 @@ Ironside owns quiet-period settlement. Coeval consumes
 `GET /api/v1/evaluator/traces` using the returned opaque cursor and fetches each
 item by `(traceId, traceVersion)`. Coeval stores that pair as the source
 identity, so a reopened trace creates a new immutable case snapshot instead of
-being discarded as a duplicate.
+being discarded as a duplicate. Detail responses must echo both the requested
+trace ID and version; either mismatch fails before the feed cursor can commit.
 
 If a trace reopens, is retained away, or becomes unsettled between listing and
 detail retrieval, Ironside returns 404 or 409. Coeval retains the page-start
@@ -45,6 +46,11 @@ a newer run.
 Coeval does not silently flatten only part of a trace. A detail tree exceeding
 the current 50-observation case limit is logged and skipped explicitly, with no
 assessment scheduled over incomplete context.
+
+Before PostgreSQL storage, Coeval applies an injective encoding to NUL and
+unpaired UTF-16 surrogate code units across payload values, object keys, and
+observation names. Literal escape-looking input remains distinct, so valid
+upstream strings cannot poison a cursor or collide during normalization.
 
 Source identity is `(remote project, traceId, traceVersion)`, including after a
 disconnect and later reconnect. This prevents colliding IDs in two Ironside

@@ -6,6 +6,7 @@ import {
   IRONSIDE_SCORE_COMMENT_MAX_CHARS,
   IronsideClient,
   IronsideHttpError,
+  IronsideTraceIdentityMismatchError,
   IronsideTraceTooLargeError,
   IronsideTraceVersionMismatchError,
   ironsideTraceToTraceImport
@@ -129,6 +130,20 @@ describe("Ironside native evaluator client", () => {
     expect(requests[0]?.pathname).toBe("/api/v1/evaluator/traces");
     expect(requests[0]?.searchParams.get("cursor")).toBe("cursor_prev");
     expect(requests[1]?.searchParams.get("version")).toBe(TRACE_VERSION_1);
+  });
+
+  it("rejects a detail response for a different trace even when its version matches", async () => {
+    const client = new IronsideClient({
+      url: "http://ironside.test:18788",
+      apiKey: "ironside_sk_test",
+      fetchImpl: (async () => new Response(
+        JSON.stringify(traceTree({ id: "trace_other" })),
+        { status: 200 }
+      )) as typeof fetch
+    });
+
+    await expect(client.getTrace("trace_1", TRACE_VERSION_1))
+      .rejects.toBeInstanceOf(IronsideTraceIdentityMismatchError);
   });
 
   it("writes a criterion-specific native assessment", async () => {
@@ -618,11 +633,15 @@ describe("Ironside trace mapping", () => {
       .toThrow(IronsideTraceTooLargeError);
   });
 
-  it("escapes U+0000 recursively before PostgreSQL jsonb storage", () => {
+  it("injectively encodes PostgreSQL-unsafe strings across values, keys, and step names", () => {
     const imported = ironsideTraceToTraceImport(traceTree({
-      input: { "nul\0key": "before\0after" },
+      input: {
+        "nul\0key": "before\0after",
+        "nul\\0key": "literal\\0value",
+        loneSurrogate: "before\ud800after"
+      },
       observations: [{
-        id: "obs_nul", parentObservationId: null, type: "span", name: null,
+        id: "obs_nul", parentObservationId: null, type: "span", name: "name\0with\udfffunsafe",
         startTime: "2026-08-18T15:00:00.000Z", endTime: null, level: "default",
         statusMessage: null, model: null, modelParameters: {}, input: ["x\0y"], output: null,
         usageDetails: {}, costDetails: {}, completionStartTime: null,
@@ -630,8 +649,14 @@ describe("Ironside trace mapping", () => {
       }]
     }));
     expect(JSON.stringify(imported)).not.toContain("\0");
-    expect(imported.input).toEqual({ "nul\\u0000key": "before\\u0000after" });
-    expect(imported.steps?.[0]?.input).toEqual(["x\\u0000y"]);
-    expect(imported.steps?.[0]?.metadata).toMatchObject({ nested: "m\\u0000n" });
+    expect(imported.input).toEqual({
+      "nul\\0key": "before\\0after",
+      "nul\\\\0key": "literal\\\\0value",
+      loneSurrogate: "before\\ud800after"
+    });
+    expect(Object.keys(imported.input as Record<string, unknown>)).toHaveLength(3);
+    expect(imported.steps?.[0]?.name).toBe("name\\0with\\udfffunsafe");
+    expect(imported.steps?.[0]?.input).toEqual(["x\\0y"]);
+    expect(imported.steps?.[0]?.metadata).toMatchObject({ nested: "m\\0n" });
   });
 });

@@ -12,6 +12,7 @@ import { processLangSmithImportJob } from "../src/workers/langsmith-import.js";
 import { enqueueDueLangSmithImports } from "../src/workers/langsmith-poller.js";
 import { EXCLUDED_VALUE, REDACTED_VALUE } from "../src/lib/redaction.js";
 import { buildAssessmentReceipt, contentDigest, evidenceDigestForReceipt } from "../src/lib/assessment-receipt.js";
+import { ironsideTraceToTraceImport } from "../src/lib/ironside.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
@@ -1448,6 +1449,70 @@ run("PgRepository smoke", () => {
         { source_remote_project_id: "remote_project_a", source_trace_version: "2026-08-01T12:05:00.000Z" },
         { source_remote_project_id: "remote_project_b", source_trace_version: "2026-08-01T12:00:00.000Z" }
       ]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("stores PostgreSQL-unsafe Ironside payload strings without collisions or cursor poison", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_ironside_unsafe_strings");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      const input = ironsideTraceToTraceImport({
+        id: "ironside_unsafe",
+        traceVersion: "2026-08-30T12:00:00.000001Z",
+        timestamp: "2026-08-30T12:00:00.000Z",
+        name: null,
+        userId: null,
+        sessionId: null,
+        environment: null,
+        release: null,
+        version: null,
+        tags: [],
+        metadata: {},
+        input: { "key\0x": "nul\0value", "key\\0x": "literal\\0value", lone: "x\ud800y" },
+        output: null,
+        observations: [{
+          id: "obs_unsafe",
+          parentObservationId: null,
+          type: "span",
+          name: "step\0name\udfff",
+          startTime: "2026-08-30T12:00:00.000Z",
+          endTime: null,
+          level: "default",
+          statusMessage: null,
+          model: null,
+          modelParameters: {},
+          input: null,
+          output: null,
+          usageDetails: {},
+          costDetails: {},
+          completionStartTime: null,
+          metadata: {},
+          children: []
+        }]
+      });
+
+      await expect(repo.importTrace("proj_test", "ironside", input, {
+        ingestionPurpose: "analysis_eligible_ironside",
+        sourceTraceVersion: "2026-08-30T12:00:00.000001Z",
+        sourceRemoteProjectId: "remote_project_a"
+      })).resolves.toMatchObject({ created: true });
+
+      const result = await pool.query<{ raw_payload: unknown }>(
+        `select raw_payload from raw_traces
+          where project_id = 'proj_test' and source_trace_id = 'ironside_unsafe'`
+      );
+      expect(JSON.stringify(result.rows[0]?.raw_payload)).not.toContain("\0");
+      expect((result.rows[0]?.raw_payload as { input: Record<string, unknown> }).input)
+        .toEqual({
+          "key\\0x": "nul\\0value",
+          "key\\\\0x": "literal\\\\0value",
+          lone: "x\\ud800y"
+        });
     } finally {
       await cleanup();
     }
