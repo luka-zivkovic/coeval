@@ -4,16 +4,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Chip, Eyebrow, SectionHead } from "@/components/coeval";
 import {
+  createIronsideIntegration,
   createLangfuseIntegration,
   createLangSmithIntegration,
+  deleteIronsideIntegration,
   deleteLangfuseIntegration,
   deleteLangSmithIntegration,
+  fetchIronsideIntegrations,
   fetchLangfuseIntegrations,
   fetchLangSmithIntegrations,
+  testIronsideIntegration,
   testLangfuseIntegration,
   testLangSmithIntegration,
+  triggerIronsideImport,
   triggerLangfuseImport,
   triggerLangSmithImport,
+  updateIronsideIntegration,
   updateLangfuseIntegration,
   updateLangSmithIntegration
 } from "@/lib/api";
@@ -21,10 +27,27 @@ import { useDashboard } from "@/lib/dashboard-context";
 import { dashboardSkillVersionId } from "@/lib/criterion-scope";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/use-dialog-focus";
-import type { LangfuseIntegration, LangSmithIntegration } from "@coeval/shared";
+import type { IronsideIntegration, LangfuseIntegration, LangSmithIntegration } from "@coeval/shared";
 
-type TraceIntegration = LangSmithIntegration | LangfuseIntegration;
+type TraceIntegration = IronsideIntegration | LangSmithIntegration | LangfuseIntegration;
 type Provider = TraceIntegration["provider"];
+
+function providerLabel(provider: Provider): string {
+  if (provider === "ironside") return "Ironside";
+  if (provider === "langfuse") return "Langfuse";
+  return "LangSmith";
+}
+
+function integrationName(integration: TraceIntegration): string {
+  if (integration.provider === "ironside") return integration.remoteProjectName;
+  return integration.projectName ?? providerLabel(integration.provider);
+}
+
+function integrationUrl(integration: TraceIntegration): string {
+  if (integration.provider === "ironside") return integration.url;
+  return integration.endpointUrl
+    ?? (integration.provider === "langfuse" ? "https://cloud.langfuse.com" : "https://api.smith.langchain.com");
+}
 
 export function IntegrationsScreen() {
   const { dashboard } = useDashboard();
@@ -38,11 +61,12 @@ export function IntegrationsScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [langSmith, langfuse] = await Promise.all([
+      const [ironside, langSmith, langfuse] = await Promise.all([
+        fetchIronsideIntegrations(),
         fetchLangSmithIntegrations(),
         fetchLangfuseIntegrations()
       ]);
-      setIntegrations([...langSmith, ...langfuse].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      setIntegrations([...ironside, ...langSmith, ...langfuse].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -61,14 +85,17 @@ export function IntegrationsScreen() {
         title="Integrations"
         sub="Connect the tracing platform that already records your runs. Coeval imports those traces for evaluation and can send recorded verdicts back as feedback."
         right={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => void load()} disabled={loading}>
               <RefreshCcw /> Refresh
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => setShowAdd("ironside")}>
+              <Plus /> Connect Ironside
             </Button>
             <Button variant="default" size="sm" onClick={() => setShowAdd("langfuse")}>
               <Plus /> Connect Langfuse
             </Button>
-            <Button variant="primary" size="sm" onClick={() => setShowAdd("langsmith")}>
+            <Button variant="default" size="sm" onClick={() => setShowAdd("langsmith")}>
               <Plus /> Connect LangSmith
             </Button>
           </div>
@@ -93,10 +120,13 @@ export function IntegrationsScreen() {
               No integrations connected yet.
             </div>
             <div className="mt-1 max-w-[60ch] mx-auto text-[12px] text-ink-3">
-              Connect LangSmith or Langfuse to import runs for evaluation. Coeval keeps its review
+              Connect Ironside, LangSmith, or Langfuse to import runs for evaluation. Coeval keeps its review
               records here and can send recorded verdicts back to the tracing platform as feedback.
             </div>
-            <Button variant="primary" size="sm" className="mt-4" onClick={() => setShowAdd("langsmith")}>
+            <Button variant="primary" size="sm" className="mt-4" onClick={() => setShowAdd("ironside")}>
+              <Plus /> Connect Ironside
+            </Button>
+            <Button variant="default" size="sm" className="ml-2 mt-4" onClick={() => setShowAdd("langsmith")}>
               <Plus /> Connect LangSmith
             </Button>
             <Button variant="default" size="sm" className="ml-2 mt-4" onClick={() => setShowAdd("langfuse")}>
@@ -144,23 +174,30 @@ function IntegrationCard({
   const [testing, setTesting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [rebinding, setRebinding] = useState(false);
+  const [togglingPolling, setTogglingPolling] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const lastResult = integration.lastTestResult;
-  const ok = lastResult?.ok ?? false;
+  const revalidationRequired = integration.provider === "ironside" && integration.revalidationRequired;
+  const ok = (lastResult?.ok ?? false) && !revalidationRequired;
   const statusVariant: "pass" | "fail" | "outline" = lastResult
     ? ok
       ? "pass"
       : "fail"
     : "outline";
-  const statusLabel = lastResult ? (ok ? "connected" : "error") : "untested";
+  const statusLabel = revalidationRequired
+    ? "revalidation required"
+    : lastResult
+      ? (ok ? "connected" : "error")
+      : "untested";
 
   const test = async () => {
     setTesting(true);
     setActionError(null);
     try {
-      if (integration.provider === "langfuse") await testLangfuseIntegration(integration.id);
+      if (integration.provider === "ironside") await testIronsideIntegration(integration.id);
+      else if (integration.provider === "langfuse") await testLangfuseIntegration(integration.id);
       else await testLangSmithIntegration(integration.id);
       onChanged();
     } catch (err) {
@@ -175,7 +212,9 @@ function IntegrationCard({
     setActionError(null);
     try {
       if (!skillVersionId) throw new Error("Choose a criterion before importing traces.");
-      if (integration.provider === "langfuse") {
+      if (integration.provider === "ironside") {
+        await triggerIronsideImport(integration.id, integration.pollLimit, skillVersionId);
+      } else if (integration.provider === "langfuse") {
         await triggerLangfuseImport(integration.id, integration.pollLimit, skillVersionId);
       } else {
         await triggerLangSmithImport(integration.id, integration.pollLimit, skillVersionId);
@@ -189,14 +228,15 @@ function IntegrationCard({
   };
 
   const remove = async () => {
-    const label = integration.provider === "langfuse" ? "Langfuse" : "LangSmith";
-    if (!confirm(`Disconnect ${label} integration "${integration.projectName ?? integration.id}"? Past imports are kept.`)) {
+    const label = providerLabel(integration.provider);
+    if (!confirm(`Disconnect ${label} integration "${integrationName(integration)}"? Past imports are kept.`)) {
       return;
     }
     setRemoving(true);
     setActionError(null);
     try {
-      if (integration.provider === "langfuse") await deleteLangfuseIntegration(integration.id);
+      if (integration.provider === "ironside") await deleteIronsideIntegration(integration.id);
+      else if (integration.provider === "langfuse") await deleteLangfuseIntegration(integration.id);
       else await deleteLangSmithIntegration(integration.id);
       onChanged();
     } catch (err) {
@@ -211,7 +251,9 @@ function IntegrationCard({
     setActionError(null);
     try {
       if (!skillVersionId) throw new Error("Choose a criterion before changing this integration.");
-      if (integration.provider === "langfuse") {
+      if (integration.provider === "ironside") {
+        await updateIronsideIntegration(integration.id, { skillVersionId });
+      } else if (integration.provider === "langfuse") {
         await updateLangfuseIntegration(integration.id, { skillVersionId });
       } else {
         await updateLangSmithIntegration(integration.id, { skillVersionId });
@@ -224,18 +266,34 @@ function IntegrationCard({
     }
   };
 
+  const toggleIronsidePolling = async () => {
+    if (integration.provider !== "ironside") return;
+    setTogglingPolling(true);
+    setActionError(null);
+    try {
+      await updateIronsideIntegration(integration.id, {
+        pollEnabled: !integration.pollEnabled
+      });
+      onChanged();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setTogglingPolling(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-wrap items-baseline gap-2">
-            <CardTitle>{integration.projectName ?? (integration.provider === "langfuse" ? "Langfuse" : "LangSmith")}</CardTitle>
+            <CardTitle>{integrationName(integration)}</CardTitle>
             <span className="font-mono text-[10.5px] tracking-[0.04em] text-ink-3">
               · {integration.provider}
             </span>
           </div>
           <CardDescription>
-            {integration.endpointUrl ?? (integration.provider === "langfuse" ? "https://cloud.langfuse.com" : "https://api.smith.langchain.com")}
+            {integrationUrl(integration)}
           </CardDescription>
         </div>
         <Chip variant={statusVariant}>{statusLabel}</Chip>
@@ -259,6 +317,11 @@ function IntegrationCard({
           <div className="font-mono text-[10.5px] text-ink-3">
             up to {integration.pollLimit} runs per pull
           </div>
+          {integration.provider === "ironside" ? (
+            <div className="font-mono text-[10.5px] text-ink-3">
+              Ironside settles after {integration.settlementQuietPeriodSeconds}s quiet
+            </div>
+          ) : null}
         </div>
         <div>
           <Eyebrow>Last tested</Eyebrow>
@@ -270,7 +333,9 @@ function IntegrationCard({
           {lastResult ? (
             <div className={cn("font-mono text-[10.5px]", ok ? "text-ink-3" : "text-signal")}>
               {ok
-                ? `ok · sampled ${lastResult.sampleRunCount ?? "—"} runs`
+                ? integration.provider === "ironside"
+                  ? `ok · ${integration.protocolVersion}`
+                  : `ok · sampled ${integration.lastTestResult?.sampleRunCount ?? "—"} runs`
                 : lastResult.error ?? "error"}
             </div>
           ) : null}
@@ -280,12 +345,34 @@ function IntegrationCard({
           <div className="mt-1 font-mono text-[11px] text-ink-2">
             {new Date(integration.createdAt).toLocaleDateString()}
           </div>
+          {integration.provider === "ironside" ? (
+            <div className="font-mono text-[10.5px] text-ink-3" title={integration.remoteProjectId}>
+              project {integration.remoteProjectId}
+            </div>
+          ) : null}
         </div>
       </CardContent>
       <div className="flex flex-wrap items-center gap-2 border-t border-rule-soft px-[18px] py-3">
         <Button variant="ghost" size="sm" onClick={() => void test()} disabled={testing}>
           {testing ? "Testing…" : "Test connection"}
         </Button>
+        {integration.provider === "ironside" ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void toggleIronsidePolling()}
+            disabled={togglingPolling || (!integration.pollEnabled && !ok)}
+            title={!integration.pollEnabled && !ok
+              ? "Test the connection successfully before enabling polling"
+              : undefined}
+          >
+            {togglingPolling
+              ? "Updating polling…"
+              : integration.pollEnabled
+                ? "Pause polling"
+                : "Enable polling"}
+          </Button>
+        ) : null}
         <Button
           variant="default"
           size="sm"
@@ -331,12 +418,13 @@ function AddIntegrationModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isLangfuse = provider === "langfuse";
-  const label = isLangfuse ? "Langfuse" : "LangSmith";
+  const isIronside = provider === "ironside";
+  const label = providerLabel(provider);
 
-  const canSubmit = !submitting && skillVersionId !== null && (
+  const canSubmit = !submitting && (isIronside || skillVersionId !== null) && (
     isLangfuse
       ? publicKey.trim().length > 0 && secretKey.trim().length > 0
-      : apiKey.trim().length > 0
+      : apiKey.trim().length > 0 && (!isIronside || endpointUrl.trim().length > 0)
   );
   const dialogRef = useDialogFocus<HTMLDivElement>({ onClose: onCancel, closeOnEscape: !submitting });
 
@@ -344,7 +432,13 @@ function AddIntegrationModal({
     setSubmitting(true);
     setError(null);
     try {
-      if (isLangfuse) {
+      if (isIronside) {
+        await createIronsideIntegration({
+          skillVersionId: skillVersionId ?? undefined,
+          url: endpointUrl.trim(),
+          apiKey: apiKey.trim()
+        });
+      } else if (isLangfuse) {
         await createLangfuseIntegration({
           skillVersionId: skillVersionId ?? undefined,
           publicKey: publicKey.trim(),
@@ -384,8 +478,10 @@ function AddIntegrationModal({
           <div>
             <CardTitle id="add-integration-title">Connect {label}</CardTitle>
             <CardDescription>
-              Add {isLangfuse ? "the Langfuse API keys" : "a LangSmith API key"} for the project you
-              want to review. Coeval uses the connection to import traces and send feedback.
+              {isIronside
+                ? "In Ironside, create an Integration credential, then paste the deployment URL and one-time token here."
+                : `Add ${isLangfuse ? "the Langfuse API keys" : "a LangSmith API key"} for the project you want to review.`}
+              {" "}Coeval verifies the remote project before importing settled trace versions and sending assessments.
             </CardDescription>
           </div>
         </CardHeader>
@@ -427,11 +523,11 @@ function AddIntegrationModal({
                   data-dialog-initial-focus
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="ls__..."
+                  placeholder={isIronside ? "ironside_sc_..." : "ls__..."}
                   className="h-9 rounded-sm border border-rule-soft bg-card-2 px-2 font-mono text-[12.5px] text-ink focus-visible:border-ink"
                 />
               </div>
-              <div className="flex flex-col gap-1.5">
+              {!isIronside ? <div className="flex flex-col gap-1.5">
                 <label htmlFor="integration-project-name" className="eyebrow">
                   Project name <span className="lowercase tracking-normal text-ink-3">(optional)</span>
                 </label>
@@ -442,24 +538,31 @@ function AddIntegrationModal({
                   placeholder="atlas-support-prod"
                   className="h-9 rounded-sm border border-rule-soft bg-card-2 px-2 font-mono text-[12.5px] text-ink focus-visible:border-ink"
                 />
-              </div>
+              </div> : null}
             </>
           )}
           <div className="flex flex-col gap-1.5">
             <label htmlFor="integration-endpoint-url" className="eyebrow">
-              Endpoint URL <span className="lowercase tracking-normal text-ink-3">(optional)</span>
+              {isIronside ? "Ironside deployment URL" : "Endpoint URL"}{" "}
+              {!isIronside ? <span className="lowercase tracking-normal text-ink-3">(optional)</span> : null}
             </label>
             <input
               id="integration-endpoint-url"
               value={endpointUrl}
               onChange={(e) => setEndpointUrl(e.target.value)}
-              placeholder={isLangfuse ? "https://cloud.langfuse.com" : "https://api.smith.langchain.com"}
+              placeholder={isIronside
+                ? "https://ironside.example.com"
+                : isLangfuse
+                  ? "https://cloud.langfuse.com"
+                  : "https://api.smith.langchain.com"}
               className="h-9 rounded-sm border border-rule-soft bg-card-2 px-2 font-mono text-[12.5px] text-ink focus-visible:border-ink"
             />
           </div>
           {error ? <div role="alert" className="text-[12px] text-signal">{error}</div> : null}
-          {!skillVersionId ? (
+          {!skillVersionId && !isIronside ? (
             <div role="alert" className="text-[12px] text-signal">Choose a criterion before connecting this integration.</div>
+          ) : !skillVersionId && isIronside ? (
+            <div className="text-[12px] text-ink-3">You can connect now and choose a criterion before the first import.</div>
           ) : null}
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={onCancel} disabled={submitting}>

@@ -17,6 +17,7 @@ import { processLangSmithImportJob } from "../src/workers/langsmith-import.js";
 import { enqueueDueLangSmithImports, parsePollImportLimit, parsePollIntervalMs } from "../src/workers/langsmith-poller.js";
 import { EXCLUDED_VALUE, REDACTED_VALUE } from "../src/lib/redaction.js";
 import { LangSmithHttpError } from "../src/lib/langsmith.js";
+import { IronsideHttpError } from "../src/lib/ironside.js";
 
 class PurposeCapturingRepository extends DemoRepository {
   readonly importedPurposes = new Array<string>();
@@ -24,6 +25,22 @@ class PurposeCapturingRepository extends DemoRepository {
   override async importTrace(...args: Parameters<DemoRepository["importTrace"]>) {
     this.importedPurposes.push(args[3].ingestionPurpose);
     return super.importTrace(...args);
+  }
+}
+
+class BlockedIronsideFeedbackRepository extends DemoRepository {
+  readonly blockedFeedback: FeedbackSyncJob[] = [{
+    projectId: "proj_langsmith_support",
+    feedbackSyncJobId: "fsync_blocked_revalidation"
+  }];
+  readonly redispatched: FeedbackSyncJob[] = [];
+
+  override async listBlockedIronsideFeedbackSyncJobs(): Promise<FeedbackSyncJob[]> {
+    return [...this.blockedFeedback];
+  }
+
+  override async markFeedbackSyncPending(job: FeedbackSyncJob): Promise<void> {
+    this.redispatched.push(job);
   }
 }
 
@@ -4878,5 +4895,156 @@ describe("dataset examples (Skill Bench ingestion)", () => {
       ...baseInput,
       modelBinding: { ...baseInput.modelBinding, temperature: 2.1 }
     })).toThrow();
+  });
+
+  it("verifies an Ironside project before saving and rejects cross-project credential rotation", async () => {
+    const repository = new BlockedIronsideFeedbackRepository();
+    const queue = new CapturingQueue();
+    let forceRemoteMismatch = false;
+    const appWithIronside = createApp(repository, {
+      queue,
+      ironsideClientFactory: ({ apiKey }) => {
+        const projectId = forceRemoteMismatch || apiKey === "key_other_project"
+          ? "remote_other"
+          : "remote_primary";
+        return {
+          async getContext() {
+            if (apiKey === "key_invalid") throw new IronsideHttpError("invalid key", 401, "getContext");
+            return {
+              protocolVersion: "ironside/evaluator/v1",
+              project: { id: projectId, name: projectId === "remote_primary" ? "Primary agents" : "Other agents" },
+              capabilities: ["traces:read", "scores:write"],
+              settlement: { kind: "quiet_period", quietPeriodSeconds: 120 }
+            };
+          },
+          async listTraces() {
+            return { protocolVersion: "ironside/evaluator/v1", traces: [], nextCursor: "cursor_empty", hasMore: false };
+          },
+          async getTrace() {
+            throw new Error("not used");
+          }
+        };
+      }
+    });
+
+    const invalidResponse = await appWithIronside.request("/api/integrations/ironside", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url: "https://ironside.example.test", apiKey: "key_invalid" })
+    });
+    expect(invalidResponse.status).toBe(502);
+    await expect(repository.listIronsideIntegrations("proj_langsmith_support")).resolves.toEqual([]);
+
+    const createdResponse = await appWithIronside.request("/api/integrations/ironside", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url: "https://ironside.example.test", apiKey: "key_primary" })
+    });
+    expect(createdResponse.status).toBe(201);
+    const created = await createdResponse.json() as { integration: { id: string; remoteProjectId: string } };
+    expect(created.integration.remoteProjectId).toBe("remote_primary");
+    await repository.saveIronsideSyncState("proj_langsmith_support", created.integration.id, { cursor: "cursor_saved" });
+    await expect(repository.saveIronsideSyncState(
+      "proj_langsmith_support",
+      created.integration.id,
+      { cursor: "cursor_regressed" },
+      null
+    )).resolves.toBe(false);
+
+    const duplicateCreate = await appWithIronside.request("/api/integrations/ironside", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url: "https://other.example.test", apiKey: "key_other_project" })
+    });
+    expect(duplicateCreate.status).toBe(409);
+    await expect(duplicateCreate.json()).resolves.toMatchObject({
+      code: "ironside_integration_exists"
+    });
+    await expect(repository.loadIronsideImportContext({
+      projectId: "proj_langsmith_support", integrationId: created.integration.id, limit: 1
+    })).resolves.toMatchObject({ remoteProjectId: "remote_primary", syncState: { cursor: "cursor_saved" } });
+
+    const rotatedResponse = await appWithIronside.request(`/api/integrations/ironside/${created.integration.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ apiKey: "key_rotated_same_project" })
+    });
+    expect(rotatedResponse.status).toBe(200);
+    await expect(repository.loadIronsideImportContext({
+      projectId: "proj_langsmith_support", integrationId: created.integration.id, limit: 1
+    })).resolves.toMatchObject({ syncState: { cursor: "cursor_saved" } });
+
+    const mismatchResponse = await appWithIronside.request(`/api/integrations/ironside/${created.integration.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ apiKey: "key_other_project" })
+    });
+    expect(mismatchResponse.status).toBe(409);
+    await expect(mismatchResponse.json()).resolves.toMatchObject({ code: "ironside_project_mismatch" });
+
+    forceRemoteMismatch = true;
+    const testMismatch = await appWithIronside.request(
+      `/api/integrations/ironside/${created.integration.id}/test`,
+      { method: "POST" }
+    );
+    expect(testMismatch.status).toBe(409);
+    await expect(repository.loadIronsideImportContext({
+      projectId: "proj_langsmith_support",
+      integrationId: created.integration.id,
+      limit: 1
+    })).resolves.toMatchObject({
+      remoteProjectId: "remote_primary",
+      pollEnabled: false,
+      revalidationRequired: true,
+      lastTestResult: { ok: false }
+    });
+
+    const blockedRebind = await appWithIronside.request(
+      `/api/integrations/ironside/${created.integration.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ apiKey: "key_primary" })
+      }
+    );
+    expect(blockedRebind.status).toBe(409);
+    await expect(blockedRebind.json()).resolves.toMatchObject({
+      code: "ironside_revalidation_requires_disconnect"
+    });
+
+    const blockedPolling = await appWithIronside.request(
+      `/api/integrations/ironside/${created.integration.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pollEnabled: true })
+      }
+    );
+    expect(blockedPolling.status).toBe(409);
+    await expect(blockedPolling.json()).resolves.toMatchObject({
+      code: "ironside_revalidation_required"
+    });
+
+    forceRemoteMismatch = false;
+    const revalidated = await appWithIronside.request(
+      `/api/integrations/ironside/${created.integration.id}/test`,
+      { method: "POST" }
+    );
+    expect(revalidated.status).toBe(200);
+    expect(queue.jobs).toContainEqual({
+      name: "feedback.sync",
+      data: repository.blockedFeedback[0],
+      options: { retryLimit: 5, retryBackoff: true }
+    });
+    expect(repository.redispatched).toEqual(repository.blockedFeedback);
+    const enabled = await appWithIronside.request(
+      `/api/integrations/ironside/${created.integration.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pollEnabled: true })
+      }
+    );
+    expect(enabled.status).toBe(200);
   });
 });

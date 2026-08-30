@@ -41,7 +41,7 @@ representative traces and cases
 → verifiable assessment + calibration evidence
 ```
 
-Coeval complements tracing platforms rather than replacing them. It can import traces from LangSmith or Langfuse and sync recorded verdicts back to the source.
+Coeval complements tracing platforms rather than replacing them. It can import traces from LangSmith or Langfuse, or use Ironside's native versioned evaluator feed, and sync recorded assessments back to the source.
 
 [`PRODUCT.md`](PRODUCT.md) is authoritative for intended product scope. This
 README describes the current implementation. See the shared
@@ -75,6 +75,7 @@ in the [beginner onboarding journey](docs/beginner-onboarding-journey.md),
 - Mutable working collections plus immutable, digest-addressed analysis and development revisions.
 - Dataset-first **Skill Bench** projects for teams without production traces.
 - LangSmith and Langfuse import, polling, and feedback sync.
+- Native Ironside project verification, settled trace-version import, cursor recovery, and criterion-specific assessment writeback.
 - Agent-trajectory evaluation with ordered steps and expected failing-step labels.
 - Per-project Anthropic or OpenAI judge keys encrypted at rest.
 - Judge Cards and portable [SkillFormat v1](spec/skill-format-v1.md) exports.

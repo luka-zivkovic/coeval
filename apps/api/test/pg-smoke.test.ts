@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { runMigrations } from "@coeval/db";
 import { createQueue, type Queue, type QueueName } from "@coeval/queue";
 import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema, type JudgeProviderId } from "@coeval/shared";
-import { GoldenSetEntryAlreadyRetiredError, RegressionGateJudgeError, RegressionGateUnavailableError } from "../src/repository.js";
+import { GoldenSetEntryAlreadyRetiredError, IronsideIntegrationAlreadyExistsError, IronsideIntegrationRevalidationRequiredError, RegressionGateJudgeError, RegressionGateUnavailableError } from "../src/repository.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { processFeedbackSyncJob } from "../src/workers/feedback-sync.js";
 import { dispatchEvalRunOnce, processGateRunJob } from "../src/workers/gate.js";
@@ -12,6 +12,7 @@ import { processLangSmithImportJob } from "../src/workers/langsmith-import.js";
 import { enqueueDueLangSmithImports } from "../src/workers/langsmith-poller.js";
 import { EXCLUDED_VALUE, REDACTED_VALUE } from "../src/lib/redaction.js";
 import { buildAssessmentReceipt, contentDigest, evidenceDigestForReceipt } from "../src/lib/assessment-receipt.js";
+import { ironsideTraceToTraceImport } from "../src/lib/ironside.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
@@ -1403,6 +1404,204 @@ run("PgRepository smoke", () => {
     }
   });
 
+  it("deduplicates Ironside snapshots by trace id and remote trace version", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_ironside_versions");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      const input = {
+        sourceTraceId: "ironside_reopened",
+        input: { question: "Refund?" },
+        output: { answer: "Within 30 days." },
+        metadata: { source: "ironside" }
+      };
+      const firstContext = {
+        ingestionPurpose: "analysis_eligible_ironside" as const,
+        sourceTraceVersion: "2026-08-01T12:00:00.000Z",
+        sourceRemoteProjectId: "remote_project_a"
+      };
+      const first = await repo.importTrace("proj_test", "ironside", input, firstContext);
+      const retry = await repo.importTrace("proj_test", "ironside", input, firstContext);
+      const reopened = await repo.importTrace("proj_test", "ironside", input, {
+        ...firstContext,
+        sourceTraceVersion: "2026-08-01T12:05:00.000Z"
+      });
+      const otherRemote = await repo.importTrace("proj_test", "ironside", input, {
+        ...firstContext,
+        sourceRemoteProjectId: "remote_project_b"
+      });
+
+      expect(first.created).toBe(true);
+      expect(retry).toMatchObject({ created: false, caseId: first.caseId });
+      expect(reopened).toMatchObject({ created: true });
+      expect(reopened.caseId).not.toBe(first.caseId);
+      expect(otherRemote).toMatchObject({ created: true });
+      expect(otherRemote.caseId).not.toBe(first.caseId);
+      const rows = await pool.query(
+        `select source_remote_project_id, source_trace_version from raw_traces
+         where project_id = 'proj_test' and source_trace_id = 'ironside_reopened'
+         order by source_remote_project_id, source_trace_version`
+      );
+      expect(rows.rows).toEqual([
+        { source_remote_project_id: "remote_project_a", source_trace_version: "2026-08-01T12:00:00.000Z" },
+        { source_remote_project_id: "remote_project_a", source_trace_version: "2026-08-01T12:05:00.000Z" },
+        { source_remote_project_id: "remote_project_b", source_trace_version: "2026-08-01T12:00:00.000Z" }
+      ]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("stores PostgreSQL-unsafe Ironside payload strings without collisions or cursor poison", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_ironside_unsafe_strings");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      const input = ironsideTraceToTraceImport({
+        id: "ironside_unsafe",
+        traceVersion: "2026-08-30T12:00:00.000001Z",
+        timestamp: "2026-08-30T12:00:00.000Z",
+        name: null,
+        userId: null,
+        sessionId: null,
+        environment: null,
+        release: null,
+        version: null,
+        tags: [],
+        metadata: {},
+        input: {
+          "key\0x": "nul\0value",
+          "key\\0x": "literal\\0value",
+          lone: "x\ud800y",
+          path: "C:\\temp\\trace.json",
+          marker: "literal\ue0000value"
+        },
+        output: null,
+        observations: [{
+          id: "obs_unsafe",
+          parentObservationId: null,
+          type: "span",
+          name: "step\0name\udfff",
+          startTime: "2026-08-30T12:00:00.000Z",
+          endTime: null,
+          level: "default",
+          statusMessage: null,
+          model: null,
+          modelParameters: {},
+          input: null,
+          output: null,
+          usageDetails: {},
+          costDetails: {},
+          completionStartTime: null,
+          metadata: {},
+          children: []
+        }]
+      });
+
+      await expect(repo.importTrace("proj_test", "ironside", input, {
+        ingestionPurpose: "analysis_eligible_ironside",
+        sourceTraceVersion: "2026-08-30T12:00:00.000001Z",
+        sourceRemoteProjectId: "remote_project_a"
+      })).resolves.toMatchObject({ created: true });
+
+      const result = await pool.query<{ raw_payload: unknown }>(
+        `select raw_payload from raw_traces
+          where project_id = 'proj_test' and source_trace_id = 'ironside_unsafe'`
+      );
+      expect(JSON.stringify(result.rows[0]?.raw_payload)).not.toContain("\0");
+      expect((result.rows[0]?.raw_payload as { input: Record<string, unknown> }).input)
+        .toEqual({
+          "key\ue0000x": "nul\ue0000value",
+          "key\\0x": "literal\\0value",
+          lone: "x\ue000ud800y",
+          path: "C:\\temp\\trace.json",
+          marker: "literal\ue000e0value"
+        });
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("does not replace a verified Ironside connection through create", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_ironside_connection_identity");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      const context = (remoteProjectId: string) => ({
+        protocolVersion: "ironside/evaluator/v1" as const,
+        project: { id: remoteProjectId, name: remoteProjectId },
+        capabilities: ["traces:read" as const, "scores:write" as const],
+        settlement: { kind: "quiet_period" as const, quietPeriodSeconds: 0 }
+      });
+      const first = await repo.createIronsideIntegration("proj_test", {
+        url: "https://ironside-a.example",
+        apiKey: "key_a"
+      }, context("remote_a"));
+      await expect(repo.createIronsideIntegration("proj_test", {
+        url: "https://ironside-b.example",
+        apiKey: "key_b"
+      }, context("remote_b"))).rejects.toBeInstanceOf(IronsideIntegrationAlreadyExistsError);
+      await expect(repo.loadIronsideImportContext({
+        projectId: "proj_test",
+        integrationId: first.id,
+        limit: 1
+      })).resolves.toMatchObject({
+        url: "https://ironside-a.example",
+        remoteProjectId: "remote_a",
+        connectionRevision: 1
+      });
+      const initial = await repo.loadIronsideImportContext({
+        projectId: "proj_test",
+        integrationId: first.id,
+        limit: 1
+      });
+      await expect(repo.quarantineIronsideIntegration(
+        "proj_test",
+        first.id,
+        { remoteProjectId: "remote_a", connectionRevision: initial.connectionRevision },
+        { ok: false, checkedAt: new Date().toISOString(), error: "drift" }
+      )).resolves.toBe(true);
+      const quarantined = await repo.loadIronsideImportContext({
+        projectId: "proj_test",
+        integrationId: first.id,
+        limit: 1
+      });
+      await repo.updateIronsideIntegration(
+        "proj_test",
+        first.id,
+        {},
+        context("remote_a"),
+        {
+          remoteProjectId: "remote_a",
+          revalidationRequired: true,
+          connectionRevision: quarantined.connectionRevision
+        }
+      );
+      await expect(repo.quarantineIronsideIntegration(
+        "proj_test",
+        first.id,
+        { remoteProjectId: "remote_a", connectionRevision: quarantined.connectionRevision },
+        { ok: false, checkedAt: new Date().toISOString(), error: "stale response" }
+      )).resolves.toBe(false);
+      await expect(repo.loadIronsideImportContext({
+        projectId: "proj_test",
+        integrationId: first.id,
+        limit: 1
+      })).resolves.toMatchObject({
+        revalidationRequired: false,
+        connectionRevision: quarantined.connectionRevision + 1
+      });
+    } finally {
+      await cleanup();
+    }
+  });
+
   it("counts all net-new traces for the same import job across worker retries", async () => {
     process.env.BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET || "test-secret-for-pg-import-retry-count-at-least-32-bytes";
     const { pool, cleanup } = await openPostgresTestDatabase("pg_smoke");
@@ -1533,6 +1732,85 @@ run("PgRepository smoke", () => {
       });
       const dashboard = await repo.getDashboardSummary("proj_test");
       expect(dashboard.project.syncBackCoverage).toBe(1);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("parks and re-drives Ironside feedback after connection revalidation", async () => {
+    process.env.BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET || "test-secret-for-pg-ironside-feedback-at-least-32-bytes";
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_ironside_feedback_redrive");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      const queue = new CapturingQueue();
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      await seedSkill(pool);
+      const remote = {
+        protocolVersion: "ironside/evaluator/v1" as const,
+        project: { id: "remote_feedback", name: "Remote feedback" },
+        capabilities: ["traces:read" as const, "scores:write" as const],
+        settlement: { kind: "quiet_period" as const, quietPeriodSeconds: 0 }
+      };
+      const integration = await repo.createIronsideIntegration("proj_test", {
+        url: "https://ironside.example",
+        apiKey: "key_feedback"
+      }, remote);
+      const imported = await repo.importTrace("proj_test", "ironside", {
+        sourceTraceId: "ironside_feedback_pg",
+        input: { question: "Refund?" },
+        output: { answer: "Yes." },
+        metadata: { source: "ironside" }
+      }, {
+        ingestionPurpose: "analysis_eligible_ironside",
+        sourceIntegrationId: integration.id,
+        sourceRemoteProjectId: remote.project.id,
+        sourceTraceVersion: "2026-08-30T12:00:00.000001Z"
+      });
+      await processJudgeRunJob(repo, {
+        projectId: "proj_test",
+        caseId: imported.caseId,
+        skillVersionId: "skillv_test"
+      }, undefined, queue);
+      const job = queue.jobs[0]!.data as { projectId: string; feedbackSyncJobId: string };
+
+      await expect(processFeedbackSyncJob(repo, job, () => ({
+        async getContext() {
+          return { ...remote, project: { id: "remote_other", name: "Other" } };
+        },
+        async createFeedback() {
+          throw new Error("must not write after drift");
+        }
+      }))).rejects.toBeInstanceOf(IronsideIntegrationRevalidationRequiredError);
+      expect((await repo.listFeedbackSyncJobs({
+        projectId: "proj_test",
+        status: "blocked",
+        limit: 10
+      }))).toHaveLength(1);
+
+      const quarantined = await repo.loadIronsideImportContext({
+        projectId: "proj_test",
+        integrationId: integration.id,
+        limit: 1
+      });
+      await repo.updateIronsideIntegration("proj_test", integration.id, {}, remote, {
+        remoteProjectId: quarantined.remoteProjectId,
+        revalidationRequired: true,
+        connectionRevision: quarantined.connectionRevision
+      });
+      const blocked = await repo.listBlockedIronsideFeedbackSyncJobs("proj_test", integration.id);
+      expect(blocked).toEqual([job]);
+      await repo.markFeedbackSyncPending(job);
+      await processFeedbackSyncJob(repo, job, () => ({
+        async getContext() { return remote; },
+        async createFeedback() {}
+      }));
+      expect((await repo.listFeedbackSyncJobs({
+        projectId: "proj_test",
+        status: "synced",
+        limit: 10
+      }))).toHaveLength(1);
     } finally {
       await cleanup();
     }

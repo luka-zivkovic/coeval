@@ -35,7 +35,7 @@ Without `DATABASE_URL`, the API uses `DemoRepository`. It contains representativ
 
 ### Trace ingestion
 
-1. A trace arrives through the manual endpoint, the judge API, LangSmith, Langfuse, or Ironside with an exact evaluator-version pin. Singleton projects may resolve that pin when the request is accepted; multi-criterion projects require it explicitly.
+1. A trace arrives through the manual endpoint, the judge API, LangSmith, Langfuse, or Ironside with an exact evaluator-version pin. Ironside supplies a settled remote trace-version identity and an opaque continuation cursor; Coeval does not reproduce Ironside's settlement policy. Singleton projects may resolve the evaluator pin when the request is accepted; multi-criterion projects require it explicitly.
 2. The raw provider payload is retained for auditability.
 3. A normalized case is created with configured exclusions and sensitive-key redaction.
 4. A `judge.run` job is queued.
@@ -285,20 +285,12 @@ Session-authenticated `/api/*` routes resolve a project membership before access
 
 ## Database migrations
 
-The first persistent external deployment on 2026-08-28 froze
-`packages/db/migrations/0001_baseline.sql`; PostgreSQL 17 is the development
-and CI target. The API applies ordered migrations on startup under a database
-advisory lock, records their SHA-256 checksums, and rejects changed, missing,
-or incompatible applied history. There remains no supported upgrade from the
-old `0001`–`0055` development history to the frozen baseline.
-
-Every later schema change adds a new append-only forward migration and upgrade
-coverage. Runtime writers continue to supply current required identities—
-criterion bindings, regression pins, ingestion purpose, validation method,
-and immutable content identity—at creation time. Compatibility, backfill,
-deployment, and recovery behavior must now be designed for persistent stored
-data rather than by editing the baseline. This transition is the recorded exit
-condition in
+Coeval currently supports clean installations only. PostgreSQL 17 is the
+development and CI target, and `packages/db/migrations/0001_baseline.sql`
+contains the complete current schema. The API serializes baseline application
+under a database advisory lock, records its SHA-256 checksum, and rejects any
+different or unknown migration history. Founder-only test databases are
+recreated rather than upgraded when the baseline changes, as defined by
 [ADR-0011](decisions/0011-prelaunch-blank-slate-database-policy.md).
 
 `pnpm test:pg` creates one migrated template database in a disposable

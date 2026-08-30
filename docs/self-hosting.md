@@ -1,4 +1,4 @@
-# Self-hosting and upgrades
+# Self-hosting and test-instance updates
 
 ## Status and support boundary
 
@@ -9,9 +9,9 @@
   `deploy/coolify.yaml` are present in the repository. They become installable
   after the next version tag publishes public GHCR packages. The existing
   `v0.1.0` predates these artifacts and must not be selected.
-- **CURRENT:** the first persistent external deployment on 2026-08-28 froze
-  the Coeval database baseline. Future schema changes are append-only forward
-  migrations; startup rejects changed or missing migration history.
+- **CURRENT:** founder-only deployments are disposable test instances. This
+  pre-launch release supports clean database installs only; recreate the
+  instance when the current baseline changes.
 - **ASSUMPTION:** the default stack runs on one Coolify server, exposes only
   the nginx `web` service through TLS, and keeps the API and Postgres private.
 
@@ -75,36 +75,31 @@ generic Compose bundle, boots a disposable stack, and verifies the public
 health route. Only then does it create a **draft** GitHub release. After the
 first workflow run, an owner must make both GHCR packages public; package
 visibility persists for later versions. Verify an anonymous pull of both exact
-tags, complete the migration declaration below, and publish the draft. Default
+tags, declare whether the current baseline changed, and publish the draft. Default
 trustctl installs and update checks see only that published release, so the
 draft is the release-readiness gate.
 
-Every release note must declare one of:
+Every pre-launch release note must declare one of:
 
-- **No data migration:** changing back to the old image is a valid rollback.
-- **Forward migration:** downgrade is not supported after startup applies the
-  migration; recovery is a database restore plus the old image, or a tested
-  forward fix.
+- **Baseline unchanged:** the founder-owned test instance may update images in
+  place and may roll back to the prior exact image.
+- **Baseline changed:** create a clean test instance; no in-place schema
+  migration or downgrade is supported.
 
 ## Updating an instance
 
 1. Read every release note between the installed and target versions.
-2. Clone the Coolify Service for a trial. Restore representative data when a
-   release contains a migration; configuration-only clones do not copy data.
-3. Create and verify an off-host Postgres backup. Record the current Compose,
-   exact image version, generated secrets, domain, and scheduled tasks.
-4. In the trial Service, change both Coeval image references by changing the
+2. If the baseline changed, create a clean Service and stop; do not attach the
+   old Postgres volume.
+3. If the baseline is unchanged, record the current Compose, exact image
+   version, generated secrets, domain, and scheduled tasks.
+4. Change both Coeval image references by changing the
    single `COEVAL_VERSION` value. Merge any release-specific Compose changes.
-5. Deploy and verify `/health`, sign-in, project reads, a background job, and
-   migration logs.
-6. During the production maintenance window, take a fresh backup, apply the
-   same version/configuration change, deploy, and repeat the checks.
-7. Keep the backup and previous Compose/version for the documented recovery
-   window.
+5. Deploy and verify `/health`, sign-in, project reads, and a background job.
 
 Do not use Coolify's **Pull Latest Images & Restart** for Coeval. An exact
 semantic-version tag is immutable, so a normal redeploy is sufficient. A
-floating tag can silently combine a new application and a data migration.
+floating tag can silently combine a new application and a changed baseline.
 
 ## Backups and secrets
 

@@ -187,6 +187,11 @@ describe("criterion and evaluator-suite API", () => {
       ironside: await repository.createIronsideIntegration(PROJECT_ID, {
         url: "http://ironside.test",
         apiKey: "ironside-test"
+      }, {
+        protocolVersion: "ironside/evaluator/v1",
+        project: { id: "remote_criteria", name: "Criteria test" },
+        capabilities: ["traces:read", "scores:write"],
+        settlement: { kind: "quiet_period", quietPeriodSeconds: 0 }
       })
     };
     const native = await repository.createCriterion(PROJECT_ID, CreateCriterionInputSchema.parse(criterionInput), {});

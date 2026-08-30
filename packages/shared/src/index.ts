@@ -4730,12 +4730,106 @@ export const LangfuseIntegrationSchema = z.object({
 });
 export type LangfuseIntegration = z.infer<typeof LangfuseIntegrationSchema>;
 
-// Ironside: first-class native source (issue #153). Unlike the Langfuse-compat
-// tier, the connection is the native surface — one base URL + one Bearer API
-// key — and imports are RECONCILE-FIRST: a keyset-cursor sweep of
-// GET /api/v1/traces bounded by the quiet-period settlement watermark
-// (ironside spec/trace-envelope-v1.md). Webhook push is a follow-up latency
-// optimization, not part of this contract.
+export const IRONSIDE_EVALUATOR_PROTOCOL_VERSION = "ironside/evaluator/v1" as const;
+
+export const IronsideEvaluatorContextSchema = z.object({
+  protocolVersion: z.literal(IRONSIDE_EVALUATOR_PROTOCOL_VERSION),
+  project: z.object({
+    id: z.string().min(1),
+    name: z.string().min(1)
+  }),
+  // Capability names are additive. Require the two native evaluator grants
+  // in the client, but tolerate future unrelated capabilities on the key.
+  capabilities: z.array(z.string().min(1)),
+  settlement: z.object({
+    kind: z.literal("quiet_period"),
+    quietPeriodSeconds: z.number().int().nonnegative()
+  })
+});
+export type IronsideEvaluatorContext = z.infer<typeof IronsideEvaluatorContextSchema>;
+
+export const IronsideEvaluatorTraceSummarySchema = z.object({
+  traceId: z.string().min(1),
+  traceVersion: z.iso.datetime({ offset: true }),
+  timestamp: z.iso.datetime({ offset: true }),
+  name: z.string().nullable(),
+  userId: z.string().nullable(),
+  sessionId: z.string().nullable(),
+  environment: z.string().nullable(),
+  tags: z.array(z.string()),
+  metadata: z.record(z.string(), z.string())
+});
+export type IronsideEvaluatorTraceSummary = z.infer<typeof IronsideEvaluatorTraceSummarySchema>;
+
+export const IronsideEvaluatorTraceFeedSchema = z.object({
+  protocolVersion: z.literal(IRONSIDE_EVALUATOR_PROTOCOL_VERSION),
+  traces: z.array(IronsideEvaluatorTraceSummarySchema),
+  nextCursor: z.string().min(1),
+  hasMore: z.boolean()
+});
+export type IronsideEvaluatorTraceFeed = z.infer<typeof IronsideEvaluatorTraceFeedSchema>;
+
+export interface IronsideEvaluatorObservationNode {
+  id: string;
+  parentObservationId?: string | null | undefined;
+  type: string;
+  name?: string | null | undefined;
+  startTime: string;
+  endTime?: string | null | undefined;
+  level?: string | null | undefined;
+  statusMessage?: string | null | undefined;
+  model?: string | null | undefined;
+  modelParameters?: Record<string, string> | undefined;
+  input?: unknown;
+  output?: unknown;
+  usageDetails?: Record<string, number> | undefined;
+  costDetails?: Record<string, number> | undefined;
+  completionStartTime?: string | null | undefined;
+  metadata?: Record<string, string> | undefined;
+  children: IronsideEvaluatorObservationNode[];
+}
+
+export const IronsideEvaluatorObservationNodeSchema: z.ZodType<IronsideEvaluatorObservationNode> = z.lazy(() => z.object({
+  id: z.string(),
+  parentObservationId: z.string().nullish(),
+  type: z.string(),
+  name: z.string().nullish(),
+  startTime: z.string(),
+  endTime: z.string().nullish(),
+  level: z.string().nullish(),
+  statusMessage: z.string().nullish(),
+  model: z.string().nullish(),
+  modelParameters: z.record(z.string(), z.string()).optional(),
+  input: z.unknown().optional(),
+  output: z.unknown().optional(),
+  usageDetails: z.record(z.string(), z.number()).optional(),
+  costDetails: z.record(z.string(), z.number()).optional(),
+  completionStartTime: z.string().nullish(),
+  metadata: z.record(z.string(), z.string()).optional(),
+  children: z.array(IronsideEvaluatorObservationNodeSchema)
+}));
+
+export const IronsideEvaluatorTraceSchema = z.object({
+  id: z.string().min(1),
+  traceVersion: z.iso.datetime({ offset: true }),
+  timestamp: z.iso.datetime({ offset: true }),
+  name: z.string().nullable(),
+  userId: z.string().nullable(),
+  sessionId: z.string().nullable(),
+  environment: z.string().nullable(),
+  release: z.string().nullable(),
+  version: z.string().nullable(),
+  tags: z.array(z.string()),
+  metadata: z.record(z.string(), z.string()),
+  input: z.unknown().optional(),
+  output: z.unknown().optional(),
+  observations: z.array(IronsideEvaluatorObservationNodeSchema)
+});
+export type IronsideEvaluatorTrace = z.infer<typeof IronsideEvaluatorTraceSchema>;
+
+// A native connection is one Ironside project plus a scoped machine key. The
+// remote service owns settlement and exposes immutable trace versions; Coeval
+// persists only the opaque continuation cursor it receives from that feed.
 export const IronsideIntegrationInputSchema = z.object({
   skillVersionId: z.string().min(1).optional(),
   url: z.url(),
@@ -4743,18 +4837,31 @@ export const IronsideIntegrationInputSchema = z.object({
   redaction: TraceRedactionConfigSchema.optional(),
   pollEnabled: z.boolean().optional(),
   pollIntervalSeconds: z.number().int().positive().max(86_400).optional(),
-  pollLimit: z.number().int().positive().max(100).optional(),
-  // Mirror of ironside's per-project traceQuietPeriodSeconds: only traces at
-  // least this old are treated as settled and imported. Default 300 matches
-  // ironside's DEFAULT_TRACE_QUIET_PERIOD_SECONDS.
-  quietPeriodSeconds: z.number().int().positive().max(86_400).optional()
+  pollLimit: z.number().int().positive().max(100).optional()
 });
 export type IronsideIntegrationInput = z.infer<typeof IronsideIntegrationInputSchema>;
 
-export const UpdateIronsideIntegrationInputSchema = UpdateLangSmithIntegrationInputSchema;
+export const UpdateIronsideIntegrationInputSchema = z.object({
+  skillVersionId: z.string().min(1).optional(),
+  url: z.url().optional(),
+  apiKey: z.string().min(1).optional(),
+  pollEnabled: z.boolean().optional(),
+  pollIntervalSeconds: z.number().int().positive().max(86_400).optional(),
+  pollLimit: z.number().int().positive().max(100).optional()
+}).refine((input) => Object.keys(input).length > 0, {
+  message: "At least one Ironside integration setting is required"
+});
 export type UpdateIronsideIntegrationInput = z.infer<typeof UpdateIronsideIntegrationInputSchema>;
 
-export const IronsideConnectionTestResultSchema = LangSmithConnectionTestResultSchema;
+export const IronsideConnectionTestResultSchema = z.object({
+  ok: z.boolean(),
+  checkedAt: z.string(),
+  status: z.number().int().positive().optional(),
+  error: z.string().optional(),
+  protocolVersion: z.literal(IRONSIDE_EVALUATOR_PROTOCOL_VERSION).optional(),
+  remoteProjectId: z.string().min(1).optional(),
+  remoteProjectName: z.string().min(1).optional()
+});
 export type IronsideConnectionTestResult = z.infer<typeof IronsideConnectionTestResultSchema>;
 
 export const IronsideIntegrationSchema = z.object({
@@ -4763,24 +4870,24 @@ export const IronsideIntegrationSchema = z.object({
   provider: z.literal("ironside"),
   skillVersionId: z.string().nullable(),
   url: z.string(),
+  remoteProjectId: z.string().min(1),
+  remoteProjectName: z.string().min(1),
+  protocolVersion: z.literal(IRONSIDE_EVALUATOR_PROTOCOL_VERSION),
+  settlementQuietPeriodSeconds: z.number().int().nonnegative(),
+  revalidationRequired: z.boolean(),
   pollEnabled: z.boolean(),
   pollIntervalSeconds: z.number().int().positive(),
   pollLimit: z.number().int().positive().max(100),
-  quietPeriodSeconds: z.number().int().positive(),
   lastTestedAt: z.string().nullable(),
   lastTestResult: IronsideConnectionTestResultSchema.nullable(),
   createdAt: z.string()
 });
 export type IronsideIntegration = z.infer<typeof IronsideIntegrationSchema>;
 
-// Reconciliation state persisted per connection. `watermark` is the upper
-// bound (exclusive-ish, inclusive overlap is deduped) of the last fully swept
-// window; `cursor`/`windowTo` survive a budget-capped sweep so the next job
-// resumes the SAME window with the API's keyset cursor instead of restarting.
+// The cursor is intentionally opaque: ordering, settlement, bootstrap and
+// recovery remain Ironside concerns rather than duplicated Coeval policy.
 export const IronsideSyncStateSchema = z.object({
-  watermark: z.string().nullable(),
-  cursor: z.string().nullable(),
-  windowTo: z.string().nullable()
+  cursor: z.string().nullable()
 });
 export type IronsideSyncState = z.infer<typeof IronsideSyncStateSchema>;
 
@@ -5008,7 +5115,7 @@ export const EvalItemJobSchema = z.object({
 });
 export type EvalItemJob = z.infer<typeof EvalItemJobSchema>;
 
-export const FeedbackSyncStatusSchema = z.enum(["pending", "sending", "synced", "failed"]);
+export const FeedbackSyncStatusSchema = z.enum(["pending", "sending", "synced", "failed", "blocked"]);
 export type FeedbackSyncStatus = z.infer<typeof FeedbackSyncStatusSchema>;
 
 export const FeedbackSyncJobListItemSchema = z.object({

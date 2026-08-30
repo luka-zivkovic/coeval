@@ -2,7 +2,11 @@ import { z } from "zod";
 import { FeedbackSyncJobSchema, type FeedbackSyncJob } from "@coeval/shared";
 import type { Queue } from "@coeval/queue";
 import type { CoevalRepository, FeedbackSyncContext } from "../repository.js";
-import { FeedbackSyncCredentialsMissingError, FeedbackSyncJobNotFoundError } from "../repository.js";
+import {
+  FeedbackSyncCredentialsMissingError,
+  FeedbackSyncJobNotFoundError,
+  IronsideIntegrationRevalidationRequiredError
+} from "../repository.js";
 import { LangSmithClient, type LangSmithFeedbackWriter } from "../lib/langsmith.js";
 import { LangfuseClient } from "../lib/langfuse.js";
 import { IronsideClient } from "../lib/ironside.js";
@@ -19,6 +23,10 @@ export async function registerFeedbackSyncWorker(
     try {
       await processFeedbackSyncJob(repository, data, createWriter);
     } catch (error) {
+      if (error instanceof IronsideIntegrationRevalidationRequiredError) {
+        console.warn(`feedback.sync job ${id} parked until Ironside revalidation`);
+        return;
+      }
       if (isPermanentFeedbackSyncError(error)) {
         console.error(`feedback.sync job ${id} permanently failed; dropping:`, error);
         return;
@@ -36,18 +44,58 @@ export async function processFeedbackSyncJob(
   const parsed = FeedbackSyncJobSchema.parse(job);
   const context = await repository.loadFeedbackSyncContext(parsed);
   try {
-    await createWriter(context).createFeedback({
-      // LangSmith/Langfuse accept a caller-provided score/feedback id. Reusing
-      // the durable feedback_sync_jobs id makes retries idempotent instead of
-      // creating duplicate `coeval_verdict` rows.
+    if (
+      context.provider === "ironside" &&
+      "revalidationRequired" in context.integration &&
+      context.integration.revalidationRequired
+    ) {
+      throw new IronsideIntegrationRevalidationRequiredError(context.integration.id);
+    }
+    const writer = createWriter(context);
+    if (
+      context.provider === "ironside" &&
+      "getContext" in writer &&
+      typeof writer.getContext === "function"
+    ) {
+      const remote = await writer.getContext();
+      const integration = context.integration;
+      if (!("remoteProjectId" in integration)) {
+        throw new FeedbackSyncCredentialsMissingError(context.id);
+      }
+      if (remote.project.id !== integration.remoteProjectId) {
+        const checkedAt = new Date().toISOString();
+        const quarantined = await repository.quarantineIronsideIntegration(
+          context.projectId,
+          integration.id,
+          {
+            remoteProjectId: integration.remoteProjectId,
+            connectionRevision: integration.connectionRevision
+          },
+          {
+            ok: false,
+            checkedAt,
+            error: `Configured credentials resolve to Ironside project ${remote.project.id}, expected ${integration.remoteProjectId}`
+          }
+        );
+        if (!quarantined) throw new Error("Ironside integration changed during identity check");
+        throw new IronsideIntegrationRevalidationRequiredError(integration.id);
+      }
+    }
+    await writer.createFeedback({
+      // Every writer accepts a caller-provided score/feedback id. Reusing the
+      // durable feedback_sync_jobs id makes retries idempotent.
       feedbackId: context.id,
       runId: context.sourceTraceId,
-      key: "coeval_verdict",
+      key: context.provider === "ironside"
+        ? `coeval_assessment/${context.criterionStableKey}`
+        : "coeval_verdict",
       score: context.judgeRun.score,
       value: context.judgeRun.verdict,
       comment: context.judgeRun.reasoning,
       sourceInfo: {
         skillVersionId: context.judgeRun.skillVersionId,
+        criterionKey: context.criterionStableKey,
+        sourceTraceVersion: context.sourceTraceVersion,
         modelBinding: context.judgeRun.modelBinding,
         judgeRunId: context.judgeRun.id,
         provider: "coeval"
@@ -55,7 +103,14 @@ export async function processFeedbackSyncJob(
     });
     await repository.markFeedbackSyncSucceeded(parsed);
   } catch (error) {
-    await repository.markFeedbackSyncFailed(parsed, error);
+    if (error instanceof IronsideIntegrationRevalidationRequiredError) {
+      // Quarantine is an operator-recoverable pause, not a terminal delivery
+      // failure. Park the durable job so a successful connection test can
+      // enqueue it again without spending through a finite queue retry budget.
+      await repository.markFeedbackSyncBlocked(parsed, error);
+    } else {
+      await repository.markFeedbackSyncFailed(parsed, error);
+    }
     throw error;
   }
 }
@@ -86,6 +141,7 @@ export function isPermanentFeedbackSyncError(error: unknown): boolean {
   if (error instanceof z.ZodError) return true;
   if (error instanceof FeedbackSyncJobNotFoundError) return true;
   if (error instanceof FeedbackSyncCredentialsMissingError) return true;
+  if (error instanceof IronsideIntegrationRevalidationRequiredError) return true;
   if (error instanceof Error) {
     const status = (error as { status?: number }).status;
     if (status === 401 || status === 403 || status === 404) return true;

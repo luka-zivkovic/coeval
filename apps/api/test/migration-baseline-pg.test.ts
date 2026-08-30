@@ -8,8 +8,8 @@ if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !dat
 }
 const run = databaseUrl ? describe : describe.skip;
 
-run("frozen database baseline", () => {
-  it("is idempotent and records the immutable baseline checksum", async () => {
+run("clean-install database baseline", () => {
+  it("is idempotent and records the current baseline checksum", async () => {
     const { pool, cleanup } = await openPostgresTestDatabase("baseline_idempotent");
     try {
       await runMigrations(pool);
@@ -17,10 +17,12 @@ run("frozen database baseline", () => {
       const applied = await pool.query<{ id: string; checksum: string }>(
         "select id, checksum from coeval_migrations order by id",
       );
-      expect(applied.rows).toEqual([{
-        id: "0001_baseline",
-        checksum: "a2d3f9fd5322303b444c56e6c092ff2fa9f4a8318a07514989aee3a844814973",
-      }]);
+      expect(applied.rows).toEqual([
+        {
+          id: "0001_baseline",
+          checksum: "f76b232dffdf9868da9b9d2a2a52cffd4b1642b9f36b4925548849d6fba1925c",
+        }
+      ]);
     } finally {
       await cleanup();
     }
@@ -96,7 +98,7 @@ run("frozen database baseline", () => {
         "insert into coeval_migrations (id, checksum) values ('0055_evaluator_lifecycle', 'unknown')",
       );
       await expect(runMigrations(pool)).rejects.toThrow(
-        /migration history is newer than or incompatible.*0055_evaluator_lifecycle.*do not reset/s,
+        /migration history is newer than or incompatible.*0055_evaluator_lifecycle.*recreate the disposable database/s,
       );
       const applied = await pool.query<{ id: string }>("select id from coeval_migrations order by id");
       expect(applied.rows).toEqual([
@@ -108,21 +110,16 @@ run("frozen database baseline", () => {
     }
   });
 
-  it("backfills the accepted checksum on an id-only pre-freeze ledger", async () => {
-    const { pool, cleanup } = await openPostgresTestDatabase("baseline_checksum_backfill");
+  it("rejects a ledger without the current baseline checksum", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("baseline_checksum_required");
     try {
       await runMigrations(pool);
       await pool.query("alter table coeval_migrations alter column checksum drop not null");
       await pool.query("update coeval_migrations set checksum = null where id = '0001_baseline'");
 
-      await runMigrations(pool);
-
-      const applied = await pool.query<{ checksum: string }>(
-        "select checksum from coeval_migrations where id = '0001_baseline'",
+      await expect(runMigrations(pool)).rejects.toThrow(
+        /Applied migration 0001_baseline checksum does not match.*recreate the disposable database/s,
       );
-      expect(applied.rows).toEqual([{
-        checksum: "a2d3f9fd5322303b444c56e6c092ff2fa9f4a8318a07514989aee3a844814973",
-      }]);
     } finally {
       await cleanup();
     }

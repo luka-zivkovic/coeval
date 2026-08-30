@@ -1,12 +1,13 @@
 # 0001 baseline verification evidence
 
-Status: **Complete**
+Status: **Historical verification record**
 
 Date: 2026-08-26
 
-This is a `CURRENT` verification record for the baseline replacement required
-by [ADR-0011](../decisions/0011-prelaunch-blank-slate-database-policy.md). It
-does not add an upgrade path or make historical migrations current guidance.
+This records the original baseline replacement required by
+[ADR-0011](../decisions/0011-prelaunch-blank-slate-database-policy.md). The
+hashes below apply to that 2026-08-26 snapshot; the active clean-install
+baseline may continue to change during founder-only disposable testing.
 
 ## Inputs and method
 
