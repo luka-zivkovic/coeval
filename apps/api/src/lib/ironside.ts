@@ -238,10 +238,11 @@ export function ironsideTraceToTraceImport(trace: IronsideEvaluatorTrace): Manua
 /**
  * PostgreSQL jsonb cannot represent U+0000 or unpaired UTF-16 surrogates,
  * even though either can arrive in parsed evaluator payload strings. Encode
- * them before raw/normalized payloads reach the repository. Backslashes are
- * escaped first, making the mapping injective: real NUL cannot collide with a
- * pre-existing literal `\\0`, and encoded object keys cannot overwrite one
- * another in Object.fromEntries.
+ * them before raw/normalized payloads reach the repository. A reserved
+ * private-use marker is escaped before unsafe code units, making the mapping
+ * injective without changing ordinary backslashes in paths, regexes, code, or
+ * JSON text. Encoded object keys therefore cannot overwrite one another in
+ * Object.fromEntries either.
  */
 function postgresJsonSafeValue(value: unknown): unknown {
   if (typeof value === "string") return postgresJsonSafeString(value);
@@ -258,23 +259,24 @@ function postgresJsonSafeValue(value: unknown): unknown {
 }
 
 function postgresJsonSafeString(value: string): string {
+  const marker = "\ue000";
   let encoded = "";
   for (let index = 0; index < value.length; index += 1) {
     const code = value.charCodeAt(index);
-    if (code === 0x5c) {
-      encoded += "\\\\";
+    if (code === 0xe000) {
+      encoded += `${marker}e`;
     } else if (code === 0) {
-      encoded += "\\0";
+      encoded += `${marker}0`;
     } else if (code >= 0xd800 && code <= 0xdbff) {
       const next = value.charCodeAt(index + 1);
       if (next >= 0xdc00 && next <= 0xdfff) {
         encoded += value.slice(index, index + 2);
         index += 1;
       } else {
-        encoded += `\\u${code.toString(16).padStart(4, "0")}`;
+        encoded += `${marker}u${code.toString(16).padStart(4, "0")}`;
       }
     } else if (code >= 0xdc00 && code <= 0xdfff) {
-      encoded += `\\u${code.toString(16).padStart(4, "0")}`;
+      encoded += `${marker}u${code.toString(16).padStart(4, "0")}`;
     } else {
       encoded += value.charAt(index);
     }

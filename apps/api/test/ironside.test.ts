@@ -638,7 +638,9 @@ describe("Ironside trace mapping", () => {
       input: {
         "nul\0key": "before\0after",
         "nul\\0key": "literal\\0value",
-        loneSurrogate: "before\ud800after"
+        loneSurrogate: "before\ud800after",
+        path: "C:\\temp\\trace.json",
+        marker: "literal\ue0000value"
       },
       observations: [{
         id: "obs_nul", parentObservationId: null, type: "span", name: "name\0with\udfffunsafe",
@@ -650,13 +652,15 @@ describe("Ironside trace mapping", () => {
     }));
     expect(JSON.stringify(imported)).not.toContain("\0");
     expect(imported.input).toEqual({
-      "nul\\0key": "before\\0after",
-      "nul\\\\0key": "literal\\\\0value",
-      loneSurrogate: "before\\ud800after"
+      "nul\ue0000key": "before\ue0000after",
+      "nul\\0key": "literal\\0value",
+      loneSurrogate: "before\ue000ud800after",
+      path: "C:\\temp\\trace.json",
+      marker: "literal\ue000e0value"
     });
-    expect(Object.keys(imported.input as Record<string, unknown>)).toHaveLength(3);
-    expect(imported.steps?.[0]?.name).toBe("name\\0with\\udfffunsafe");
-    expect(imported.steps?.[0]?.input).toEqual(["x\\0y"]);
-    expect(imported.steps?.[0]?.metadata).toMatchObject({ nested: "m\\0n" });
+    expect(Object.keys(imported.input as Record<string, unknown>)).toHaveLength(5);
+    expect(imported.steps?.[0]?.name).toBe("name\ue0000with\ue000udfffunsafe");
+    expect(imported.steps?.[0]?.input).toEqual(["x\ue0000y"]);
+    expect(imported.steps?.[0]?.metadata).toMatchObject({ nested: "m\ue0000n" });
   });
 });

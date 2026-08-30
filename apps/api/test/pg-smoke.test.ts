@@ -1473,7 +1473,13 @@ run("PgRepository smoke", () => {
         version: null,
         tags: [],
         metadata: {},
-        input: { "key\0x": "nul\0value", "key\\0x": "literal\\0value", lone: "x\ud800y" },
+        input: {
+          "key\0x": "nul\0value",
+          "key\\0x": "literal\\0value",
+          lone: "x\ud800y",
+          path: "C:\\temp\\trace.json",
+          marker: "literal\ue0000value"
+        },
         output: null,
         observations: [{
           id: "obs_unsafe",
@@ -1509,9 +1515,11 @@ run("PgRepository smoke", () => {
       expect(JSON.stringify(result.rows[0]?.raw_payload)).not.toContain("\0");
       expect((result.rows[0]?.raw_payload as { input: Record<string, unknown> }).input)
         .toEqual({
-          "key\\0x": "nul\\0value",
-          "key\\\\0x": "literal\\\\0value",
-          lone: "x\\ud800y"
+          "key\ue0000x": "nul\ue0000value",
+          "key\\0x": "literal\\0value",
+          lone: "x\ue000ud800y",
+          path: "C:\\temp\\trace.json",
+          marker: "literal\ue000e0value"
         });
     } finally {
       await cleanup();
