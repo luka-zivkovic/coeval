@@ -30,6 +30,10 @@ export type IronsideClientFactory = (context: Pick<IronsideImportContext, "url" 
 
 const MAX_IRONSIDE_PAGES_PER_JOB = 100;
 const MAX_IRONSIDE_IMPORT_WALL_MS = 30_000;
+// Opaque cursors commit whole pages. One trace per page guarantees that a
+// slow-but-successful detail request can still advance durable progress instead
+// of replaying the same expensive prefix at every aggregate deadline.
+const IRONSIDE_TRACE_PAGE_SIZE = 1;
 
 export async function registerIronsideImportWorker(
   queue: Queue,
@@ -104,8 +108,11 @@ export async function processIronsideImportJob(
       pages += 1;
       const page = await client.listTraces({
         ...(cursor ? { cursor } : {}),
-        limit: Math.min(context.limit - scanned, 100)
+        limit: IRONSIDE_TRACE_PAGE_SIZE
       });
+      if (page.traces.length > IRONSIDE_TRACE_PAGE_SIZE) {
+        throw new Error("Ironside evaluator feed returned more traces than requested");
+      }
       const pageStartCursor = cursor;
       let completedPage = true;
 

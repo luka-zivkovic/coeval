@@ -178,6 +178,7 @@ import {
   InvalidConvergenceCursorError,
   IronsideCredentialsMissingError,
   IronsideIntegrationAlreadyExistsError,
+  IronsideIntegrationChangedError,
   IronsideIntegrationNotFoundError,
   LangfuseCredentialsMissingError,
   LangfuseIntegrationNotFoundError,
@@ -2622,7 +2623,13 @@ export class PgRepository implements CoevalRepository {
     return result.rows.map(rowToIronsideIntegration);
   }
 
-  async updateIronsideIntegration(projectId: string, integrationId: string, input: UpdateIronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration> {
+  async updateIronsideIntegration(
+    projectId: string,
+    integrationId: string,
+    input: UpdateIronsideIntegrationInput,
+    remote?: IronsideEvaluatorContext,
+    expected?: { remoteProjectId: string; revalidationRequired: boolean }
+  ): Promise<IronsideIntegration> {
     const skillVersionId = input.skillVersionId === undefined
       ? null
       : await this.resolveImportSkillVersionId(projectId, input.skillVersionId, "scheduled_import");
@@ -2649,6 +2656,16 @@ export class PgRepository implements CoevalRepository {
              )
            ) end
        where id = $1 and project_id = $2 and provider = 'ironside'
+         and (
+           $13::text is null
+           or (
+             coalesce(config ->> 'remoteProjectId', 'unverified:' || id) = $13
+             and coalesce(
+               (config #>> '{nativeUpgrade,requiresRevalidation}')::boolean,
+               false
+             ) = $14::boolean
+           )
+         )
        returning id, project_id, provider, config, poll_enabled, poll_interval_seconds, poll_limit, last_tested_at, last_test_result, created_at`,
       [
         integrationId,
@@ -2662,11 +2679,21 @@ export class PgRepository implements CoevalRepository {
         remote?.project.id ?? null,
         remote?.project.name ?? null,
         remote?.protocolVersion ?? null,
-        remote?.settlement.quietPeriodSeconds ?? null
+        remote?.settlement.quietPeriodSeconds ?? null,
+        expected?.remoteProjectId ?? null,
+        expected?.revalidationRequired ?? false
       ]
     );
     const row = result.rows[0];
-    if (!row) throw new IronsideIntegrationNotFoundError(integrationId);
+    if (!row) {
+      const exists = await this.pool.query(
+        `select 1 from integrations
+          where id = $1 and project_id = $2 and provider = 'ironside'`,
+        [integrationId, projectId]
+      );
+      if (exists.rowCount) throw new IronsideIntegrationChangedError(integrationId);
+      throw new IronsideIntegrationNotFoundError(integrationId);
+    }
     return rowToIronsideIntegration(row);
   }
 

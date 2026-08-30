@@ -13,6 +13,7 @@ import {
 import {
   DemoRepository,
   IronsideCredentialsMissingError,
+  IronsideIntegrationChangedError,
   IronsideIntegrationNotFoundError,
   IronsideIntegrationRevalidationRequiredError,
   NoCurrentSkillError
@@ -174,6 +175,37 @@ describe("Ironside native evaluator client", () => {
 });
 
 describe("Ironside versioned feed import", () => {
+  it("rejects a stale concurrent revalidation after another test already graduated the connection", async () => {
+    const repository = new DemoRepository();
+    const integration = await repository.createIronsideIntegration(PROJECT_ID, {
+      url: "http://ironside.test:18788", apiKey: "ironside_sk_test"
+    }, remoteContext);
+    await repository.quarantineIronsideIntegration(
+      PROJECT_ID,
+      integration.id,
+      remoteContext.project.id,
+      { ok: false, checkedAt: new Date().toISOString(), error: "drift" }
+    );
+    const expected = {
+      remoteProjectId: remoteContext.project.id,
+      revalidationRequired: true
+    };
+    await repository.updateIronsideIntegration(
+      PROJECT_ID,
+      integration.id,
+      {},
+      remoteContext,
+      expected
+    );
+    await expect(repository.updateIronsideIntegration(
+      PROJECT_ID,
+      integration.id,
+      {},
+      remoteContext,
+      expected
+    )).rejects.toBeInstanceOf(IronsideIntegrationChangedError);
+  });
+
   it("quarantines a connection before importing when the live remote identity drifts", async () => {
     const queue = new CapturingQueue();
     const repository = new DemoRepository();
@@ -383,7 +415,7 @@ describe("Ironside versioned feed import", () => {
     })).resolves.toMatchObject({ syncState: { cursor: null } });
   });
 
-  it("yields mid-page at the aggregate deadline without dropping the suffix", async () => {
+  it("commits one-trace pages before yielding at the aggregate deadline", async () => {
     const queue = new CapturingQueue();
     const repository = new DemoRepository();
     const integration = await repository.createIronsideIntegration(PROJECT_ID, {
@@ -400,12 +432,13 @@ describe("Ironside versioned feed import", () => {
         limit: 25
       }, () => ({
         async getContext() { return remoteContext; },
-        async listTraces() {
+        async listTraces(input: { limit: number }) {
+          expect(input.limit).toBe(1);
           return {
             protocolVersion: "ironside/evaluator/v1",
-            traces: [summary("trace_first"), summary("trace_unvisited")],
-            nextCursor: "cursor_after_whole_page",
-            hasMore: false
+            traces: [summary("trace_first")],
+            nextCursor: "cursor_after_first",
+            hasMore: true
           } as const;
         },
         async getTrace(id: string, version: string) {
@@ -417,7 +450,7 @@ describe("Ironside versioned feed import", () => {
         projectId: PROJECT_ID,
         integrationId: integration.id,
         limit: 25
-      })).resolves.toMatchObject({ syncState: { cursor: null } });
+      })).resolves.toMatchObject({ syncState: { cursor: "cursor_after_first" } });
     } finally {
       clock.mockRestore();
     }
@@ -531,6 +564,11 @@ describe("Ironside polling and feedback", () => {
       remoteProjectId: remoteContext.project.id,
       lastTestResult: { ok: false }
     });
+    await expect(processFeedbackSyncJob(
+      repository,
+      feedbackJob!.data as { projectId: string; feedbackSyncJobId: string },
+      () => { throw new Error("must not create a writer while revalidation is required"); }
+    )).rejects.toBeInstanceOf(IronsideIntegrationRevalidationRequiredError);
   });
 
   it("parses poll configuration defensively", () => {
@@ -578,5 +616,22 @@ describe("Ironside trace mapping", () => {
     }));
     expect(() => ironsideTraceToTraceImport(traceTree({ observations })))
       .toThrow(IronsideTraceTooLargeError);
+  });
+
+  it("escapes U+0000 recursively before PostgreSQL jsonb storage", () => {
+    const imported = ironsideTraceToTraceImport(traceTree({
+      input: { "nul\0key": "before\0after" },
+      observations: [{
+        id: "obs_nul", parentObservationId: null, type: "span", name: null,
+        startTime: "2026-08-18T15:00:00.000Z", endTime: null, level: "default",
+        statusMessage: null, model: null, modelParameters: {}, input: ["x\0y"], output: null,
+        usageDetails: {}, costDetails: {}, completionStartTime: null,
+        metadata: { nested: "m\0n" }, children: []
+      }]
+    }));
+    expect(JSON.stringify(imported)).not.toContain("\0");
+    expect(imported.input).toEqual({ "nul\\u0000key": "before\\u0000after" });
+    expect(imported.steps?.[0]?.input).toEqual(["x\\u0000y"]);
+    expect(imported.steps?.[0]?.metadata).toMatchObject({ nested: "m\\u0000n" });
   });
 });

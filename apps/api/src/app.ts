@@ -94,7 +94,7 @@ import {
 } from "@coeval/shared";
 import { traceTestRunOutcome } from "@coeval/shared";
 import type { Queue, QueueSendOptions } from "@coeval/queue";
-import { AgentSetupEligibilityError, AmbiguousProjectSkillError, AssessmentReceiptIntegrityError, AssessmentReceiptUnavailableError, CaseNotFoundError, CoevalRepository, CriterionStableKeyConflictError, DatasetNameTakenError, DatasetNotFoundError, DatasetRevisionConflictError, DatasetRevisionNotFoundError, DemoRepository, EvaluatorSuiteBindingError, EvaluatorSuiteIdempotencyConflictError, GoldenSetEntryAlreadyRetiredError, GoldenSetEntryNotFoundError, GoldenSetLabelConflictError, ImportSkillVersionBindingError, InvalidConvergenceCursorError, IronsideIntegrationAlreadyExistsError, IronsideIntegrationNotFoundError, LangfuseIntegrationNotFoundError, LangSmithIntegrationNotFoundError, NoCurrentSkillError, OnboardingCheckConflictError, RecursiveTraceSkippedError, RegressionGateJudgeError, RegressionGateUnavailableError, SealedValidationUnavailableError, SkillVersionNotSignableError, TraceTestNotFoundError, TraceTestRevisionConflictError, TraceTestSourceNotFoundError, TraceTestValidationNotReadyError, type IronsideImportContext, type LangfuseImportContext, type LangSmithImportContext } from "./repository.js";
+import { AgentSetupEligibilityError, AmbiguousProjectSkillError, AssessmentReceiptIntegrityError, AssessmentReceiptUnavailableError, CaseNotFoundError, CoevalRepository, CriterionStableKeyConflictError, DatasetNameTakenError, DatasetNotFoundError, DatasetRevisionConflictError, DatasetRevisionNotFoundError, DemoRepository, EvaluatorSuiteBindingError, EvaluatorSuiteIdempotencyConflictError, GoldenSetEntryAlreadyRetiredError, GoldenSetEntryNotFoundError, GoldenSetLabelConflictError, ImportSkillVersionBindingError, InvalidConvergenceCursorError, IronsideIntegrationAlreadyExistsError, IronsideIntegrationChangedError, IronsideIntegrationNotFoundError, LangfuseIntegrationNotFoundError, LangSmithIntegrationNotFoundError, NoCurrentSkillError, OnboardingCheckConflictError, RecursiveTraceSkippedError, RegressionGateJudgeError, RegressionGateUnavailableError, SealedValidationUnavailableError, SkillVersionNotSignableError, TraceTestNotFoundError, TraceTestRevisionConflictError, TraceTestSourceNotFoundError, TraceTestValidationNotReadyError, type IronsideImportContext, type LangfuseImportContext, type LangSmithImportContext } from "./repository.js";
 import type { CoevalAuth } from "./lib/auth.js";
 import {
   bootstrapOwnerUserByEmail,
@@ -4623,7 +4623,16 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
           }, 409);
         }
       }
-      const integration = await repository.updateIronsideIntegration(projectId, integrationId, parsed.data, remote);
+      const integration = await repository.updateIronsideIntegration(
+        projectId,
+        integrationId,
+        parsed.data,
+        remote,
+        {
+          remoteProjectId: current.remoteProjectId,
+          revalidationRequired: current.revalidationRequired
+        }
+      );
       return c.json({ integration });
     } catch (error) {
       if (error instanceof IronsideHttpError || error instanceof z.ZodError || error instanceof TypeError) {
@@ -4638,6 +4647,12 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       }
       if (error instanceof DatasetRevisionConflictError) {
         return c.json({ error: error.message, code: "invalid_skill_version" }, 400);
+      }
+      if (error instanceof IronsideIntegrationChangedError) {
+        return c.json({
+          error: "The Ironside connection changed while this request was validating it. Reload and try again.",
+          code: "ironside_integration_changed"
+        }, 409);
       }
       if (!(error instanceof IronsideIntegrationNotFoundError)) throw error;
       return c.json({ error: "Ironside integration not found" }, 404);
@@ -4736,7 +4751,25 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       );
       return c.json(failed, 409);
     }
-    await repository.updateIronsideIntegration(projectId, integrationId, {}, remote);
+    try {
+      await repository.updateIronsideIntegration(
+        projectId,
+        integrationId,
+        {},
+        remote,
+        {
+          remoteProjectId: context.remoteProjectId,
+          revalidationRequired: context.revalidationRequired
+        }
+      );
+    } catch (error) {
+      if (!(error instanceof IronsideIntegrationChangedError)) throw error;
+      return c.json({
+        ok: false,
+        checkedAt,
+        error: "The Ironside connection changed while this test was running. Reload and test it again."
+      }, 409);
+    }
     await repository.recordIronsideConnectionTest(projectId, integrationId, result);
     return c.json(result);
   });

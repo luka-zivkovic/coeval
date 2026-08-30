@@ -175,7 +175,10 @@ export function ironsideTraceToTraceImport(trace: IronsideEvaluatorTrace): Manua
     if (observationCount > MAX_TRACE_STEPS) {
       throw new IronsideTraceTooLargeError(trace.id, observationCount, MAX_TRACE_STEPS);
     }
-    pending.push(...node.children);
+    // Avoid Function.apply/argument-count limits on pathologically wide
+    // traces. The explicit loop remains bounded by MAX_TRACE_STEPS without
+    // first expanding every child into one variadic call.
+    for (const child of node.children) pending.push(child);
   }
 
   const steps: TraceStep[] = [];
@@ -183,9 +186,9 @@ export function ironsideTraceToTraceImport(trace: IronsideEvaluatorTrace): Manua
     for (const node of nodes) {
       steps.push({
         ...(node.name ? { name: node.name } : {}),
-        input: node.input ?? null,
-        output: node.output ?? null,
-        metadata: {
+        input: postgresJsonSafeValue(node.input ?? null),
+        output: postgresJsonSafeValue(node.output ?? null),
+        metadata: postgresJsonSafeValue({
           observationId: node.id,
           type: node.type,
           ...(node.model ? { model: node.model } : {}),
@@ -194,7 +197,7 @@ export function ironsideTraceToTraceImport(trace: IronsideEvaluatorTrace): Manua
           ...(node.usageDetails && Object.keys(node.usageDetails).length > 0 ? { usageDetails: node.usageDetails } : {}),
           ...(node.costDetails && Object.keys(node.costDetails).length > 0 ? { costDetails: node.costDetails } : {}),
           ...(node.metadata ?? {})
-        }
+        }) as Record<string, unknown>
       });
       flatten(node.children);
     }
@@ -203,9 +206,9 @@ export function ironsideTraceToTraceImport(trace: IronsideEvaluatorTrace): Manua
 
   return {
     sourceTraceId: trace.id,
-    input: trace.input ?? {},
-    output: trace.output ?? {},
-    metadata: {
+    input: postgresJsonSafeValue(trace.input ?? {}),
+    output: postgresJsonSafeValue(trace.output ?? {}),
+    metadata: postgresJsonSafeValue({
       source: "ironside",
       sourceTraceVersion: trace.traceVersion,
       ...(trace.name != null ? { name: trace.name } : {}),
@@ -217,7 +220,27 @@ export function ironsideTraceToTraceImport(trace: IronsideEvaluatorTrace): Manua
       ...(trace.version != null ? { version: trace.version } : {}),
       ...(trace.tags.length > 0 ? { tags: trace.tags } : {}),
       extra: trace.metadata
-    },
+    }) as Record<string, unknown>,
     ...(steps.length > 0 ? { steps } : {})
   };
+}
+
+/**
+ * PostgreSQL jsonb cannot represent U+0000, even though it is legal in JSON
+ * strings and can arrive in evaluator payloads. Escape it deterministically
+ * in both values and object keys before the raw/normalized payloads reach the
+ * repository, so one trace cannot pin the opaque feed cursor forever.
+ */
+function postgresJsonSafeValue(value: unknown): unknown {
+  if (typeof value === "string") return value.replaceAll("\0", "\\u0000");
+  if (Array.isArray(value)) return value.map(postgresJsonSafeValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+        key.replaceAll("\0", "\\u0000"),
+        postgresJsonSafeValue(entry)
+      ])
+    );
+  }
+  return value;
 }

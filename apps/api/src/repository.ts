@@ -384,7 +384,13 @@ export interface CoevalRepository {
   loadLangfuseImportContext(job: LangfuseImportJob): Promise<LangfuseImportContext>;
   listIronsideIntegrations(projectId: string): Promise<IronsideIntegration[]>;
   createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration>;
-  updateIronsideIntegration(projectId: string, integrationId: string, input: UpdateIronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration>;
+  updateIronsideIntegration(
+    projectId: string,
+    integrationId: string,
+    input: UpdateIronsideIntegrationInput,
+    remote?: IronsideEvaluatorContext,
+    expected?: { remoteProjectId: string; revalidationRequired: boolean }
+  ): Promise<IronsideIntegration>;
   recordIronsideConnectionTest(projectId: string, integrationId: string, result: IronsideConnectionTestResult): Promise<void>;
   quarantineIronsideIntegration(
     projectId: string,
@@ -1180,6 +1186,13 @@ export class IronsideIntegrationNotFoundError extends Error {
   constructor(integrationId: string) {
     super(`Ironside integration not found: ${integrationId}`);
     this.name = "IronsideIntegrationNotFoundError";
+  }
+}
+
+export class IronsideIntegrationChangedError extends Error {
+  constructor(integrationId: string) {
+    super(`Ironside integration changed during validation: ${integrationId}`);
+    this.name = "IronsideIntegrationChangedError";
   }
 }
 
@@ -2748,9 +2761,24 @@ export class DemoRepository implements CoevalRepository {
       .map(toPublicIronsideIntegration);
   }
 
-  async updateIronsideIntegration(projectId: string, integrationId: string, input: UpdateIronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration> {
+  async updateIronsideIntegration(
+    projectId: string,
+    integrationId: string,
+    input: UpdateIronsideIntegrationInput,
+    remote?: IronsideEvaluatorContext,
+    expected?: { remoteProjectId: string; revalidationRequired: boolean }
+  ): Promise<IronsideIntegration> {
     const integration = this.ironsideIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new IronsideIntegrationNotFoundError(integrationId);
+    if (
+      expected &&
+      (
+        integration.remoteProjectId !== expected.remoteProjectId ||
+        integration.revalidationRequired !== expected.revalidationRequired
+      )
+    ) {
+      throw new IronsideIntegrationChangedError(integrationId);
+    }
     if (input.url !== undefined) integration.url = input.url;
     if (input.apiKey !== undefined) integration.apiKey = input.apiKey;
     if (remote) {

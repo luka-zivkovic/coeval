@@ -40,6 +40,13 @@ export async function processFeedbackSyncJob(
   const parsed = FeedbackSyncJobSchema.parse(job);
   const context = await repository.loadFeedbackSyncContext(parsed);
   try {
+    if (
+      context.provider === "ironside" &&
+      "revalidationRequired" in context.integration &&
+      context.integration.revalidationRequired
+    ) {
+      throw new IronsideIntegrationRevalidationRequiredError(context.integration.id);
+    }
     const writer = createWriter(context);
     if (
       context.provider === "ironside" &&
