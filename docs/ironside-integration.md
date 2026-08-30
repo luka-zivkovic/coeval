@@ -27,9 +27,11 @@ Coeval skips that obsolete version and continues: Ironside publishes the newer
 settled version as a subsequent feed activity. A 404 is also skipped because
 retention may remove a trace between list and detail. Cursor state is committed
 only after imported cases have durable judging work. Poll requests have a
-15-second transport timeout, and one import job yields after 100 pages or 30
-seconds so an upstream that keeps returning empty changing pages cannot
-monopolize a worker.
+15-second transport timeout, and one import job yields after 100 pages or a
+30-second aggregate budget (plus at most the one in-flight request timeout) so
+an upstream that keeps returning empty changing pages cannot monopolize a
+worker. Yielding partway through a page retains that page's starting cursor;
+exact source dedupe makes its already-visited prefix safe to replay.
 
 Source identity is `(remote project, traceId, traceVersion)`, including after a
 disconnect and later reconnect. This prevents colliding IDs in two Ironside
@@ -47,6 +49,17 @@ normalized imported content. Identical content records the cutover version on
 the existing case without pretending the legacy snapshot had that provenance.
 Changed content creates a new immutable case. Later versions always create or
 deduplicate by the full native source identity.
+
+Legacy connections are quarantined with polling disabled because the old
+contract did not persist a verifiable remote project identity. An owner must
+run the connection test once; a successful v1 context check atomically stores
+the protocol, remote project, and settlement settings. Polling can then be
+re-enabled. Imports never run under a synthetic remote identity.
+
+Only one verified Ironside connection may exist per Coeval project. Repeating
+the create request returns 409; credential rotation uses update, and changing
+to another remote project requires disconnecting first. This keeps historical
+case writeback attached to the original remote.
 
 For rollout, apply the Coeval migration before starting upgraded API and worker
 processes. Upgrade Ironside's migration and feed-writing worker before exposing

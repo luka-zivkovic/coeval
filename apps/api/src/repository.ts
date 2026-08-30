@@ -1177,6 +1177,20 @@ export class IronsideIntegrationNotFoundError extends Error {
   }
 }
 
+export class IronsideIntegrationAlreadyExistsError extends Error {
+  constructor(projectId: string) {
+    super(`An Ironside integration already exists for project: ${projectId}`);
+    this.name = "IronsideIntegrationAlreadyExistsError";
+  }
+}
+
+export class IronsideIntegrationRevalidationRequiredError extends Error {
+  constructor(integrationId: string) {
+    super(`Ironside integration must be revalidated before importing: ${integrationId}`);
+    this.name = "IronsideIntegrationRevalidationRequiredError";
+  }
+}
+
 export class IronsideCredentialsMissingError extends Error {
   constructor(integrationId: string) {
     super(`Ironside integration credentials missing API key: ${integrationId}`);
@@ -2680,8 +2694,13 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration> {
-    const id = `int_${randomUUID()}`;
-    const createdAt = new Date().toISOString();
+    const existing = [...this.ironsideIntegrations.values()]
+      .find((integration) => integration.projectId === projectId);
+    if (existing && !existing.remoteProjectId.startsWith("unverified:")) {
+      throw new IronsideIntegrationAlreadyExistsError(projectId);
+    }
+    const id = existing?.id ?? `int_${randomUUID()}`;
+    const createdAt = existing?.createdAt ?? new Date().toISOString();
     const pollEnabled = input.pollEnabled ?? true;
     const pollIntervalSeconds = input.pollIntervalSeconds ?? 300;
     const pollLimit = input.pollLimit ?? 25;

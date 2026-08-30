@@ -177,6 +177,7 @@ import {
   GoldenSetEntryNotFoundError,
   InvalidConvergenceCursorError,
   IronsideCredentialsMissingError,
+  IronsideIntegrationAlreadyExistsError,
   IronsideIntegrationNotFoundError,
   LangfuseCredentialsMissingError,
   LangfuseIntegrationNotFoundError,
@@ -2589,6 +2590,8 @@ export class PgRepository implements CoevalRepository {
                      poll_limit = $8,
                      last_tested_at = null,
                      last_test_result = null
+       where integrations.config ->> 'remoteProjectId' is null
+          or integrations.config ->> 'remoteProjectId' like 'unverified:%'
        returning id, project_id, provider, config, poll_enabled, poll_interval_seconds, poll_limit, last_tested_at, last_test_result, created_at`,
       [
         `int_${randomUUID()}`,
@@ -2610,6 +2613,7 @@ export class PgRepository implements CoevalRepository {
         pollLimit
       ]
     );
+    if (!result.rows[0]) throw new IronsideIntegrationAlreadyExistsError(projectId);
     // Same graduation rule as LangSmith/Langfuse: a connected tracer flips bench → tracing.
     await this.pool.query(`update projects set mode = 'tracing', updated_at = now() where id = $1 and mode <> 'tracing'`, [projectId]);
     return rowToIronsideIntegration(result.rows[0]);
@@ -2636,14 +2640,22 @@ export class PgRepository implements CoevalRepository {
            poll_interval_seconds = coalesce($4::integer, poll_interval_seconds),
            poll_limit = coalesce($5::integer, poll_limit),
            encrypted_credentials = coalesce($7::text, encrypted_credentials),
-           config = config || jsonb_strip_nulls(jsonb_build_object(
-             'skillVersionId', $6::text,
-             'url', $8::text,
-             'remoteProjectId', $9::text,
-             'remoteProjectName', $10::text,
-             'protocolVersion', $11::text,
-             'settlementQuietPeriodSeconds', $12::integer
-           ))
+           config = (
+             config || jsonb_strip_nulls(jsonb_build_object(
+               'skillVersionId', $6::text,
+               'url', $8::text,
+               'remoteProjectId', $9::text,
+               'remoteProjectName', $10::text,
+               'protocolVersion', $11::text,
+               'settlementQuietPeriodSeconds', $12::integer
+             ))
+           ) || case when $9::text is null then '{}'::jsonb else jsonb_build_object(
+             'nativeUpgrade',
+             coalesce(config -> 'nativeUpgrade', '{}'::jsonb) || jsonb_build_object(
+               'requiresRevalidation', false,
+               'revalidatedAt', clock_timestamp()
+             )
+           ) end
        where id = $1 and project_id = $2 and provider = 'ironside'
        returning id, project_id, provider, config, poll_enabled, poll_interval_seconds, poll_limit, last_tested_at, last_test_result, created_at`,
       [

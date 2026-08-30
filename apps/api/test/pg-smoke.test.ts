@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import { runMigrations } from "@coeval/db";
 import { createQueue, type Queue, type QueueName } from "@coeval/queue";
 import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema, type JudgeProviderId } from "@coeval/shared";
-import { GoldenSetEntryAlreadyRetiredError, RegressionGateJudgeError, RegressionGateUnavailableError } from "../src/repository.js";
+import { GoldenSetEntryAlreadyRetiredError, IronsideIntegrationAlreadyExistsError, RegressionGateJudgeError, RegressionGateUnavailableError } from "../src/repository.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { processFeedbackSyncJob } from "../src/workers/feedback-sync.js";
 import { dispatchEvalRunOnce, processGateRunJob } from "../src/workers/gate.js";
@@ -1448,6 +1448,40 @@ run("PgRepository smoke", () => {
         { source_remote_project_id: "remote_project_a", source_trace_version: "2026-08-01T12:05:00.000Z" },
         { source_remote_project_id: "remote_project_b", source_trace_version: "2026-08-01T12:00:00.000Z" }
       ]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("does not replace a verified Ironside connection through create", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_ironside_connection_identity");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      const context = (remoteProjectId: string) => ({
+        protocolVersion: "ironside/evaluator/v1" as const,
+        project: { id: remoteProjectId, name: remoteProjectId },
+        capabilities: ["traces:read" as const, "scores:write" as const],
+        settlement: { kind: "quiet_period" as const, quietPeriodSeconds: 0 }
+      });
+      const first = await repo.createIronsideIntegration("proj_test", {
+        url: "https://ironside-a.example",
+        apiKey: "key_a"
+      }, context("remote_a"));
+      await expect(repo.createIronsideIntegration("proj_test", {
+        url: "https://ironside-b.example",
+        apiKey: "key_b"
+      }, context("remote_b"))).rejects.toBeInstanceOf(IronsideIntegrationAlreadyExistsError);
+      await expect(repo.loadIronsideImportContext({
+        projectId: "proj_test",
+        integrationId: first.id,
+        limit: 1
+      })).resolves.toMatchObject({
+        url: "https://ironside-a.example",
+        remoteProjectId: "remote_a"
+      });
     } finally {
       await cleanup();
     }

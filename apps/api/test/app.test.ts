@@ -4924,6 +4924,19 @@ describe("dataset examples (Skill Bench ingestion)", () => {
     expect(created.integration.remoteProjectId).toBe("remote_primary");
     await repository.saveIronsideSyncState("proj_langsmith_support", created.integration.id, { cursor: "cursor_saved" });
 
+    const duplicateCreate = await appWithIronside.request("/api/integrations/ironside", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url: "https://other.example.test", apiKey: "key_other_project" })
+    });
+    expect(duplicateCreate.status).toBe(409);
+    await expect(duplicateCreate.json()).resolves.toMatchObject({
+      code: "ironside_integration_exists"
+    });
+    await expect(repository.loadIronsideImportContext({
+      projectId: "proj_langsmith_support", integrationId: created.integration.id, limit: 1
+    })).resolves.toMatchObject({ remoteProjectId: "remote_primary", syncState: { cursor: "cursor_saved" } });
+
     const rotatedResponse = await appWithIronside.request(`/api/integrations/ironside/${created.integration.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },

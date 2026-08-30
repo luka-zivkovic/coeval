@@ -5,6 +5,7 @@ import type { CoevalRepository, IronsideImportContext } from "../repository.js";
 import {
   ImportSkillVersionBindingError,
   IronsideCredentialsMissingError,
+  IronsideIntegrationRevalidationRequiredError,
   IronsideIntegrationNotFoundError,
   NoCurrentSkillError,
   RecursiveTraceSkippedError
@@ -12,7 +13,6 @@ import {
 import {
   IronsideClient,
   IronsideHttpError,
-  IronsideTraceVersionMismatchError,
   ironsideTraceToTraceImport,
   type IronsideTraceSource
 } from "../lib/ironside.js";
@@ -64,6 +64,9 @@ export async function processIronsideImportJob(
     if (!version) throw new ImportSkillVersionBindingError(`Unknown import skillVersionId for project: ${parsed.skillVersionId}`);
     await assertImportJudgingAllowed(repository, parsed.projectId, version.id);
     const context = await repository.loadIronsideImportContext(parsed);
+    if (context.remoteProjectId.startsWith("unverified:")) {
+      throw new IronsideIntegrationRevalidationRequiredError(context.id);
+    }
     const client = createClient(context);
 
     let cursor = context.syncState.cursor;
@@ -85,8 +88,14 @@ export async function processIronsideImportJob(
         ...(cursor ? { cursor } : {}),
         limit: Math.min(context.limit - scanned, 100)
       });
+      const pageStartCursor = cursor;
+      let completedPage = true;
 
       for (const summary of page.traces) {
+        if (Date.now() >= deadline) {
+          completedPage = false;
+          break;
+        }
         scanned += 1;
         let tree;
         try {
@@ -95,10 +104,7 @@ export async function processIronsideImportJob(
           // A trace can reopen between the feed page and detail request. The
           // old version is no longer settled; Ironside publishes the newer
           // version as another feed activity, so advancing this cursor is safe.
-          if (
-            (error instanceof IronsideHttpError && (error.status === 404 || error.status === 409)) ||
-            error instanceof IronsideTraceVersionMismatchError
-          ) continue;
+          if (error instanceof IronsideHttpError && (error.status === 404 || error.status === 409)) continue;
           throw error;
         }
         let row;
@@ -120,6 +126,14 @@ export async function processIronsideImportJob(
         // Include no-op imports too: a worker retry may have committed the
         // trace snapshot immediately before failing to durably queue judging.
         caseIds.push(row.caseId);
+      }
+
+      if (!completedPage) {
+        // A feed cursor commits the entire page. Retain its starting point
+        // when yielding mid-page; exact source dedupe makes the safe prefix a
+        // no-op on retry without dropping the unvisited suffix.
+        cursor = pageStartCursor;
+        break;
       }
 
       const previousCursor = cursor;
@@ -160,6 +174,7 @@ export function isPermanentIronsideImportError(error: unknown): boolean {
   if (error instanceof z.ZodError) return true;
   if (error instanceof IronsideIntegrationNotFoundError) return true;
   if (error instanceof IronsideCredentialsMissingError) return true;
+  if (error instanceof IronsideIntegrationRevalidationRequiredError) return true;
   if (error instanceof ImportSkillVersionBindingError) return true;
   if (error instanceof NoCurrentSkillError) return true;
   if (error instanceof Error) {

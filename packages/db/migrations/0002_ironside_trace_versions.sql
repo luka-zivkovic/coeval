@@ -52,16 +52,19 @@ create index raw_traces_source_version_lookup
 -- equal snapshot reuses the existing case without inventing exact historical
 -- provenance; a changed snapshot creates a new versioned case.
 update integrations
-set config = jsonb_set(
-  jsonb_set(config, '{sync}', '{"cursor":null}'::jsonb, true),
-  '{nativeUpgrade}',
-  jsonb_build_object(
-    'kind', 'legacy-reconciliation-v1',
-    'legacySync', coalesce(config -> 'sync', '{}'::jsonb),
-    'cutoverPolicy', 'content-match-first-native-version'
-  ),
-  true
-)
+set poll_enabled = false,
+    config = jsonb_set(
+      jsonb_set(config, '{sync}', '{"cursor":null}'::jsonb, true),
+      '{nativeUpgrade}',
+      jsonb_build_object(
+        'kind', 'legacy-reconciliation-v1',
+        'legacySync', coalesce(config -> 'sync', '{}'::jsonb),
+        'cutoverPolicy', 'content-match-first-native-version',
+        'requiresRevalidation', true,
+        'previousPollEnabled', poll_enabled
+      ),
+      true
+    )
 where provider = 'ironside'
   and (
     config ->> 'protocolVersion' is null

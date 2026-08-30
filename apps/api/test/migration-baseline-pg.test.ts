@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runMigrations } from "@coeval/db";
+import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
@@ -24,7 +25,7 @@ run("frozen database baseline", () => {
         },
         {
           id: "0002_ironside_trace_versions",
-          checksum: "269dac0e95ed4850ac153a6f7f41922467a2c284730d84aa2b94c444ed678a9f",
+          checksum: "67dce4c0e4d362602ec0bfc752632ee8b43f52ce441186ce208a1b10a4a09842",
         }
       ]);
     } finally {
@@ -137,9 +138,13 @@ run("frozen database baseline", () => {
 
       await runMigrations(pool);
 
-      const integration = await pool.query<{ config: Record<string, unknown> }>(
-        "select config from integrations where id = 'int_upgrade'"
+      const integration = await pool.query<{
+        config: Record<string, unknown>;
+        poll_enabled: boolean;
+      }>(
+        "select config, poll_enabled from integrations where id = 'int_upgrade'"
       );
+      expect(integration.rows[0]?.poll_enabled).toBe(false);
       expect(integration.rows[0]?.config).toMatchObject({
         sync: { cursor: null },
         nativeUpgrade: {
@@ -149,9 +154,13 @@ run("frozen database baseline", () => {
             cursor: "legacy_cursor",
             windowTo: "2026-08-02T00:00:00.000Z"
           },
-          cutoverPolicy: "content-match-first-native-version"
+          cutoverPolicy: "content-match-first-native-version",
+          requiresRevalidation: true,
+          previousPollEnabled: true
         }
       });
+      expect(integration.rows[0]?.config).not.toHaveProperty("protocolVersion");
+      expect(integration.rows[0]?.config).not.toHaveProperty("remoteProjectId");
       expect((await pool.query(
         `select source_trace_version, source_remote_project_id,
                 source_trace_cutover_version, source_trace_cutover_matched
@@ -162,6 +171,31 @@ run("frozen database baseline", () => {
         source_trace_cutover_version: null,
         source_trace_cutover_matched: null
       }]);
+
+      const repo = new PgRepository(pool);
+      await repo.updateIronsideIntegration("project_upgrade", "int_upgrade", {}, {
+        protocolVersion: "ironside/evaluator/v1",
+        project: { id: "remote_upgrade", name: "Upgraded remote" },
+        capabilities: ["traces:read", "scores:write"],
+        settlement: { kind: "quiet_period", quietPeriodSeconds: 120 }
+      });
+      await repo.saveIronsideSyncState("project_upgrade", "int_upgrade", {
+        cursor: "native_cursor"
+      });
+      const revalidated = await pool.query<{
+        config: Record<string, unknown>;
+        poll_enabled: boolean;
+      }>("select config, poll_enabled from integrations where id = 'int_upgrade'");
+      expect(revalidated.rows[0]).toMatchObject({
+        poll_enabled: false,
+        config: {
+          protocolVersion: "ironside/evaluator/v1",
+          remoteProjectId: "remote_upgrade",
+          settlementQuietPeriodSeconds: 120,
+          sync: { cursor: "native_cursor" },
+          nativeUpgrade: { requiresRevalidation: false }
+        }
+      });
     } finally {
       await cleanup();
     }

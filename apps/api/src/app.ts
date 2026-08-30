@@ -94,7 +94,7 @@ import {
 } from "@coeval/shared";
 import { traceTestRunOutcome } from "@coeval/shared";
 import type { Queue, QueueSendOptions } from "@coeval/queue";
-import { AgentSetupEligibilityError, AmbiguousProjectSkillError, AssessmentReceiptIntegrityError, AssessmentReceiptUnavailableError, CaseNotFoundError, CoevalRepository, CriterionStableKeyConflictError, DatasetNameTakenError, DatasetNotFoundError, DatasetRevisionConflictError, DatasetRevisionNotFoundError, DemoRepository, EvaluatorSuiteBindingError, EvaluatorSuiteIdempotencyConflictError, GoldenSetEntryAlreadyRetiredError, GoldenSetEntryNotFoundError, GoldenSetLabelConflictError, ImportSkillVersionBindingError, InvalidConvergenceCursorError, IronsideIntegrationNotFoundError, LangfuseIntegrationNotFoundError, LangSmithIntegrationNotFoundError, NoCurrentSkillError, OnboardingCheckConflictError, RecursiveTraceSkippedError, RegressionGateJudgeError, RegressionGateUnavailableError, SealedValidationUnavailableError, SkillVersionNotSignableError, TraceTestNotFoundError, TraceTestRevisionConflictError, TraceTestSourceNotFoundError, TraceTestValidationNotReadyError, type IronsideImportContext, type LangfuseImportContext, type LangSmithImportContext } from "./repository.js";
+import { AgentSetupEligibilityError, AmbiguousProjectSkillError, AssessmentReceiptIntegrityError, AssessmentReceiptUnavailableError, CaseNotFoundError, CoevalRepository, CriterionStableKeyConflictError, DatasetNameTakenError, DatasetNotFoundError, DatasetRevisionConflictError, DatasetRevisionNotFoundError, DemoRepository, EvaluatorSuiteBindingError, EvaluatorSuiteIdempotencyConflictError, GoldenSetEntryAlreadyRetiredError, GoldenSetEntryNotFoundError, GoldenSetLabelConflictError, ImportSkillVersionBindingError, InvalidConvergenceCursorError, IronsideIntegrationAlreadyExistsError, IronsideIntegrationNotFoundError, LangfuseIntegrationNotFoundError, LangSmithIntegrationNotFoundError, NoCurrentSkillError, OnboardingCheckConflictError, RecursiveTraceSkippedError, RegressionGateJudgeError, RegressionGateUnavailableError, SealedValidationUnavailableError, SkillVersionNotSignableError, TraceTestNotFoundError, TraceTestRevisionConflictError, TraceTestSourceNotFoundError, TraceTestValidationNotReadyError, type IronsideImportContext, type LangfuseImportContext, type LangSmithImportContext } from "./repository.js";
 import type { CoevalAuth } from "./lib/auth.js";
 import {
   bootstrapOwnerUserByEmail,
@@ -4559,6 +4559,12 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       if (error instanceof DatasetRevisionConflictError) {
         return c.json({ error: error.message, code: "invalid_skill_version" }, 400);
       }
+      if (error instanceof IronsideIntegrationAlreadyExistsError) {
+        return c.json({
+          error: "An Ironside connection already exists. Update it in place, or disconnect it before connecting another project.",
+          code: "ironside_integration_exists"
+        }, 409);
+      }
       throw error;
     }
   });
@@ -4694,6 +4700,17 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       remoteProjectId: remote.project.id,
       remoteProjectName: remote.project.name
     };
+    if (
+      !context.remoteProjectId.startsWith("unverified:") &&
+      context.remoteProjectId !== remote.project.id
+    ) {
+      return c.json({
+        ok: false,
+        checkedAt,
+        error: "The configured credentials now resolve to a different Ironside project."
+      }, 409);
+    }
+    await repository.updateIronsideIntegration(projectId, integrationId, {}, remote);
     await repository.recordIronsideConnectionTest(projectId, integrationId, result);
     return c.json(result);
   });
@@ -4716,7 +4733,18 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     }
 
     try {
-      await repository.loadIronsideImportContext({ projectId, integrationId, skillVersionId: resolvedVersion.id, limit: parsed.data.limit });
+      const context = await repository.loadIronsideImportContext({
+        projectId,
+        integrationId,
+        skillVersionId: resolvedVersion.id,
+        limit: parsed.data.limit
+      });
+      if (context.remoteProjectId.startsWith("unverified:")) {
+        return c.json({
+          error: "This upgraded Ironside connection must be tested before importing.",
+          code: "ironside_revalidation_required"
+        }, 409);
+      }
     } catch (error) {
       if (!(error instanceof IronsideIntegrationNotFoundError)) throw error;
       return c.json({ error: "Ironside integration not found" }, 404);

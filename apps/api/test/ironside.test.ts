@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { QueueName, Queue } from "@coeval/queue";
 import type { IronsideEvaluatorContext, IronsideEvaluatorTrace } from "@coeval/shared";
 import { MockJudgeProvider } from "@coeval/audit/runtime";
@@ -262,13 +262,13 @@ describe("Ironside versioned feed import", () => {
     })).resolves.toMatchObject({ syncState: { cursor: "cursor_100" } });
   });
 
-  it("advances past a protocol-violating detail version without wedging the page", async () => {
+  it("retries a protocol-violating detail version without advancing the cursor", async () => {
     const queue = new CapturingQueue();
     const repository = new DemoRepository();
     const integration = await repository.createIronsideIntegration(PROJECT_ID, {
       url: "http://ironside.test:18788", apiKey: "ironside_sk_test"
     }, remoteContext);
-    const result = await processIronsideImportJob(repository, queue, {
+    await expect(processIronsideImportJob(repository, queue, {
       projectId: PROJECT_ID, integrationId: integration.id, skillVersionId: "skillv_1_2_0", limit: 25
     }, () => ({
       async getContext() { return remoteContext; },
@@ -278,8 +278,52 @@ describe("Ironside versioned feed import", () => {
       async getTrace() {
         throw new IronsideTraceVersionMismatchError(TRACE_VERSION_1, TRACE_VERSION_2);
       }
-    }));
-    expect(result).toEqual({ imported: 0, queued: 0, scanned: 1, drained: true });
+    }))).rejects.toBeInstanceOf(IronsideTraceVersionMismatchError);
+    await expect(repository.loadIronsideImportContext({
+      projectId: PROJECT_ID,
+      integrationId: integration.id,
+      limit: 25
+    })).resolves.toMatchObject({ syncState: { cursor: null } });
+  });
+
+  it("yields mid-page at the aggregate deadline without dropping the suffix", async () => {
+    const queue = new CapturingQueue();
+    const repository = new DemoRepository();
+    const integration = await repository.createIronsideIntegration(PROJECT_ID, {
+      url: "http://ironside.test:18788", apiKey: "ironside_sk_test"
+    }, remoteContext);
+    const clock = vi.spyOn(Date, "now");
+    const ticks = [0, 1, 2, 30_000];
+    clock.mockImplementation(() => ticks.shift() ?? 30_000);
+    try {
+      const result = await processIronsideImportJob(repository, queue, {
+        projectId: PROJECT_ID,
+        integrationId: integration.id,
+        skillVersionId: "skillv_1_2_0",
+        limit: 25
+      }, () => ({
+        async getContext() { return remoteContext; },
+        async listTraces() {
+          return {
+            protocolVersion: "ironside/evaluator/v1",
+            traces: [summary("trace_first"), summary("trace_unvisited")],
+            nextCursor: "cursor_after_whole_page",
+            hasMore: false
+          } as const;
+        },
+        async getTrace(id: string, version: string) {
+          return traceTree({ id, traceVersion: version });
+        }
+      }));
+      expect(result).toEqual({ imported: 1, queued: 1, scanned: 1, drained: false });
+      await expect(repository.loadIronsideImportContext({
+        projectId: PROJECT_ID,
+        integrationId: integration.id,
+        limit: 25
+      })).resolves.toMatchObject({ syncState: { cursor: null } });
+    } finally {
+      clock.mockRestore();
+    }
   });
 });
 
