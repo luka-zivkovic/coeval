@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { QueueName, Queue } from "@coeval/queue";
 import type { IronsideEvaluatorContext, IronsideEvaluatorTrace } from "@coeval/shared";
 import { MockJudgeProvider } from "@coeval/audit/runtime";
-import { IronsideClient, IronsideHttpError, ironsideTraceToTraceImport } from "../src/lib/ironside.js";
+import {
+  IRONSIDE_SCORE_COMMENT_MAX_CHARS,
+  IronsideClient,
+  IronsideHttpError,
+  IronsideTraceVersionMismatchError,
+  ironsideTraceToTraceImport
+} from "../src/lib/ironside.js";
 import {
   DemoRepository,
   IronsideCredentialsMissingError,
@@ -26,10 +32,18 @@ const remoteContext: IronsideEvaluatorContext = {
 };
 
 class PurposeCapturingRepository extends DemoRepository {
-  readonly imports = new Array<{ purpose: string; version?: string | undefined }>();
+  readonly imports = new Array<{
+    purpose: string;
+    version?: string | undefined;
+    remoteProjectId?: string | undefined;
+  }>();
 
   override async importTrace(...args: Parameters<DemoRepository["importTrace"]>) {
-    this.imports.push({ purpose: args[3].ingestionPurpose, version: args[3].sourceTraceVersion });
+    this.imports.push({
+      purpose: args[3].ingestionPurpose,
+      version: args[3].sourceTraceVersion,
+      remoteProjectId: args[3].sourceRemoteProjectId
+    });
     return super.importTrace(...args);
   }
 }
@@ -130,11 +144,12 @@ describe("Ironside native evaluator client", () => {
       key: "coeval_assessment/response-quality",
       score: 0.8,
       value: "pass",
-      comment: "accepted",
+      comment: "x".repeat(IRONSIDE_SCORE_COMMENT_MAX_CHARS + 100),
       sourceInfo: { skillVersionId: "skillv_1", criterionKey: "response-quality", judgeRunId: "judge_123" }
     });
     expect(captured?.url).toBe("http://ironside.test:18788/api/v1/evaluator/scores");
-    expect(JSON.parse(String(captured?.init?.body))).toMatchObject({
+    const scoreBody = JSON.parse(String(captured?.init?.body));
+    expect(scoreBody).toMatchObject({
       id: "fsync_123",
       traceId: "trace_123",
       name: "coeval_assessment/response-quality",
@@ -142,6 +157,9 @@ describe("Ironside native evaluator client", () => {
       assessmentLabel: "pass",
       evaluator: { provider: "coeval", versionId: "skillv_1", criterionKey: "response-quality" }
     });
+    expect(scoreBody.comment).toHaveLength(IRONSIDE_SCORE_COMMENT_MAX_CHARS);
+    expect(scoreBody.comment).toMatch(/…\[TRUNCATED\]$/);
+    expect(captured?.init?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("classifies credential and missing-resource errors as permanent", () => {
@@ -188,14 +206,14 @@ describe("Ironside versioned feed import", () => {
     expect(first).toEqual({ imported: 1, queued: 1, scanned: 1, drained: true });
     expect(second).toEqual({ imported: 1, queued: 1, scanned: 1, drained: true });
     expect(repository.imports).toEqual([
-      { purpose: "analysis_eligible_ironside", version: TRACE_VERSION_1 },
-      { purpose: "analysis_eligible_ironside", version: TRACE_VERSION_2 }
+      { purpose: "analysis_eligible_ironside", version: TRACE_VERSION_1, remoteProjectId: "project_remote" },
+      { purpose: "analysis_eligible_ironside", version: TRACE_VERSION_2, remoteProjectId: "project_remote" }
     ]);
     await expect(repository.loadIronsideImportContext({ projectId: PROJECT_ID, integrationId: integration.id, limit: 25 }))
       .resolves.toMatchObject({ syncState: { cursor: "cursor_v2" } });
   });
 
-  it("advances past a version that reopened before detail retrieval", async () => {
+  it.each([404, 409] as const)("advances past a version whose detail becomes unavailable (%s)", async (status) => {
     const queue = new CapturingQueue();
     const repository = new DemoRepository();
     const integration = await repository.createIronsideIntegration(PROJECT_ID, {
@@ -208,11 +226,60 @@ describe("Ironside versioned feed import", () => {
       async listTraces() {
         return { protocolVersion: "ironside/evaluator/v1", traces: [summary()], nextCursor: "cursor_after", hasMore: false } as const;
       },
-      async getTrace() { throw new IronsideHttpError("reopened", 409, "getTrace"); }
+      async getTrace() { throw new IronsideHttpError("changed", status, "getTrace"); }
     }));
     expect(result).toEqual({ imported: 0, queued: 0, scanned: 1, drained: true });
     await expect(repository.loadIronsideImportContext({ projectId: PROJECT_ID, integrationId: integration.id, limit: 25 }))
       .resolves.toMatchObject({ syncState: { cursor: "cursor_after" } });
+  });
+
+  it("bounds adversarial empty pagination while preserving the latest cursor", async () => {
+    const queue = new CapturingQueue();
+    const repository = new DemoRepository();
+    const integration = await repository.createIronsideIntegration(PROJECT_ID, {
+      url: "http://ironside.test:18788", apiKey: "ironside_sk_test"
+    }, remoteContext);
+    let pages = 0;
+    const result = await processIronsideImportJob(repository, queue, {
+      projectId: PROJECT_ID, integrationId: integration.id, skillVersionId: "skillv_1_2_0", limit: 25
+    }, () => ({
+      async getContext() { return remoteContext; },
+      async listTraces() {
+        pages += 1;
+        return {
+          protocolVersion: "ironside/evaluator/v1",
+          traces: [],
+          nextCursor: `cursor_${pages}`,
+          hasMore: true
+        } as const;
+      },
+      async getTrace() { throw new Error("no detail expected"); }
+    }));
+    expect(pages).toBe(100);
+    expect(result).toEqual({ imported: 0, queued: 0, scanned: 0, drained: false });
+    await expect(repository.loadIronsideImportContext({
+      projectId: PROJECT_ID, integrationId: integration.id, limit: 25
+    })).resolves.toMatchObject({ syncState: { cursor: "cursor_100" } });
+  });
+
+  it("advances past a protocol-violating detail version without wedging the page", async () => {
+    const queue = new CapturingQueue();
+    const repository = new DemoRepository();
+    const integration = await repository.createIronsideIntegration(PROJECT_ID, {
+      url: "http://ironside.test:18788", apiKey: "ironside_sk_test"
+    }, remoteContext);
+    const result = await processIronsideImportJob(repository, queue, {
+      projectId: PROJECT_ID, integrationId: integration.id, skillVersionId: "skillv_1_2_0", limit: 25
+    }, () => ({
+      async getContext() { return remoteContext; },
+      async listTraces() {
+        return { protocolVersion: "ironside/evaluator/v1", traces: [summary()], nextCursor: "cursor_mismatch", hasMore: false } as const;
+      },
+      async getTrace() {
+        throw new IronsideTraceVersionMismatchError(TRACE_VERSION_1, TRACE_VERSION_2);
+      }
+    }));
+    expect(result).toEqual({ imported: 0, queued: 0, scanned: 1, drained: true });
   });
 });
 
@@ -249,7 +316,8 @@ describe("Ironside polling and feedback", () => {
     }, {
       ingestionPurpose: "analysis_eligible_ironside",
       sourceIntegrationId: integration.id,
-      sourceTraceVersion: TRACE_VERSION_1
+      sourceTraceVersion: TRACE_VERSION_1,
+      sourceRemoteProjectId: remoteContext.project.id
     });
     await processJudgeRunJob(repository, {
       projectId: PROJECT_ID, caseId: imported.caseId, skillVersionId: "skillv_1_2_0"

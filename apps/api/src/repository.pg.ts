@@ -1528,13 +1528,20 @@ export class PgRepository implements CoevalRepository {
     projectId: string,
     source: CaseSource,
     sourceTraceId: string,
-    sourceTraceVersion?: string | undefined
+    sourceTraceVersion?: string | undefined,
+    sourceRemoteProjectId?: string | undefined
   ): Promise<void> {
     await client.query(
       `select pg_advisory_xact_lock(
-         hashtextextended(jsonb_build_array($1::text, $2::text, $3::text, $4::text)::text, 0)
+         hashtextextended(jsonb_build_array($1::text, $2::text, $3::text, $4::text, $5::text)::text, 0)
        )`,
-      [projectId, source, sourceTraceId, sourceTraceVersion ?? null]
+      [
+        projectId,
+        source,
+        sourceRemoteProjectId ?? null,
+        sourceTraceId,
+        sourceTraceVersion ?? null
+      ]
     );
   }
 
@@ -1560,7 +1567,14 @@ export class PgRepository implements CoevalRepository {
     // identity for the same upstream trace. Serialize this identity before
     // checking so concurrent product paths cannot both mint an origin.
     // Legacy duplicate rows, if any, resolve to the earliest retained origin.
-    await this.lockTraceImportIdentity(client, projectId, source, sourceTraceId, context.sourceTraceVersion);
+    await this.lockTraceImportIdentity(
+      client,
+      projectId,
+      source,
+      sourceTraceId,
+      context.sourceTraceVersion,
+      context.sourceRemoteProjectId
+    );
     const existing = await client.query(
       `select rt.id as raw_trace_id, c.id as case_id, rt.source_trace_id
        from raw_traces rt
@@ -1570,9 +1584,16 @@ export class PgRepository implements CoevalRepository {
          and rt.source_trace_id = $2
          and c.case_type = $3
          and rt.source_trace_version is not distinct from $4::text
+         and rt.source_remote_project_id is not distinct from $5::text
        order by c.created_at asc, c.id asc, rt.created_at asc, rt.id asc
        limit 1`,
-      [projectId, sourceTraceId, source, context.sourceTraceVersion ?? null]
+      [
+        projectId,
+        sourceTraceId,
+        source,
+        context.sourceTraceVersion ?? null,
+        context.sourceRemoteProjectId ?? null
+      ]
     );
     if (existing.rows[0]) {
       return {
@@ -1583,11 +1604,103 @@ export class PgRepository implements CoevalRepository {
       };
     }
 
+    // The superseded Ironside importer had no immutable upstream version.
+    // During the one-time native cutover, compare the first evaluator/v1
+    // snapshot with that retained case while holding the import identity lock.
+    // Equality reuses the case without pretending the old row had exact
+    // version provenance; inequality records the cutover decision and creates
+    // a distinct versioned case below. Later native versions never consult the
+    // legacy row again.
+    if (
+      source === "ironside" &&
+      context.sourceTraceVersion &&
+      context.sourceRemoteProjectId &&
+      context.sourceIntegrationId
+    ) {
+      const legacy = await client.query<{
+        raw_trace_id: string;
+        case_id: string;
+        source_trace_id: string;
+        source_trace_cutover_version: string | null;
+        source_trace_cutover_matched: boolean | null;
+        content_matches: boolean;
+      }>(
+        `select rt.id as raw_trace_id,
+                c.id as case_id,
+                rt.source_trace_id,
+                rt.source_trace_cutover_version,
+                rt.source_trace_cutover_matched,
+                (
+                  c.normalized_payload #- '{metadata,sourceTraceVersion}'
+                ) = (
+                  $6::jsonb #- '{metadata,sourceTraceVersion}'
+                ) as content_matches
+           from raw_traces rt
+           join cases c on c.raw_trace_id = rt.id and c.project_id = rt.project_id
+          where rt.project_id = $1
+            and rt.source_trace_id = $2
+            and c.case_type = $3
+            and rt.source_trace_version is null
+            and rt.source_remote_project_id is null
+            and rt.source_integration_id = $4
+            and (
+              rt.source_trace_cutover_version is null
+              or rt.source_trace_cutover_version = $5
+            )
+          order by c.created_at asc, c.id asc, rt.created_at asc, rt.id asc
+          limit 1
+          for update of rt`,
+        [
+          projectId,
+          sourceTraceId,
+          source,
+          context.sourceIntegrationId,
+          context.sourceTraceVersion,
+          JSON.stringify(normalizedPayload)
+        ]
+      );
+      const legacyRow = legacy.rows[0];
+      if (legacyRow) {
+        const matched = legacyRow.source_trace_cutover_version === null
+          ? legacyRow.content_matches
+          : legacyRow.source_trace_cutover_matched === true;
+        if (legacyRow.source_trace_cutover_version === null) {
+          await client.query(
+            `update raw_traces
+                set source_trace_cutover_version = $2,
+                    source_trace_cutover_matched = $3
+              where id = $1`,
+            [legacyRow.raw_trace_id, context.sourceTraceVersion, matched]
+          );
+        }
+        if (matched) {
+          return {
+            rawTraceId: legacyRow.raw_trace_id,
+            caseId: legacyRow.case_id,
+            sourceTraceId: legacyRow.source_trace_id,
+            created: false
+          };
+        }
+      }
+    }
+
     await client.query(
       `insert into raw_traces
-       (id, project_id, source_integration_id, source_trace_id, source_trace_version, import_job_id, raw_payload, normalization_version)
-       values ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [rawTraceId, projectId, context.sourceIntegrationId ?? null, sourceTraceId, context.sourceTraceVersion ?? null, context.importJobId ?? null, JSON.stringify(rawPayload), normalizationVersion]
+       (id, project_id, source_integration_id, source_remote_project_id,
+        source_trace_id, source_trace_version, import_job_id, raw_payload,
+        normalization_version)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [
+        rawTraceId,
+        projectId,
+        context.sourceIntegrationId ?? null,
+        context.sourceRemoteProjectId ?? null,
+        sourceTraceId,
+        context.sourceTraceVersion ?? null,
+        context.importJobId ?? null,
+        JSON.stringify(rawPayload),
+        normalizationVersion
+      ]
     );
     await client.query(
       `insert into cases
@@ -2707,8 +2820,13 @@ export class PgRepository implements CoevalRepository {
         idempotencyKey: `provider-start:ironside:${job.importJobId ?? job.integrationId}:${job.skillVersionId}`
       });
     }
-    const syncState = IronsideSyncStateSchema.catch({ cursor: null })
-      .parse(config.sync ?? { cursor: null });
+    const rawSync = config.sync;
+    const legacySync = rawSync !== null && typeof rawSync === "object" && (
+      Object.hasOwn(rawSync, "watermark") || Object.hasOwn(rawSync, "windowTo")
+    );
+    const syncState = legacySync || config.protocolVersion !== "ironside/evaluator/v1"
+      ? { cursor: null }
+      : IronsideSyncStateSchema.catch({ cursor: null }).parse(rawSync ?? { cursor: null });
     return {
       id: String(row.id),
       projectId: String(row.project_id),

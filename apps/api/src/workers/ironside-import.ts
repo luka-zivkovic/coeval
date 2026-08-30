@@ -9,7 +9,13 @@ import {
   NoCurrentSkillError,
   RecursiveTraceSkippedError
 } from "../repository.js";
-import { IronsideClient, IronsideHttpError, ironsideTraceToTraceImport, type IronsideTraceSource } from "../lib/ironside.js";
+import {
+  IronsideClient,
+  IronsideHttpError,
+  IronsideTraceVersionMismatchError,
+  ironsideTraceToTraceImport,
+  type IronsideTraceSource
+} from "../lib/ironside.js";
 import { assertImportJudgingAllowed, scheduleImportedCaseJudging } from "./import-judging.js";
 
 export interface IronsideImportResult {
@@ -20,6 +26,9 @@ export interface IronsideImportResult {
 }
 
 export type IronsideClientFactory = (context: Pick<IronsideImportContext, "url" | "apiKey">) => IronsideTraceSource;
+
+const MAX_IRONSIDE_PAGES_PER_JOB = 100;
+const MAX_IRONSIDE_IMPORT_WALL_MS = 30_000;
 
 export async function registerIronsideImportWorker(
   queue: Queue,
@@ -62,8 +71,16 @@ export async function processIronsideImportJob(
     let scanned = 0;
     let drained = false;
     const caseIds: string[] = [];
+    let pages = 0;
+    const deadline = Date.now() + MAX_IRONSIDE_IMPORT_WALL_MS;
 
-    while (!drained && scanned < context.limit) {
+    while (
+      !drained &&
+      scanned < context.limit &&
+      pages < MAX_IRONSIDE_PAGES_PER_JOB &&
+      Date.now() < deadline
+    ) {
+      pages += 1;
       const page = await client.listTraces({
         ...(cursor ? { cursor } : {}),
         limit: Math.min(context.limit - scanned, 100)
@@ -78,7 +95,10 @@ export async function processIronsideImportJob(
           // A trace can reopen between the feed page and detail request. The
           // old version is no longer settled; Ironside publishes the newer
           // version as another feed activity, so advancing this cursor is safe.
-          if (error instanceof IronsideHttpError && error.status === 409) continue;
+          if (
+            (error instanceof IronsideHttpError && (error.status === 404 || error.status === 409)) ||
+            error instanceof IronsideTraceVersionMismatchError
+          ) continue;
           throw error;
         }
         let row;
@@ -87,6 +107,7 @@ export async function processIronsideImportJob(
             ingestionPurpose: "analysis_eligible_ironside",
             sourceIntegrationId: context.id,
             sourceTraceVersion: tree.traceVersion,
+            sourceRemoteProjectId: context.remoteProjectId,
             importJobId: parsed.importJobId,
             normalizationVersion: "ironside-evaluator-v1",
             redactionConfig: context.redactionConfig

@@ -1247,6 +1247,7 @@ export class DemoRepository implements CoevalRepository {
     source: CaseSource;
     sourceTraceId: string;
     sourceTraceVersion?: string | undefined;
+    sourceRemoteProjectId?: string | undefined;
     rawTraceId: string;
     ingestionPurpose: RuntimeIngestionPurpose;
     createdAt: string;
@@ -2275,6 +2276,7 @@ export class DemoRepository implements CoevalRepository {
         traceSource.source === source
         && traceSource.sourceTraceId === sourceTraceId
         && (traceSource.sourceTraceVersion ?? null) === (context.sourceTraceVersion ?? null)
+        && (traceSource.sourceRemoteProjectId ?? null) === (context.sourceRemoteProjectId ?? null)
       ) {
         return {
           rawTraceId: traceSource.rawTraceId,
@@ -2296,6 +2298,7 @@ export class DemoRepository implements CoevalRepository {
       source,
       sourceTraceId,
       sourceTraceVersion: context.sourceTraceVersion,
+      sourceRemoteProjectId: context.sourceRemoteProjectId,
       rawTraceId,
       ingestionPurpose: context.ingestionPurpose,
       createdAt: new Date().toISOString(),
@@ -5614,6 +5617,8 @@ export interface TraceImportContext {
   ingestionPurpose: RuntimeIngestionPurpose;
   sourceIntegrationId?: string | undefined;
   sourceTraceVersion?: string | undefined;
+  /** Stable tenant identity at the upstream provider; part of import identity. */
+  sourceRemoteProjectId?: string | undefined;
   importJobId?: string | undefined;
   normalizationVersion?: string | undefined;
   redactionConfig?: TraceRedactionConfig | undefined;

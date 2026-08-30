@@ -1418,7 +1418,8 @@ run("PgRepository smoke", () => {
       };
       const firstContext = {
         ingestionPurpose: "analysis_eligible_ironside" as const,
-        sourceTraceVersion: "2026-08-01T12:00:00.000Z"
+        sourceTraceVersion: "2026-08-01T12:00:00.000Z",
+        sourceRemoteProjectId: "remote_project_a"
       };
       const first = await repo.importTrace("proj_test", "ironside", input, firstContext);
       const retry = await repo.importTrace("proj_test", "ironside", input, firstContext);
@@ -1426,20 +1427,129 @@ run("PgRepository smoke", () => {
         ...firstContext,
         sourceTraceVersion: "2026-08-01T12:05:00.000Z"
       });
+      const otherRemote = await repo.importTrace("proj_test", "ironside", input, {
+        ...firstContext,
+        sourceRemoteProjectId: "remote_project_b"
+      });
 
       expect(first.created).toBe(true);
       expect(retry).toMatchObject({ created: false, caseId: first.caseId });
       expect(reopened).toMatchObject({ created: true });
       expect(reopened.caseId).not.toBe(first.caseId);
+      expect(otherRemote).toMatchObject({ created: true });
+      expect(otherRemote.caseId).not.toBe(first.caseId);
       const rows = await pool.query(
-        `select source_trace_version from raw_traces
+        `select source_remote_project_id, source_trace_version from raw_traces
          where project_id = 'proj_test' and source_trace_id = 'ironside_reopened'
-         order by source_trace_version`
+         order by source_remote_project_id, source_trace_version`
       );
       expect(rows.rows).toEqual([
-        { source_trace_version: "2026-08-01T12:00:00.000Z" },
-        { source_trace_version: "2026-08-01T12:05:00.000Z" }
+        { source_remote_project_id: "remote_project_a", source_trace_version: "2026-08-01T12:00:00.000Z" },
+        { source_remote_project_id: "remote_project_a", source_trace_version: "2026-08-01T12:05:00.000Z" },
+        { source_remote_project_id: "remote_project_b", source_trace_version: "2026-08-01T12:00:00.000Z" }
       ]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("reconciles the first native snapshot with a content-identical legacy Ironside case", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_ironside_legacy_cutover");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      await pool.query(
+        `insert into integrations (id, project_id, provider, encrypted_credentials, config)
+         values ('int_legacy', 'proj_test', 'ironside', 'unused', '{}')`
+      );
+      const input = {
+        sourceTraceId: "legacy_trace",
+        input: { question: "Refund?" },
+        output: { answer: "Within 30 days." },
+        metadata: { source: "ironside" }
+      };
+      await pool.query(
+        `insert into raw_traces
+           (id, project_id, source_integration_id, source_trace_id, raw_payload, normalization_version)
+         values ('raw_legacy', 'proj_test', 'int_legacy', 'legacy_trace', $1::jsonb, 'ironside-v1')`,
+        [JSON.stringify({ input: input.input, output: input.output, metadata: input.metadata })]
+      );
+      await pool.query(
+        `insert into cases
+           (id, project_id, raw_trace_id, case_type, normalized_payload, ingestion_purpose)
+         values ('case_legacy', 'proj_test', 'raw_legacy', 'ironside', $1::jsonb, 'analysis_eligible_ironside')`,
+        [JSON.stringify({ input: input.input, output: input.output, metadata: input.metadata })]
+      );
+
+      const firstNative = await repo.importTrace("proj_test", "ironside", input, {
+        ingestionPurpose: "analysis_eligible_ironside",
+        sourceIntegrationId: "int_legacy",
+        sourceRemoteProjectId: "remote_project",
+        sourceTraceVersion: "2026-08-30T12:00:00.000001Z"
+      });
+      expect(firstNative).toMatchObject({ created: false, caseId: "case_legacy" });
+      expect((await pool.query(
+        `select source_trace_version, source_trace_cutover_version, source_trace_cutover_matched
+           from raw_traces where id = 'raw_legacy'`
+      )).rows).toEqual([{
+        source_trace_version: null,
+        source_trace_cutover_version: "2026-08-30T12:00:00.000001Z",
+        source_trace_cutover_matched: true
+      }]);
+
+      const reopened = await repo.importTrace("proj_test", "ironside", {
+        ...input,
+        output: { answer: "Within 14 days." }
+      }, {
+        ingestionPurpose: "analysis_eligible_ironside",
+        sourceIntegrationId: "int_legacy",
+        sourceRemoteProjectId: "remote_project",
+        sourceTraceVersion: "2026-08-30T12:05:00.000002Z"
+      });
+      expect(reopened.created).toBe(true);
+
+      await pool.query(
+        `insert into raw_traces
+           (id, project_id, source_integration_id, source_trace_id, raw_payload, normalization_version)
+         values ('raw_legacy_changed', 'proj_test', 'int_legacy', 'legacy_trace_changed', $1::jsonb, 'ironside-v1')`,
+        [JSON.stringify({ input: input.input, output: input.output, metadata: input.metadata })]
+      );
+      await pool.query(
+        `insert into cases
+           (id, project_id, raw_trace_id, case_type, normalized_payload, ingestion_purpose)
+         values ('case_legacy_changed', 'proj_test', 'raw_legacy_changed', 'ironside', $1::jsonb, 'analysis_eligible_ironside')`,
+        [JSON.stringify({ input: input.input, output: input.output, metadata: input.metadata })]
+      );
+      const changedInput = {
+        ...input,
+        sourceTraceId: "legacy_trace_changed",
+        output: { answer: "The currently retained snapshot changed." }
+      };
+      const changedContext = {
+        ingestionPurpose: "analysis_eligible_ironside" as const,
+        sourceIntegrationId: "int_legacy",
+        sourceRemoteProjectId: "remote_project",
+        sourceTraceVersion: "2026-08-30T12:10:00.000003Z"
+      };
+      const changed = await repo.importTrace(
+        "proj_test",
+        "ironside",
+        changedInput,
+        changedContext
+      );
+      expect(changed).toMatchObject({ created: true });
+      expect(changed.caseId).not.toBe("case_legacy_changed");
+      expect((await pool.query(
+        `select source_trace_cutover_version, source_trace_cutover_matched
+           from raw_traces where id = 'raw_legacy_changed'`
+      )).rows).toEqual([{
+        source_trace_cutover_version: changedContext.sourceTraceVersion,
+        source_trace_cutover_matched: false
+      }]);
+      await expect(repo.importTrace("proj_test", "ironside", changedInput, changedContext))
+        .resolves.toMatchObject({ created: false, caseId: changed.caseId });
     } finally {
       await cleanup();
     }

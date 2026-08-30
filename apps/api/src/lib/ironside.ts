@@ -17,7 +17,11 @@ export interface IronsideClientOptions {
   url: string;
   apiKey: string;
   fetchImpl?: typeof fetch | undefined;
+  timeoutMs?: number | undefined;
 }
+
+const DEFAULT_IRONSIDE_REQUEST_TIMEOUT_MS = 15_000;
+export const IRONSIDE_SCORE_COMMENT_MAX_CHARS = 20_000;
 
 export class IronsideHttpError extends Error {
   constructor(
@@ -27,6 +31,13 @@ export class IronsideHttpError extends Error {
   ) {
     super(message);
     this.name = "IronsideHttpError";
+  }
+}
+
+export class IronsideTraceVersionMismatchError extends Error {
+  constructor(readonly expectedVersion: string, readonly actualVersion: string) {
+    super(`Ironside returned trace version ${actualVersion}; expected ${expectedVersion}`);
+    this.name = "IronsideTraceVersionMismatchError";
   }
 }
 
@@ -51,7 +62,7 @@ export class IronsideClient implements IronsideTraceSource, LangSmithFeedbackWri
   }
 
   async getContext(): Promise<IronsideEvaluatorContext> {
-    const response = await this.fetchImpl(`${this.baseUrl}/api/v1/evaluator/context`, {
+    const response = await this.request(`${this.baseUrl}/api/v1/evaluator/context`, {
       headers: this.headers()
     });
     if (!response.ok) {
@@ -68,7 +79,7 @@ export class IronsideClient implements IronsideTraceSource, LangSmithFeedbackWri
     const url = new URL(`${this.baseUrl}/api/v1/evaluator/traces`);
     if (input.cursor) url.searchParams.set("cursor", input.cursor);
     url.searchParams.set("limit", String(input.limit));
-    const response = await this.fetchImpl(url, { headers: this.headers() });
+    const response = await this.request(url, { headers: this.headers() });
     if (!response.ok) {
       throw new IronsideHttpError(`Ironside evaluator feed request failed: ${response.status}`, response.status, "listTraces");
     }
@@ -78,13 +89,13 @@ export class IronsideClient implements IronsideTraceSource, LangSmithFeedbackWri
   async getTrace(traceId: string, traceVersion: string): Promise<IronsideEvaluatorTrace> {
     const url = new URL(`${this.baseUrl}/api/v1/evaluator/traces/${encodeURIComponent(traceId)}`);
     url.searchParams.set("version", traceVersion);
-    const response = await this.fetchImpl(url, { headers: this.headers() });
+    const response = await this.request(url, { headers: this.headers() });
     if (!response.ok) {
       throw new IronsideHttpError(`Ironside evaluator trace request failed: ${response.status}`, response.status, "getTrace");
     }
     const trace = IronsideEvaluatorTraceSchema.parse(await response.json());
     if (trace.traceVersion !== traceVersion) {
-      throw new Error(`Ironside returned trace version ${trace.traceVersion}; expected ${traceVersion}`);
+      throw new IronsideTraceVersionMismatchError(traceVersion, trace.traceVersion);
     }
     return trace;
   }
@@ -95,7 +106,7 @@ export class IronsideClient implements IronsideTraceSource, LangSmithFeedbackWri
     if (!input.feedbackId || !versionId || !criterionKey) {
       throw new Error("Native Ironside feedback requires an id, evaluator version, and criterion key");
     }
-    const response = await this.fetchImpl(`${this.baseUrl}/api/v1/evaluator/scores`, {
+    const response = await this.request(`${this.baseUrl}/api/v1/evaluator/scores`, {
       method: "POST",
       headers: { ...this.headers(), "content-type": "application/json" },
       body: JSON.stringify({
@@ -104,7 +115,7 @@ export class IronsideClient implements IronsideTraceSource, LangSmithFeedbackWri
         name: input.key,
         value: input.score,
         assessmentLabel: input.value,
-        comment: input.comment,
+        comment: boundedIronsideScoreComment(input.comment),
         evaluator: { provider: "coeval", versionId, criterionKey },
         metadata: {
           judgeRunId: input.sourceInfo?.judgeRunId,
@@ -122,6 +133,23 @@ export class IronsideClient implements IronsideTraceSource, LangSmithFeedbackWri
   private headers(): Record<string, string> {
     return { authorization: `Bearer ${this.options.apiKey}`, accept: "application/json" };
   }
+
+  private request(input: string | URL, init: RequestInit): Promise<Response> {
+    return this.fetchImpl(input, {
+      ...init,
+      signal: init.signal ?? AbortSignal.timeout(
+        this.options.timeoutMs ?? DEFAULT_IRONSIDE_REQUEST_TIMEOUT_MS
+      )
+    });
+  }
+}
+
+function boundedIronsideScoreComment(comment: string | undefined): string | undefined {
+  if (comment === undefined || comment.length <= IRONSIDE_SCORE_COMMENT_MAX_CHARS) {
+    return comment;
+  }
+  const suffix = "…[TRUNCATED]";
+  return `${comment.slice(0, IRONSIDE_SCORE_COMMENT_MAX_CHARS - suffix.length)}${suffix}`;
 }
 
 export function ironsideTraceToTraceImport(trace: IronsideEvaluatorTrace): ManualTraceImportInput {
