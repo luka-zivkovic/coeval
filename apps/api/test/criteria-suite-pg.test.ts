@@ -268,7 +268,9 @@ run("Batch 3 criteria and evaluator suite PostgreSQL invariants", () => {
         values
           ('int_unpinned_langsmith', 'proj_batch3', 'langsmith', 'not-read', '{}'::jsonb, true, 1, 5),
           ('int_unpinned_langfuse', 'proj_batch3', 'langfuse', 'not-read', '{}'::jsonb, true, 1, 5),
-          ('int_unpinned_ironside', 'proj_batch3', 'ironside', 'not-read', '{}'::jsonb, true, 1, 5)
+          ('int_unpinned_ironside', 'proj_batch3', 'ironside', 'not-read',
+           '{"url":"http://ironside.test","remoteProjectId":"remote_proj","remoteProjectName":"Remote","protocolVersion":"ironside/evaluator/v1","settlementQuietPeriodSeconds":30,"revalidationRequired":false,"connectionRevision":1,"sync":{"cursor":null}}'::jsonb,
+           true, 1, 5)
       `);
       const unsafePollAt = new Date("2026-08-23T12:00:00.000Z");
       await expect(repository.claimDueLangSmithImportTargets({

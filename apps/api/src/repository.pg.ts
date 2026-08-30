@@ -1568,7 +1568,6 @@ export class PgRepository implements CoevalRepository {
     // Purpose records the immutable first origin; it does not create a second
     // identity for the same upstream trace. Serialize this identity before
     // checking so concurrent product paths cannot both mint an origin.
-    // Legacy duplicate rows, if any, resolve to the earliest retained origin.
     await this.lockTraceImportIdentity(
       client,
       projectId,
@@ -1604,86 +1603,6 @@ export class PgRepository implements CoevalRepository {
         sourceTraceId: String(existing.rows[0].source_trace_id),
         created: false
       };
-    }
-
-    // The superseded Ironside importer had no immutable upstream version.
-    // During the one-time native cutover, compare the first evaluator/v1
-    // snapshot with that retained case while holding the import identity lock.
-    // Equality reuses the case without pretending the old row had exact
-    // version provenance; inequality records the cutover decision and creates
-    // a distinct versioned case below. Later native versions never consult the
-    // legacy row again.
-    if (
-      source === "ironside" &&
-      context.sourceTraceVersion &&
-      context.sourceRemoteProjectId &&
-      context.sourceIntegrationId
-    ) {
-      const legacy = await client.query<{
-        raw_trace_id: string;
-        case_id: string;
-        source_trace_id: string;
-        source_trace_cutover_version: string | null;
-        source_trace_cutover_matched: boolean | null;
-        content_matches: boolean;
-      }>(
-        `select rt.id as raw_trace_id,
-                c.id as case_id,
-                rt.source_trace_id,
-                rt.source_trace_cutover_version,
-                rt.source_trace_cutover_matched,
-                (
-                  c.normalized_payload #- '{metadata,sourceTraceVersion}'
-                ) = (
-                  $6::jsonb #- '{metadata,sourceTraceVersion}'
-                ) as content_matches
-           from raw_traces rt
-           join cases c on c.raw_trace_id = rt.id and c.project_id = rt.project_id
-          where rt.project_id = $1
-            and rt.source_trace_id = $2
-            and c.case_type = $3
-            and rt.source_trace_version is null
-            and rt.source_remote_project_id is null
-            and rt.source_integration_id = $4
-            and (
-              rt.source_trace_cutover_version is null
-              or rt.source_trace_cutover_version = $5
-            )
-          order by c.created_at asc, c.id asc, rt.created_at asc, rt.id asc
-          limit 1
-          for update of rt`,
-        [
-          projectId,
-          sourceTraceId,
-          source,
-          context.sourceIntegrationId,
-          context.sourceTraceVersion,
-          JSON.stringify(normalizedPayload)
-        ]
-      );
-      const legacyRow = legacy.rows[0];
-      if (legacyRow) {
-        const matched = legacyRow.source_trace_cutover_version === null
-          ? legacyRow.content_matches
-          : legacyRow.source_trace_cutover_matched === true;
-        if (legacyRow.source_trace_cutover_version === null) {
-          await client.query(
-            `update raw_traces
-                set source_trace_cutover_version = $2,
-                    source_trace_cutover_matched = $3
-              where id = $1`,
-            [legacyRow.raw_trace_id, context.sourceTraceVersion, matched]
-          );
-        }
-        if (matched) {
-          return {
-            rawTraceId: legacyRow.raw_trace_id,
-            caseId: legacyRow.case_id,
-            sourceTraceId: legacyRow.source_trace_id,
-            created: false
-          };
-        }
-      }
     }
 
     await client.query(
@@ -2573,7 +2492,7 @@ export class PgRepository implements CoevalRepository {
     };
   }
 
-  async createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration> {
+  async createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote: IronsideEvaluatorContext): Promise<IronsideIntegration> {
     const pollEnabled = input.pollEnabled ?? true;
     const pollIntervalSeconds = input.pollIntervalSeconds ?? 300;
     const pollLimit = input.pollLimit ?? 25;
@@ -2594,10 +2513,11 @@ export class PgRepository implements CoevalRepository {
         JSON.stringify({
           url: input.url,
           redaction: input.redaction ?? {},
-          remoteProjectId: remote?.project.id ?? projectId,
-          remoteProjectName: remote?.project.name ?? "Ironside project",
-          protocolVersion: remote?.protocolVersion ?? "ironside/evaluator/v1",
-          settlementQuietPeriodSeconds: remote?.settlement.quietPeriodSeconds ?? 0,
+          remoteProjectId: remote.project.id,
+          remoteProjectName: remote.project.name,
+          protocolVersion: remote.protocolVersion,
+          settlementQuietPeriodSeconds: remote.settlement.quietPeriodSeconds,
+          revalidationRequired: false,
           connectionRevision: 1,
           skillVersionId,
           sync: { cursor: null }
@@ -2650,23 +2570,17 @@ export class PgRepository implements CoevalRepository {
                'settlementQuietPeriodSeconds', $12::integer
              ))
            ) || case when $9::text is null then '{}'::jsonb else jsonb_build_object(
-             'connectionRevision', coalesce((config ->> 'connectionRevision')::bigint, 0) + 1,
-             'nativeUpgrade',
-             coalesce(config -> 'nativeUpgrade', '{}'::jsonb) || jsonb_build_object(
-               'requiresRevalidation', false,
-               'revalidatedAt', clock_timestamp()
-             )
+             'connectionRevision', (config ->> 'connectionRevision')::bigint + 1,
+             'revalidationRequired', false,
+             'revalidatedAt', clock_timestamp()
            ) end
        where id = $1 and project_id = $2 and provider = 'ironside'
          and (
            $13::text is null
            or (
-             coalesce(config ->> 'remoteProjectId', 'unverified:' || id) = $13
-             and coalesce(
-               (config #>> '{nativeUpgrade,requiresRevalidation}')::boolean,
-               false
-             ) = $14::boolean
-             and coalesce((config ->> 'connectionRevision')::bigint, 0) = $15::bigint
+             config ->> 'remoteProjectId' = $13
+             and (config ->> 'revalidationRequired')::boolean = $14::boolean
+             and (config ->> 'connectionRevision')::bigint = $15::bigint
            )
          )
        returning id, project_id, provider, config, poll_enabled, poll_interval_seconds, poll_limit, last_tested_at, last_test_result, created_at`,
@@ -2729,17 +2643,14 @@ export class PgRepository implements CoevalRepository {
            last_tested_at = $3::timestamptz,
            last_test_result = $4::jsonb,
            config = config || jsonb_build_object(
-             'connectionRevision', coalesce((config ->> 'connectionRevision')::bigint, 0) + 1,
-             'nativeUpgrade',
-             coalesce(config -> 'nativeUpgrade', '{}'::jsonb) || jsonb_build_object(
-               'requiresRevalidation', true,
-               'quarantinedAt', $3::timestamptz,
-               'quarantineReason', coalesce($4::jsonb ->> 'error', 'remote project mismatch')
-             )
+             'connectionRevision', (config ->> 'connectionRevision')::bigint + 1,
+             'revalidationRequired', true,
+             'quarantinedAt', $3::timestamptz,
+             'quarantineReason', coalesce($4::jsonb ->> 'error', 'remote project mismatch')
            )
        where id = $1 and project_id = $2 and provider = 'ironside'
-         and coalesce(config ->> 'remoteProjectId', 'unverified:' || id) = $5
-         and coalesce((config ->> 'connectionRevision')::bigint, 0) = $6::bigint`,
+         and config ->> 'remoteProjectId' = $5
+         and (config ->> 'connectionRevision')::bigint = $6::bigint`,
       [
         integrationId,
         projectId,
@@ -2812,10 +2723,7 @@ export class PgRepository implements CoevalRepository {
          from integrations i
          where i.provider = 'ironside'
            and i.poll_enabled = true
-           and coalesce(
-             (i.config #>> '{nativeUpgrade,requiresRevalidation}')::boolean,
-             false
-           ) = false
+           and (i.config ->> 'revalidationRequired')::boolean = false
            and exists (
              select 1
              from skill_versions sv
@@ -2835,10 +2743,7 @@ export class PgRepository implements CoevalRepository {
        where i.id = due.id
          and i.provider = 'ironside'
          and i.poll_enabled = true
-         and coalesce(
-           (i.config #>> '{nativeUpgrade,requiresRevalidation}')::boolean,
-           false
-         ) = false
+         and (i.config ->> 'revalidationRequired')::boolean = false
          and (
            i.last_polled_at is null
            or i.last_polled_at <= $1::timestamptz - (greatest(i.poll_interval_seconds, 1) || ' seconds')::interval
@@ -2893,10 +2798,18 @@ export class PgRepository implements CoevalRepository {
       protocolVersion?: string;
       settlementQuietPeriodSeconds?: number;
       connectionRevision?: number;
+      revalidationRequired?: boolean;
       sync?: unknown;
-      nativeUpgrade?: { requiresRevalidation?: boolean };
     };
-    if (!credentials.apiKey || !config.url) throw new IronsideCredentialsMissingError(job.integrationId);
+    if (
+      !credentials.apiKey || !config.url || !config.remoteProjectId ||
+      !config.remoteProjectName || config.protocolVersion !== "ironside/evaluator/v1" ||
+      typeof config.settlementQuietPeriodSeconds !== "number" ||
+      !Number.isFinite(config.settlementQuietPeriodSeconds) ||
+      typeof config.connectionRevision !== "number" ||
+      !Number.isSafeInteger(config.connectionRevision) ||
+      typeof config.revalidationRequired !== "boolean"
+    ) throw new IronsideCredentialsMissingError(job.integrationId);
     if (job.skillVersionId) {
       await this.authorizeSkillVersionExecution({
         projectId: job.projectId,
@@ -2907,23 +2820,17 @@ export class PgRepository implements CoevalRepository {
         idempotencyKey: `provider-start:ironside:${job.importJobId ?? job.integrationId}:${job.skillVersionId}`
       });
     }
-    const rawSync = config.sync;
-    const legacySync = rawSync !== null && typeof rawSync === "object" && (
-      Object.hasOwn(rawSync, "watermark") || Object.hasOwn(rawSync, "windowTo")
-    );
-    const syncState = legacySync || config.protocolVersion !== "ironside/evaluator/v1"
-      ? { cursor: null }
-      : IronsideSyncStateSchema.catch({ cursor: null }).parse(rawSync ?? { cursor: null });
+    const syncState = IronsideSyncStateSchema.parse(config.sync);
     return {
       id: String(row.id),
       projectId: String(row.project_id),
       provider: "ironside",
       skillVersionId: job.skillVersionId ?? config.skillVersionId ?? null,
       url: config.url,
-      remoteProjectId: config.remoteProjectId ?? `unverified:${row.id}`,
-      remoteProjectName: config.remoteProjectName ?? "Unverified Ironside project",
+      remoteProjectId: config.remoteProjectId,
+      remoteProjectName: config.remoteProjectName,
       protocolVersion: "ironside/evaluator/v1",
-      settlementQuietPeriodSeconds: Number(config.settlementQuietPeriodSeconds ?? 0),
+      settlementQuietPeriodSeconds: config.settlementQuietPeriodSeconds,
       pollEnabled: row.poll_enabled !== false,
       pollIntervalSeconds: Number(row.poll_interval_seconds ?? 300),
       pollLimit: Number(row.poll_limit ?? 25),
@@ -2936,8 +2843,8 @@ export class PgRepository implements CoevalRepository {
       limit: job.limit,
       redactionConfig: config.redaction ?? {},
       syncState,
-      revalidationRequired: config.nativeUpgrade?.requiresRevalidation === true,
-      connectionRevision: Number(config.connectionRevision ?? 0)
+      revalidationRequired: config.revalidationRequired,
+      connectionRevision: config.connectionRevision
     };
   }
 
@@ -6405,13 +6312,21 @@ export class PgRepository implements CoevalRepository {
       protocolVersion?: string;
       settlementQuietPeriodSeconds?: number;
       connectionRevision?: number;
+      revalidationRequired?: boolean;
       skillVersionId?: string | null;
-      nativeUpgrade?: { requiresRevalidation?: boolean };
     };
     const credentials = decryptJson<{ apiKey?: string; publicKey?: string; secretKey?: string }>(String(row.encrypted_credentials));
     if (provider === "langsmith" && !credentials.apiKey) throw new FeedbackSyncCredentialsMissingError(job.feedbackSyncJobId);
     if (provider === "langfuse" && (!credentials.publicKey || !credentials.secretKey)) throw new FeedbackSyncCredentialsMissingError(job.feedbackSyncJobId);
-    if (provider === "ironside" && (!credentials.apiKey || !config.url)) throw new FeedbackSyncCredentialsMissingError(job.feedbackSyncJobId);
+    if (provider === "ironside" && (
+      !credentials.apiKey || !config.url || !config.remoteProjectId ||
+      !config.remoteProjectName || config.protocolVersion !== "ironside/evaluator/v1" ||
+      typeof config.settlementQuietPeriodSeconds !== "number" ||
+      !Number.isFinite(config.settlementQuietPeriodSeconds) ||
+      typeof config.connectionRevision !== "number" ||
+      !Number.isSafeInteger(config.connectionRevision) ||
+      typeof config.revalidationRequired !== "boolean"
+    )) throw new FeedbackSyncCredentialsMissingError(job.feedbackSyncJobId);
     return {
       id: String(row.feedback_sync_job_id),
       projectId: String(row.project_id),
@@ -6454,12 +6369,12 @@ export class PgRepository implements CoevalRepository {
             provider: "ironside",
             skillVersionId: config.skillVersionId ?? null,
             url: String(config.url),
-            remoteProjectId: config.remoteProjectId ?? `unverified:${row.integration_id}`,
-            remoteProjectName: config.remoteProjectName ?? "Unverified Ironside project",
+            remoteProjectId: config.remoteProjectId!,
+            remoteProjectName: config.remoteProjectName!,
             protocolVersion: "ironside/evaluator/v1",
-            settlementQuietPeriodSeconds: Number(config.settlementQuietPeriodSeconds ?? 0),
-            revalidationRequired: config.nativeUpgrade?.requiresRevalidation === true,
-            connectionRevision: Number(config.connectionRevision ?? 0),
+            settlementQuietPeriodSeconds: config.settlementQuietPeriodSeconds!,
+            revalidationRequired: config.revalidationRequired!,
+            connectionRevision: config.connectionRevision!,
             pollEnabled: true,
             pollIntervalSeconds: 300,
             pollLimit: 25,
@@ -8242,9 +8157,19 @@ function rowToIronsideIntegration(row: Record<string, unknown>): IronsideIntegra
     remoteProjectName?: string;
     protocolVersion?: string;
     settlementQuietPeriodSeconds?: number;
+    connectionRevision?: number;
+    revalidationRequired?: boolean;
     skillVersionId?: string | null;
-    nativeUpgrade?: { requiresRevalidation?: boolean };
   };
+  if (
+    !config.url || !config.remoteProjectId || !config.remoteProjectName ||
+    config.protocolVersion !== "ironside/evaluator/v1" ||
+    typeof config.settlementQuietPeriodSeconds !== "number" ||
+    !Number.isFinite(config.settlementQuietPeriodSeconds) ||
+    typeof config.connectionRevision !== "number" ||
+    !Number.isSafeInteger(config.connectionRevision) ||
+    typeof config.revalidationRequired !== "boolean"
+  ) throw new Error(`Invalid stored Ironside integration config: ${String(row.id)}`);
   const lastTestResult = row.last_test_result == null
     ? null
     : IronsideConnectionTestResultSchema.parse(parseJson(row.last_test_result));
@@ -8253,12 +8178,12 @@ function rowToIronsideIntegration(row: Record<string, unknown>): IronsideIntegra
     projectId: String(row.project_id),
     provider: "ironside",
     skillVersionId: config.skillVersionId ?? null,
-    url: String(config.url ?? ""),
-    remoteProjectId: config.remoteProjectId ?? `unverified:${row.id}`,
-    remoteProjectName: config.remoteProjectName ?? "Unverified Ironside project",
+    url: config.url,
+    remoteProjectId: config.remoteProjectId,
+    remoteProjectName: config.remoteProjectName,
     protocolVersion: "ironside/evaluator/v1",
-    settlementQuietPeriodSeconds: Number(config.settlementQuietPeriodSeconds ?? 0),
-    revalidationRequired: config.nativeUpgrade?.requiresRevalidation === true,
+    settlementQuietPeriodSeconds: config.settlementQuietPeriodSeconds,
+    revalidationRequired: config.revalidationRequired,
     pollEnabled: row.poll_enabled !== false,
     pollIntervalSeconds: Number(row.poll_interval_seconds ?? 300),
     pollLimit: Number(row.poll_limit ?? 25),

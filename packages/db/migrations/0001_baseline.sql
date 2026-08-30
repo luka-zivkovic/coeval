@@ -11484,11 +11484,15 @@ CREATE TABLE raw_traces (
     id text NOT NULL,
     project_id text NOT NULL,
     source_integration_id text,
+    source_remote_project_id text,
     source_trace_id text NOT NULL,
+    source_trace_version text,
     import_job_id text,
     raw_payload jsonb NOT NULL,
     normalization_version text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT raw_traces_source_remote_project_id_shape CHECK (((source_remote_project_id IS NULL) OR ((source_remote_project_id = btrim(source_remote_project_id)) AND (length(source_remote_project_id) > 0) AND (length(source_remote_project_id) <= 500)))),
+    CONSTRAINT raw_traces_source_trace_version_shape CHECK (((source_trace_version IS NULL) OR ((source_trace_version = btrim(source_trace_version)) AND (length(source_trace_version) > 0) AND (length(source_trace_version) <= 200))))
 );
 
 
@@ -15045,6 +15049,13 @@ CREATE UNIQUE INDEX raw_traces_id_project_unique ON raw_traces USING btree (id, 
 --
 
 CREATE INDEX raw_traces_project_idx ON raw_traces USING btree (project_id);
+
+
+--
+-- Name: raw_traces_source_version_lookup; Type: INDEX; Schema: current; Owner: -
+--
+
+CREATE INDEX raw_traces_source_version_lookup ON raw_traces USING btree (project_id, source_remote_project_id, source_trace_id, source_trace_version);
 
 
 --

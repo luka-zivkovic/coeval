@@ -56,32 +56,12 @@ Source identity is `(remote project, traceId, traceVersion)`, including after a
 disconnect and later reconnect. This prevents colliding IDs in two Ironside
 projects from aliasing one another.
 
-## Upgrade reconciliation
+## Connection recovery
 
-Migration `0002_ironside_trace_versions` resets legacy native-import cursors so
-the first upgraded poll uses Ironside's bounded bootstrap instead of sending an
-old cursor shape to the v1 endpoint. Historical imports do not have a truthful
-`traceVersion`; the migration deliberately leaves it null.
-
-On the first native version for a historical trace, Coeval compares the
-normalized imported content. Identical content records the cutover version on
-the existing case without pretending the legacy snapshot had that provenance.
-Changed content creates a new immutable case. Later versions always create or
-deduplicate by the full native source identity.
-
-Legacy connections are quarantined with polling disabled because the old
-contract did not persist a verifiable remote project identity. An owner must
-run the connection test once; a successful v1 context check atomically stores
-the protocol, remote project, and settlement settings. Polling can then be
-re-enabled from the integration card. Imports never run under a synthetic
-remote identity, and enabling polling is unavailable until the latest
-connection test succeeds.
-
-Migration `0003_ironside_revalidation_hardening` clears legacy test success and
-polling state for every connection that still requires revalidation. The API,
-poll scheduler, and UI all enforce the same flag. A credential or URL cannot be
-changed while that flag is set; revalidate the unchanged connection or
-disconnect it explicitly. Remote-mismatch quarantine uses the expected stored
+The API, poll scheduler, and UI all enforce the runtime revalidation flag. A
+credential or URL cannot be changed while that flag is set; revalidate the
+unchanged connection or disconnect it explicitly. Remote-mismatch quarantine
+uses the expected stored
 identity and a monotonic connection revision as compare-and-set guards, so a
 stale worker cannot undo a newer successful revalidation. Feedback writeback
 that encounters quarantine is parked durably rather than exhausted through the
@@ -92,15 +72,6 @@ Only one verified Ironside connection may exist per Coeval project. Repeating
 the create request returns 409; credential rotation uses update, and changing
 to another remote project requires disconnecting first. This keeps historical
 case writeback attached to the original remote.
-
-For rollout, apply the Coeval migration before starting upgraded API and worker
-processes. On Ironside, stop the old workers, drain or reconcile their pending
-ingest intents, apply the feed migrations, and complete the feed-writing worker
-deployment before exposing its evaluator API; then upgrade Coeval. Running old
-and new Ironside workers together is not sufficient because an old worker can
-materialize a queued trace without publishing it. An old Ironside does not
-advertise the v1 context route; connection tests fail closed rather than
-silently using the LangFuse compatibility path.
 
 ## Assessment writeback
 

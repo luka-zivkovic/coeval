@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { runMigrations } from "@coeval/db";
-import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
@@ -9,8 +8,8 @@ if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !dat
 }
 const run = databaseUrl ? describe : describe.skip;
 
-run("frozen database baseline", () => {
-  it("is idempotent and records immutable migration checksums", async () => {
+run("clean-install database baseline", () => {
+  it("is idempotent and records the current baseline checksum", async () => {
     const { pool, cleanup } = await openPostgresTestDatabase("baseline_idempotent");
     try {
       await runMigrations(pool);
@@ -21,15 +20,7 @@ run("frozen database baseline", () => {
       expect(applied.rows).toEqual([
         {
           id: "0001_baseline",
-          checksum: "a2d3f9fd5322303b444c56e6c092ff2fa9f4a8318a07514989aee3a844814973",
-        },
-        {
-          id: "0002_ironside_trace_versions",
-          checksum: "67dce4c0e4d362602ec0bfc752632ee8b43f52ce441186ce208a1b10a4a09842",
-        },
-        {
-          id: "0003_ironside_revalidation_hardening",
-          checksum: "e7c6affebd1fe3d59bbb1c981e313345f5065a1917df5f11cf3dd7d1e935fe23",
+          checksum: "f76b232dffdf9868da9b9d2a2a52cffd4b1642b9f36b4925548849d6fba1925c",
         }
       ]);
     } finally {
@@ -96,122 +87,6 @@ run("frozen database baseline", () => {
     }
   });
 
-  it("upgrades legacy Ironside state without reusing an incompatible cursor or inventing trace provenance", async () => {
-    const { pool, cleanup } = await openPostgresTestDatabase("baseline_ironside_upgrade");
-    try {
-      await runMigrations(pool);
-      // Reconstruct the exact pre-0002 shape inside this isolated database so
-      // the forward migration is exercised against persisted legacy rows.
-      await pool.query("drop index raw_traces_source_version_lookup");
-      await pool.query("alter table raw_traces drop constraint raw_traces_source_trace_version_shape");
-      await pool.query("alter table raw_traces drop constraint raw_traces_source_remote_project_id_shape");
-      await pool.query("alter table raw_traces drop constraint raw_traces_source_trace_cutover_shape");
-      await pool.query(
-        `alter table raw_traces
-           drop column source_trace_version,
-           drop column source_remote_project_id,
-           drop column source_trace_cutover_version,
-           drop column source_trace_cutover_matched`
-      );
-      await pool.query("delete from coeval_migrations where id = '0002_ironside_trace_versions'");
-      await pool.query("delete from coeval_migrations where id = '0003_ironside_revalidation_hardening'");
-
-      await pool.query("insert into organizations (id, name) values ('org_upgrade', 'Upgrade')");
-      await pool.query(
-        "insert into projects (id, organization_id, name, trace_provider) values ('project_upgrade', 'org_upgrade', 'Upgrade', 'ironside')"
-      );
-      await pool.query(
-        `insert into integrations (id, project_id, provider, encrypted_credentials, config)
-         values (
-           'int_upgrade',
-           'project_upgrade',
-           'ironside',
-           'encrypted',
-           '{"url":"https://ironside.example","sync":{"watermark":"2026-08-01T00:00:00.000Z","cursor":"legacy_cursor","windowTo":"2026-08-02T00:00:00.000Z"}}'
-         )`
-      );
-      await pool.query(
-        `insert into raw_traces
-           (id, project_id, source_integration_id, source_trace_id, raw_payload, normalization_version)
-         values ('raw_upgrade', 'project_upgrade', 'int_upgrade', 'trace_upgrade', '{}', 'ironside-v1')`
-      );
-      await pool.query(
-        `insert into cases
-           (id, project_id, raw_trace_id, case_type, normalized_payload, ingestion_purpose)
-         values ('case_upgrade', 'project_upgrade', 'raw_upgrade', 'ironside', '{}', 'analysis_eligible_ironside')`
-      );
-
-      await runMigrations(pool);
-
-      const integration = await pool.query<{
-        config: Record<string, unknown>;
-        poll_enabled: boolean;
-      }>(
-        "select config, poll_enabled from integrations where id = 'int_upgrade'"
-      );
-      expect(integration.rows[0]?.poll_enabled).toBe(false);
-      expect(integration.rows[0]?.config).toMatchObject({
-        sync: { cursor: null },
-        nativeUpgrade: {
-          kind: "legacy-reconciliation-v1",
-          legacySync: {
-            watermark: "2026-08-01T00:00:00.000Z",
-            cursor: "legacy_cursor",
-            windowTo: "2026-08-02T00:00:00.000Z"
-          },
-          cutoverPolicy: "content-match-first-native-version",
-          requiresRevalidation: true,
-          previousPollEnabled: true
-        }
-      });
-      expect(integration.rows[0]?.config).not.toHaveProperty("protocolVersion");
-      expect(integration.rows[0]?.config).not.toHaveProperty("remoteProjectId");
-      expect((await pool.query(
-        `select source_trace_version, source_remote_project_id,
-                source_trace_cutover_version, source_trace_cutover_matched
-           from raw_traces where id = 'raw_upgrade'`
-      )).rows).toEqual([{
-        source_trace_version: null,
-        source_remote_project_id: null,
-        source_trace_cutover_version: null,
-        source_trace_cutover_matched: null
-      }]);
-
-      const repo = new PgRepository(pool);
-      await repo.updateIronsideIntegration("project_upgrade", "int_upgrade", {}, {
-        protocolVersion: "ironside/evaluator/v1",
-        project: { id: "remote_upgrade", name: "Upgraded remote" },
-        capabilities: ["traces:read", "scores:write"],
-        settlement: { kind: "quiet_period", quietPeriodSeconds: 120 }
-      });
-      await repo.saveIronsideSyncState("project_upgrade", "int_upgrade", {
-        cursor: "native_cursor"
-      });
-      await expect(repo.saveIronsideSyncState(
-        "project_upgrade",
-        "int_upgrade",
-        { cursor: "stale_cursor" },
-        null
-      )).resolves.toBe(false);
-      const revalidated = await pool.query<{
-        config: Record<string, unknown>;
-        poll_enabled: boolean;
-      }>("select config, poll_enabled from integrations where id = 'int_upgrade'");
-      expect(revalidated.rows[0]).toMatchObject({
-        poll_enabled: false,
-        config: {
-          protocolVersion: "ironside/evaluator/v1",
-          remoteProjectId: "remote_upgrade",
-          settlementQuietPeriodSeconds: 120,
-          sync: { cursor: "native_cursor" },
-          nativeUpgrade: { requiresRevalidation: false }
-        }
-      });
-    } finally {
-      await cleanup();
-    }
-  });
-
   it("rejects migration history from a newer or incompatible release without mutating it", async () => {
     const { pool, cleanup } = await openPostgresTestDatabase("baseline_stale_ledger");
     try {
@@ -223,13 +98,11 @@ run("frozen database baseline", () => {
         "insert into coeval_migrations (id, checksum) values ('0055_evaluator_lifecycle', 'unknown')",
       );
       await expect(runMigrations(pool)).rejects.toThrow(
-        /migration history is newer than or incompatible.*0055_evaluator_lifecycle.*do not reset/s,
+        /migration history is newer than or incompatible.*0055_evaluator_lifecycle.*recreate the disposable database/s,
       );
       const applied = await pool.query<{ id: string }>("select id from coeval_migrations order by id");
       expect(applied.rows).toEqual([
         { id: "0001_baseline" },
-        { id: "0002_ironside_trace_versions" },
-        { id: "0003_ironside_revalidation_hardening" },
         { id: "0055_evaluator_lifecycle" },
       ]);
     } finally {
@@ -237,21 +110,16 @@ run("frozen database baseline", () => {
     }
   });
 
-  it("backfills the accepted checksum on an id-only pre-freeze ledger", async () => {
-    const { pool, cleanup } = await openPostgresTestDatabase("baseline_checksum_backfill");
+  it("rejects a ledger without the current baseline checksum", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("baseline_checksum_required");
     try {
       await runMigrations(pool);
       await pool.query("alter table coeval_migrations alter column checksum drop not null");
       await pool.query("update coeval_migrations set checksum = null where id = '0001_baseline'");
 
-      await runMigrations(pool);
-
-      const applied = await pool.query<{ checksum: string }>(
-        "select checksum from coeval_migrations where id = '0001_baseline'",
+      await expect(runMigrations(pool)).rejects.toThrow(
+        /Applied migration 0001_baseline checksum does not match.*recreate the disposable database/s,
       );
-      expect(applied.rows).toEqual([{
-        checksum: "a2d3f9fd5322303b444c56e6c092ff2fa9f4a8318a07514989aee3a844814973",
-      }]);
     } finally {
       await cleanup();
     }

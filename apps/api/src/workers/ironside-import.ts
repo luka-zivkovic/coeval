@@ -69,7 +69,7 @@ export async function processIronsideImportJob(
     if (!version) throw new ImportSkillVersionBindingError(`Unknown import skillVersionId for project: ${parsed.skillVersionId}`);
     await assertImportJudgingAllowed(repository, parsed.projectId, version.id);
     const context = await repository.loadIronsideImportContext(parsed);
-    if (context.revalidationRequired || context.remoteProjectId.startsWith("unverified:")) {
+    if (context.revalidationRequired) {
       throw new IronsideIntegrationRevalidationRequiredError(context.id);
     }
     const client = createClient(context);

@@ -383,7 +383,7 @@ export interface CoevalRepository {
   claimDueLangfuseImportTargets(input: ClaimLangfuseImportTargetsInput): Promise<LangfuseImportTarget[]>;
   loadLangfuseImportContext(job: LangfuseImportJob): Promise<LangfuseImportContext>;
   listIronsideIntegrations(projectId: string): Promise<IronsideIntegration[]>;
-  createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration>;
+  createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote: IronsideEvaluatorContext): Promise<IronsideIntegration>;
   updateIronsideIntegration(
     projectId: string,
     integrationId: string,
@@ -2715,7 +2715,7 @@ export class DemoRepository implements CoevalRepository {
     return { ...integration, limit: job.limit };
   }
 
-  async createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration> {
+  async createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote: IronsideEvaluatorContext): Promise<IronsideIntegration> {
     const existing = [...this.ironsideIntegrations.values()]
       .find((integration) => integration.projectId === projectId);
     if (existing) throw new IronsideIntegrationAlreadyExistsError(projectId);
@@ -2733,10 +2733,10 @@ export class DemoRepository implements CoevalRepository {
       provider: "ironside",
       skillVersionId,
       url: input.url,
-      remoteProjectId: remote?.project.id ?? projectId,
-      remoteProjectName: remote?.project.name ?? "Ironside project",
-      protocolVersion: remote?.protocolVersion ?? "ironside/evaluator/v1",
-      settlementQuietPeriodSeconds: remote?.settlement.quietPeriodSeconds ?? 0,
+      remoteProjectId: remote.project.id,
+      remoteProjectName: remote.project.name,
+      protocolVersion: remote.protocolVersion,
+      settlementQuietPeriodSeconds: remote.settlement.quietPeriodSeconds,
       revalidationRequired: false,
       pollEnabled,
       pollIntervalSeconds,

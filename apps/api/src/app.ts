@@ -4599,7 +4599,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         (parsed.data.url !== undefined || parsed.data.apiKey !== undefined)
       ) {
         return c.json({
-          error: "Legacy Ironside credentials cannot be rebound safely. Test the existing connection, or disconnect it before connecting new credentials.",
+          error: "A quarantined Ironside connection must be tested successfully or disconnected before its credentials can change.",
           code: "ironside_revalidation_requires_disconnect"
         }, 409);
       }
@@ -4616,7 +4616,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
           apiKey: parsed.data.apiKey ?? current.apiKey
         });
         remote = await client.getContext();
-        if (!current.remoteProjectId.startsWith("unverified:") && remote.project.id !== current.remoteProjectId) {
+        if (remote.project.id !== current.remoteProjectId) {
           return c.json({
             error: "The replacement credentials belong to a different Ironside project. Disconnect and create a new connection instead.",
             code: "ironside_project_mismatch"
@@ -4735,10 +4735,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       remoteProjectId: remote.project.id,
       remoteProjectName: remote.project.name
     };
-    if (
-      !context.remoteProjectId.startsWith("unverified:") &&
-      context.remoteProjectId !== remote.project.id
-    ) {
+    if (context.remoteProjectId !== remote.project.id) {
       const failed: IronsideConnectionTestResult = {
         ok: false,
         checkedAt,
@@ -4822,9 +4819,9 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         skillVersionId: resolvedVersion.id,
         limit: parsed.data.limit
       });
-      if (context.revalidationRequired || context.remoteProjectId.startsWith("unverified:")) {
+      if (context.revalidationRequired) {
         return c.json({
-          error: "This upgraded Ironside connection must be tested before importing.",
+          error: "This Ironside connection must be tested successfully before importing.",
           code: "ironside_revalidation_required"
         }, 409);
       }
