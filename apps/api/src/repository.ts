@@ -386,11 +386,12 @@ export interface CoevalRepository {
   createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration>;
   updateIronsideIntegration(projectId: string, integrationId: string, input: UpdateIronsideIntegrationInput, remote?: IronsideEvaluatorContext): Promise<IronsideIntegration>;
   recordIronsideConnectionTest(projectId: string, integrationId: string, result: IronsideConnectionTestResult): Promise<void>;
+  quarantineIronsideIntegration(projectId: string, integrationId: string, result: IronsideConnectionTestResult): Promise<void>;
   deleteIronsideIntegration(projectId: string, integrationId: string, context: { actorUserId?: string | undefined }): Promise<void>;
   claimDueIronsideImportTargets(input: ClaimIronsideImportTargetsInput): Promise<IronsideImportTarget[]>;
   loadIronsideImportContext(job: IronsideImportJob): Promise<IronsideImportContext>;
   // Persists Ironside's opaque evaluator-feed continuation cursor.
-  saveIronsideSyncState(projectId: string, integrationId: string, state: IronsideSyncState): Promise<void>;
+  saveIronsideSyncState(projectId: string, integrationId: string, state: IronsideSyncState, expectedCursor?: string | null): Promise<boolean>;
   loadJudgeRunContext(job: JudgeRunJob): Promise<JudgeRunContext>;
   recordJudgeRun(input: RecordJudgeRunInput): Promise<JudgeRun>;
   createFeedbackSyncJob(input: { projectId: string; judgeRunId: string; provider: FeedbackSyncProvider }): Promise<FeedbackSyncJobRecord | null>;
@@ -2731,7 +2732,8 @@ export class DemoRepository implements CoevalRepository {
       pollEnabled,
       pollIntervalMs: pollIntervalSeconds * 1000,
       redactionConfig: input.redaction ?? {},
-      syncState: { cursor: null }
+      syncState: { cursor: null },
+      revalidationRequired: false
     });
     return integration;
   }
@@ -2752,6 +2754,7 @@ export class DemoRepository implements CoevalRepository {
       integration.remoteProjectName = remote.project.name;
       integration.protocolVersion = remote.protocolVersion;
       integration.settlementQuietPeriodSeconds = remote.settlement.quietPeriodSeconds;
+      integration.revalidationRequired = false;
     }
     if (input.pollEnabled !== undefined) integration.pollEnabled = input.pollEnabled;
     if (input.pollIntervalSeconds !== undefined) {
@@ -2775,6 +2778,21 @@ export class DemoRepository implements CoevalRepository {
     integration.lastTestResult = result;
   }
 
+  async quarantineIronsideIntegration(
+    projectId: string,
+    integrationId: string,
+    result: IronsideConnectionTestResult
+  ): Promise<void> {
+    const integration = this.ironsideIntegrations.get(integrationId);
+    if (!integration || integration.projectId !== projectId) {
+      throw new IronsideIntegrationNotFoundError(integrationId);
+    }
+    integration.pollEnabled = false;
+    integration.revalidationRequired = true;
+    integration.lastTestedAt = result.checkedAt;
+    integration.lastTestResult = result;
+  }
+
   async deleteIronsideIntegration(projectId: string, integrationId: string): Promise<void> {
     const integration = this.ironsideIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new IronsideIntegrationNotFoundError(integrationId);
@@ -2792,7 +2810,7 @@ export class DemoRepository implements CoevalRepository {
     for (const integration of this.ironsideIntegrations.values()) {
       if (targets.length >= input.batchSize) break;
       const lastPolledAt = this.ironsideLastPolledAt.get(integration.id);
-      if (!integration.pollEnabled) continue;
+      if (!integration.pollEnabled || integration.revalidationRequired) continue;
       if (lastPolledAt !== undefined && input.now.getTime() - lastPolledAt < integration.pollIntervalMs) continue;
       try {
         targets.push({
@@ -2824,10 +2842,17 @@ export class DemoRepository implements CoevalRepository {
     return { ...integration, syncState: { ...integration.syncState }, limit: job.limit };
   }
 
-  async saveIronsideSyncState(projectId: string, integrationId: string, state: IronsideSyncState): Promise<void> {
+  async saveIronsideSyncState(
+    projectId: string,
+    integrationId: string,
+    state: IronsideSyncState,
+    expectedCursor?: string | null
+  ): Promise<boolean> {
     const integration = this.ironsideIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new IronsideIntegrationNotFoundError(integrationId);
+    if (expectedCursor !== undefined && integration.syncState.cursor !== expectedCursor) return false;
     integration.syncState = { ...state };
+    return true;
   }
 
   private getImportJob(projectId: string, importJobId: string): ImportJobRecord {
@@ -5734,6 +5759,7 @@ export interface IronsideImportContext extends IronsideIntegration {
   limit: number;
   redactionConfig?: TraceRedactionConfig | undefined;
   syncState: IronsideSyncState;
+  revalidationRequired: boolean;
 }
 
 export interface ClaimIronsideImportTargetsInput {

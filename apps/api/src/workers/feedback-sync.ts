@@ -2,7 +2,11 @@ import { z } from "zod";
 import { FeedbackSyncJobSchema, type FeedbackSyncJob } from "@coeval/shared";
 import type { Queue } from "@coeval/queue";
 import type { CoevalRepository, FeedbackSyncContext } from "../repository.js";
-import { FeedbackSyncCredentialsMissingError, FeedbackSyncJobNotFoundError } from "../repository.js";
+import {
+  FeedbackSyncCredentialsMissingError,
+  FeedbackSyncJobNotFoundError,
+  IronsideIntegrationRevalidationRequiredError
+} from "../repository.js";
 import { LangSmithClient, type LangSmithFeedbackWriter } from "../lib/langsmith.js";
 import { LangfuseClient } from "../lib/langfuse.js";
 import { IronsideClient } from "../lib/ironside.js";
@@ -36,7 +40,32 @@ export async function processFeedbackSyncJob(
   const parsed = FeedbackSyncJobSchema.parse(job);
   const context = await repository.loadFeedbackSyncContext(parsed);
   try {
-    await createWriter(context).createFeedback({
+    const writer = createWriter(context);
+    if (
+      context.provider === "ironside" &&
+      "getContext" in writer &&
+      typeof writer.getContext === "function"
+    ) {
+      const remote = await writer.getContext();
+      const integration = context.integration;
+      if (!("remoteProjectId" in integration)) {
+        throw new FeedbackSyncCredentialsMissingError(context.id);
+      }
+      if (remote.project.id !== integration.remoteProjectId) {
+        const checkedAt = new Date().toISOString();
+        await repository.quarantineIronsideIntegration(
+          context.projectId,
+          integration.id,
+          {
+            ok: false,
+            checkedAt,
+            error: `Configured credentials resolve to Ironside project ${remote.project.id}, expected ${integration.remoteProjectId}`
+          }
+        );
+        throw new IronsideIntegrationRevalidationRequiredError(integration.id);
+      }
+    }
+    await writer.createFeedback({
       // Every writer accepts a caller-provided score/feedback id. Reusing the
       // durable feedback_sync_jobs id makes retries idempotent.
       feedbackId: context.id,
@@ -89,6 +118,7 @@ export function isPermanentFeedbackSyncError(error: unknown): boolean {
   if (error instanceof z.ZodError) return true;
   if (error instanceof FeedbackSyncJobNotFoundError) return true;
   if (error instanceof FeedbackSyncCredentialsMissingError) return true;
+  if (error instanceof IronsideIntegrationRevalidationRequiredError) return true;
   if (error instanceof Error) {
     const status = (error as { status?: number }).status;
     if (status === 401 || status === 403 || status === 404) return true;

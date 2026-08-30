@@ -2694,6 +2694,30 @@ export class PgRepository implements CoevalRepository {
     if (!updated.rowCount) throw new IronsideIntegrationNotFoundError(integrationId);
   }
 
+  async quarantineIronsideIntegration(
+    projectId: string,
+    integrationId: string,
+    result: IronsideConnectionTestResult
+  ): Promise<void> {
+    const updated = await this.pool.query(
+      `update integrations
+       set poll_enabled = false,
+           last_tested_at = $3::timestamptz,
+           last_test_result = $4::jsonb,
+           config = config || jsonb_build_object(
+             'nativeUpgrade',
+             coalesce(config -> 'nativeUpgrade', '{}'::jsonb) || jsonb_build_object(
+               'requiresRevalidation', true,
+               'quarantinedAt', $3::timestamptz,
+               'quarantineReason', coalesce($4::jsonb ->> 'error', 'remote project mismatch')
+             )
+           )
+       where id = $1 and project_id = $2 and provider = 'ironside'`,
+      [integrationId, projectId, result.checkedAt, JSON.stringify(result)]
+    );
+    if (!updated.rowCount) throw new IronsideIntegrationNotFoundError(integrationId);
+  }
+
   async deleteIronsideIntegration(projectId: string, integrationId: string, context: { actorUserId?: string | undefined }): Promise<void> {
     const client = await this.pool.connect();
     try {
@@ -2820,6 +2844,7 @@ export class PgRepository implements CoevalRepository {
       protocolVersion?: string;
       settlementQuietPeriodSeconds?: number;
       sync?: unknown;
+      nativeUpgrade?: { requiresRevalidation?: boolean };
     };
     if (!credentials.apiKey || !config.url) throw new IronsideCredentialsMissingError(job.integrationId);
     if (job.skillVersionId) {
@@ -2860,18 +2885,30 @@ export class PgRepository implements CoevalRepository {
       apiKey: credentials.apiKey,
       limit: job.limit,
       redactionConfig: config.redaction ?? {},
-      syncState
+      syncState,
+      revalidationRequired: config.nativeUpgrade?.requiresRevalidation === true
     };
   }
 
-  async saveIronsideSyncState(projectId: string, integrationId: string, state: IronsideSyncState): Promise<void> {
+  async saveIronsideSyncState(
+    projectId: string,
+    integrationId: string,
+    state: IronsideSyncState,
+    expectedCursor?: string | null
+  ): Promise<boolean> {
+    const compareCursor = expectedCursor !== undefined;
     const result = await this.pool.query(
       `update integrations
        set config = jsonb_set(config, '{sync}', $3::jsonb, true)
-       where id = $1 and project_id = $2 and provider = 'ironside'`,
-      [integrationId, projectId, JSON.stringify(state)]
+       where id = $1 and project_id = $2 and provider = 'ironside'
+         and (
+           not $4::boolean
+           or config #>> '{sync,cursor}' is not distinct from $5::text
+         )`,
+      [integrationId, projectId, JSON.stringify(state), compareCursor, expectedCursor ?? null]
     );
-    if (!result.rowCount) throw new IronsideIntegrationNotFoundError(integrationId);
+    if (!result.rowCount && !compareCursor) throw new IronsideIntegrationNotFoundError(integrationId);
+    return Boolean(result.rowCount);
   }
 
   async loadJudgeRunContext(job: JudgeRunJob): Promise<JudgeRunContext> {

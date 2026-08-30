@@ -4883,9 +4883,12 @@ describe("dataset examples (Skill Bench ingestion)", () => {
 
   it("verifies an Ironside project before saving and rejects cross-project credential rotation", async () => {
     const repository = new DemoRepository();
+    let forceRemoteMismatch = false;
     const appWithIronside = createApp(repository, {
       ironsideClientFactory: ({ apiKey }) => {
-        const projectId = apiKey === "key_other_project" ? "remote_other" : "remote_primary";
+        const projectId = forceRemoteMismatch || apiKey === "key_other_project"
+          ? "remote_other"
+          : "remote_primary";
         return {
           async getContext() {
             if (apiKey === "key_invalid") throw new IronsideHttpError("invalid key", 401, "getContext");
@@ -4923,6 +4926,12 @@ describe("dataset examples (Skill Bench ingestion)", () => {
     const created = await createdResponse.json() as { integration: { id: string; remoteProjectId: string } };
     expect(created.integration.remoteProjectId).toBe("remote_primary");
     await repository.saveIronsideSyncState("proj_langsmith_support", created.integration.id, { cursor: "cursor_saved" });
+    await expect(repository.saveIronsideSyncState(
+      "proj_langsmith_support",
+      created.integration.id,
+      { cursor: "cursor_regressed" },
+      null
+    )).resolves.toBe(false);
 
     const duplicateCreate = await appWithIronside.request("/api/integrations/ironside", {
       method: "POST",
@@ -4954,5 +4963,22 @@ describe("dataset examples (Skill Bench ingestion)", () => {
     });
     expect(mismatchResponse.status).toBe(409);
     await expect(mismatchResponse.json()).resolves.toMatchObject({ code: "ironside_project_mismatch" });
+
+    forceRemoteMismatch = true;
+    const testMismatch = await appWithIronside.request(
+      `/api/integrations/ironside/${created.integration.id}/test`,
+      { method: "POST" }
+    );
+    expect(testMismatch.status).toBe(409);
+    await expect(repository.loadIronsideImportContext({
+      projectId: "proj_langsmith_support",
+      integrationId: created.integration.id,
+      limit: 1
+    })).resolves.toMatchObject({
+      remoteProjectId: "remote_primary",
+      pollEnabled: false,
+      revalidationRequired: true,
+      lastTestResult: { ok: false }
+    });
   });
 });

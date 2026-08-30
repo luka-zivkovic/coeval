@@ -12,7 +12,11 @@ An Ironside **Integration** credential must grant `traces:read` and
 `GET /api/v1/evaluator/context` and records the protocol version and remote
 project identity. Rotating the URL or credential preserves the import cursor
 only when the replacement resolves to the same Ironside project. Moving to a
-different project requires a new connection.
+different project requires a new connection. Every import and assessment
+writeback rechecks the live remote identity before using the credential. A
+mismatch atomically disables polling, marks the connection for revalidation,
+and records the failed test instead of importing from or writing to the wrong
+project.
 
 ## Import correctness
 
@@ -32,6 +36,9 @@ only after imported cases have durable judging work. Poll requests have a
 an upstream that keeps returning empty changing pages cannot monopolize a
 worker. Yielding partway through a page retains that page's starting cursor;
 exact source dedupe makes its already-visited prefix safe to replay.
+Concurrent workers update the opaque cursor with compare-and-set semantics, so
+a slower stale run cannot move the connection behind a cursor already saved by
+a newer run.
 
 Source identity is `(remote project, traceId, traceVersion)`, including after a
 disconnect and later reconnect. This prevents colliding IDs in two Ironside
@@ -54,7 +61,9 @@ Legacy connections are quarantined with polling disabled because the old
 contract did not persist a verifiable remote project identity. An owner must
 run the connection test once; a successful v1 context check atomically stores
 the protocol, remote project, and settlement settings. Polling can then be
-re-enabled. Imports never run under a synthetic remote identity.
+re-enabled from the integration card. Imports never run under a synthetic
+remote identity, and enabling polling is unavailable until the latest
+connection test succeeds.
 
 Only one verified Ironside connection may exist per Coeval project. Repeating
 the create request returns 409; credential rotation uses update, and changing
@@ -62,10 +71,13 @@ to another remote project requires disconnecting first. This keeps historical
 case writeback attached to the original remote.
 
 For rollout, apply the Coeval migration before starting upgraded API and worker
-processes. Upgrade Ironside's migration and feed-writing worker before exposing
-its evaluator API, then upgrade Coeval. An old Ironside does not advertise the
-v1 context route; connection tests fail closed rather than silently using the
-LangFuse compatibility path.
+processes. On Ironside, stop the old workers, drain or reconcile their pending
+ingest intents, apply the feed migrations, and complete the feed-writing worker
+deployment before exposing its evaluator API; then upgrade Coeval. Running old
+and new Ironside workers together is not sufficient because an old worker can
+materialize a queued trace without publishing it. An old Ironside does not
+advertise the v1 context route; connection tests fail closed rather than
+silently using the LangFuse compatibility path.
 
 ## Assessment writeback
 

@@ -4704,11 +4704,13 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       !context.remoteProjectId.startsWith("unverified:") &&
       context.remoteProjectId !== remote.project.id
     ) {
-      return c.json({
+      const failed: IronsideConnectionTestResult = {
         ok: false,
         checkedAt,
         error: "The configured credentials now resolve to a different Ironside project."
-      }, 409);
+      };
+      await repository.quarantineIronsideIntegration(projectId, integrationId, failed);
+      return c.json(failed, 409);
     }
     await repository.updateIronsideIntegration(projectId, integrationId, {}, remote);
     await repository.recordIronsideConnectionTest(projectId, integrationId, result);
@@ -4739,7 +4741,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         skillVersionId: resolvedVersion.id,
         limit: parsed.data.limit
       });
-      if (context.remoteProjectId.startsWith("unverified:")) {
+      if (context.revalidationRequired || context.remoteProjectId.startsWith("unverified:")) {
         return c.json({
           error: "This upgraded Ironside connection must be tested before importing.",
           code: "ironside_revalidation_required"

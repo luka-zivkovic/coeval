@@ -64,12 +64,23 @@ export async function processIronsideImportJob(
     if (!version) throw new ImportSkillVersionBindingError(`Unknown import skillVersionId for project: ${parsed.skillVersionId}`);
     await assertImportJudgingAllowed(repository, parsed.projectId, version.id);
     const context = await repository.loadIronsideImportContext(parsed);
-    if (context.remoteProjectId.startsWith("unverified:")) {
+    if (context.revalidationRequired || context.remoteProjectId.startsWith("unverified:")) {
       throw new IronsideIntegrationRevalidationRequiredError(context.id);
     }
     const client = createClient(context);
+    const remote = await client.getContext();
+    if (remote.project.id !== context.remoteProjectId) {
+      const checkedAt = new Date().toISOString();
+      await repository.quarantineIronsideIntegration(context.projectId, context.id, {
+        ok: false,
+        checkedAt,
+        error: `Configured credentials resolve to Ironside project ${remote.project.id}, expected ${context.remoteProjectId}`
+      });
+      throw new IronsideIntegrationRevalidationRequiredError(context.id);
+    }
 
     let cursor = context.syncState.cursor;
+    const initialCursor = cursor;
     let imported = 0;
     let scanned = 0;
     let drained = false;
@@ -152,7 +163,12 @@ export async function processIronsideImportJob(
     }
     const queued = judging.scheduledCaseCount;
 
-    await repository.saveIronsideSyncState(context.projectId, context.id, { cursor });
+    await repository.saveIronsideSyncState(
+      context.projectId,
+      context.id,
+      { cursor },
+      initialCursor
+    );
     if (parsed.importJobId) {
       await repository.markImportJobCompleted(parsed.projectId, parsed.importJobId, {
         importedCount: imported,

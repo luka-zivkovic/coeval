@@ -174,6 +174,7 @@ function IntegrationCard({
   const [testing, setTesting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [rebinding, setRebinding] = useState(false);
+  const [togglingPolling, setTogglingPolling] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -260,6 +261,22 @@ function IntegrationCard({
     }
   };
 
+  const toggleIronsidePolling = async () => {
+    if (integration.provider !== "ironside") return;
+    setTogglingPolling(true);
+    setActionError(null);
+    try {
+      await updateIronsideIntegration(integration.id, {
+        pollEnabled: !integration.pollEnabled
+      });
+      onChanged();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setTogglingPolling(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -334,6 +351,23 @@ function IntegrationCard({
         <Button variant="ghost" size="sm" onClick={() => void test()} disabled={testing}>
           {testing ? "Testing…" : "Test connection"}
         </Button>
+        {integration.provider === "ironside" ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void toggleIronsidePolling()}
+            disabled={togglingPolling || (!integration.pollEnabled && !ok)}
+            title={!integration.pollEnabled && !ok
+              ? "Test the connection successfully before enabling polling"
+              : undefined}
+          >
+            {togglingPolling
+              ? "Updating polling…"
+              : integration.pollEnabled
+                ? "Pause polling"
+                : "Enable polling"}
+          </Button>
+        ) : null}
         <Button
           variant="default"
           size="sm"

@@ -182,6 +182,12 @@ run("frozen database baseline", () => {
       await repo.saveIronsideSyncState("project_upgrade", "int_upgrade", {
         cursor: "native_cursor"
       });
+      await expect(repo.saveIronsideSyncState(
+        "project_upgrade",
+        "int_upgrade",
+        { cursor: "stale_cursor" },
+        null
+      )).resolves.toBe(false);
       const revalidated = await pool.query<{
         config: Record<string, unknown>;
         poll_enabled: boolean;
