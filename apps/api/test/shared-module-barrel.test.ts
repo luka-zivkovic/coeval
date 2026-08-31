@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as shared from "@coeval/shared";
 import * as judge from "../../../packages/shared/dist/judge.js";
+import * as legacyReview from "../../../packages/shared/dist/legacy-review.js";
 import * as projects from "../../../packages/shared/dist/projects.js";
 import * as skills from "../../../packages/shared/dist/skills.js";
 import * as verdicts from "../../../packages/shared/dist/verdicts.js";
@@ -21,9 +22,10 @@ function expectRootIdentity(
   }
 }
 
-describe("shared foundation barrel", () => {
+describe("shared module barrel", () => {
   it("re-exports each public runtime binding by identity and keeps sibling helpers private", () => {
     expectRootIdentity(judge, new Set(["HttpUrlSchema", "UnicodeScalarValueSchema"]));
+    expectRootIdentity(legacyReview);
     expectRootIdentity(projects);
     expectRootIdentity(skills);
     expectRootIdentity(verdicts);
