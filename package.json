@@ -22,6 +22,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run && node --test tools/*.test.mjs tools/ci/*.test.mjs tools/mcp/*.test.mjs",
     "test:pg": "tsx tools/test-postgres.ts",
+    "shared-contracts": "tsc -b packages/shared/tsconfig.json --force && node tools/shared-contracts.mjs",
     "large-files": "node tools/large-files.mjs",
     "clean": "rm -rf apps/*/dist apps/*/dist-ts packages/*/dist packages/*/*.tsbuildinfo apps/*/*.tsbuildinfo .turbo coverage out",
     "dev:api": "pnpm --filter @coeval/api dev",

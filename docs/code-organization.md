@@ -102,6 +102,11 @@ lines.
 The inventory is intentionally per repository. Ironside and other products
 maintain their own reports and justifications.
 
+The sorted `@coeval/shared` public and runtime export fixtures under `tools/`
+are generated review artifacts. They remain separate so each is readable and
+below the current trigger. If either crosses 1,000 lines, classify it as a
+generated structural exception rather than splitting an exact export surface.
+
 ## Revisit conditions
 
 Re-run the report and revisit a classification when:
