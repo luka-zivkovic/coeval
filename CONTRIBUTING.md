@@ -20,10 +20,17 @@ Run these before submitting a pull request:
 
 ```bash
 pnpm typecheck
+pnpm shared-contracts
 pnpm test
 pnpm --filter @coeval/web build
 git diff --check
 ```
+
+When an intentional `@coeval/shared` export change is authorized, regenerate
+its sorted public and runtime export fixtures with
+`pnpm shared-contracts -- --write`, inspect the full fixture diff, and explain
+every removed public name in the pull request. The default command is
+check-only and CI never updates these fixtures automatically.
 
 When your change touches persistence, migrations, authentication, queues, or project authorization, also run the Postgres-backed tests:
 

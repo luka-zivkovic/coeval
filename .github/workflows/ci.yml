@@ -54,6 +54,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Guard shared contracts
+        run: pnpm shared-contracts
+
       - name: Test
         run: pnpm test
 
