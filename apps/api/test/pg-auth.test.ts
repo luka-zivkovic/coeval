@@ -298,6 +298,17 @@ run("Postgres auth flow", () => {
       });
       expect(ownerCriteriaRead.status).toBe(200);
       await expect(ownerCriteriaRead.json()).resolves.toMatchObject({ criteria: [{ sourceKind: "native" }] });
+      const ownerCriteriaWriteProbe = await app.request("/api/v1/criteria", {
+        method: "POST",
+        headers: {
+          cookie: ownerCookie,
+          "content-type": "application/json",
+          "x-coeval-project": setupBody.projectId
+        },
+        body: JSON.stringify({})
+      });
+      expect(ownerCriteriaWriteProbe.status).toBe(400);
+      await expect(ownerCriteriaWriteProbe.json()).resolves.toMatchObject({ error: "Invalid criterion input" });
       const createdProject = await app.request("/api/projects", {
         method: "POST",
         headers: { "content-type": "application/json", cookie: ownerCookie },
@@ -346,6 +357,35 @@ run("Postgres auth flow", () => {
       expect(memberRows.rows[0]?.role).toBe("member");
 
       const memberCookie = await signIn(app, "member@example.com", "member-password");
+      const memberCriteriaRead = await app.request("/api/v1/criteria", {
+        headers: { cookie: memberCookie, "x-coeval-project": setupBody.projectId }
+      });
+      expect(memberCriteriaRead.status).toBe(200);
+      const memberCriteriaWrite = await app.request("/api/v1/criteria", {
+        method: "POST",
+        headers: {
+          cookie: memberCookie,
+          "content-type": "application/json",
+          "x-coeval-project": setupBody.projectId
+        },
+        body: JSON.stringify({})
+      });
+      expect(memberCriteriaWrite.status).toBe(403);
+      await expect(memberCriteriaWrite.json()).resolves.toMatchObject({
+        error: "Only project owners can change criteria or evaluator suites"
+      });
+      const memberCrossProjectCriteria = await app.request("/api/v1/criteria", {
+        headers: { cookie: memberCookie, "x-coeval-project": createdProjectBody.projectId }
+      });
+      expect(memberCrossProjectCriteria.status).toBe(403);
+      await expect(memberCrossProjectCriteria.json()).resolves.toMatchObject({
+        error: "Not a member of this project"
+      });
+      const memberCrossProject = await app.request("/api/dashboard", {
+        headers: { cookie: memberCookie, "x-coeval-project": createdProjectBody.projectId }
+      });
+      expect(memberCrossProject.status).toBe(403);
+      await expect(memberCrossProject.json()).resolves.toMatchObject({ error: "Not a member of this project" });
       const memberPairing = await app.request("/api/agent-setup/pairings", {
         method: "POST",
         headers: { cookie: memberCookie }
