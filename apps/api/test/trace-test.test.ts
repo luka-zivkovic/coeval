@@ -1,7 +1,10 @@
+import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import type { CreateTraceTestInput, TraceTestDetail, TraceTestValidation } from "@coeval/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
+import { createRequestServices, type AppVariables } from "../src/request-services/index.js";
+import { registerTraceTestAdministrationRoutes } from "../src/routes/trace-test-administration.js";
 
 const draft = (sourceCaseId: string): CreateTraceTestInput => ({
   sourceCaseId,
@@ -26,6 +29,35 @@ const draft = (sourceCaseId: string): CreateTraceTestInput => ({
 });
 
 describe("trace-derived test API", () => {
+  it("owns the exact contiguous trace-test administration route family", () => {
+    const repository = new DemoRepository();
+    const isolated = new Hono<{ Variables: AppVariables }>();
+    registerTraceTestAdministrationRoutes(isolated, {
+      repository,
+      requestServices: createRequestServices({
+        repository,
+        ownerAuthorizationEnabled: false,
+        rateLimitPerMinute: 60,
+        batchMaxItems: 100
+      }),
+      judgeRateLimitPerMinute: 60,
+      draftTimeoutMs: 45_000,
+      validationTimeoutMs: 30_000
+    });
+
+    expect(isolated.routes.map(({ method, path }) => `${method} ${path}`)).toEqual([
+      "GET /api/trace-tests",
+      "POST /api/trace-tests/assist",
+      "POST /api/trace-tests",
+      "POST /api/trace-tests/funnel-events",
+      "GET /api/trace-tests/:traceTestId",
+      "POST /api/trace-tests/:traceTestId/revisions",
+      "POST /api/trace-tests/:traceTestId/checks",
+      "POST /api/trace-tests/:traceTestId/validations",
+      "POST /api/trace-tests/:traceTestId/enable"
+    ]);
+  });
+
   it("keeps source provenance and append-only history while requiring reviewed validation to enable", async () => {
     const repository = new DemoRepository();
     const app = createApp(repository);
