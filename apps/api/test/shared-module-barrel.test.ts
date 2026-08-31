@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as shared from "@coeval/shared";
 import * as agentAccess from "../../../packages/shared/dist/agent-access.js";
+import * as analysisMeasurement from "../../../packages/shared/dist/analysis-measurement.js";
 import * as analysisPopulation from "../../../packages/shared/dist/analysis-population.js";
 import * as analysisStudy from "../../../packages/shared/dist/analysis-study.js";
 import * as binaryCalibration from "../../../packages/shared/dist/binary-calibration.js";
@@ -36,6 +37,7 @@ function expectRootIdentity(
 describe("shared module barrel", () => {
   it("re-exports each public runtime binding by identity and keeps sibling helpers private", () => {
     expectRootIdentity(agentAccess);
+    expectRootIdentity(analysisMeasurement);
     expectRootIdentity(analysisPopulation, new Set([
       "AnalysisPopulationCursorSchema",
       "AnalysisPopulationIdSchema",
