@@ -37,6 +37,9 @@ run. Set `PG_SMOKE_DATABASE_URL` only to use an existing local server.
 ## Pull requests
 
 - Keep each pull request centered on one problem.
+- Treat files over 1,000 lines as a cohesion review prompt, not an automatic
+  failure. Run `pnpm large-files` and follow the classification guidance in
+  [`docs/code-organization.md`](docs/code-organization.md).
 - Add tests for behavior changes and regressions.
 - Preserve append-only verdict history and immutable skill versions.
 - Treat evaluated trace content as untrusted input.
@@ -47,6 +50,12 @@ run. Set `PG_SMOKE_DATABASE_URL` only to use an existing local server.
 For UI changes, include the flow and states you exercised manually. For schema
 changes, explain the clean-baseline change and invariant coverage; do not add
 upgrade or rollback machinery before the first external deployment.
+
+When a changed file remains over 1,000 lines, explain why keeping its
+responsibility together makes its invariants easier to understand. Generated,
+digest-pinned, and single checksummed migration artifacts are natural
+exceptions. For maintained source, "it is one domain" is not sufficient when
+the file contains several independently changing lifecycles.
 
 ## Reporting security issues
 
