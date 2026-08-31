@@ -24,6 +24,7 @@ import {
   defaultAnalysisWindowEnd
 } from "../src/lib/analyze-journey.js";
 import { ANALYSIS_POPULATION_MIN_WINDOW_LAG_SECONDS } from "@coeval/shared";
+import { readFeatureSource } from "./support/web-extraction-contracts.js";
 
 const digest = (digit: string) => `sha256:${digit.repeat(64)}`;
 
@@ -111,7 +112,7 @@ describe("analysis study web boundary", () => {
 
   it("states the guided, human-authored analysis boundary without release claims", async () => {
     const [workspace, analyze, journey, sidebar] = await Promise.all([
-      readFile(new URL("../src/screens/analysis-study-workspace.tsx", import.meta.url), "utf8"),
+      readFeatureSource("analysis-study-workspace"),
       readFile(new URL("../src/screens/analyze.tsx", import.meta.url), "utf8"),
       readFile(new URL("../../../docs/analyze-journey.md", import.meta.url), "utf8"),
       readFile(new URL("../src/components/layout/sidebar.tsx", import.meta.url), "utf8")

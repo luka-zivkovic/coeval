@@ -9,6 +9,7 @@ import {
 } from "../src/lib/display-mode.js";
 import { humanTruthNextStep, humanTruthNextStepHref } from "../src/lib/human-truth-journey.js";
 import { skillEditConsequence, skillVersionStateLabel } from "../src/lib/skill-presentation.js";
+import { readFeatureSource } from "./support/web-extraction-contracts.js";
 
 const source = (path: string) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -112,7 +113,7 @@ describe("beginner-first hierarchy", () => {
   it("routes new projects through Overview before the advanced editor", async () => {
     const [projectCreate, skillEdit, firstResult, firstResultState, provisional, dashboard, tracingWelcome, benchWelcome, importTrace] = await Promise.all([
       source("../src/components/project-create.tsx"),
-      source("../src/screens/skill-edit.tsx"),
+      readFeatureSource("skill-edit"),
       source("../src/screens/first-result.tsx"),
       source("../src/lib/first-result.ts"),
       source("../src/screens/dashboard-provisional.tsx"),
