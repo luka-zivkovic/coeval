@@ -16,11 +16,6 @@
       "reason": "Repository ports, inputs, errors, helpers, fixtures, and the demo implementation share one file.",
       "revisit": "Separate compatibility exports, consumer ports, and demo composition while preserving facade identity."
     },
-    "apps/api/src/app.ts": {
-      "classification": "refactor_candidate",
-      "reason": "The composition root also owns many independent route handler families and request workflows.",
-      "revisit": "Extract routes only after auth ordering and shared request services are characterized."
-    },
     "pnpm-lock.yaml": {
       "classification": "generated",
       "reason": "pnpm owns this dependency lockfile.",
