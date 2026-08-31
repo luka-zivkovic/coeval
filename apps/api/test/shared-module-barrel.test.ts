@@ -7,6 +7,7 @@ import * as binaryCalibration from "../../../packages/shared/dist/binary-calibra
 import * as criterionGovernance from "../../../packages/shared/dist/criterion-governance.js";
 import * as datasets from "../../../packages/shared/dist/datasets.js";
 import * as evaluationRuns from "../../../packages/shared/dist/evaluation-runs.js";
+import * as integrations from "../../../packages/shared/dist/integrations.js";
 import * as judge from "../../../packages/shared/dist/judge.js";
 import * as legacyReview from "../../../packages/shared/dist/legacy-review.js";
 import * as projects from "../../../packages/shared/dist/projects.js";
@@ -48,6 +49,7 @@ describe("shared module barrel", () => {
     expectRootIdentity(criterionGovernance);
     expectRootIdentity(datasets);
     expectRootIdentity(evaluationRuns);
+    expectRootIdentity(integrations);
     expectRootIdentity(judge, new Set(["HttpUrlSchema", "UnicodeScalarValueSchema"]));
     expectRootIdentity(legacyReview);
     expectRootIdentity(projects);
