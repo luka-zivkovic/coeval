@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   HttpUrlSchema,
+  JudgeProviderIdSchema,
   StoredModelBindingSchema,
   UnicodeScalarValueSchema
 } from "./judge.js";
@@ -257,3 +258,49 @@ export const JudgeServiceRequestSchema = z.object({
   force: z.boolean().optional()
 });
 export type JudgeServiceRequest = z.infer<typeof JudgeServiceRequestSchema>;
+
+// GET /api/judge/providers — credential availability (no secrets).
+// Lets the skill editor default to a runnable provider instead of dead-ending
+// on the regression gate's 503.
+export const JudgeProviderCredentialSourceSchema = z.enum(["built_in", "project", "environment"]);
+export type JudgeProviderCredentialSource = z.infer<typeof JudgeProviderCredentialSourceSchema>;
+
+export const JudgeProviderAvailabilityItemSchema = z.object({
+  provider: JudgeProviderIdSchema,
+  label: z.string(),
+  available: z.boolean(),
+  credentialSource: JudgeProviderCredentialSourceSchema.nullable(),
+  modelSelection: z.enum(["catalog", "custom"])
+});
+export type JudgeProviderAvailabilityItem = z.infer<typeof JudgeProviderAvailabilityItemSchema>;
+
+export const JudgeProviderAvailabilitySchema = z.object({
+  providers: z.array(JudgeProviderAvailabilityItemSchema)
+});
+export type JudgeProviderAvailability = z.infer<typeof JudgeProviderAvailabilitySchema>;
+
+export const JudgeModelSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  version: z.string().min(1),
+  createdAt: z.string().nullable()
+});
+export type JudgeModel = z.infer<typeof JudgeModelSchema>;
+
+export const JudgeModelCatalogSchema = z.object({
+  provider: JudgeProviderIdSchema,
+  models: z.array(JudgeModelSchema)
+});
+export type JudgeModelCatalog = z.infer<typeof JudgeModelCatalogSchema>;
+
+// Response for GET /api/v1/project — the free connection check for API-key
+// callers (skills, CI). currentSkillVersionId is null when the project has no
+// active judging skill version yet, so clients can warn before a submit that
+// would 400.
+export const V1ProjectResponseSchema = z.object({
+  projectId: z.string(),
+  name: z.string(),
+  mode: ProjectModeSchema,
+  currentSkillVersionId: z.string().nullable()
+});
+export type V1ProjectResponse = z.infer<typeof V1ProjectResponseSchema>;
