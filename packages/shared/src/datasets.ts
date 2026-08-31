@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { VerdictLabelSchema } from "./judge.js";
-import { TraceStepSchema } from "./traces.js";
+import { MAX_TRACE_STEPS, TraceStepSchema } from "./traces.js";
 
 // Datasets: named case collections — the generalization of the golden set's
 // "cases worth re-judging" role. A dataset is NOT a label registry (the golden
@@ -132,3 +132,117 @@ export const DatasetRevisionItemSchema = z.object({
   createdAt: z.string()
 });
 export type DatasetRevisionItem = z.infer<typeof DatasetRevisionItemSchema>;
+
+export const DatasetExposureEventSchema = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  revisionId: z.string(),
+  revisionItemId: z.string().nullable(),
+  kind: z.enum([
+    "created", "legacy_pretracking", "human_access", "evaluator_execution",
+    "development_use", "declassification", "superseded", "overlap_detected", "exported"
+  ]),
+  exposureClass: z.enum(["lineage", "provenance", "development"]),
+  activity: z.enum([
+    "revision_create", "legacy_import", "content_view", "export", "analysis_authoring",
+    "criterion_authoring", "rubric_authoring", "prompt_tuning", "example_selection", "model_selection",
+    "development_run", "final_validation_run", "regression_run", "declassify",
+    "supersede", "exact_overlap"
+  ]),
+  subjectKind: z.enum(["person", "api_key", "evaluator_version", "activity", "system"]),
+  subjectId: z.string().nullable(),
+  actorUserId: z.string().nullable(),
+  evidenceRefKind: z.string().nullable(),
+  evidenceRefId: z.string().nullable(),
+  reason: z.string().nullable(),
+  details: z.record(z.string(), z.unknown()),
+  occurredAt: z.string()
+});
+export type DatasetExposureEvent = z.infer<typeof DatasetExposureEventSchema>;
+
+export const DatasetRevisionDetailSchema = DatasetRevisionSchema.extend({
+  items: z.array(DatasetRevisionItemSchema),
+  exposures: z.array(DatasetExposureEventSchema)
+});
+export type DatasetRevisionDetail = z.infer<typeof DatasetRevisionDetailSchema>;
+
+export const CreateDatasetRevisionInputSchema = z.object({
+  role: DatasetRevisionRoleSchema,
+  expectedParentRevisionId: z.string().min(1).optional(),
+  idempotencyKey: z.string().min(1).max(200).optional()
+}).strict();
+export type CreateDatasetRevisionInput = z.infer<typeof CreateDatasetRevisionInputSchema>;
+
+export const CreateDatasetInputSchema = z.object({
+  name: z.string().min(1).max(120),
+  description: z.string().max(2000).optional()
+});
+export type CreateDatasetInput = z.infer<typeof CreateDatasetInputSchema>;
+
+export const AddDatasetItemsInputSchema = z.object({
+  items: z.array(z.object({
+    caseId: z.string().min(1),
+    expectedLabel: VerdictLabelSchema.exclude(["ambiguous"]).optional(),
+    note: z.string().max(2000).optional()
+  })).min(1).max(500)
+});
+export type AddDatasetItemsInput = z.infer<typeof AddDatasetItemsInputSchema>;
+
+// Skill Bench ingestion: paste examples as content, not case refs. Each item
+// mints (or content-dedups into) a manual case and lands in the dataset with
+// its expected label. Unlike trace imports, this path never auto-judges —
+// bench judging happens only through explicit eval runs.
+// a step-targeted expectation is valid only alongside expectedLabel
+// "fail" and must index a step supplied IN THE SAME item — labeling an
+// existing case without resupplying its steps is rejected by the same rule.
+export function validateStepExpectation(
+  item: { expectedLabel?: "pass" | "fail" | undefined; expectedFailStep?: number | undefined; steps?: unknown[] | undefined },
+  ctx: z.RefinementCtx
+): void {
+  if (item.expectedFailStep === undefined) return;
+  if (item.expectedLabel !== "fail") {
+    ctx.addIssue({
+      code: "custom",
+      path: ["expectedFailStep"],
+      message: 'expectedFailStep is only valid alongside expectedLabel "fail"'
+    });
+  }
+  if (!item.steps || item.expectedFailStep >= item.steps.length) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["expectedFailStep"],
+      message: "expectedFailStep must index (0-based) a step supplied in the same item's steps"
+    });
+  }
+}
+
+export const DatasetExampleInputSchema = z.object({
+  input: z.unknown(),
+  output: z.unknown(),
+  // Optional human title; becomes the case title via normalized metadata.name.
+  name: z.string().trim().min(1).max(200).optional(),
+  expectedLabel: VerdictLabelSchema.exclude(["ambiguous"]).optional(),
+  expectedFailStep: z.number().int().nonnegative().optional(),
+  note: z.string().max(2000).optional(),
+  steps: z.array(TraceStepSchema).max(MAX_TRACE_STEPS, `a case supports at most ${MAX_TRACE_STEPS} steps`).optional()
+}).superRefine(validateStepExpectation);
+export type DatasetExampleInput = z.infer<typeof DatasetExampleInputSchema>;
+
+export const ImportDatasetExamplesInputSchema = z.object({
+  items: z.array(DatasetExampleInputSchema).min(1).max(500)
+});
+export type ImportDatasetExamplesInput = z.infer<typeof ImportDatasetExamplesInputSchema>;
+
+export const ImportDatasetExamplesResultSchema = z.object({
+  items: z.array(z.object({
+    caseId: z.string(),
+    datasetItemId: z.string().nullable(),
+    created: z.boolean()
+  })),
+  // Items whose content matched an existing case (re-paste of an unchanged
+  // example) — deduped, stored content untouched.
+  reusedCount: z.number().int().nonnegative(),
+  // Items refused by the anti-recursion guard.
+  skippedCount: z.number().int().nonnegative()
+});
+export type ImportDatasetExamplesResult = z.infer<typeof ImportDatasetExamplesResultSchema>;
