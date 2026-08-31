@@ -80,32 +80,44 @@ dataset-example import must create traces and membership on the same client;
 candidate creation must bind its revision, credential, and version on the same
 client; and terminal evaluation updates must mint receipts on the same client.
 
-## DemoRepository shared-store design (TARGET for the split)
+## DemoRepository shared store (CURRENT; domain slices remain TARGET)
 
-`DemoRepository` currently colocates its mutable maps, arrays, sets, counters,
-and promise deduplication state. The `pnpm repository-boundaries` gate does not
-inspect or enforce Demo state ownership. Its later domain split must first
-introduce one named `DemoRepositoryStore` allocated once per `DemoRepository`
-instance. Every extracted demo domain receives that exact store reference.
+`DemoRepositoryStore` owns the demo facade's mutable maps, arrays, sets,
+counters, scalar pointers, and promise-deduplication state. `DemoRepository`
+allocates exactly one store per facade instance; the store is an internal
+composition seam and is not re-exported by the public repository module. The
+`pnpm repository-boundaries` gate remains PostgreSQL-only, while
+`demo-repository-store.test.ts` pins the Demo store inventory and facade
+composition.
 
 The shared store has these rules:
 
-- it owns all mutable collections and mutable scalar state; domain slices do
-  not copy, mirror, or independently seed them;
+- it owns all mutable collections and mutable scalar state that were fields on
+  `DemoRepository`; domain slices do not copy, mirror, or independently seed
+  them;
 - cross-domain identities remain object identities, not serialized handoffs;
 - append-only evidence arrays, immutable revision histories, idempotency maps,
   in-flight promise maps, dispatch leases, and counters keep their current
   lifetime and ordering;
 - the public `DemoRepository` remains the single `CoevalRepository` facade and
-  creates domain slices once in its constructor, never per request; and
-- tests may inject a fresh store explicitly, but production demo mode creates
-  exactly one store and does not expose it as public API.
+  will create future domain slices once in its constructor, never per request;
+  and
+- future slices receive the facade's exact store reference; they do not create
+  a store or expose it as public API.
 
-The first Demo split must characterize constructor seeding and every
-cross-domain collection before moving methods. A slice is not complete merely
-because its methods compile: behavior tests must prove that writes through one
-slice are immediately visible through every other slice that consumes the same
-evidence.
+One pre-existing fixture behavior remains outside that extracted field
+inventory: signing the seeded demo skill updates the imported
+`demoSkill.isStarter` flag. The store guard pins that direct assignment as the
+sole syntactically module-origin mutation in the repository graph; code can
+also reach the same fixture object through references held by the shared
+store. Changing that ownership or behavior requires a separate change rather
+than an incidental domain slice.
+
+The shared-store extraction characterizes constructor seeding and every
+cross-domain collection before moving methods. A future slice is not complete
+merely because its methods compile: behavior tests must prove that writes
+through one slice are immediately visible through every other slice that
+consumes the same evidence.
 
 CURRENT Demo behavior already has one important compensating transaction:
 `importDatasetExamples` snapshots `traces`, `traceSources`,

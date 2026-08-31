@@ -1,0 +1,255 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`DemoRepository shared store > pins every store field declaration and initializer > demo repository store fields 1`] = `
+[
+  {
+    "declaration": "readonly traces = new Map<string, Trace>();",
+    "name": "traces",
+  },
+  {
+    "declaration": "readonly caseInputIdentities = new Map<string, ReturnType<typeof datasetInputIdentity>>();",
+    "name": "caseInputIdentities",
+  },
+  {
+    "declaration": "readonly traceSources = new Map<string, { source: CaseSource; sourceTraceId: string; sourceTraceVersion?: string | undefined; sourceRemoteProjectId?: string | undefined; rawTraceId: string; ingestionPurpose: RuntimeIngestionPurpose; createdAt: string; sourceIntegrationId?: string | undefined; importJobId?: string | undefined; }>();",
+    "name": "traceSources",
+  },
+  {
+    "declaration": "readonly judgeRuns: JudgeRun[] = [];",
+    "name": "judgeRuns",
+  },
+  {
+    "declaration": "readonly verdicts: VerdictRecord[] = [];",
+    "name": "verdicts",
+  },
+  {
+    "declaration": "skillVersions: SkillVersion[] | null = null;",
+    "name": "skillVersions",
+  },
+  {
+    "declaration": "readonly regressionRuns = new Map<string, RegressionRunResult>();",
+    "name": "regressionRuns",
+  },
+  {
+    "declaration": "readonly reviewQueues: Array<{ id: string; projectId: string; name: string; description: string | null; status: ReviewQueueStatus; createdByUserId: string | null; createdAt: string; closedAt: string | null; }> = [];",
+    "name": "reviewQueues",
+  },
+  {
+    "declaration": "readonly reviewQueueItems: ReviewQueueItem[] = [];",
+    "name": "reviewQueueItems",
+  },
+  {
+    "declaration": "readonly langSmithIntegrations = new Map<string, LangSmithImportContext & { pollEnabled: boolean; pollIntervalMs: number; }>();",
+    "name": "langSmithIntegrations",
+  },
+  {
+    "declaration": "readonly langSmithLastPolledAt = new Map<string, number>();",
+    "name": "langSmithLastPolledAt",
+  },
+  {
+    "declaration": "readonly langfuseIntegrations = new Map<string, LangfuseImportContext & { pollEnabled: boolean; pollIntervalMs: number; }>();",
+    "name": "langfuseIntegrations",
+  },
+  {
+    "declaration": "readonly langfuseLastPolledAt = new Map<string, number>();",
+    "name": "langfuseLastPolledAt",
+  },
+  {
+    "declaration": "readonly ironsideIntegrations = new Map<string, IronsideImportContext & { pollEnabled: boolean; pollIntervalMs: number; }>();",
+    "name": "ironsideIntegrations",
+  },
+  {
+    "declaration": "readonly ironsideLastPolledAt = new Map<string, number>();",
+    "name": "ironsideLastPolledAt",
+  },
+  {
+    "declaration": "readonly feedbackJobs = new Map<string, FeedbackSyncContext & { status: FeedbackSyncStatus; }>();",
+    "name": "feedbackJobs",
+  },
+  {
+    "declaration": "readonly feedbackJobAttempts = new Map<string, number>();",
+    "name": "feedbackJobAttempts",
+  },
+  {
+    "declaration": "readonly feedbackJobLastError = new Map<string, string>();",
+    "name": "feedbackJobLastError",
+  },
+  {
+    "declaration": "readonly feedbackJobRunIds = new Map<string, string>();",
+    "name": "feedbackJobRunIds",
+  },
+  {
+    "declaration": "readonly promotedGoldenSet: GoldenSetEntry[] = [];",
+    "name": "promotedGoldenSet",
+  },
+  {
+    "declaration": "readonly retiredGoldenSetEntries = new Map<string, GoldenSetRetirementContext>();",
+    "name": "retiredGoldenSetEntries",
+  },
+  {
+    "declaration": "readonly importJobs: ImportJobRecord[] = [];",
+    "name": "importJobs",
+  },
+  {
+    "declaration": "readonly apiKeys: Array<{ record: ApiKey; keyHash: string; }> = [];",
+    "name": "apiKeys",
+  },
+  {
+    "declaration": "readonly traceTests: Array<{ id: string; projectId: string; sourceCaseId: string | null; sourceCaseRef: string; sourceTraceRef: string; sourceSnapshot: unknown; sourceScope: TraceTestSourceScope; currentRevision: number; enabledRevision: number | null; createdByUserId: string | null; createdAt: string; updatedAt: string; }> = [];",
+    "name": "traceTests",
+  },
+  {
+    "declaration": "readonly traceTestRevisions: TraceTestRevision[] = [];",
+    "name": "traceTestRevisions",
+  },
+  {
+    "declaration": "readonly traceTestValidations: TraceTestValidation[] = [];",
+    "name": "traceTestValidations",
+  },
+  {
+    "declaration": "readonly traceTestFunnelEvents = new Set<string>();",
+    "name": "traceTestFunnelEvents",
+  },
+  {
+    "declaration": "readonly datasets: Array<{ id: string; projectId: string; name: string; description: string | null; kind: DatasetKind; createdAt: string; archivedAt: string | null; }> = [];",
+    "name": "datasets",
+  },
+  {
+    "declaration": "readonly datasetItems: DatasetItem[] = [];",
+    "name": "datasetItems",
+  },
+  {
+    "declaration": "readonly datasetRevisions: DatasetRevision[] = [];",
+    "name": "datasetRevisions",
+  },
+  {
+    "declaration": "readonly datasetRevisionItems: DatasetRevisionItem[] = [];",
+    "name": "datasetRevisionItems",
+  },
+  {
+    "declaration": "readonly datasetExposureEvents: DatasetExposureEvent[] = [];",
+    "name": "datasetExposureEvents",
+  },
+  {
+    "declaration": "readonly datasetRevisionIdempotency = new Map<string, string>();",
+    "name": "datasetRevisionIdempotency",
+  },
+  {
+    "declaration": "regressionDatasetRevisionId: string | null = null;",
+    "name": "regressionDatasetRevisionId",
+  },
+  {
+    "declaration": "readonly regressionDatasetRevisionIdsByCriterion = new Map<string, string>();",
+    "name": "regressionDatasetRevisionIdsByCriterion",
+  },
+  {
+    "declaration": "readonly evalRuns: EvalRun[] = [];",
+    "name": "evalRuns",
+  },
+  {
+    "declaration": "readonly evalRunItems: EvalRunItem[] = [];",
+    "name": "evalRunItems",
+  },
+  {
+    "declaration": "readonly convergenceEvalRuns = new Map<string, Promise<EvalRunDetail>>();",
+    "name": "convergenceEvalRuns",
+  },
+  {
+    "declaration": "readonly importedCaseEvalRuns = new Map<string, Promise<EvalRunDetail>>();",
+    "name": "importedCaseEvalRuns",
+  },
+  {
+    "declaration": "readonly evalRunDispatches = new Map<string, { jobId: string; dispatchToken: string | null; claimedAt: number | null; dispatched: boolean; }>();",
+    "name": "evalRunDispatches",
+  },
+  {
+    "declaration": "readonly evalRunItemQueueJobs = new Map<string, string>();",
+    "name": "evalRunItemQueueJobs",
+  },
+  {
+    "declaration": "readonly evalRunItemDeliveryDeadlines = new Map<string, number>();",
+    "name": "evalRunItemDeliveryDeadlines",
+  },
+  {
+    "declaration": "readonly evalRunItemExecutions = new Map<string, { executionToken: string; claimedAt: number; providerCallStarted: boolean; providerCallReturned: boolean; }>();",
+    "name": "evalRunItemExecutions",
+  },
+  {
+    "declaration": "readonly assessmentReceiptArtifacts: AssessmentReceiptArtifact[] = [];",
+    "name": "assessmentReceiptArtifacts",
+  },
+  {
+    "declaration": "readonly assessmentReceiptComparisons: AssessmentReceiptComparison[] = [];",
+    "name": "assessmentReceiptComparisons",
+  },
+  {
+    "declaration": "readonly runComparisons: RunComparison[] = [];",
+    "name": "runComparisons",
+  },
+  {
+    "declaration": "readonly criteria: Criterion[] = [];",
+    "name": "criteria",
+  },
+  {
+    "declaration": "readonly criterionVersions: CriterionVersion[] = [];",
+    "name": "criterionVersions",
+  },
+  {
+    "declaration": "readonly evaluatorSuites: EvaluatorSuite[] = [];",
+    "name": "evaluatorSuites",
+  },
+  {
+    "declaration": "readonly evaluatorSuiteManifests: Array<{ manifest: EvaluatorSuiteManifest; canonicalBytes: Buffer; idempotencyKey: string; requestDigest: string; }> = [];",
+    "name": "evaluatorSuiteManifests",
+  },
+  {
+    "declaration": "readonly skillVersionCriteria = new Map<string, string>();",
+    "name": "skillVersionCriteria",
+  },
+  {
+    "declaration": "readonly onboardingCheckRequests = new Map<string, { requestDigest: string; versionId: string; }>();",
+    "name": "onboardingCheckRequests",
+  },
+  {
+    "declaration": "readonly criterionSkills = new Map<string, Skill>();",
+    "name": "criterionSkills",
+  },
+  {
+    "declaration": "judgeProviderKeys = new Map<string, { apiKey: string; keyDisplay: string; createdAt: string; }>();",
+    "name": "judgeProviderKeys",
+  },
+  {
+    "declaration": "readonly gateChecks: Array<{ id: string; projectId: string; skillVersionId: string; evalRunId: string; label: string | null; metadata: Record<string, unknown>; maxDisagreements: number; createdAt: string; items: Array<{ id: string; goldenEntryId: string; goldenCaseId: string; caseKey: string; candidateCaseId: string; expectedLabel: "pass" | "fail"; createdAt: string; }>; }> = [];",
+    "name": "gateChecks",
+  },
+]
+`;
+
+exports[`DemoRepository shared store > pins store ownership across production and module state across the repository graph > demo repository imports 1`] = `
+[
+  "import { randomUUID } from "node:crypto";",
+  "import { MockJudgeProvider, DEFAULT_OUTPUT_SCHEMA, type JudgeProvider, type JudgePrompt, type JudgeVerdict, type Trace } from "@coeval/audit/runtime";",
+  "import { demoExceptions, demoGoldenSet, demoProject, demoSkill, demoSkillPrevVersion, demoVerdicts, getDemoDashboardSummary } from "@coeval/db";",
+  "import { capabilityGapsFromExceptions } from "./lib/capability-gaps.js";",
+  "import { type AssessmentReceipt, type Criterion, type CriterionDetail, type CriterionVersion, type CreateCriterionInput, type CreateCriterionVersionInput, type CreatedCriterion, type CreateEvaluatorSuiteManifestInput, type EvaluatorSuite, type EvaluatorSuiteManifest, type EvaluatorExecutionContext, type JudgeCardAuditEntry, type GateRunJob, ApiKey, CreatedApiKey, CreateSkillVersionInput, DashboardSummary, Dataset, DatasetDetail, DatasetExposureEvent, DatasetItem, DatasetKind, DatasetReferenceProvenance, DatasetRevision, DatasetRevisionDetail, DatasetRevisionItem, DatasetRevisionPayloadSnapshot, EvalRun, EvalRunDetail, EvalRunItem, GateCheck, GateCheckDetail, GateCheckItem, ExceptionCase, ExceptionDetail, FeedbackSyncJob, GOLDEN_SET_STALE_AFTER_DAYS, GoldenSetHealthSummary, GoldenSetEntry, ConvergenceAuditPage, SelfConsistencyReport, DisagreementSummary, ImportJobRecord, JudgeHumanDisagreementSummary, JudgeRun, KappaSummary, LangfuseConnectionTestResult, LangfuseImportJob, LangfuseImportTarget, LangfuseIntegration, LangfuseIntegrationInput, IronsideConnectionTestResult, IronsideImportJob, IronsideImportTarget, IronsideIntegration, IronsideIntegrationInput, type IronsideEvaluatorContext, IronsideSyncState, UpdateIronsideIntegrationInput, ReviewQueue, ReviewQueueDetail, ReviewQueueItem, ReviewQueueStatus, JudgeRunJob, LangSmithConnectionTestResult, LangSmithImportJob, LangSmithImportTarget, LangSmithIntegration, LangSmithIntegrationInput, ManualTraceImportInput, MinimumVerdictOutputSchema, OnboardingEvidenceInventory, Project, ProjectSettings, REGRESSION_RATIONALE_MAX_LENGTH, RegressionCaseDiff, RegressionRunResult, RetentionPruneResult, RunComparison, Skill, JudgeKeyProvider, JudgeProviderKey, SkillFormatExample, SkillVersion, TraceTestDetail, TraceTestSummary, TraceTestValidation, CaseSource, UpdateLangfuseIntegrationInput, UpdateLangSmithIntegrationInput, UpdateProjectSettingsInput, VerdictLabel, VerdictRecord } from "@coeval/shared";",
+  "import { deriveGateCheckDecision, effectiveHumanLabel, isInternalTraceMetadata, regressionDirectionCounts, renderJudgePromptContent, verdictLabelFromPayload } from "@coeval/shared";",
+  "import { normalizeTracePayload, redactNormalizedTracePayload, redactTrace } from "./lib/redaction.js";",
+  "import { generateApiKey, hashApiKey } from "./lib/api-keys.js";",
+  "import { buildAssessmentReceipt, canonicalReceiptBytes, parseCanonicalReceiptBytes, receiptArtifactDigest, receiptSourceSnapshotDigest } from "./lib/assessment-receipt.js";",
+  "import { buildEvaluatorSuiteManifest, canonicalEvaluatorSuiteManifestBytes, evaluatorSuiteCreateRequestDigest, evaluatorSuiteCriterionDigest, parseCanonicalEvaluatorSuiteManifestBytes } from "./lib/evaluator-suite.js";",
+  "import { datasetInputIdentity, datasetRevisionContentDigest, datasetRevisionDigest, datasetRevisionItemDigest, decidePublicDatasetRevisionCreation } from "./lib/dataset-revision.js";",
+  "import { computeConvergenceAudit, computeDisagreementSummary, computeJudgeHumanCalibration, computeJudgeHumanDisagreement, computeKappaSummary, computeSelfConsistency } from "./lib/kappa.js";",
+  "import type { ProjectRepositoryPort, CriterionSuiteRepositoryPort, SkillLifecycleRepositoryPort, GoldenEvidenceRepositoryPort, TraceImportRepositoryPort, IntegrationRepositoryPort, JudgeFeedbackRepositoryPort, CaseEvidenceRepositoryPort, ReviewQueueRepositoryPort, ApiKeyRepositoryPort, TraceTestRepositoryPort, DatasetRepositoryPort, JudgeCredentialRepositoryPort, EvalRunRepositoryPort, AssessmentReceiptRepositoryPort, RunComparisonRepositoryPort, HistoricalGateEvidenceRepositoryPort } from "./repository/ports.js";",
+  "import type { CreateSkillVersionContext, ConvergenceAuditPageInput, AssessmentReceiptArtifactSource, AssessmentReceiptArtifact, AssessmentReceiptComparison, CompareAssessmentReceiptCopyInput, CreateAssessmentReceiptCorrectionInput, CreateGateCheckInputDb, CreateRunComparisonInputDb, CreateEvalRunInputDb, CreateConvergenceEvalRunInputDb, CreateImportedCaseEvalRunInputDb, EvalRunDispatchInputDb, EvalRunDispatchClaim, EvalRunItemExecutionInputDb, EvalRunItemExecutionClaim, EvalRunItemReleaseDisposition, EvalRunItemReleaseOptions, StaleEvalRunItemExecution, CompleteEvalRunItemInputDb, FailEvalRunItemInputDb, CreateApiKeyInputDb, CreateTraceTestInputDb, ReviseTraceTestInputDb, RecordTraceTestValidationInputDb, EnableTraceTestInputDb, RecordTraceTestFunnelEventInputDb, CreateDatasetInputDb, AddDatasetItemsInputDb, ImportDatasetExamplesDbInput, ImportDatasetExamplesDbResult, CreateDatasetRevisionDbInput, AddQueueItemsInputDb, CreateReviewQueueInputDb, RecordVerdictInput, ListCasesOptions, CaseListEntry, ListVerdictsInput, TraceImportResult, JudgeRunContext, RecordJudgeRunInput, TraceImportContext, CreateImportJobInput, CompleteImportJobInput, ListImportJobsInput, PromoteExceptionToGoldenSetInput, RetireGoldenSetEntryInput, LangSmithImportContext, ClaimLangSmithImportTargetsInput, LangfuseImportContext, ClaimLangfuseImportTargetsInput, IronsideImportContext, ClaimIronsideImportTargetsInput, FeedbackSyncProvider, FeedbackSyncJobRecord, FeedbackSyncContext, ListFeedbackSyncJobsInput, FeedbackSyncJobListItem } from "./repository/contracts.js";",
+  "import { OnboardingCheckConflictError, InvalidConvergenceCursorError, AssessmentReceiptUnavailableError, AssessmentReceiptIntegrityError, DatasetRevisionNotFoundError, SealedValidationUnavailableError, DatasetRevisionConflictError, GateRunBindingMismatchError, RecursiveTraceSkippedError, GoldenSetEntryAlreadyRetiredError, GoldenSetEntryNotFoundError, CaseNotFoundError, SkillVersionNotSignableError, RegressionGateJudgeError, GoldenSetLabelConflictError, LangSmithIntegrationNotFoundError, LangfuseIntegrationNotFoundError, NoCurrentSkillError, AmbiguousProjectSkillError, CriterionStableKeyConflictError, EvaluatorSuiteBindingError, EvaluatorSuiteIdempotencyConflictError, IronsideIntegrationNotFoundError, IronsideIntegrationChangedError, IronsideIntegrationAlreadyExistsError, FeedbackSyncJobNotFoundError, DatasetNotFoundError, DatasetNameTakenError, TraceTestSourceNotFoundError, TraceTestNotFoundError, TraceTestRevisionConflictError, TraceTestValidationNotReadyError } from "./repository/errors.js";",
+  "import { traceTestValidationStatus, traceTestValidationDiagnostic, traceTestValidationIsEnableEligible, computeEvalRunSpend, judgeKeyDisplay, assertTraceIngestionPurpose, convergencePageLimit, convergenceChangeRank, encodeConvergenceCursor, decodeConvergenceCursor } from "./repository/helpers.js";",
+  "import { DemoRepositoryStore } from "./repository/demo-store.js";",
+]
+`;
+
+exports[`DemoRepository shared store > pins store ownership across production and module state across the repository graph > repository graph module state 1`] = `
+[
+  "repository.ts:DEMO_ACTOR_NAMES = new Map<string, string>([ ["user_maya", "Maya"], ["user_jules", "Jules"], ["user_priya", "Priya"] ])",
+  "repository/helpers.ts:TRACE_INGESTION_PURPOSES_BY_SOURCE = { manual: [ "analysis_eligible_manual", "judge_api", "judge_batch_general", "dataset_example", "trace_test_synthetic" ], langsmith: ["analysis_eligible_langsmith"], langfuse: ["analysis_eligible_langfuse"], ironside: ["analysis_eligible_ironside"], release_evidence: ["release_evidence"], gate_candidate: [] } as const satisfies Record<CaseSource, readonly RuntimeIngestionPurpose[]>",
+]
+`;
