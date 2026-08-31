@@ -1,0 +1,955 @@
+{
+  "version": 2,
+  "sources": [
+    "apps/api/src/repository.pg.ts"
+  ],
+  "externalPoolDelegates": [
+    "PgEvaluatorLifecycleRepository"
+  ],
+  "minimums": {
+    "connectionOwners": 36,
+    "clientScopedCommands": 16
+  },
+  "connectionOwners": [
+    {
+      "method": "addReviewQueueItems",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: pool_query",
+        "root :: pool_query",
+        "nested_function :: repository_call:resolveReviewCriterionVersion",
+        "root :: pool_query",
+        "root :: connect",
+        "try :: begin",
+        "try>loop>if.then :: repository_call:rowToReviewQueueItem",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "compareAssessmentReceiptCopy",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:mintAssessmentReceiptWithClient",
+        "try :: repository_call:rowToAssessmentReceiptComparison",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "completeEvalRunItem",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 2
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: rollback",
+        "try>if.then :: repository_call:getEvalRun",
+        "try :: client_command:bumpEvalRunCounters",
+        "try>if.then>if.then :: client_command:mintAssessmentReceiptWithClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "createAssessmentReceiptCorrection",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 2,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:mintAssessmentReceiptWithClient",
+        "try>if.then :: repository_call:rowToAssessmentReceiptArtifact",
+        "try>if.then>if.then :: commit",
+        "try :: repository_call:rowToAssessmentReceiptArtifact",
+        "try :: commit",
+        "try :: repository_call:rowToAssessmentReceiptArtifact",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "createCriterion",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:insertSkillVersion",
+        "try :: commit",
+        "try :: repository_call:rowToCriterion",
+        "try :: repository_call:rowToCriterionVersion",
+        "catch :: rollback",
+        "catch>if.condition :: repository_call:isUniqueViolation",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "createCriterionVersion",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 2
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: rollback",
+        "try :: commit",
+        "try :: repository_call:rowToCriterionVersion",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "createDatasetRevision",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 2,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then>if.then :: commit",
+        "try>if.then>if.then :: repository_call:getDatasetRevisionDetail",
+        "try :: client_command:loadHumanVerdictsForCases",
+        "try>loop :: repository_call:normalizedPayloadSnapshot",
+        "try>loop :: client_command:resolveCaseInputIdentity",
+        "try :: client_command:insertDatasetRevisionWithClient",
+        "try :: commit",
+        "catch :: rollback",
+        "catch>if.condition :: repository_call:isCheckViolation",
+        "catch>if.then :: repository_call:postgresErrorMessage",
+        "finally :: release",
+        "conditional.true :: repository_call:getDatasetRevisionDetail"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "createEvalRunOnce",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: client_command:mintAssessmentReceiptWithClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:getEvalRunDetail"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "createEvaluatorSuiteManifest",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 2,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: commit",
+        "try>loop :: repository_call:rowToSkillVersion",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "createGateCheck",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:getGateCheckDetail"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "createReviewQueue",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: repository_call:resolveReviewCriterionVersion",
+        "root :: pool_query",
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:getReviewQueueDetail"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "createSkillVersionPending",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 2,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "conditional.false>conditional.true :: repository_call:getJudgeProviderCredential",
+        "root :: connect",
+        "try :: begin",
+        "try>if.then>if.then :: commit",
+        "try>if.then>if.then :: repository_call:getSkillVersion",
+        "try :: client_command:getOrCreateRegressionDatasetRevisionWithClient",
+        "try :: client_command:nextVersion",
+        "try>if.then :: client_command:setJudgeProviderKeyOnClient",
+        "try :: client_command:insertSkillVersion",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "createTraceTest",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: repository_call:parseJson",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:getTraceTest"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "deleteIronsideIntegration",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: repository_call:parseJson",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "deleteLangSmithIntegration",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: repository_call:parseJson",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "deleteLangfuseIntegration",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: repository_call:parseJson",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "deleteProject",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "enableTraceTest",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:getTraceTest"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "failEvalRunItem",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 2
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: rollback",
+        "try>if.then :: repository_call:getEvalRun",
+        "try :: client_command:bumpEvalRunCounters",
+        "try>if.then>if.then :: client_command:mintAssessmentReceiptWithClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "failRegressionGateForVersion",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 2,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: commit",
+        "try :: repository_call:gateFailureMessage",
+        "try :: client_command:insertRegressionRun",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "getOrCreateRegressionDatasetRevision",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:resolveSingletonCriterionVersionForRegression",
+        "try :: client_command:getOrCreateRegressionDatasetRevisionWithClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:getDatasetRevisionDetail"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "getOrFreezeAssessmentReceipt",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:mintAssessmentReceiptWithClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "importDatasetExamples",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>loop :: client_command:lockTraceImportIdentity",
+        "try>loop :: client_command:importTraceOnClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "importTrace",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:importTraceOnClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "markEvalRunDispatched",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "markEvalRunRunning",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "promoteExceptionToGoldenSet",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: pool_query",
+        "root :: repository_call:getCaseDetail",
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:getOrCreateRegressionDatasetRevisionWithClient",
+        "try :: commit",
+        "try :: repository_call:rowToGoldenSetEntry",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "pruneExpiredTraces",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 3,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: commit",
+        "try>if.then :: commit",
+        "try :: client_command:refreshProjectCounters",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "recordTraceTestValidation",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "try :: repository_call:rowToTraceTestValidation",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "retireGoldenSetEntry",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then>if.then :: client_command:loadGoldenSetRetirementContext",
+        "try :: client_command:getOrCreateRegressionDatasetRevisionWithClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "reviseTraceTest",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:getTraceTest"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "runRegressionGateForVersion",
+      "kind": "session_advisory_lock",
+      "commandCounts": {
+        "begin": 0,
+        "commit": 0,
+        "rollback": 0
+      },
+      "sessionLockCounts": {
+        "lock": 1,
+        "unlock": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: session_lock",
+        "try :: repository_call:runRegressionGateForVersionLocked",
+        "finally :: session_unlock",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": [
+        "runRegressionGateForVersionLocked"
+      ]
+    },
+    {
+      "method": "runRegressionGateForVersionLocked",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: repository_call:getSkillVersion",
+        "root :: pool_query",
+        "root :: repository_call:getRegressionRunForVersion",
+        "root :: repository_call:authorizeSkillVersionExecution",
+        "root :: repository_call:getDatasetRevisionDetail",
+        "root :: repository_call:latestVersionId",
+        "conditional.true :: repository_call:getRegressionRunForVersion",
+        "conditional.true :: repository_call:getJudgeProviderCredential",
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:insertRegressionRun",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "setJudgeProviderKey",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:setJudgeProviderKeyOnClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "signOffSkillVersion",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 3
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: rollback",
+        "try>if.then :: rollback",
+        "try :: commit",
+        "try :: repository_call:rowToSkillVersion",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "updateProjectSettings",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "try :: repository_call:rowToProjectSettings",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    }
+  ],
+  "clientScopedCommands": [
+    {
+      "method": "bumpEvalRunCounters",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "completeEvalRunItem",
+        "failEvalRunItem"
+      ]
+    },
+    {
+      "method": "getOrCreateGovernedReviewerSubject",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "insertSkillVersion"
+      ]
+    },
+    {
+      "method": "getOrCreateRegressionDatasetRevisionWithClient",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "createSkillVersionPending",
+        "getOrCreateRegressionDatasetRevision",
+        "promoteExceptionToGoldenSet",
+        "retireGoldenSetEntry"
+      ]
+    },
+    {
+      "method": "importTraceOnClient",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "importDatasetExamples",
+        "importTrace"
+      ]
+    },
+    {
+      "method": "insertDatasetRevisionWithClient",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "createDatasetRevision",
+        "getOrCreateRegressionDatasetRevisionWithClient"
+      ]
+    },
+    {
+      "method": "insertRegressionRun",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "failRegressionGateForVersion",
+        "runRegressionGateForVersionLocked"
+      ]
+    },
+    {
+      "method": "insertSkillVersion",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "createCriterion",
+        "createSkillVersionPending"
+      ]
+    },
+    {
+      "method": "loadGoldenSetRetirementContext",
+      "scope": "module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "retireGoldenSetEntry"
+      ]
+    },
+    {
+      "method": "loadHumanVerdictsForCases",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "createDatasetRevision",
+        "getOrCreateRegressionDatasetRevisionWithClient"
+      ]
+    },
+    {
+      "method": "lockTraceImportIdentity",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "importDatasetExamples",
+        "importTraceOnClient"
+      ]
+    },
+    {
+      "method": "mintAssessmentReceiptWithClient",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "compareAssessmentReceiptCopy",
+        "completeEvalRunItem",
+        "createAssessmentReceiptCorrection",
+        "createEvalRunOnce",
+        "failEvalRunItem",
+        "getOrFreezeAssessmentReceipt"
+      ]
+    },
+    {
+      "method": "nextVersion",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "createSkillVersionPending"
+      ]
+    },
+    {
+      "method": "refreshProjectCounters",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "pruneExpiredTraces"
+      ]
+    },
+    {
+      "method": "resolveCaseInputIdentity",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "createDatasetRevision",
+        "getOrCreateRegressionDatasetRevisionWithClient"
+      ]
+    },
+    {
+      "method": "resolveSingletonCriterionVersionForRegression",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "getOrCreateRegressionDatasetRevision"
+      ]
+    },
+    {
+      "method": "setJudgeProviderKeyOnClient",
+      "scope": "private_method",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "createSkillVersionPending",
+        "setJudgeProviderKey"
+      ]
+    }
+  ]
+}

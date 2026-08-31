@@ -57,6 +57,9 @@ jobs:
       - name: Guard shared contracts
         run: pnpm shared-contracts
 
+      - name: Guard repository boundaries
+        run: pnpm repository-boundaries
+
       - name: Test
         run: pnpm test
 

@@ -21,6 +21,7 @@ Run these before submitting a pull request:
 ```bash
 pnpm typecheck
 pnpm shared-contracts
+pnpm repository-boundaries
 pnpm test
 pnpm --filter @coeval/web build
 git diff --check
@@ -31,6 +32,14 @@ its sorted public and runtime export fixtures with
 `pnpm shared-contracts -- --write`, inspect the full fixture diff, and explain
 every removed public name in the pull request. The default command is
 check-only and CI never updates these fixtures automatically.
+
+When a PostgreSQL method starts owning a connection, changes its transaction
+branches, or calls a new client-scoped command, update the readable boundary
+map with `pnpm repository-boundaries -- --write`. Review the complete diff and
+the checked source inventory, owner/command floors, ordered events, and
+consistency-group map in
+[`docs/repository-boundaries.md`](docs/repository-boundaries.md); CI only checks
+the committed map and never updates it.
 
 When your change touches persistence, migrations, authentication, queues, or project authorization, also run the Postgres-backed tests:
 
