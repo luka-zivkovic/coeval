@@ -3,6 +3,7 @@ import * as shared from "@coeval/shared";
 import * as agentAccess from "../../../packages/shared/dist/agent-access.js";
 import * as analysisPopulation from "../../../packages/shared/dist/analysis-population.js";
 import * as analysisStudy from "../../../packages/shared/dist/analysis-study.js";
+import * as criterionGovernance from "../../../packages/shared/dist/criterion-governance.js";
 import * as datasets from "../../../packages/shared/dist/datasets.js";
 import * as evaluationRuns from "../../../packages/shared/dist/evaluation-runs.js";
 import * as judge from "../../../packages/shared/dist/judge.js";
@@ -42,6 +43,7 @@ describe("shared module barrel", () => {
       "AnalysisCommandIdempotencyKeySchema",
       "AnalysisIdempotencyKeySchema"
     ]));
+    expectRootIdentity(criterionGovernance);
     expectRootIdentity(datasets);
     expectRootIdentity(evaluationRuns);
     expectRootIdentity(judge, new Set(["HttpUrlSchema", "UnicodeScalarValueSchema"]));
