@@ -1,6 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { readWebSource, webExtractionContracts } from "./support/web-extraction-contracts.js";
 
 const srcRoot = new URL("../src/", import.meta.url);
 
@@ -65,14 +66,14 @@ describe("accessibility foundations", () => {
       "components/project-create.tsx",
       "screens/integrations.tsx",
       "screens/reliability.tsx",
-      "screens/datasets.tsx",
       "screens/settings.tsx",
       "screens/review-queues.tsx",
-      "screens/trace-test-builder.tsx"
+      ...webExtractionContracts.datasets.dialogSources,
+      ...webExtractionContracts["trace-test-builder"].dialogSources
     ];
 
     for (const path of dialogFiles) {
-      const contents = await source(path);
+      const contents = await readWebSource(path);
       expect(contents, path).toContain("useDialogFocus");
       expect(contents, path).toContain('role="dialog"');
       expect(contents, path).toContain('aria-modal="true"');
@@ -87,15 +88,15 @@ describe("accessibility foundations", () => {
       "screens/traces.tsx",
       "screens/exceptions.tsx",
       "screens/reliability.tsx",
-      "screens/datasets.tsx",
       "screens/skill-versions.tsx",
       "screens/compare-versions.tsx",
       "screens/compare-runs.tsx",
-      "screens/review-queues.tsx"
+      "screens/review-queues.tsx",
+      ...webExtractionContracts.datasets.rowActionSources
     ];
 
     for (const path of rowFiles) {
-      const contents = await source(path);
+      const contents = await readWebSource(path);
       expect(contents, path).toContain("row-link");
       expect(contents, path).toMatch(/<Row(?:Link|Button)/);
     }

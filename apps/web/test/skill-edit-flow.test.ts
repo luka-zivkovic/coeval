@@ -1,6 +1,5 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { readFile } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
 import {
   SkillChangeReview,
@@ -15,6 +14,7 @@ import {
   verdictOutputContractChanged
 } from "../src/lib/skill-edit-flow.js";
 import type { RegressionRunResult, SkillVersion } from "@coeval/shared";
+import { readFeatureSource } from "./support/web-extraction-contracts.js";
 
 vi.mock("@/components/ui/card", () => ({
   Card: ({ children, ...props }: { children?: unknown }) => createElement("div", props, children as never),
@@ -189,7 +189,7 @@ describe("guided evaluator editing", () => {
   });
 
   it("fails closed across criterion changes and governed evaluator lineages", async () => {
-    const source = await readFile(new URL("../src/screens/skill-edit.tsx", import.meta.url), "utf8");
+    const source = await readFeatureSource("skill-edit");
 
     expect(source).toContain("loadedCriterionId !== selectedCriterionId");
     expect(source).toContain('next.delete("version")');

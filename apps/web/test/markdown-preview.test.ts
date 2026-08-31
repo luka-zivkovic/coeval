@@ -8,6 +8,7 @@ import {
   safeMarkdownHref
 } from "../src/components/markdown-preview.js";
 import { verdictKindDescription } from "../src/lib/verdict-kind.js";
+import { readFeatureSource } from "./support/web-extraction-contracts.js";
 
 describe("MarkdownPreview", () => {
   it("renders common review-guide Markdown as semantic React elements", () => {
@@ -146,7 +147,7 @@ describe("MarkdownPreview", () => {
     const [skill, versions, editor] = await Promise.all([
       readFile(new URL("../src/screens/skill.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/screens/skill-versions.tsx", import.meta.url), "utf8"),
-      readFile(new URL("../src/screens/skill-edit.tsx", import.meta.url), "utf8")
+      readFeatureSource("skill-edit")
     ]);
 
     expect(skill).toContain("<MarkdownPreview markdown={markdown}");
