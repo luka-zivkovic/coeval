@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import type { ConvergenceAudit } from "@coeval/shared";
 import {
@@ -138,11 +138,15 @@ describe("reliability hierarchy", () => {
   });
 
   it("does not label legacy adjudication artifacts as ground truth", async () => {
+    const sharedSourceDirectory = new URL("../../../packages/shared/src/", import.meta.url);
+    const sharedSourcePaths = (await readdir(sharedSourceDirectory, { recursive: true }))
+      .filter((path) => path.endsWith(".ts"))
+      .sort();
     const sources = await Promise.all([
       readFile(new URL("../src/lib/resolved.ts", import.meta.url), "utf8"),
       readFile(new URL("../src/lib/api.ts", import.meta.url), "utf8"),
       readFile(new URL("../../api/src/lib/kappa.ts", import.meta.url), "utf8"),
-      readFile(new URL("../../../packages/shared/src/index.ts", import.meta.url), "utf8")
+      ...sharedSourcePaths.map((path) => readFile(new URL(path, sharedSourceDirectory), "utf8"))
     ]);
     const legacyGroundTruthPatterns = [
       /adjudicated ground[- ]truth/i,

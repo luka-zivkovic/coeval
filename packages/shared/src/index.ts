@@ -1,505 +1,147 @@
 import { z } from "zod";
-
-export const VerdictLabelSchema = z.enum(["pass", "fail", "ambiguous"]);
-export type VerdictLabel = z.infer<typeof VerdictLabelSchema>;
-
-// v2 verdict-kind enum lives near the top so schemas referenced by other
-// schemas can bind to it without forward-reference issues.
-export const VerdictKindSchema = z.enum(["binary", "scalar", "categorical"]);
-export type VerdictKind = z.infer<typeof VerdictKindSchema>;
-
-export const SkillStatusSchema = z.enum([
-  "draft",
-  "calibrating",
-  "validated",
-  "approved",
-  "production",
-  "regressing",
-  "failed",
-  "needs_review",
-  "deprecated"
-]);
-export type SkillStatus = z.infer<typeof SkillStatusSchema>;
-
-// Skill Bench: how a project gets its evidence. 'tracing' = a trace stream
-// (LangSmith/Langfuse/manual imports); 'bench' = curated example datasets, no
-// tracing infra. Branches onboarding/IA/copy only — the judging pipe is shared.
-export const ProjectModeSchema = z.enum(["tracing", "bench"]);
-export type ProjectMode = z.infer<typeof ProjectModeSchema>;
-
-export const ProjectSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  mode: ProjectModeSchema,
-  traceProvider: z.enum(["langsmith", "langfuse", "ironside", "manual", "unknown"]),
-  importedTraceCount: z.number().int().nonnegative(),
-  autoJudgedTraceCount: z.number().int().nonnegative(),
-  syncBackCoverage: z.number().min(0).max(1),
-  traceRetentionDays: z.number().int().positive().nullable(),
-  updatedAt: z.string()
-});
-export type Project = z.infer<typeof ProjectSchema>;
-
-export const ProjectSettingsSchema = z.object({
-  projectId: z.string(),
-  name: z.string(),
-  mode: ProjectModeSchema,
-  traceRetentionDays: z.number().int().positive().nullable()
-});
-export type ProjectSettings = z.infer<typeof ProjectSettingsSchema>;
-
-export const UpdateProjectSettingsInputSchema = z.object({
-  traceRetentionDays: z.number().int().positive().max(3650).nullable(),
-  mode: ProjectModeSchema.optional()
-});
-export type UpdateProjectSettingsInput = z.infer<typeof UpdateProjectSettingsInputSchema>;
-
-export const RetentionPruneResultSchema = z.object({
-  projectId: z.string(),
-  traceRetentionDays: z.number().int().positive().nullable(),
-  cutoff: z.string().nullable(),
-  deletedCases: z.number().int().nonnegative(),
-  deletedRawTraces: z.number().int().nonnegative(),
-  skippedActiveGoldenCases: z.number().int().nonnegative(),
-  skippedImmutableRevisionCases: z.number().int().nonnegative()
-});
-export type RetentionPruneResult = z.infer<typeof RetentionPruneResultSchema>;
-
-export const DeleteProjectInputSchema = z.object({
-  confirmProjectName: z.string().min(1)
-});
-export type DeleteProjectInput = z.infer<typeof DeleteProjectInputSchema>;
-
-export const JudgeProviderIdSchema = z.enum(["mock", "anthropic", "openai", "openrouter", "custom"]);
-export type JudgeProviderId = z.infer<typeof JudgeProviderIdSchema>;
-
-// The release gate technically arms at the FIRST promoted golden case (the
-// regression runs against whatever golden set exists); 5+ is the recommended
-// size before the gate's verdict means much. Copy that mentions a threshold
-// must derive from these two numbers — hardcoded fives drifted into three
-// mutually contradictory banners once already.
-export const GOLDEN_GATE_ARMS_AT = 1;
-export const GOLDEN_GATE_RECOMMENDED = 5;
-
-// Agreement statistics are mathematically computable with fewer cases, but
-// rendering a precise κ from one or two overlaps invites false confidence.
-// The UI shows collection progress until this minimum shared sample exists.
-export const KAPPA_MIN_SHARED_CASES = 5;
-
-// Project names are capped by the API on both creation paths (owner setup and
-// POST /api/projects); the UI mirrors it via input maxLength.
-export const PROJECT_NAME_MAX_LENGTH = 120;
-
-// Canonical JSON identities operate on Unicode scalar values. JavaScript can
-// represent isolated UTF-16 surrogate code units, but UTF-8 encoders replace
-// them with U+FFFD, making two distinct inputs collapse to the same bytes.
-// Reject them on every new criterion/evaluator/suite write instead.
-export function containsLoneUtf16Surrogate(value: unknown): boolean {
-  if (typeof value === "string") {
-    for (let index = 0; index < value.length; index += 1) {
-      const code = value.charCodeAt(index);
-      if (code >= 0xd800 && code <= 0xdbff) {
-        const next = value.charCodeAt(index + 1);
-        if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
-        index += 1;
-      } else if (code >= 0xdc00 && code <= 0xdfff) {
-        return true;
-      }
-    }
-    return false;
-  }
-  if (Array.isArray(value)) return value.some(containsLoneUtf16Surrogate);
-  if (value && typeof value === "object") {
-    return Object.entries(value).some(([key, nested]) =>
-      containsLoneUtf16Surrogate(key) || containsLoneUtf16Surrogate(nested)
-    );
-  }
-  return false;
-}
-
-const UnicodeScalarValueSchema = z.string().refine((value) => !containsLoneUtf16Surrogate(value), {
-  message: "Text must not contain an unpaired UTF-16 surrogate"
-});
-
-// Canonicalize raw provider identifiers at explicit input or protocol-check
-// boundaries. Persisted bindings use StoredModelBindingSchema and are already
-// canonical.
-export function normalizeJudgeProviderId(value: string): JudgeProviderId | null {
-  const parsed = JudgeProviderIdSchema.safeParse(value.trim().toLowerCase());
-  return parsed.success ? parsed.data : null;
-}
-
-const HttpUrlSchema = z
-  .string()
-  .trim()
-  .url()
-  .refine((value) => /^https?:\/\//i.test(value), { message: "baseUrl must use http or https" });
-
-// Contract-facing model bindings intentionally mirror the frozen receipt-v1
-// and skill-format/v1 schemas, where provider and sampling values are not
-// restricted to Coeval's current runtime provider catalog.
-export const ModelBindingSchema = z.object({
-  provider: z.string(),
-  modelId: z.string(),
-  // Honest limitation: no supported provider catalog exposes an immutable
-  // snapshot id separate from the model id, so every pin path today stores
-  // modelVersion = modelId. The field records WHAT was requested, not a dated
-  // snapshot — an upstream silent model revision is not detectable through it
-  // (see spec/skill-format-v1.md § Model binding).
-  modelVersion: z.string(),
-  temperature: z.number(),
-  topP: z.number().optional(),
-  baseUrl: z.string().optional()
-});
-export type ModelBinding = z.infer<typeof ModelBindingSchema>;
-
-const StoredHttpUrlSchema = z
-  .string()
-  .url()
-  .refine((value) => /^https?:\/\//i.test(value), { message: "baseUrl must use http or https" });
-
-// Database-backed bindings are produced only by current, validated writers.
-// Keep this separate from ModelBindingSchema so frozen external contracts are
-// not reinterpreted when the runtime provider catalog changes.
-export const StoredModelBindingSchema = z
-  .object({
-    provider: JudgeProviderIdSchema,
-    modelId: z.string().min(1).max(240),
-    modelVersion: z.string().min(1).max(240),
-    temperature: z.number().min(0).max(2),
-    topP: z.number().min(0).max(1).optional(),
-    baseUrl: StoredHttpUrlSchema.optional()
-  })
-  .strict()
-  .superRefine((binding, ctx) => {
-    if (binding.provider === "custom" && !binding.baseUrl) {
-      ctx.addIssue({ code: "custom", path: ["baseUrl"], message: "custom providers require an OpenAI-compatible baseUrl" });
-    }
-    if (binding.provider !== "custom" && binding.baseUrl !== undefined) {
-      ctx.addIssue({ code: "custom", path: ["baseUrl"], message: "baseUrl is only valid for custom providers" });
-    }
-  });
-export type StoredModelBinding = z.infer<typeof StoredModelBindingSchema>;
-
-export const ModelBindingInputSchema = z
-  .object({
-    provider: z.preprocess(
-      (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
-      JudgeProviderIdSchema
-    ),
-    modelId: z.string().trim().min(1).max(240),
-    modelVersion: z.string().trim().min(1).max(240),
-    temperature: z.number().min(0).max(2),
-    topP: z.number().min(0).max(1).optional(),
-    baseUrl: HttpUrlSchema.optional()
-  })
-  .superRefine((binding, ctx) => {
-    if (binding.provider === "custom" && !binding.baseUrl) {
-      ctx.addIssue({ code: "custom", path: ["baseUrl"], message: "custom providers require an OpenAI-compatible baseUrl" });
-    }
-    if (binding.provider !== "custom" && binding.baseUrl !== undefined) {
-      ctx.addIssue({ code: "custom", path: ["baseUrl"], message: "baseUrl is only valid for custom providers" });
-    }
-  });
-export type ModelBindingInput = z.infer<typeof ModelBindingInputSchema>;
-
-
-export const MinimumVerdictOutputSchema = {
-  type: "object",
-  required: ["label", "score", "reason", "confidence"],
-  additionalProperties: false,
-  properties: {
-    label: { type: "string", enum: ["pass", "fail", "ambiguous"] },
-    score: { type: "number", minimum: 0, maximum: 1 },
-    reason: { type: "string" },
-    failureCategory: { type: "string" },
-    expectedBehavior: { type: "string" },
-    confidence: { type: "number", minimum: 0, maximum: 1 },
-    criteria: { type: "object" }
-  }
-} as const;
-
-export const JsonSchemaSchema = z.record(z.string(), z.unknown());
-export type JsonSchema = z.infer<typeof JsonSchemaSchema>;
-
-// The immutable output contract stored with a version must describe the
-// verdict tool that the runtime actually asks the provider to complete. The
-// legacy MinimumVerdictOutputSchema remains available for historical imports;
-// new guided Checks use this kind-aware contract instead of copying the
-// seeded binary schema into categorical or scalar versions.
-export function verdictOutputSchema(input: {
-  verdictKind: VerdictKind;
-  scalarRange?: [number, number] | null;
-  categoricalChoiceScores?: Record<string, number> | null;
-}): JsonSchema {
-  const rationale = { type: "string", description: "Short rationale grounded in the Review guide and recorded Run." };
-  const failingStep = {
-    type: "integer",
-    minimum: 0,
-    description: "Optional 0-based recorded step where the failure occurred."
-  };
-  if (input.verdictKind === "scalar") {
-    const [minimum, maximum] = input.scalarRange ?? [0, 1];
-    return {
-      type: "object",
-      additionalProperties: false,
-      required: ["score", "rationale"],
-      properties: {
-        score: { type: "number", minimum, maximum },
-        rationale,
-        failingStep
-      }
-    };
-  }
-  if (input.verdictKind === "categorical") {
-    const choices = Object.keys(input.categoricalChoiceScores ?? {});
-    return {
-      type: "object",
-      additionalProperties: false,
-      required: ["choice", "rationale"],
-      properties: {
-        choice: { type: "string", enum: choices },
-        rationale,
-        failingStep
-      }
-    };
-  }
-  return {
-    type: "object",
-    additionalProperties: false,
-    required: ["label", "score", "rationale"],
-    properties: {
-      label: { type: "string", enum: ["pass", "fail", "ambiguous"] },
-      score: { type: "number", minimum: 0, maximum: 1 },
-      rationale,
-      failingStep
-    }
-  };
-}
-
-// The one template variable a compiled prompt may reference. The trace itself
-// is injected separately by the judge message builder (<trace_to_judge>), so
-// prompts must not carry their own trace placeholders.
-export const RUBRIC_TEMPLATE_VARIABLE = "{{rubric_markdown}}";
-
-export type JudgePromptDiagnostic =
-  | { code: "implicit-rubric" }
-  | { code: "unknown-variable"; variable: string };
-
-export interface CompiledJudgePrompt {
-  content: string;
-  rubricMode: "template" | "legacy-prepend";
-  diagnostics: JudgePromptDiagnostic[];
-}
-
-const JUDGE_PROMPT_VARIABLE_PATTERN = /{{[^{}\r\n]+}}/g;
-
-export function promptReferencesRubric(prompt: string): boolean {
-  return prompt.includes(RUBRIC_TEMPLATE_VARIABLE);
-}
-
-// Compile the stored prompt template into judge-facing instructions and report
-// anything the editor should surface. Unknown variables deliberately remain
-// literal: {{rubric_markdown}} is the only supported variable, while the trace
-// and verdict schema are injected separately by the judge message builder.
-export function compileJudgePrompt(input: { rubricMarkdown: string; prompt: string }): CompiledJudgePrompt {
-  const referencesRubric = promptReferencesRubric(input.prompt);
-  const diagnostics: JudgePromptDiagnostic[] = [];
-
-  if (input.rubricMarkdown.trim() && !referencesRubric) {
-    diagnostics.push({ code: "implicit-rubric" });
-  }
-
-  const variables = new Set(input.prompt.match(JUDGE_PROMPT_VARIABLE_PATTERN) ?? []);
-  for (const variable of variables) {
-    if (variable !== RUBRIC_TEMPLATE_VARIABLE) {
-      diagnostics.push({ code: "unknown-variable", variable });
-    }
-  }
-
-  return {
-    content: referencesRubric
-      ? input.prompt.split(RUBRIC_TEMPLATE_VARIABLE).join(input.rubricMarkdown)
-      : `${input.rubricMarkdown}\n\n${input.prompt}`,
-    rubricMode: referencesRubric ? "template" : "legacy-prepend",
-    diagnostics
-  };
-}
-
-// Stable rendering entry point used by both judge execution paths, including
-// the live implicit-rubric prompt mode retained by ADR-0011.
-export function renderJudgePromptContent(input: { rubricMarkdown: string; prompt: string }): string {
-  return compileJudgePrompt(input).content;
-}
-
-export const RubricProvenanceSchema = z.enum(["human-authored", "agent-drafted"]);
-export type RubricProvenance = z.infer<typeof RubricProvenanceSchema>;
-
-// Seed text only. Whether a skill is still the untouched starter is persisted
-// separately on the skill row; content matching must never authorize setup.
-export const STARTER_RUBRIC_MARKER = "Define pass, fail, and ambiguous criteria before production use";
-
-// The default compiled-prompt template, parameterized by what the judge is
-// looking at ("trace" for tracing projects, "case" for bench, "captured
-// agent-skill run" for agent bootstrap). Single-sourced so the seed and the
-// bootstrap default can't diverge.
-export function defaultJudgePromptTemplate(subject: string): string {
-  return `Judge the ${subject} against the review guide below. Submit exactly one verdict using the provided structured verdict tool.\n\n<review_guide>\n${RUBRIC_TEMPLATE_VARIABLE}\n</review_guide>`;
-}
-
-export const SkillVersionSchema = z
-  .object({
-    id: z.string(),
-    skillId: z.string(),
-    criterionVersionId: z.string(),
-    version: z.string(),
-    status: SkillStatusSchema,
-    rubricMarkdown: z.string(),
-    prompt: z.string(),
-    modelBinding: StoredModelBindingSchema,
-    outputSchema: JsonSchemaSchema,
-    goldenSetAgreement: z.number().min(0).max(1).nullable(),
-    tooStrictCount: z.number().int().nonnegative(),
-    tooLenientCount: z.number().int().nonnegative(),
-    ambiguousCount: z.number().int().nonnegative(),
-    knownLimitations: z.array(z.string()),
-    // v2: every skill version is bound to a verdict shape. Binary classifies
-    // pass/fail and supports explicit ambiguous abstention. Scalar + categorical
-    // kinds carry their range or choiceScores; refine below enforces shape
-    // consistency at the boundary.
-    verdictKind: VerdictKindSchema,
-    scalarRange: z.tuple([z.number(), z.number()]).nullable(),
-    categoricalChoiceScores: z.record(z.string(), z.number().min(0).max(1)).nullable(),
-    rubricProvenance: RubricProvenanceSchema,
-    // Beginner assurance is independent from the legacy regression lifecycle:
-    // an empty known-failure gate may approve execution, but it cannot validate
-    // the Check. This marker survives that transition until a future governed
-    // calibration flow replaces it with a scoped assurance state.
-    onboardingAssurance: z.literal("starter_unvalidated").nullable().optional(),
-    // Draft and starter-sign-off versions can legitimately have no regression
-    // corpus. Every calibrating or gated version carries an immutable pin.
-    regressionDatasetRevisionId: z.string().nullable(),
-    createdAt: z.string(),
-    approvedAt: z.string().nullable()
-  })
-  .refine(
-    (v) => v.verdictKind !== "scalar" || (v.scalarRange !== null && v.scalarRange[0] < v.scalarRange[1]),
-    { message: "scalar skill versions require an ascending scalarRange" }
-  )
-  .refine(
-    (v) => v.verdictKind !== "categorical" || (v.categoricalChoiceScores !== null && Object.keys(v.categoricalChoiceScores).length > 0),
-    { message: "categorical skill versions require a non-empty categoricalChoiceScores map" }
-  )
-  .refine((v) => v.verdictKind === "scalar" || v.scalarRange === null, { message: "scalarRange is only valid for scalar kinds" })
-  .refine((v) => v.verdictKind === "categorical" || v.categoricalChoiceScores === null, { message: "categoricalChoiceScores is only valid for categorical kinds" });
-export type SkillVersion = z.infer<typeof SkillVersionSchema>;
-
-export const SkillSchema = z.object({
-  id: z.string(),
-  projectId: z.string(),
-  criterionId: z.string(),
-  name: z.string(),
-  description: z.string(),
-  ownerName: z.string(),
-  status: SkillStatusSchema,
-  // Durable onboarding state. It is cleared transactionally by the first
-  // human sign-off/edit or by agent bootstrap; rubric text is not authority.
-  isStarter: z.boolean(),
-  currentVersion: SkillVersionSchema
-});
-export type Skill = z.infer<typeof SkillSchema>;
-
-export const VerdictDistributionSchema = z.object({
-  pass: z.number().int().nonnegative(),
-  fail: z.number().int().nonnegative(),
-  ambiguous: z.number().int().nonnegative()
-});
-export type VerdictDistribution = z.infer<typeof VerdictDistributionSchema>;
-
-// v2 verdict primitives (greenfield rebuild). The legacy `VerdictLabelSchema`
-// remains during co-existence; new code paths use the tagged-union shape below.
-// Inspired by Braintrust's `choice_scores` (autoevals/py/autoevals/llm.py) + Opik
-// `ScoreResult` (sdks/python/src/opik/evaluation/metrics/score_result.py).
-// VerdictKindSchema is declared near the top — see early in this file.
-
-// `adjudicated` (A2.2b-2): the recorded legacy ruling a human/panel sets on an
-// ungoverned disagreement — the decision that closes this diagnostic loop. It is NOT a
-// rater: every κ / disagreement computation filters on `human` / `llm_judge`
-// explicitly, so an adjudicated verdict never distorts the agreement math; it
-// only annotates which disagreements have been resolved and to what label.
-export const VerdictSourceSchema = z.enum(["llm_judge", "human", "imported_external", "adjudicated"]);
-export type VerdictSource = z.infer<typeof VerdictSourceSchema>;
-
-// optional failingStep (0-based index into the case's steps) — schema
-// only here; T3 teaches the judge to populate it. Lives inside the payload,
-// consistent with append-only verdicts.
-const FailingStepSchema = z.number().int().nonnegative();
-
-export const BinaryClassifiedVerdictPayloadSchema = z.object({
-  kind: z.literal("binary"),
-  pass: z.boolean(),
-  rationale: z.string(),
-  failingStep: FailingStepSchema.optional()
-}).strict();
-
-// A binary evaluator may explicitly abstain when its rubric does not support
-// either pass or fail. Keep `pass` absent so incorrect readers fail loudly
-// instead of treating null or another falsy value as a failure.
-export const BinaryAbstainedVerdictPayloadSchema = z.object({
-  kind: z.literal("binary"),
-  label: z.literal("ambiguous"),
-  rationale: z.string()
-}).strict();
-
-export const BinaryVerdictPayloadSchema = z.union([
+import {
+  JsonSchemaSchema,
+  HttpUrlSchema,
+  JudgeProviderIdSchema,
+  MinimumVerdictOutputSchema,
+  ModelBindingInputSchema,
+  ModelBindingSchema,
+  RubricProvenanceSchema,
+  RUBRIC_TEMPLATE_VARIABLE,
+  SkillStatusSchema,
+  STARTER_RUBRIC_MARKER,
+  StoredModelBindingSchema,
+  UnicodeScalarValueSchema,
+  VerdictKindSchema,
+  VerdictLabelSchema,
+  compileJudgePrompt,
+  containsLoneUtf16Surrogate,
+  defaultJudgePromptTemplate,
+  normalizeJudgeProviderId,
+  promptReferencesRubric,
+  renderJudgePromptContent,
+  verdictOutputSchema
+} from "./judge.js";
+import type {
+  CompiledJudgePrompt,
+  JsonSchema,
+  JudgePromptDiagnostic,
+  JudgeProviderId,
+  ModelBinding,
+  ModelBindingInput,
+  RubricProvenance,
+  SkillStatus,
+  StoredModelBinding,
+  VerdictKind,
+  VerdictLabel
+} from "./judge.js";
+import {
+  DeleteProjectInputSchema,
+  GOLDEN_GATE_ARMS_AT,
+  GOLDEN_GATE_RECOMMENDED,
+  KAPPA_MIN_SHARED_CASES,
+  PROJECT_NAME_MAX_LENGTH,
+  ProjectModeSchema,
+  ProjectSchema,
+  ProjectSettingsSchema,
+  RetentionPruneResultSchema,
+  UpdateProjectSettingsInputSchema
+} from "./projects.js";
+import type {
+  DeleteProjectInput,
+  Project,
+  ProjectMode,
+  ProjectSettings,
+  RetentionPruneResult,
+  UpdateProjectSettingsInput
+} from "./projects.js";
+import { SkillSchema, SkillVersionSchema } from "./skills.js";
+import type { Skill, SkillVersion } from "./skills.js";
+import {
+  BinaryAbstainedVerdictPayloadSchema,
   BinaryClassifiedVerdictPayloadSchema,
-  BinaryAbstainedVerdictPayloadSchema
-]);
-
-export const ScalarVerdictPayloadSchema = z
-  .object({
-    kind: z.literal("scalar"),
-    score: z.number(),
-    range: z.tuple([z.number(), z.number()]),
-    rationale: z.string(),
-    failingStep: FailingStepSchema.optional()
-  })
-  .refine((v) => v.range[0] < v.range[1], { message: "scalar range must be ascending" })
-  .refine((v) => v.score >= v.range[0] && v.score <= v.range[1], { message: "scalar score must lie within range" });
-
-export const CategoricalVerdictPayloadSchema = z
-  .object({
-    kind: z.literal("categorical"),
-    choice: z.string().min(1),
-    choiceScores: z.record(z.string(), z.number().min(0).max(1)),
-    rationale: z.string(),
-    failingStep: FailingStepSchema.optional()
-  })
-  .refine((v) => v.choice in v.choiceScores, { message: "chosen category must appear in choiceScores" });
-
-export const VerdictPayloadSchema = z.union([
   BinaryVerdictPayloadSchema,
+  CategoricalVerdictPayloadSchema,
   ScalarVerdictPayloadSchema,
-  CategoricalVerdictPayloadSchema
-]);
-export type VerdictPayload = z.infer<typeof VerdictPayloadSchema>;
+  VerdictDistributionSchema,
+  VerdictPayloadSchema,
+  VerdictRecordSchema,
+  VerdictSourceSchema
+} from "./verdicts.js";
+import type {
+  VerdictDistribution,
+  VerdictPayload,
+  VerdictRecord,
+  VerdictSource
+} from "./verdicts.js";
 
-export const VerdictRecordSchema = z.object({
-  id: z.string(),
-  projectId: z.string(),
-  caseId: z.string(),
-  skillVersionId: z.string().nullable(),
-  source: VerdictSourceSchema,
-  actorUserId: z.string().nullable(),
-  // Read projections resolve a display name from the authenticated user.
-  // Mutation responses and imported/external verdicts may omit it; clients
-  // fall back to actorUserId without weakening the append-only record.
-  actorName: z.string().nullable().optional(),
-  payload: VerdictPayloadSchema,
-  externalRunId: z.string().nullable(),
-  createdAt: z.string()
-});
-export type VerdictRecord = z.infer<typeof VerdictRecordSchema>;
+export {
+  BinaryAbstainedVerdictPayloadSchema,
+  BinaryClassifiedVerdictPayloadSchema,
+  BinaryVerdictPayloadSchema,
+  CategoricalVerdictPayloadSchema,
+  DeleteProjectInputSchema,
+  GOLDEN_GATE_ARMS_AT,
+  GOLDEN_GATE_RECOMMENDED,
+  JsonSchemaSchema,
+  JudgeProviderIdSchema,
+  KAPPA_MIN_SHARED_CASES,
+  MinimumVerdictOutputSchema,
+  ModelBindingInputSchema,
+  ModelBindingSchema,
+  PROJECT_NAME_MAX_LENGTH,
+  ProjectModeSchema,
+  ProjectSchema,
+  ProjectSettingsSchema,
+  RUBRIC_TEMPLATE_VARIABLE,
+  RetentionPruneResultSchema,
+  RubricProvenanceSchema,
+  STARTER_RUBRIC_MARKER,
+  ScalarVerdictPayloadSchema,
+  SkillSchema,
+  SkillStatusSchema,
+  SkillVersionSchema,
+  StoredModelBindingSchema,
+  UpdateProjectSettingsInputSchema,
+  VerdictDistributionSchema,
+  VerdictKindSchema,
+  VerdictLabelSchema,
+  VerdictPayloadSchema,
+  VerdictRecordSchema,
+  VerdictSourceSchema,
+  compileJudgePrompt,
+  containsLoneUtf16Surrogate,
+  defaultJudgePromptTemplate,
+  normalizeJudgeProviderId,
+  promptReferencesRubric,
+  renderJudgePromptContent,
+  verdictOutputSchema
+};
+export type {
+  CompiledJudgePrompt,
+  DeleteProjectInput,
+  JsonSchema,
+  JudgePromptDiagnostic,
+  JudgeProviderId,
+  ModelBinding,
+  ModelBindingInput,
+  Project,
+  ProjectMode,
+  ProjectSettings,
+  RetentionPruneResult,
+  RubricProvenance,
+  Skill,
+  SkillStatus,
+  SkillVersion,
+  StoredModelBinding,
+  UpdateProjectSettingsInput,
+  VerdictDistribution,
+  VerdictKind,
+  VerdictLabel,
+  VerdictPayload,
+  VerdictRecord,
+  VerdictSource
+};
 
 // Annotation queue primitive (PR #47). Named cohort of cases assembled for
 // explicit reviewer attention. Foundation for overlap-sampling + assignment.
