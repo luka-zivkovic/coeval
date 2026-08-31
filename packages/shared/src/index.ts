@@ -76,13 +76,11 @@ import type {
 import {
   CapabilityGapSchema,
   ExceptionCaseSchema,
-  JudgeHumanDisagreementSummarySchema,
   KappaInterpretationSchema,
   SelfConsistencyReportSchema
 } from "./legacy-review.js";
 import {
-  TracePayloadSchema,
-  TraceStepsSchema
+  TracePayloadSchema
 } from "./traces.js";
 import { ProviderResponseMetadataSchema } from "./evaluation-runs.js";
 import type { EvalRunStatus } from "./evaluation-runs.js";
@@ -90,6 +88,10 @@ import {
   CreateCriterionVersionInputSchema,
   CriterionVersionSchema
 } from "./criterion-governance.js";
+import {
+  GoldenSetEntrySchema,
+  GoldenSetHealthSummarySchema
+} from "./golden-set.js";
 
 export {
   BinaryAbstainedVerdictPayloadSchema,
@@ -191,6 +193,9 @@ export * from "./trace-tests.js";
 
 
 export * from "./datasets.js";
+
+
+export * from "./golden-set.js";
 
 
 export * from "./governed-review.js";
@@ -514,6 +519,9 @@ export function deriveGateCheckDecision(input: {
 export * from "./integrations.js";
 
 
+export * from "./machine-reads.js";
+
+
 export const JudgeRunSchema = z.object({
   id: z.string(),
   projectId: z.string(),
@@ -542,19 +550,6 @@ export const CaseDatasetExpectationSchema = z.object({
 });
 export type CaseDatasetExpectation = z.infer<typeof CaseDatasetExpectationSchema>;
 
-export const GoldenSetEntrySchema = z.object({
-  id: z.string(),
-  caseId: z.string(),
-  traceId: z.string(),
-  agreedLabel: VerdictLabelSchema.exclude(["ambiguous"]),
-  reason: z.string(),
-  promotedBy: z.string(),
-  promotedAt: z.string(),
-  sourceSkillVersionId: z.string(),
-  criterionVersionId: z.string()
-});
-export type GoldenSetEntry = z.infer<typeof GoldenSetEntrySchema>;
-
 export const ExceptionDetailSchema = z.object({
   exception: ExceptionCaseSchema,
   trace: TracePayloadSchema,
@@ -582,28 +577,6 @@ export type ExceptionDetail = z.infer<typeof ExceptionDetailSchema>;
 // page requests exactly this, and the API validates against it — sharing the
 // constant keeps a client bump from turning into a 400 on the whole screen.
 export const VERDICT_LIST_MAX_LIMIT = 500;
-
-export const GOLDEN_SET_REASON_MAX_LENGTH = 1000;
-
-export const PromoteGoldenSetInputSchema = z.object({
-  skillVersionId: z.string().min(1).optional(),
-  agreedLabel: VerdictLabelSchema.exclude(["ambiguous"]),
-  reason: z.string().min(1).max(GOLDEN_SET_REASON_MAX_LENGTH)
-});
-export type PromoteGoldenSetInput = z.infer<typeof PromoteGoldenSetInputSchema>;
-
-export const RetireGoldenSetEntryInputSchema = z.object({
-  reason: z.string().min(1).max(GOLDEN_SET_REASON_MAX_LENGTH).optional()
-});
-export type RetireGoldenSetEntryInput = z.infer<typeof RetireGoldenSetEntryInputSchema>;
-
-export const GoldenSetRetirementContextSchema = z.object({
-  retiredAt: z.string().nullable(),
-  retiredByUserId: z.string().nullable(),
-  retiredBy: z.string().nullable(),
-  reason: z.string().nullable()
-});
-export type GoldenSetRetirementContext = z.infer<typeof GoldenSetRetirementContextSchema>;
 
 export const JudgeRunJobSchema = z.object({
   projectId: z.string(),
@@ -672,47 +645,6 @@ export const FeedbackSyncJobListItemSchema = z.object({
   createdAt: z.string()
 });
 export type FeedbackSyncJobListItem = z.infer<typeof FeedbackSyncJobListItemSchema>;
-
-export const GOLDEN_SET_STALE_AFTER_DAYS = 90;
-
-export const GoldenSetHealthStatusSchema = z.enum(["healthy", "needs_action"]);
-export type GoldenSetHealthStatus = z.infer<typeof GoldenSetHealthStatusSchema>;
-
-export const GoldenSetHealthEntrySchema = z.object({
-  id: z.string(),
-  traceId: z.string(),
-  agreedLabel: VerdictLabelSchema.exclude(["ambiguous"]),
-  promotedAt: z.string(),
-  ageDays: z.number().int().nonnegative(),
-  reason: z.string()
-});
-export type GoldenSetHealthEntry = z.infer<typeof GoldenSetHealthEntrySchema>;
-
-export const GoldenSetDuplicateGroupSchema = z.object({
-  traceId: z.string(),
-  entryCount: z.number().int().min(2),
-  entries: z.array(GoldenSetHealthEntrySchema)
-});
-export type GoldenSetDuplicateGroup = z.infer<typeof GoldenSetDuplicateGroupSchema>;
-
-export const GoldenSetHealthSummarySchema = z.object({
-  projectId: z.string(),
-  status: GoldenSetHealthStatusSchema,
-  totalActive: z.number().int().nonnegative(),
-  // Server-authoritative threshold; can become project-specific without changing clients.
-  staleAfterDays: z.number().int().positive(),
-  staleCount: z.number().int().nonnegative(),
-  freshCount: z.number().int().nonnegative(),
-  passCount: z.number().int().nonnegative(),
-  failCount: z.number().int().nonnegative(),
-  oldestPromotedAt: z.string().nullable(),
-  newestPromotedAt: z.string().nullable(),
-  staleEntries: z.array(GoldenSetHealthEntrySchema),
-  duplicateCount: z.number().int().nonnegative(),
-  duplicateGroups: z.array(GoldenSetDuplicateGroupSchema),
-  recommendations: z.array(z.string())
-});
-export type GoldenSetHealthSummary = z.infer<typeof GoldenSetHealthSummarySchema>;
 
 // the trust digest — four recorded-evidence signals + drift nudges.
 // Every signal is one signal among several (never composited); empty states
@@ -961,133 +893,3 @@ export const ApiErrorSchema = z.object({
   details: z.unknown().optional()
 });
 export type ApiError = z.infer<typeof ApiErrorSchema>;
-
-
-// ---------------------------------------------------------------------------
-// Findings export + machine case/golden reads (GET /api/v1/findings,
-// /api/v1/cases, /api/v1/golden-set — issue #10). The aggregation is bounded
-// and deterministic: no LLM calls; "clustering" is exact grouping on the
-// normalized first sentence of each rationale. All three endpoints are
-// read-only and project-key authed — the machine surface never adjudicates
-// or promotes (those dashboard actions remain ungoverned legacy evidence).
-
-// Scan bounds. The findings surface reads at most this many newest rows per
-// feed, so one request stays cheap and its output deterministic for a given
-// data state; consumers needing history beyond the window page /api/v1/cases.
-export const FINDINGS_VERDICT_SCAN_LIMIT = 500;
-export const FINDINGS_CASE_SCAN_LIMIT = 500;
-export const FINDINGS_OVERRIDE_LIMIT = 100;
-export const FINDINGS_CLUSTER_LIMIT = 20;
-export const FINDINGS_CLUSTER_CASE_SAMPLE = 10;
-export const V1_CASES_MAX_LIMIT = 200;
-export const V1_CASES_DEFAULT_LIMIT = 50;
-
-// A human decision that contradicts the judge on the same case — the highest
-// value rows in the system for skill maintenance. `source` distinguishes a
-// reviewer verdict from an owner-recorded legacy adjudication. Both remain
-// ungoverned evidence.
-export const FindingsHumanOverrideSchema = z.object({
-  caseId: z.string(),
-  source: z.enum(["human", "adjudicated"]),
-  label: z.string(),
-  judgeLabel: z.string(),
-  rationale: z.string(),
-  skillVersionId: z.string().nullable(),
-  createdAt: z.string()
-});
-export type FindingsHumanOverride = z.infer<typeof FindingsHumanOverrideSchema>;
-
-export const FindingsFailureClusterSchema = z.object({
-  // Normalized first sentence shared by every rationale in the cluster.
-  key: z.string(),
-  source: z.enum(["human_override", "judge"]),
-  count: z.number().int().positive(),
-  // Distinct cases in the cluster, capped at FINDINGS_CLUSTER_CASE_SAMPLE.
-  caseIds: z.array(z.string()),
-  // One full rationale from the cluster (the earliest, for determinism).
-  sampleRationale: z.string()
-});
-export type FindingsFailureCluster = z.infer<typeof FindingsFailureClusterSchema>;
-
-export const FindingsStratumDistributionSchema = z.object({
-  // cases carry an optional metadata.stratum string; null = unstratified.
-  stratum: z.string().nullable(),
-  cases: z.number().int().nonnegative(),
-  // Label -> count of cases whose LATEST verdict from that source has the
-  // label (latest-wins per case, counts not percentages).
-  judge: z.record(z.string(), z.number().int().nonnegative()),
-  human: z.record(z.string(), z.number().int().nonnegative())
-});
-export type FindingsStratumDistribution = z.infer<typeof FindingsStratumDistributionSchema>;
-
-export const FindingsGoldenSetSummarySchema = z.object({
-  size: z.number().int().nonnegative(),
-  // Entries promoted strictly after the `since` cursor; null when no cursor
-  // was given (absent ≠ zero).
-  entriesSince: z.number().int().nonnegative().nullable(),
-  latestPromotedAt: z.string().nullable()
-});
-export type FindingsGoldenSetSummary = z.infer<typeof FindingsGoldenSetSummarySchema>;
-
-export const V1FindingsResponseSchema = z.object({
-  generatedAt: z.string(),
-  since: z.string().nullable(),
-  humanOverrides: z.array(FindingsHumanOverrideSchema),
-  judgeHumanDisagreements: JudgeHumanDisagreementSummarySchema,
-  verdictDistribution: z.array(FindingsStratumDistributionSchema),
-  failureClusters: z.array(FindingsFailureClusterSchema),
-  goldenSet: FindingsGoldenSetSummarySchema
-});
-export type V1FindingsResponse = z.infer<typeof V1FindingsResponseSchema>;
-
-// GET /api/v1/cases — full stored (ingest-redacted) inputs and outputs, so a
-// skill patch can be re-run on the exact cases the judge saw.
-export const V1CaseVerdictSchema = z.object({
-  label: z.string(),
-  rationale: z.string(),
-  source: VerdictSourceSchema,
-  skillVersionId: z.string().nullable(),
-  createdAt: z.string()
-});
-export type V1CaseVerdict = z.infer<typeof V1CaseVerdictSchema>;
-
-export const V1CaseEntrySchema = z.object({
-  caseId: z.string(),
-  sourceTraceId: z.string(),
-  createdAt: z.string(),
-  stratum: z.string().nullable(),
-  input: z.unknown(),
-  output: z.unknown(),
-  metadata: z.record(z.string(), z.unknown()),
-  steps: TraceStepsSchema.optional(),
-  // Latest discrete verdicts. `human` prefers adjudicated over reviewer rows
-  // (a recorded override outranks the verdict it overrode).
-  judge: V1CaseVerdictSchema.nullable(),
-  human: V1CaseVerdictSchema.nullable(),
-  // human label when present, else the judge's — what `verdict=` filters on.
-  effectiveLabel: z.string().nullable()
-});
-export type V1CaseEntry = z.infer<typeof V1CaseEntrySchema>;
-
-export const V1CasesResponseSchema = z.object({
-  cases: z.array(V1CaseEntrySchema)
-});
-export type V1CasesResponse = z.infer<typeof V1CasesResponseSchema>;
-
-// GET /api/v1/golden-set — locked truth plus each entry's stored trace, so a
-// gate check can be assembled from golden inputs without dashboard access.
-export const V1GoldenEntrySchema = GoldenSetEntrySchema.extend({
-  trace: z.object({
-    input: z.unknown(),
-    output: z.unknown(),
-    metadata: z.record(z.string(), z.unknown())
-  }).nullable()
-});
-export type V1GoldenEntry = z.infer<typeof V1GoldenEntrySchema>;
-
-export const V1GoldenResponseSchema = z.object({
-  entries: z.array(V1GoldenEntrySchema),
-  // Registry size before any `since` filter (absent cursor ≠ empty registry).
-  totalEntries: z.number().int().nonnegative()
-});
-export type V1GoldenResponse = z.infer<typeof V1GoldenResponseSchema>;

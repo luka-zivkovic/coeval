@@ -11,11 +11,6 @@
       "reason": "One persistence class contains several independently changing transaction and read-model groups.",
       "revisit": "Split only after transaction ownership and client-scoped command boundaries are mapped."
     },
-    "packages/shared/src/index.ts": {
-      "classification": "refactor_candidate",
-      "reason": "The public entry point contains many independent runtime schema and contract families.",
-      "revisit": "Extract behind the stable root barrel after dependency order and initialization-cycle guards exist."
-    },
     "apps/api/src/repository.ts": {
       "classification": "refactor_candidate",
       "reason": "Repository ports, inputs, errors, helpers, fixtures, and the demo implementation share one file.",

@@ -9,10 +9,12 @@ import * as criterionGovernance from "../../../packages/shared/dist/criterion-go
 import * as datasets from "../../../packages/shared/dist/datasets.js";
 import * as evaluationRuns from "../../../packages/shared/dist/evaluation-runs.js";
 import * as evaluatorLifecycle from "../../../packages/shared/dist/evaluator-lifecycle.js";
+import * as goldenSet from "../../../packages/shared/dist/golden-set.js";
 import * as governedReview from "../../../packages/shared/dist/governed-review.js";
 import * as integrations from "../../../packages/shared/dist/integrations.js";
 import * as judge from "../../../packages/shared/dist/judge.js";
 import * as legacyReview from "../../../packages/shared/dist/legacy-review.js";
+import * as machineReads from "../../../packages/shared/dist/machine-reads.js";
 import * as projects from "../../../packages/shared/dist/projects.js";
 import * as skills from "../../../packages/shared/dist/skills.js";
 import * as traceTests from "../../../packages/shared/dist/trace-tests.js";
@@ -54,10 +56,12 @@ describe("shared module barrel", () => {
     expectRootIdentity(datasets);
     expectRootIdentity(evaluationRuns);
     expectRootIdentity(evaluatorLifecycle);
+    expectRootIdentity(goldenSet);
     expectRootIdentity(governedReview);
     expectRootIdentity(integrations);
     expectRootIdentity(judge, new Set(["HttpUrlSchema", "UnicodeScalarValueSchema"]));
     expectRootIdentity(legacyReview);
+    expectRootIdentity(machineReads);
     expectRootIdentity(projects);
     expectRootIdentity(skills);
     expectRootIdentity(traceTests);
