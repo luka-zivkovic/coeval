@@ -1,0 +1,684 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`repository ports > partition the complete facade into exact, disjoint method groups > repository port declarations 1`] = `
+{
+  "ApiKeyRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "createApiKey(input: CreateApiKeyInputDb): Promise<CreatedApiKey>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listApiKeys(projectId: string): Promise<ApiKey[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "revokeApiKey(projectId: string, apiKeyId: string): Promise<boolean>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "resolveApiKey(rawKey: string): Promise<{ projectId: string; apiKeyId: string; } | null>;",
+    },
+  ],
+  "AssessmentReceiptRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "getOrFreezeAssessmentReceipt(projectId: string, evalRunId: string): Promise<AssessmentReceiptArtifact | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getAssessmentReceiptArtifactByReceiptId(projectId: string, receiptId: string): Promise<AssessmentReceiptArtifact | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listAssessmentReceiptArtifacts(projectId: string, evalRunId: string): Promise<AssessmentReceiptArtifact[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "compareAssessmentReceiptCopy(input: CompareAssessmentReceiptCopyInput): Promise<AssessmentReceiptComparison>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createAssessmentReceiptCorrection(input: CreateAssessmentReceiptCorrectionInput): Promise<AssessmentReceiptArtifact>;",
+    },
+  ],
+  "CaseEvidenceRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "listCaseIdsForProject(projectId: string, limit?: number): Promise<string[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listCases(projectId: string, opts?: ListCasesOptions): Promise<CaseListEntry[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "recordVerdict(input: RecordVerdictInput): Promise<VerdictRecord>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listVerdicts(input: ListVerdictsInput): Promise<VerdictRecord[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "caseExistsForProject(projectId: string, caseId: string): Promise<boolean>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getProjectKappaSummary(projectId: string, criterionVersionId?: string | undefined): Promise<KappaSummary>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getProjectJudgeHumanCalibration(projectId: string, criterionVersionId?: string | undefined, skillVersionId?: string | undefined): Promise<KappaSummary>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getDisagreementSummary(projectId: string, criterionVersionId?: string | undefined): Promise<DisagreementSummary>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getJudgeHumanDisagreementSummary(projectId: string, criterionVersionId?: string | undefined): Promise<JudgeHumanDisagreementSummary>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getConvergenceAudit(projectId: string, skillId: string, versionId: string, input?: ConvergenceAuditPageInput): Promise<ConvergenceAuditPage>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getSelfConsistencyReport(projectId: string, versionId: string): Promise<SelfConsistencyReport>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listAuditEntries(projectId: string, targetType: string, targetId: string): Promise<JudgeCardAuditEntry[]>;",
+    },
+  ],
+  "CriterionSuiteRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "listCriteria(projectId: string): Promise<Criterion[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getCriterion(projectId: string, criterionId: string): Promise<CriterionDetail | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createCriterion(projectId: string, input: CreateCriterionInput, context: { actorUserId?: string | undefined; }): Promise<CreatedCriterion>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createCriterionVersion(projectId: string, criterionId: string, input: CreateCriterionVersionInput, context: { actorUserId?: string | undefined; }): Promise<CriterionVersion | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listEvaluatorSuites(projectId: string): Promise<EvaluatorSuite[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getEvaluatorSuite(projectId: string, suiteId: string): Promise<EvaluatorSuite | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createEvaluatorSuiteManifest(projectId: string, input: CreateEvaluatorSuiteManifestInput, context: { actorUserId?: string | undefined; }): Promise<EvaluatorSuiteManifest>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listEvaluatorSuiteManifests(projectId: string, suiteId?: string | undefined): Promise<EvaluatorSuiteManifest[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getEvaluatorSuiteManifest(projectId: string, manifestId: string): Promise<EvaluatorSuiteManifest | null>;",
+    },
+  ],
+  "DatasetRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "createDataset(input: CreateDatasetInputDb): Promise<Dataset>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listDatasets(projectId: string): Promise<Dataset[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getDatasetDetail(projectId: string, datasetId: string): Promise<DatasetDetail | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "archiveDataset(projectId: string, datasetId: string): Promise<boolean>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "addDatasetItems(input: AddDatasetItemsInputDb): Promise<DatasetItem[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "importDatasetExamples(input: ImportDatasetExamplesDbInput): Promise<ImportDatasetExamplesDbResult>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createDatasetRevision(input: CreateDatasetRevisionDbInput): Promise<DatasetRevisionDetail>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listDatasetRevisions(projectId: string, sourceDatasetId?: string | undefined): Promise<DatasetRevision[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getDatasetRevisionDetail(projectId: string, revisionId: string): Promise<DatasetRevisionDetail | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "recordDatasetRevisionContentView(input: { projectId: string; revisionId: string; actorUserId?: string | undefined; }): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getOrCreateRegressionDatasetRevision(projectId: string, actorUserId?: string | undefined, criterionVersionId?: string | undefined): Promise<DatasetRevisionDetail>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "removeDatasetItem(projectId: string, datasetId: string, itemId: string): Promise<boolean>;",
+    },
+  ],
+  "EvalRunRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "createEvalRun(input: CreateEvalRunInputDb): Promise<EvalRunDetail>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createConvergenceEvalRun(input: CreateConvergenceEvalRunInputDb): Promise<{ run: EvalRunDetail; created: boolean; }>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createImportedCaseEvalRun(input: CreateImportedCaseEvalRunInputDb): Promise<{ run: EvalRunDetail; created: boolean; }>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "claimEvalRunDispatch(input: EvalRunDispatchInputDb): Promise<EvalRunDispatchClaim>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "rotateEvalRunDispatchJob(input: EvalRunDispatchInputDb): Promise<string | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "markEvalRunDispatched(input: EvalRunDispatchInputDb): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "releaseEvalRunDispatch(input: EvalRunDispatchInputDb): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "armEvalRunItemDeliveryDeadline(projectId: string, evalRunId: string): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "markEvalRunRunning(projectId: string, evalRunId: string): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listPendingEvalRunItems(projectId: string, evalRunId: string): Promise<EvalRunItem[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listPendingEvalRunItemDispatches(projectId: string, evalRunId: string): Promise<Array<{ item: EvalRunItem; jobId: string; }>>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "claimEvalRunItemExecution(input: EvalRunItemExecutionInputDb): Promise<EvalRunItemExecutionClaim>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "rearmEvalRunItemDeliveryDeadline(projectId: string, evalRunId: string, evalRunItemId: string): Promise<boolean>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "claimEvalRunItemRecovery(input: EvalRunItemExecutionInputDb): Promise<boolean>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "beginEvalRunItemProviderCall(input: EvalRunItemExecutionInputDb): Promise<boolean>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "markEvalRunItemProviderCallReturned(input: EvalRunItemExecutionInputDb): Promise<boolean>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "releaseEvalRunItemExecution(input: EvalRunItemExecutionInputDb, options?: EvalRunItemReleaseOptions): Promise<EvalRunItemReleaseDisposition>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listStaleEvalRunItemExecutions(): Promise<StaleEvalRunItemExecution[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getEvalRunItem(projectId: string, evalRunId: string, evalRunItemId: string): Promise<EvalRunItem | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "completeEvalRunItem(input: CompleteEvalRunItemInputDb): Promise<{ runFinished: boolean; }>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "failEvalRunItem(input: FailEvalRunItemInputDb): Promise<{ runFinished: boolean; }>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getEvalRun(projectId: string, evalRunId: string): Promise<EvalRun | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getEvalRunDetail(projectId: string, evalRunId: string): Promise<EvalRunDetail | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listEvalRuns(projectId: string, opts?: { limit?: number | undefined; skillVersionId?: string | undefined; }): Promise<EvalRun[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "deleteUndispatchedEvalRun(projectId: string, evalRunId: string): Promise<void>;",
+    },
+  ],
+  "GoldenEvidenceRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "listGoldenSet(projectId: string, criterionVersionId?: string | undefined): Promise<GoldenSetEntry[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getSkillFormatExamples(projectId: string, cap: number, criterionVersionId?: string | undefined): Promise<SkillFormatExample[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getGoldenSetHealth(projectId: string, criterionVersionId?: string | undefined): Promise<GoldenSetHealthSummary>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getExceptionDetail(projectId: string, caseId: string, skillVersionId?: string | undefined): Promise<ExceptionDetail>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getCaseDetail(projectId: string, caseId: string, skillVersionId?: string | undefined): Promise<ExceptionDetail | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "promoteExceptionToGoldenSet(input: PromoteExceptionToGoldenSetInput): Promise<GoldenSetEntry>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "retireGoldenSetEntry(input: RetireGoldenSetEntryInput): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getGoldenSetTraces(projectId: string, criterionVersionId?: string | undefined): Promise<Map<string, Trace>>;",
+    },
+  ],
+  "HistoricalGateEvidenceRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "createGateCheck(input: CreateGateCheckInputDb): Promise<GateCheckDetail>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getGateCheckDetail(projectId: string, gateCheckId: string): Promise<GateCheckDetail | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listGateChecks(projectId: string, opts?: { limit?: number | undefined; }): Promise<GateCheck[]>;",
+    },
+  ],
+  "IntegrationRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "listLangSmithIntegrations(projectId: string): Promise<LangSmithIntegration[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createLangSmithIntegration(projectId: string, input: LangSmithIntegrationInput): Promise<LangSmithIntegration>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "updateLangSmithIntegration(projectId: string, integrationId: string, input: UpdateLangSmithIntegrationInput): Promise<LangSmithIntegration>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "recordLangSmithConnectionTest(projectId: string, integrationId: string, result: LangSmithConnectionTestResult): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "deleteLangSmithIntegration(projectId: string, integrationId: string, context: { actorUserId?: string | undefined; }): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "claimDueLangSmithImportTargets(input: ClaimLangSmithImportTargetsInput): Promise<LangSmithImportTarget[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "loadLangSmithImportContext(job: LangSmithImportJob): Promise<LangSmithImportContext>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listLangfuseIntegrations(projectId: string): Promise<LangfuseIntegration[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createLangfuseIntegration(projectId: string, input: LangfuseIntegrationInput): Promise<LangfuseIntegration>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "updateLangfuseIntegration(projectId: string, integrationId: string, input: UpdateLangfuseIntegrationInput): Promise<LangfuseIntegration>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "recordLangfuseConnectionTest(projectId: string, integrationId: string, result: LangfuseConnectionTestResult): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "deleteLangfuseIntegration(projectId: string, integrationId: string, context: { actorUserId?: string | undefined; }): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "claimDueLangfuseImportTargets(input: ClaimLangfuseImportTargetsInput): Promise<LangfuseImportTarget[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "loadLangfuseImportContext(job: LangfuseImportJob): Promise<LangfuseImportContext>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listIronsideIntegrations(projectId: string): Promise<IronsideIntegration[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote: IronsideEvaluatorContext): Promise<IronsideIntegration>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "updateIronsideIntegration(projectId: string, integrationId: string, input: UpdateIronsideIntegrationInput, remote?: IronsideEvaluatorContext, expected?: { remoteProjectId: string; revalidationRequired: boolean; connectionRevision: number; }): Promise<IronsideIntegration>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "recordIronsideConnectionTest(projectId: string, integrationId: string, result: IronsideConnectionTestResult): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "quarantineIronsideIntegration(projectId: string, integrationId: string, expected: { remoteProjectId: string; connectionRevision: number; }, result: IronsideConnectionTestResult): Promise<boolean>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "deleteIronsideIntegration(projectId: string, integrationId: string, context: { actorUserId?: string | undefined; }): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "claimDueIronsideImportTargets(input: ClaimIronsideImportTargetsInput): Promise<IronsideImportTarget[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "loadIronsideImportContext(job: IronsideImportJob): Promise<IronsideImportContext>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "saveIronsideSyncState(projectId: string, integrationId: string, state: IronsideSyncState, expectedCursor?: string | null): Promise<boolean>;",
+    },
+  ],
+  "JudgeCredentialRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "setJudgeProviderKey(projectId: string, provider: JudgeKeyProvider, apiKey: string, actorUserId?: string): Promise<JudgeProviderKey>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listJudgeProviderKeys(projectId: string): Promise<JudgeProviderKey[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "deleteJudgeProviderKey(projectId: string, provider: JudgeKeyProvider, actorUserId?: string): Promise<boolean>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getJudgeProviderCredential(projectId: string, provider: string): Promise<string | null>;",
+    },
+  ],
+  "JudgeFeedbackRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "loadJudgeRunContext(job: JudgeRunJob): Promise<JudgeRunContext>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "recordJudgeRun(input: RecordJudgeRunInput): Promise<JudgeRun>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createFeedbackSyncJob(input: { projectId: string; judgeRunId: string; provider: FeedbackSyncProvider; }): Promise<FeedbackSyncJobRecord | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "loadFeedbackSyncContext(job: FeedbackSyncJob): Promise<FeedbackSyncContext>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listFeedbackSyncJobs(input: ListFeedbackSyncJobsInput): Promise<FeedbackSyncJobListItem[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "markFeedbackSyncSucceeded(job: FeedbackSyncJob): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "markFeedbackSyncFailed(job: FeedbackSyncJob, error: unknown): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "markFeedbackSyncBlocked(job: FeedbackSyncJob, error: unknown): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "markFeedbackSyncPending(job: FeedbackSyncJob): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listBlockedIronsideFeedbackSyncJobs(projectId: string, integrationId: string): Promise<FeedbackSyncJob[]>;",
+    },
+  ],
+  "ProjectRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "listProjects(userId?: string | undefined): Promise<Project[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getProjectSettings(projectId: string): Promise<ProjectSettings>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "updateProjectSettings(projectId: string, input: UpdateProjectSettingsInput, context: { actorUserId?: string | undefined; }): Promise<ProjectSettings>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "pruneExpiredTraces(projectId: string, context: { actorUserId?: string | undefined; now?: Date | undefined; }): Promise<RetentionPruneResult>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "deleteProject(projectId: string, input: { confirmProjectName: string; actorUserId?: string | undefined; }): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getDashboardSummary(projectId: string, criterionId?: string | undefined): Promise<DashboardSummary>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getOnboardingEvidenceInventory(projectId: string): Promise<OnboardingEvidenceInventory>;",
+    },
+  ],
+  "ReviewQueueRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "createReviewQueue(input: CreateReviewQueueInputDb): Promise<ReviewQueue>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listReviewQueues(projectId: string, opts?: { status?: ReviewQueueStatus | undefined; }): Promise<ReviewQueue[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getReviewQueueDetail(projectId: string, queueId: string): Promise<ReviewQueueDetail | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getNextPendingQueueItem(projectId: string, queueId: string, opts?: { assignedToUserId?: string | undefined; criterionVersionId?: string | undefined; }): Promise<ReviewQueueItem | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "closeReviewQueue(projectId: string, queueId: string): Promise<ReviewQueue | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "reopenReviewQueue(projectId: string, queueId: string): Promise<ReviewQueue | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "addReviewQueueItems(input: AddQueueItemsInputDb): Promise<ReviewQueueItem[]>;",
+    },
+  ],
+  "RunComparisonRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "createRunComparison(input: CreateRunComparisonInputDb): Promise<RunComparison>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getRunComparison(projectId: string, runComparisonId: string): Promise<RunComparison | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listRunComparisons(projectId: string, opts?: { limit?: number | undefined; }): Promise<RunComparison[]>;",
+    },
+  ],
+  "SkillLifecycleRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "getCurrentSkill(projectId: string): Promise<Skill>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getCurrentSkillForCriterion(projectId: string, criterionId: string): Promise<Skill>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getLatestSkillForCriterion(projectId: string, criterionId: string): Promise<Skill>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getLatestSkill(projectId: string): Promise<Skill>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getSkillVersion(projectId: string, skillVersionId: string): Promise<SkillVersion | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "authorizeSkillVersionExecution(input: { projectId: string; skillVersionId: string; context: EvaluatorExecutionContext; resourceKind: string; resourceId: string; idempotencyKey: string; }): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getCriterionVersionForSkillVersion(projectId: string, skillVersionId: string): Promise<CriterionVersion | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "signOffSkillVersion(projectId: string, skillId: string, versionId: string, context: { actorUserId?: string | undefined; }): Promise<SkillVersion | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createSkillVersion(skillId: string, input: CreateSkillVersionInput, context: CreateSkillVersionContext): Promise<{ version: SkillVersion; regressionRun: RegressionRunResult; }>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createSkillVersionPending(skillId: string, input: CreateSkillVersionInput, context: CreateSkillVersionContext): Promise<SkillVersion>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "runRegressionGateForVersion(job: GateRunJob): Promise<{ version: SkillVersion; regressionRun: RegressionRunResult; }>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "failRegressionGateForVersion(job: GateRunJob, error: unknown): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listSkillVersions(projectId: string, skillId: string, limit?: number): Promise<SkillVersion[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listRegressionRunsForVersions(projectId: string, skillVersionIds: string[]): Promise<RegressionRunResult[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getRegressionRunForVersion(projectId: string, skillVersionId: string): Promise<RegressionRunResult | null>;",
+    },
+  ],
+  "TraceImportRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "importTrace(projectId: string, source: CaseSource, input: ManualTraceImportInput, context: TraceImportContext): Promise<TraceImportResult>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "createImportJob(input: CreateImportJobInput): Promise<ImportJobRecord>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "markImportJobQueued(projectId: string, importJobId: string, queueJobId: string): Promise<ImportJobRecord>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "markImportJobRunning(projectId: string, importJobId: string): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "markImportJobCompleted(projectId: string, importJobId: string, result: CompleteImportJobInput): Promise<void>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "markImportJobFailed(projectId: string, importJobId: string, error: unknown): Promise<ImportJobRecord>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listImportJobs(input: ListImportJobsInput): Promise<ImportJobRecord[]>;",
+    },
+  ],
+  "TraceTestRepositoryPort": [
+    {
+      "kind": "MethodSignature",
+      "signature": "createTraceTest(input: CreateTraceTestInputDb): Promise<TraceTestDetail>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "listTraceTests(projectId: string, sourceCaseRef?: string | undefined): Promise<TraceTestSummary[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getTraceTest(projectId: string, traceTestId: string): Promise<TraceTestDetail | null>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "reviseTraceTest(input: ReviseTraceTestInputDb): Promise<TraceTestDetail>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "recordTraceTestValidation(input: RecordTraceTestValidationInputDb): Promise<TraceTestValidation>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "enableTraceTest(input: EnableTraceTestInputDb): Promise<TraceTestDetail>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "recordTraceTestFunnelEvent(input: RecordTraceTestFunnelEventInputDb): Promise<void>;",
+    },
+  ],
+}
+`;
