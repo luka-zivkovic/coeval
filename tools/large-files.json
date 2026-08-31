@@ -1,0 +1,130 @@
+{
+  "threshold": 1000,
+  "files": {
+    "packages/db/migrations/0001_baseline.sql": {
+      "classification": "structural_exception",
+      "reason": "ADR-0011 requires one current-schema baseline migration during the clean-install period; the migration runner checksums it.",
+      "revisit": "Revisit only when an accepted database-lifecycle decision ends the single-baseline policy."
+    },
+    "apps/api/src/repository.pg.ts": {
+      "classification": "refactor_candidate",
+      "reason": "One persistence class contains several independently changing transaction and read-model groups.",
+      "revisit": "Split only after transaction ownership and client-scoped command boundaries are mapped."
+    },
+    "packages/shared/src/index.ts": {
+      "classification": "refactor_candidate",
+      "reason": "The public entry point contains many independent runtime schema and contract families.",
+      "revisit": "Extract behind the stable root barrel after dependency order and initialization-cycle guards exist."
+    },
+    "apps/api/src/repository.ts": {
+      "classification": "refactor_candidate",
+      "reason": "Repository ports, inputs, errors, helpers, fixtures, and the demo implementation share one file.",
+      "revisit": "Separate compatibility exports, consumer ports, and demo composition while preserving facade identity."
+    },
+    "apps/api/src/app.ts": {
+      "classification": "refactor_candidate",
+      "reason": "The composition root also owns many independent route handler families and request workflows.",
+      "revisit": "Extract routes only after auth ordering and shared request services are characterized."
+    },
+    "pnpm-lock.yaml": {
+      "classification": "generated",
+      "reason": "pnpm owns this dependency lockfile.",
+      "revisit": "Never hand-split; regenerate with the pinned package manager."
+    },
+    "apps/api/test/app.test.ts": {
+      "classification": "refactor_candidate",
+      "reason": "Route, domain, import-worker, poller, and feedback-worker suites share one test file.",
+      "revisit": "Characterize titles and auth coverage, then shard by behavior with shared support."
+    },
+    "apps/api/src/governed-review/repository.pg.ts": {
+      "classification": "refactor_candidate",
+      "reason": "Instructions, intake, batches, tasks, alignment, adjudication, imported truth, and materialization have distinct lifecycles.",
+      "revisit": "Map transaction and state-machine boundaries before extracting pure queries or commands."
+    },
+    "apps/api/test/pg-smoke.test.ts": {
+      "classification": "refactor_candidate",
+      "reason": "Independent Postgres smoke scenarios span projects, datasets, evals, integrations, feedback, and retention.",
+      "revisit": "Shard after preserving the title inventory and shared disposable-database support."
+    },
+    "apps/api/src/binary-calibration/repository.pg.ts": {
+      "classification": "cohesion_review",
+      "reason": "A single calibration lifecycle may justify colocation, but commands, claims, completion, and reads need an explicit boundary review.",
+      "revisit": "Review after the main repository consistency groups establish the preferred transaction pattern."
+    },
+    "apps/api/src/analysis-study/repository.pg.ts": {
+      "classification": "cohesion_review",
+      "reason": "The analysis-study state machine is cohesive but includes study, item, taxonomy, assignment, and closure operations.",
+      "revisit": "Reassess when transaction ownership and state-machine navigation are documented."
+    },
+    "apps/web/src/screens/skill-edit.tsx": {
+      "classification": "refactor_candidate",
+      "reason": "Screen orchestration, editing, onboarding boundaries, and regression result rendering change independently.",
+      "revisit": "Harden behavior and source-contract tests before moving panels or hooks."
+    },
+    "apps/api/test/analysis-criterion-promotion-pg.test.ts": {
+      "classification": "cohesion_review",
+      "reason": "The suite proves one promotion and candidate evidence graph with substantial shared setup.",
+      "revisit": "Split only if success, rejection, and concurrency scenarios can share explicit support without hiding the evidence graph."
+    },
+    "apps/api/test/analysis-study-pg.test.ts": {
+      "classification": "cohesion_review",
+      "reason": "The suite covers one append-only analysis-study lifecycle and its closure invariants.",
+      "revisit": "Reassess alongside any analysis-study repository split."
+    },
+    "apps/web/src/lib/api.ts": {
+      "classification": "refactor_candidate",
+      "reason": "Shared transport and many unrelated resource clients share one module.",
+      "revisit": "Extract transport and resource modules behind the existing compatibility barrel."
+    },
+    "apps/web/src/screens/trace-test-builder.tsx": {
+      "classification": "refactor_candidate",
+      "reason": "Journey orchestration and multiple independent stage panels share one screen module.",
+      "revisit": "Preserve unsaved-state and accessibility coverage while extracting stages."
+    },
+    "apps/api/src/analysis-population/repository.pg.ts": {
+      "classification": "cohesion_review",
+      "reason": "Population freezing, scanning, materialization, and listing may form one transactional evidence pipeline.",
+      "revisit": "Review pure query boundaries without splitting the freeze transaction."
+    },
+    "contracts/fixtures/binary-calibration-v1.conformance.json": {
+      "classification": "structural_exception",
+      "reason": "This is an exact-byte, digest-pinned interoperability corpus.",
+      "revisit": "Change only through the versioned contract process; never split for source-file size."
+    },
+    "apps/api/test/analysis-population-pg.test.ts": {
+      "classification": "cohesion_review",
+      "reason": "The suite proves one population freeze and deterministic draw evidence pipeline.",
+      "revisit": "Reassess alongside any analysis-population repository split."
+    },
+    "apps/web/src/screens/analysis-study-workspace.tsx": {
+      "classification": "refactor_candidate",
+      "reason": "Workspace orchestration and numerous study, coding, taxonomy, findings, and coverage panels share one file.",
+      "revisit": "Harden path-sensitive tests, then extract panels while keeping state orchestration centralized."
+    },
+    "apps/web/src/screens/datasets.tsx": {
+      "classification": "refactor_candidate",
+      "reason": "Dataset orchestration, import modal, cards, run comparison, and run details change independently.",
+      "revisit": "Harden accessibility coverage, then extract panels without changing API behavior."
+    },
+    "apps/api/src/lib/governed-review.ts": {
+      "classification": "cohesion_review",
+      "reason": "Digest, task, batch, blind-view, imported-truth, and agreement verification share governed invariants but may contain separable pipelines.",
+      "revisit": "Review executable dependency order and canonical artifact boundaries before deciding."
+    },
+    "apps/api/src/lib/binary-calibration.ts": {
+      "classification": "cohesion_review",
+      "reason": "The module is a closed calibration builder, parser, and verifier pipeline with exact artifacts.",
+      "revisit": "Accept as an exception only after navigation and canonical-order invariants are documented."
+    },
+    "apps/api/test/eval-service.test.ts": {
+      "classification": "refactor_candidate",
+      "reason": "Worker, API-key, synchronous v1, project check, batch, provider-key, and spend behavior share one test file.",
+      "revisit": "Shard by behavior after preserving titles and shared request fixtures."
+    },
+    "apps/api/test/governed-review-pg.test.ts": {
+      "classification": "cohesion_review",
+      "reason": "The suite proves one governed-review evidence lifecycle with database-backed invariants.",
+      "revisit": "Reassess alongside any governed-review repository split."
+    }
+  }
+}

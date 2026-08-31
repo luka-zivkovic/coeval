@@ -20,8 +20,9 @@
   "scripts": {
     "build": "pnpm -r --sort build",
     "typecheck": "tsc -b",
-    "test": "vitest run && node --test tools/ci/*.test.mjs tools/mcp/*.test.mjs",
+    "test": "vitest run && node --test tools/*.test.mjs tools/ci/*.test.mjs tools/mcp/*.test.mjs",
     "test:pg": "tsx tools/test-postgres.ts",
+    "large-files": "node tools/large-files.mjs",
     "clean": "rm -rf apps/*/dist apps/*/dist-ts packages/*/dist packages/*/*.tsbuildinfo apps/*/*.tsbuildinfo .turbo coverage out",
     "dev:api": "pnpm --filter @coeval/api dev",
     "dev:web": "pnpm --filter @coeval/web dev",
