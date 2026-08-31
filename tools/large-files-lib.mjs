@@ -18,7 +18,7 @@ export function isBinary(contents) {
   const sample = contents.subarray(0, 8 * 1024);
   if (sample.includes(0)) return true;
   try {
-    new TextDecoder("utf-8", { fatal: true }).decode(sample);
+    new TextDecoder("utf-8", { fatal: true }).decode(sample, { stream: true });
     return false;
   } catch {
     return true;

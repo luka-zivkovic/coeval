@@ -17,6 +17,7 @@ describe("large-file report helpers", () => {
 
   it("distinguishes UTF-8 text from binary content", () => {
     assert.equal(isBinary(Buffer.from("ordinary π text\n", "utf8")), false);
+    assert.equal(isBinary(Buffer.concat([Buffer.alloc(8_191, 0x61), Buffer.from("π", "utf8")])), false);
     assert.equal(isBinary(Buffer.from([0x61, 0x00, 0x62])), true);
     assert.equal(isBinary(Buffer.from([0xc3, 0x28])), true);
   });

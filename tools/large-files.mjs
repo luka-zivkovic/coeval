@@ -91,6 +91,12 @@ if (unavailable.length > 0) {
   }
 }
 
+if (binary.length > 0) {
+  console.log("");
+  console.log("Binary tracked paths skipped:");
+  for (const path of binary.sort()) console.log(`- ${path}`);
+}
+
 if (drift.untracked.length > 0) {
   console.log("");
   console.log("Recorded inventory paths that are no longer tracked:");
