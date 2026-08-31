@@ -30,11 +30,9 @@ import {
   DatasetRevisionDetail,
   DatasetRevisionItem,
   DatasetRevisionPayloadSnapshot,
-  DatasetRevisionRole,
   EvalRun,
   EvalRunDetail,
   EvalRunItem,
-  EvalRunTrigger,
   GateCheck,
   GateCheckDetail,
   GateCheckItem,
@@ -46,13 +44,9 @@ import {
   GoldenSetRetirementContext,
   GoldenSetEntry,
   ConvergenceAuditPage,
-  ConvergenceCaseChange,
-  CONVERGENCE_CASE_PAGE_DEFAULT_LIMIT,
-  CONVERGENCE_CASE_PAGE_MAX_LIMIT,
   SelfConsistencyReport,
   DisagreementSummary,
   ImportJobRecord,
-  ImportJobStatus,
   JudgeHumanDisagreementSummary,
   JudgeRun,
   KappaSummary,
@@ -81,51 +75,34 @@ import {
   LangSmithIntegration,
   LangSmithIntegrationInput,
   ManualTraceImportInput,
-  ManualTraceImportResult,
   MinimumVerdictOutputSchema,
   OnboardingEvidenceInventory,
   Project,
   ProjectSettings,
-  ProviderResponseMetadata,
-  PromoteGoldenSetInput,
   REGRESSION_RATIONALE_MAX_LENGTH,
   RegressionCaseDiff,
   RegressionRunResult,
   RetentionPruneResult,
   RunComparison,
   Skill,
-  EvalRunSpend,
   JudgeKeyProvider,
   JudgeProviderKey,
   SkillFormatExample,
   SkillVersion,
-  TraceRedactionConfig,
   TraceTestDetail,
-  TraceTestDraftContent,
   TraceTestRevision,
   TraceTestSourceScope,
   TraceTestSummary,
-  TraceTestRunSource,
-  TraceTestFunnelEventInput,
   TraceTestValidation,
-  TraceTestValidationDiagnostic,
-  TraceTestValidationEvidenceInput,
-  TraceTestValidationEvaluator,
-  TraceTestValidationMethod,
-  TraceTestValidationStatus,
   CaseSource,
-  TraceSource,
-  TraceStep,
   UpdateLangfuseIntegrationInput,
   UpdateLangSmithIntegrationInput,
   UpdateProjectSettingsInput,
   VerdictLabel,
-  VerdictPayload,
-  VerdictRecord,
-  VerdictSource
+  VerdictRecord
 } from "@coeval/shared";
 import { deriveGateCheckDecision, effectiveHumanLabel, isInternalTraceMetadata, regressionDirectionCounts, renderJudgePromptContent, verdictLabelFromPayload } from "@coeval/shared";
-import { normalizeTracePayload, redactNormalizedTracePayload, redactTrace, type NormalizedTraceStep } from "./lib/redaction.js";
+import { normalizeTracePayload, redactNormalizedTracePayload, redactTrace } from "./lib/redaction.js";
 import { generateApiKey, hashApiKey } from "./lib/api-keys.js";
 import {
   buildAssessmentReceipt,
@@ -154,136 +131,116 @@ import {
 // tests pass a `{ name, judge }` mock without implementing judgeStructured.
 type BinaryJudgeProvider = Pick<JudgeProvider, "name" | "modelName" | "judge">;
 import { computeConvergenceAudit, computeDisagreementSummary, computeJudgeHumanCalibration, computeJudgeHumanDisagreement, computeKappaSummary, computeSelfConsistency } from "./lib/kappa.js";
-
-export interface CreateSkillVersionContext {
-  projectId: string;
-  actorUserId?: string | undefined;
-  rubricProvenance?: SkillVersion["rubricProvenance"] | undefined;
-  // First-run only: append this exact visible quality question to the seeded
-  // native criterion and bind the new evaluator version in the same write.
-  onboardingCriterion?: {
-    name: string;
-    definition: string;
-    idempotencyKey: string;
-    requestDigest: string;
-  } | undefined;
-  agentSetup?: {
-    pairingId?: string | undefined;
-    skillName: string;
-    skillDescription: string;
-    providerCredential?: { provider: JudgeKeyProvider; apiKey: string } | undefined;
-  } | undefined;
-}
-
-export class OnboardingCheckConflictError extends Error {
-  constructor(
-    readonly code: "project_already_configured" | "criterion_not_native" | "idempotency_conflict",
-    message: string
-  ) {
-    super(message);
-    this.name = "OnboardingCheckConflictError";
-  }
-}
-
-export interface ConvergenceAuditPageInput {
-  limit?: number | undefined;
-  cursor?: string | null | undefined;
-}
-
-export class InvalidConvergenceCursorError extends Error {
-  constructor() {
-    super("Invalid convergence case cursor");
-    this.name = "InvalidConvergenceCursorError";
-  }
-}
-
-export type AssessmentReceiptArtifactSource = "terminal_mint" | "historical_freeze" | "correction";
-
-export interface AssessmentReceiptArtifact {
-  id: string;
-  projectId: string;
-  evalRunId: string;
-  receiptId: string;
-  contractVersion: number;
-  artifactRevision: number;
-  canonicalBytes: Buffer;
-  artifactDigest: string;
-  evidenceDigest: string;
-  sourceSnapshotDigest: string;
-  sourceKind: AssessmentReceiptArtifactSource;
-  predecessorArtifactId: string | null;
-  correctionReason: string | null;
-  createdByUserId: string | null;
-  createdAt: string;
-}
-
-export interface AssessmentReceiptComparison {
-  id: string;
-  projectId: string;
-  evalRunId: string;
-  artifactId: string;
-  consumerReceiptId: string;
-  consumerCanonicalBytes: Buffer;
-  consumerArtifactDigest: string;
-  comparisonStatus: "match" | "diverged";
-  createdAt: string;
-}
-
-export interface CompareAssessmentReceiptCopyInput {
-  projectId: string;
-  evalRunId: string;
-  consumerCanonicalBytes: Buffer;
-}
-
-export interface CreateAssessmentReceiptCorrectionInput {
-  projectId: string;
-  evalRunId: string;
-  receipt: AssessmentReceipt;
-  reason: string;
-  createdByUserId?: string | undefined;
-}
-
-export class AssessmentReceiptUnavailableError extends Error {
-  constructor(readonly reason: "not_release_evidence" | "not_terminal" | "missing_source", message: string) {
-    super(message);
-    this.name = "AssessmentReceiptUnavailableError";
-  }
-}
-
-export class AssessmentReceiptIntegrityError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "AssessmentReceiptIntegrityError";
-  }
-}
-
-export class DatasetRevisionNotFoundError extends Error {
-  constructor(readonly revisionId: string) {
-    super(`Dataset revision not found in this project: ${revisionId}`);
-    this.name = "DatasetRevisionNotFoundError";
-  }
-}
-
-export class SealedValidationUnavailableError extends Error {
-  constructor() {
-    super("Sealed validation intake is unavailable until governed blind collection and review are enabled.");
-    this.name = "SealedValidationUnavailableError";
-  }
-}
-
-export class DatasetRevisionConflictError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "DatasetRevisionConflictError";
-  }
-}
-
-export class GateRunBindingMismatchError extends Error {
-  constructor(readonly jobDatasetRevisionId: string, readonly versionDatasetRevisionId: string) {
-    super(`Gate job dataset revision does not match skill version binding: ${jobDatasetRevisionId}`);
-    this.name = "GateRunBindingMismatchError";
-  }
-}
+import type {
+  CreateSkillVersionContext,
+  ConvergenceAuditPageInput,
+  AssessmentReceiptArtifactSource,
+  AssessmentReceiptArtifact,
+  AssessmentReceiptComparison,
+  CompareAssessmentReceiptCopyInput,
+  CreateAssessmentReceiptCorrectionInput,
+  CreateGateCheckInputDb,
+  CreateRunComparisonInputDb,
+  CreateEvalRunInputDb,
+  CreateConvergenceEvalRunInputDb,
+  CreateImportedCaseEvalRunInputDb,
+  EvalRunDispatchInputDb,
+  EvalRunDispatchClaim,
+  EvalRunItemExecutionInputDb,
+  EvalRunItemExecutionClaim,
+  EvalRunItemReleaseDisposition,
+  EvalRunItemReleaseOptions,
+  StaleEvalRunItemExecution,
+  CompleteEvalRunItemInputDb,
+  FailEvalRunItemInputDb,
+  CreateApiKeyInputDb,
+  CreateTraceTestInputDb,
+  ReviseTraceTestInputDb,
+  RecordTraceTestValidationInputDb,
+  EnableTraceTestInputDb,
+  RecordTraceTestFunnelEventInputDb,
+  CreateDatasetInputDb,
+  AddDatasetItemsInputDb,
+  ImportDatasetExamplesDbInput,
+  ImportDatasetExamplesDbResult,
+  CreateDatasetRevisionDbInput,
+  AddQueueItemsInputDb,
+  CreateReviewQueueInputDb,
+  RecordVerdictInput,
+  ListCasesOptions,
+  CaseListEntry,
+  ListVerdictsInput,
+  TraceImportResult,
+  JudgeRunContext,
+  RecordJudgeRunInput,
+  TraceImportContext,
+  CreateImportJobInput,
+  CompleteImportJobInput,
+  ListImportJobsInput,
+  PromoteExceptionToGoldenSetInput,
+  RetireGoldenSetEntryInput,
+  LangSmithImportContext,
+  ClaimLangSmithImportTargetsInput,
+  LangfuseImportContext,
+  ClaimLangfuseImportTargetsInput,
+  IronsideImportContext,
+  ClaimIronsideImportTargetsInput,
+  FeedbackSyncProvider,
+  FeedbackSyncStatus,
+  FeedbackSyncJobRecord,
+  FeedbackSyncContext,
+  ListFeedbackSyncJobsInput,
+  FeedbackSyncJobListItem
+} from "./repository/contracts.js";
+import {
+  OnboardingCheckConflictError,
+  InvalidConvergenceCursorError,
+  AssessmentReceiptUnavailableError,
+  AssessmentReceiptIntegrityError,
+  DatasetRevisionNotFoundError,
+  SealedValidationUnavailableError,
+  DatasetRevisionConflictError,
+  GateRunBindingMismatchError,
+  RecursiveTraceSkippedError,
+  GoldenSetEntryAlreadyRetiredError,
+  GoldenSetEntryNotFoundError,
+  CaseNotFoundError,
+  SkillVersionNotSignableError,
+  RegressionGateJudgeError,
+  GoldenSetLabelConflictError,
+  LangSmithIntegrationNotFoundError,
+  LangfuseIntegrationNotFoundError,
+  NoCurrentSkillError,
+  AmbiguousProjectSkillError,
+  CriterionStableKeyConflictError,
+  EvaluatorSuiteBindingError,
+  EvaluatorSuiteIdempotencyConflictError,
+  IronsideIntegrationNotFoundError,
+  IronsideIntegrationChangedError,
+  IronsideIntegrationAlreadyExistsError,
+  FeedbackSyncJobNotFoundError,
+  DatasetNotFoundError,
+  DatasetNameTakenError,
+  TraceTestSourceNotFoundError,
+  TraceTestNotFoundError,
+  TraceTestRevisionConflictError,
+  TraceTestValidationNotReadyError
+} from "./repository/errors.js";
+import {
+  traceTestValidationStatus,
+  traceTestValidationDiagnostic,
+  traceTestValidationIsEnableEligible,
+  computeEvalRunSpend,
+  judgeKeyDisplay,
+  assertTraceIngestionPurpose,
+  convergencePageLimit,
+  convergenceChangeRank,
+  encodeConvergenceCursor,
+  decodeConvergenceCursor
+} from "./repository/helpers.js";
+export * from "./repository/contracts.js";
+export * from "./repository/errors.js";
+export * from "./repository/helpers.js";
 
 export interface CoevalRepository {
   listProjects(userId?: string | undefined): Promise<Project[]>;
@@ -653,627 +610,6 @@ export interface CoevalRepository {
   createGateCheck(input: CreateGateCheckInputDb): Promise<GateCheckDetail>;
   getGateCheckDetail(projectId: string, gateCheckId: string): Promise<GateCheckDetail | null>;
   listGateChecks(projectId: string, opts?: { limit?: number | undefined }): Promise<GateCheck[]>;
-}
-
-export interface CreateGateCheckInputDb {
-  projectId: string;
-  skillVersionId: string;
-  evalRunId: string;
-  label?: string | undefined;
-  metadata?: Record<string, unknown> | undefined;
-  maxDisagreements: number;
-  createdByUserId?: string | undefined;
-  items: Array<{
-    goldenEntryId: string;
-    goldenCaseId: string;
-    // Snapshot of the golden entry's trace id — the CI-facing candidate key.
-    caseKey: string;
-    candidateCaseId: string;
-    expectedLabel: "pass" | "fail";
-  }>;
-}
-
-export interface CreateRunComparisonInputDb {
-  projectId: string;
-  datasetId: string;
-  datasetRevisionId?: string | undefined;
-  versionAId: string;
-  versionBId: string;
-  runAId: string;
-  runBId: string;
-}
-
-export interface CreateEvalRunInputDb {
-  projectId: string;
-  skillVersionId: string;
-  trigger: EvalRunTrigger;
-  datasetId?: string | undefined;
-  datasetRevisionId?: string | undefined;
-  blocking?: boolean | undefined;
-  createdByUserId?: string | undefined;
-  sourceTraceTest?: TraceTestRunSource | undefined;
-  items: Array<{
-    caseId: string;
-    datasetItemId?: string | undefined;
-    datasetRevisionItemId?: string | undefined;
-    clientItemId?: string | undefined;
-    contentDigest?: string | undefined;
-    expectedLabel?: "pass" | "fail" | undefined;
-    expectedFailStep?: number | undefined;
-    // cached items reuse the recorded verdict's failingStep.
-    failingStep?: number | undefined;
-    // Pre-terminal items (batch idempotency / recursive-trace skips) land in
-    // the run already counted, so the queue only sees genuinely pending work.
-    status?: "pending" | "completed" | "skipped" | undefined;
-    verdictId?: string | undefined;
-    resultLabel?: string | undefined;
-    cached?: boolean | undefined;
-    providerMetadata?: ProviderResponseMetadata | undefined;
-  }>;
-}
-
-export interface CreateConvergenceEvalRunInputDb {
-  projectId: string;
-  skillVersionId: string;
-  caseId: string;
-  createdByUserId?: string | undefined;
-}
-
-export interface CreateImportedCaseEvalRunInputDb {
-  projectId: string;
-  skillVersionId: string;
-  caseId: string;
-}
-
-export interface EvalRunDispatchInputDb {
-  projectId: string;
-  evalRunId: string;
-  dispatchToken: string;
-}
-
-export type EvalRunDispatchClaim =
-  | { state: "claimed"; jobId: string }
-  | { state: "busy" | "dispatched"; jobId: string | null };
-
-export interface EvalRunItemExecutionInputDb {
-  projectId: string;
-  evalRunId: string;
-  evalRunItemId: string;
-  executionToken: string;
-}
-
-export type EvalRunItemExecutionClaim =
-  | { state: "claimed" }
-  | { state: "busy" | "terminal" }
-  | { state: "outcome_unknown"; executionToken: string; providerCallReturned: boolean };
-
-export type EvalRunItemReleaseDisposition =
-  | { state: "released" }
-  | { state: "pre_call_held" }
-  | { state: "provider_started"; providerCallReturned: boolean }
-  | { state: "lost" };
-
-export interface EvalRunItemReleaseOptions {
-  // A terminal pre-call failure must keep its exact execution generation
-  // until failEvalRunItem commits. Releasing first would let a redelivery
-  // start the provider before an older handler's failure write.
-  preservePreCallClaim?: boolean;
-}
-
-export interface StaleEvalRunItemExecution {
-  projectId: string;
-  evalRunId: string;
-  evalRunItemId: string;
-  executionToken: string | null;
-  providerCallStarted: boolean;
-  providerCallReturned: boolean;
-}
-
-export interface CompleteEvalRunItemInputDb {
-  projectId: string;
-  evalRunId: string;
-  evalRunItemId: string;
-  executionToken?: string | undefined;
-  verdictId: string;
-  resultLabel: string;
-  // the judge-named failing step from the verdict payload (absent when
-  // omitted/dropped).
-  failingStep?: number | undefined;
-  latencyMs?: number | undefined;
-  // this call's token usage (absent when the provider didn't report).
-  inputTokens?: number | undefined;
-  outputTokens?: number | undefined;
-  providerMetadata?: ProviderResponseMetadata | undefined;
-}
-
-export interface FailEvalRunItemInputDb {
-  projectId: string;
-  evalRunId: string;
-  evalRunItemId: string;
-  executionToken?: string | undefined;
-  error: string;
-}
-
-export interface CreateApiKeyInputDb {
-  projectId: string;
-  name: string;
-  createdByUserId?: string | undefined;
-}
-
-export interface CreateTraceTestInputDb extends TraceTestDraftContent {
-  projectId: string;
-  sourceCaseId: string;
-  sourceScope: TraceTestSourceScope;
-  desiredBehavior: string;
-  createdByUserId?: string | undefined;
-}
-
-export interface ReviseTraceTestInputDb extends TraceTestDraftContent {
-  projectId: string;
-  traceTestId: string;
-  expectedRevision: number;
-  desiredBehavior: string;
-  createdByUserId?: string | undefined;
-}
-
-export interface RecordTraceTestValidationInputDb {
-  projectId: string;
-  traceTestId: string;
-  revision: number;
-  badEvidence: TraceTestValidationEvidenceInput;
-  goodEvidence: TraceTestValidationEvidenceInput;
-  method?: TraceTestValidationMethod | undefined;
-  diagnostic?: TraceTestValidationDiagnostic | null | undefined;
-  evaluator?: TraceTestValidationEvaluator | null | undefined;
-  overrideReason?: string | null | undefined;
-  badAttempts?: number | undefined;
-  goodAttempts?: number | undefined;
-  badUsage?: { inputTokens: number; outputTokens: number } | null | undefined;
-  goodUsage?: { inputTokens: number; outputTokens: number } | null | undefined;
-  recordedByUserId?: string | undefined;
-}
-
-export interface EnableTraceTestInputDb {
-  projectId: string;
-  traceTestId: string;
-  expectedRevision: number;
-  validationId: string;
-  reviewedByUserId: string;
-}
-
-export interface RecordTraceTestFunnelEventInputDb extends TraceTestFunnelEventInput {
-  projectId: string;
-  actorUserId?: string | undefined;
-}
-
-export interface CreateDatasetInputDb {
-  projectId: string;
-  name: string;
-  description?: string | undefined;
-  kind?: DatasetKind | undefined;
-  createdByUserId?: string | undefined;
-}
-
-export interface AddDatasetItemsInputDb {
-  projectId: string;
-  datasetId: string;
-  items: Array<{ caseId: string; expectedLabel?: "pass" | "fail" | undefined; expectedFailStep?: number | undefined; note?: string | undefined }>;
-}
-
-export function traceTestValidationStatus(
-  badResult: TraceTestValidation["badEvidence"]["result"],
-  goodResult: TraceTestValidation["goodEvidence"]["result"]
-): TraceTestValidationStatus {
-  const results = [badResult, goodResult];
-  if (results.includes("unavailable")) return "unavailable";
-  if (results.includes("evaluator_error")) return "evaluator_error";
-  if (results.includes("ambiguous")) return "ambiguous";
-  if (results.includes("could_not_run")) return "could_not_run";
-  if (results.includes("needs_review")) return "needs_review";
-  if (badResult === "fail" && goodResult === "pass") return "passed";
-  if (badResult === goodResult) return "non_discriminating";
-  return "failed";
-}
-
-export function traceTestValidationDiagnostic(
-  badResult: TraceTestValidation["badEvidence"]["result"],
-  goodResult: TraceTestValidation["goodEvidence"]["result"]
-): TraceTestValidationDiagnostic | null {
-  const status = traceTestValidationStatus(badResult, goodResult);
-  if (status === "passed") return null;
-  if (status === "non_discriminating") return badResult === "pass" ? "always_pass" : "always_fail";
-  if (status === "failed") return "reversed";
-  if (status === "ambiguous" || status === "needs_review") return "ambiguous";
-  if (status === "evaluator_error") return "evaluator_error";
-  return "unavailable";
-}
-
-export function traceTestValidationIsEnableEligible(validation: TraceTestValidation): boolean {
-  if (validation.status !== "passed") return false;
-  if (validation.method === "automated") return validation.evaluator !== null;
-  if (validation.method === "manual_override") {
-    return typeof validation.overrideReason === "string" && validation.overrideReason.trim().length >= 10;
-  }
-  return false;
-}
-
-// Skill Bench bulk ingestion (M0 C2): example cases + their dataset membership
-// land atomically — a mid-flow failure must not strand membership-less cases.
-// Items are pre-deduped by sourceTraceId (the route coalesces duplicates).
-export interface ImportDatasetExamplesDbInput {
-  projectId: string;
-  datasetId: string;
-  ingestionPurpose: Extract<RuntimeIngestionPurpose, "dataset_example" | "trace_test_synthetic">;
-  items: Array<{
-    sourceTraceId: string;
-    input: unknown;
-    output: unknown;
-    metadata: Record<string, unknown>;
-    steps?: TraceStep[] | undefined;
-    expectedLabel?: "pass" | "fail" | undefined;
-    expectedFailStep?: number | undefined;
-    note?: string | undefined;
-  }>;
-}
-
-// run-level spend from the items — tokens and counts, never dollars.
-// Null token sums mean "nothing reported usage" (no fresh calls, or all
-// calls unreported); zero is a real recorded zero. Cached items never count.
-export function computeEvalRunSpend(items: EvalRunItem[]): EvalRunSpend {
-  const fresh = items.filter((item) => !item.cached && item.status === "completed");
-  const cached = items.filter((item) => item.cached);
-  // BOTH sides must be present to count as reported — a partial envelope is
-  // treated as unreported (usageMissingCount), never zero-filled on one side.
-  const reported = fresh.filter((item) => item.inputTokens !== null && item.outputTokens !== null);
-  const latencies = items.map((item) => item.latencyMs).filter((ms): ms is number => ms !== null);
-  return {
-    freshItems: fresh.length,
-    cachedItems: cached.length,
-    inputTokens: reported.length === 0 ? null : reported.reduce((sum, item) => sum + (item.inputTokens ?? 0), 0),
-    outputTokens: reported.length === 0 ? null : reported.reduce((sum, item) => sum + (item.outputTokens ?? 0), 0),
-    usageMissingCount: fresh.length - reported.length,
-    totalLatencyMs: latencies.length === 0 ? null : latencies.reduce((sum, ms) => sum + ms, 0)
-  };
-}
-
-// the ONLY renderable form of a stored judge key.
-export function judgeKeyDisplay(apiKey: string): string {
-  if (apiKey.length <= 14) return `${apiKey.slice(0, 4)}…`;
-  return `${apiKey.slice(0, 10)}…${apiKey.slice(-4)}`;
-}
-
-export interface ImportDatasetExamplesDbResult {
-  items: Array<{ sourceTraceId: string; caseId: string; created: boolean; datasetItemId: string | null }>;
-}
-
-export interface CreateDatasetRevisionDbInput {
-  projectId: string;
-  datasetId: string;
-  role: DatasetRevisionRole;
-  expectedParentRevisionId?: string | undefined;
-  idempotencyKey?: string | undefined;
-  // Internal comparison runs may reuse the latest byte-identical snapshot;
-  // explicit user freezes always create a new lineage revision.
-  reuseLatestContent?: boolean | undefined;
-  createdByUserId?: string | undefined;
-}
-
-export interface PreparedDatasetRevisionItem {
-  sourceCaseId: string | null;
-  sourceTraceId: string | null;
-  sourceDatasetItemId: string | null;
-  sourceGoldenEntryId: string | null;
-  payloadSnapshot: DatasetRevisionPayloadSnapshot;
-  inputDigest: string;
-  itemDigest: string;
-  referenceLabel: "pass" | "fail" | null;
-  referenceFailStep: number | null;
-  referenceProvenance: DatasetReferenceProvenance;
-  note: string | null;
-}
-
-export interface AddQueueItemsInputDb {
-  projectId: string;
-  queueId: string;
-  items: Array<{
-    caseId: string;
-    criterionVersionId?: string | undefined;
-    assignedToUserId?: string | undefined;
-  }>;
-}
-
-export interface CreateReviewQueueInputDb {
-  projectId: string;
-  name: string;
-  description?: string | undefined;
-  criterionVersionId?: string | undefined;
-  caseIds: string[];
-  createdByUserId?: string | undefined;
-}
-
-export interface RecordVerdictInput {
-  projectId: string;
-  caseId: string;
-  source: VerdictSource;
-  payload: VerdictPayload;
-  skillVersionId?: string | undefined;
-  actorUserId?: string | undefined;
-  externalRunId?: string | undefined;
-}
-
-export interface ListCasesOptions {
-  since?: string | undefined;
-  limit?: number | undefined;
-}
-
-export interface CaseListEntry {
-  caseId: string;
-  sourceTraceId: string;
-  createdAt: string;
-  trace: {
-    input: unknown;
-    output: unknown;
-    metadata: Record<string, unknown>;
-    steps?: NormalizedTraceStep[] | undefined;
-  };
-}
-
-export interface ListVerdictsInput {
-  projectId: string;
-  caseId?: string | undefined;
-  source?: VerdictSource | undefined;
-  skillVersionId?: string | undefined;
-  criterionId?: string | undefined;
-  evidenceScope?: "all" | "customer" | undefined;
-  limit: number;
-}
-
-export type TraceImportResult = Omit<ManualTraceImportResult, "queued" | "queueJobId"> & {
-  created: boolean;
-};
-
-export class RecursiveTraceSkippedError extends Error {
-  constructor(sourceTraceId?: string) {
-    super(sourceTraceId
-      ? `Trace marked coeval-internal was skipped on ingest: ${sourceTraceId}`
-      : "Trace marked coeval-internal was skipped on ingest");
-    this.name = "RecursiveTraceSkippedError";
-  }
-}
-
-export class GoldenSetEntryAlreadyRetiredError extends Error {
-  constructor(entryId: string, readonly retirement: GoldenSetRetirementContext | null = null) {
-    super(`Golden-set entry already retired: ${entryId}`);
-    this.name = "GoldenSetEntryAlreadyRetiredError";
-  }
-}
-
-export class GoldenSetEntryNotFoundError extends Error {
-  constructor(entryId: string) {
-    super(`Golden-set entry not found: ${entryId}`);
-    this.name = "GoldenSetEntryNotFoundError";
-  }
-}
-
-export class CaseNotFoundError extends Error {
-  constructor(caseId: string) {
-    super(`Case not found in this project: ${caseId}`);
-    this.name = "CaseNotFoundError";
-  }
-}
-
-// The skill version pins a real provider but the factory could only produce
-// the mock fallback (missing API key / unknown provider). The gate must
-// refuse to run rather than certify a version with meaningless verdicts.
-export class SkillVersionNotSignableError extends Error {
-  constructor(versionId: string, status: string) {
-    super(`Skill version ${versionId} is ${status} — only a never-approved draft can be signed off as-is`);
-    this.name = "SkillVersionNotSignableError";
-  }
-}
-
-export class AgentSetupEligibilityError extends Error {
-  constructor(
-    readonly code: "project_not_empty" | "project_already_configured" | "pairing_no_longer_active",
-    message: string
-  ) {
-    super(message);
-    this.name = "AgentSetupEligibilityError";
-  }
-}
-
-export class RegressionGateUnavailableError extends Error {
-  constructor(readonly provider: string) {
-    super(
-      `Regression gate cannot run: skill version pins provider "${provider}" but no usable credentials are configured (the judge would fall back to the mock). Set the provider API key or pin provider "mock" explicitly.`
-    );
-    this.name = "RegressionGateUnavailableError";
-  }
-}
-
-// A provider call failed while re-judging the golden set. Surfaced as a typed
-// error so the route can answer 502 with context instead of a bare 500.
-export class RegressionGateJudgeError extends Error {
-  constructor(caseId: string, cause: unknown) {
-    super(
-      `Regression gate failed while judging golden case ${caseId}: ${cause instanceof Error ? cause.message : String(cause)}. No version was created; retry once the provider recovers.`
-    );
-    this.name = "RegressionGateJudgeError";
-  }
-}
-
-// Promotion would freeze a label that contradicts the team's recorded human
-// decision on the case. 409 — the caller must read the recorded label first.
-export class GoldenSetLabelConflictError extends Error {
-  constructor(caseId: string, requested: string, recorded: string) {
-    super(
-      `Cannot promote ${caseId} as "${requested}": the recorded human decision on this case is "${recorded}". Record a new human verdict first, or promote with the recorded label.`
-    );
-    this.name = "GoldenSetLabelConflictError";
-  }
-}
-
-export class LangSmithIntegrationNotFoundError extends Error {
-  constructor(integrationId: string) {
-    super(`LangSmith integration not found: ${integrationId}`);
-    this.name = "LangSmithIntegrationNotFoundError";
-  }
-}
-
-export class LangfuseIntegrationNotFoundError extends Error {
-  constructor(integrationId: string) {
-    super(`Langfuse integration not found: ${integrationId}`);
-    this.name = "LangfuseIntegrationNotFoundError";
-  }
-}
-
-export class NoCurrentSkillError extends Error {
-  constructor(projectId: string) {
-    super(`No skill version found for project: ${projectId}`);
-    this.name = "NoCurrentSkillError";
-  }
-}
-
-export class ImportSkillVersionBindingError extends Error {
-  constructor(message = "Import jobs must be pinned to an evaluator version in the same project") {
-    super(message);
-    this.name = "ImportSkillVersionBindingError";
-  }
-}
-
-export class AmbiguousProjectSkillError extends Error {
-  constructor(readonly projectId: string, readonly criterionCount: number) {
-    super(
-      `Project ${projectId} has ${criterionCount} evaluator scopes; choose a criterion or skillVersionId explicitly.`
-    );
-    this.name = "AmbiguousProjectSkillError";
-  }
-}
-
-export class CriterionStableKeyConflictError extends Error {
-  constructor(readonly stableKey: string) {
-    super(`Criterion stableKey already exists in this project: ${stableKey}`);
-    this.name = "CriterionStableKeyConflictError";
-  }
-}
-
-export class EvaluatorSuiteBindingError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "EvaluatorSuiteBindingError";
-  }
-}
-
-export class EvaluatorSuiteIdempotencyConflictError extends Error {
-  constructor(readonly idempotencyKey: string) {
-    super(`Evaluator suite idempotency key was already used for different semantics: ${idempotencyKey}`);
-    this.name = "EvaluatorSuiteIdempotencyConflictError";
-  }
-}
-
-export class LangSmithCredentialsMissingError extends Error {
-  constructor(integrationId: string) {
-    super(`LangSmith integration credentials missing API key: ${integrationId}`);
-    this.name = "LangSmithCredentialsMissingError";
-  }
-}
-
-export class LangfuseCredentialsMissingError extends Error {
-  constructor(integrationId: string) {
-    super(`Langfuse integration credentials missing public/secret key: ${integrationId}`);
-    this.name = "LangfuseCredentialsMissingError";
-  }
-}
-
-export class IronsideIntegrationNotFoundError extends Error {
-  constructor(integrationId: string) {
-    super(`Ironside integration not found: ${integrationId}`);
-    this.name = "IronsideIntegrationNotFoundError";
-  }
-}
-
-export class IronsideIntegrationChangedError extends Error {
-  constructor(integrationId: string) {
-    super(`Ironside integration changed during validation: ${integrationId}`);
-    this.name = "IronsideIntegrationChangedError";
-  }
-}
-
-export class IronsideIntegrationAlreadyExistsError extends Error {
-  constructor(projectId: string) {
-    super(`An Ironside integration already exists for project: ${projectId}`);
-    this.name = "IronsideIntegrationAlreadyExistsError";
-  }
-}
-
-export class IronsideIntegrationRevalidationRequiredError extends Error {
-  constructor(integrationId: string) {
-    super(`Ironside integration must be revalidated before importing: ${integrationId}`);
-    this.name = "IronsideIntegrationRevalidationRequiredError";
-  }
-}
-
-export class IronsideCredentialsMissingError extends Error {
-  constructor(integrationId: string) {
-    super(`Ironside integration credentials missing API key: ${integrationId}`);
-    this.name = "IronsideCredentialsMissingError";
-  }
-}
-
-export class FeedbackSyncJobNotFoundError extends Error {
-  constructor(feedbackSyncJobId: string) {
-    super(`Feedback sync job not found: ${feedbackSyncJobId}`);
-    this.name = "FeedbackSyncJobNotFoundError";
-  }
-}
-
-export class FeedbackSyncCredentialsMissingError extends Error {
-  constructor(feedbackSyncJobId: string) {
-    super(`Feedback sync credentials missing API key: ${feedbackSyncJobId}`);
-    this.name = "FeedbackSyncCredentialsMissingError";
-  }
-}
-
-export class DatasetNotFoundError extends Error {
-  constructor(datasetId: string) {
-    super(`Dataset not found in this project: ${datasetId}`);
-    this.name = "DatasetNotFoundError";
-  }
-}
-
-export class DatasetNameTakenError extends Error {
-  constructor(name: string) {
-    super(`An active dataset named "${name}" already exists in this project`);
-    this.name = "DatasetNameTakenError";
-  }
-}
-
-export class TraceTestSourceNotFoundError extends Error {
-  constructor(sourceCaseId: string) {
-    super(`Source conversation not found in this project: ${sourceCaseId}`);
-    this.name = "TraceTestSourceNotFoundError";
-  }
-}
-
-export class TraceTestNotFoundError extends Error {
-  constructor(traceTestId: string) {
-    super(`Test not found in this project: ${traceTestId}`);
-    this.name = "TraceTestNotFoundError";
-  }
-}
-
-export class TraceTestRevisionConflictError extends Error {
-  constructor(readonly expectedRevision: number, readonly currentRevision: number) {
-    super(`Test changed from revision ${expectedRevision} to ${currentRevision}`);
-    this.name = "TraceTestRevisionConflictError";
-  }
-}
-
-export class TraceTestValidationNotReadyError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "TraceTestValidationNotReadyError";
-  }
 }
 
 export class DemoRepository implements CoevalRepository {
@@ -5697,203 +5033,8 @@ export class DemoRepository implements CoevalRepository {
   }
 }
 
-export interface JudgeRunContext {
-  projectId: string;
-  caseId: string;
-  skillVersion: SkillVersion;
-  trace: Trace;
-}
-
-export interface RecordJudgeRunInput {
-  projectId: string;
-  caseId: string;
-  skillVersionId: string;
-  verdict: Awaited<ReturnType<JudgeProvider["judge"]>>;
-  rawRequest?: unknown;
-  rawResponse?: unknown;
-  // Wall-clock duration of the provider call (added early so eval runs have
-  // latency history; cost capture follows with provider-usage plumbing).
-  latencyMs?: number | undefined;
-  // token usage from the provider envelope (absent when unreported).
-  inputTokens?: number | undefined;
-  outputTokens?: number | undefined;
-  providerMetadata?: {
-    model: string | null;
-    requestId: string | null;
-    responseId: string | null;
-    systemFingerprint: string | null;
-  } | undefined;
-}
-
 function gateFailureMessage(error: unknown): string {
   return (error instanceof Error ? error.message : String(error)).slice(0, 2_000);
-}
-
-export interface TraceImportContext {
-  ingestionPurpose: RuntimeIngestionPurpose;
-  sourceIntegrationId?: string | undefined;
-  sourceTraceVersion?: string | undefined;
-  /** Stable tenant identity at the upstream provider; part of import identity. */
-  sourceRemoteProjectId?: string | undefined;
-  importJobId?: string | undefined;
-  normalizationVersion?: string | undefined;
-  redactionConfig?: TraceRedactionConfig | undefined;
-}
-
-export const TRACE_INGESTION_PURPOSES_BY_SOURCE = {
-  manual: [
-    "analysis_eligible_manual",
-    "judge_api",
-    "judge_batch_general",
-    "dataset_example",
-    "trace_test_synthetic"
-  ],
-  langsmith: ["analysis_eligible_langsmith"],
-  langfuse: ["analysis_eligible_langfuse"],
-  ironside: ["analysis_eligible_ironside"],
-  release_evidence: ["release_evidence"],
-  gate_candidate: []
-} as const satisfies Record<CaseSource, readonly RuntimeIngestionPurpose[]>;
-
-export function assertTraceIngestionPurpose(
-  source: CaseSource,
-  purpose: RuntimeIngestionPurpose
-): void {
-  const allowed = TRACE_INGESTION_PURPOSES_BY_SOURCE[source] as readonly RuntimeIngestionPurpose[];
-  if (!allowed.includes(purpose)) {
-    throw new Error(`Ingestion purpose ${purpose} is not valid for case source ${source}`);
-  }
-}
-
-export interface CreateImportJobInput {
-  projectId: string;
-  source: TraceSource;
-  sourceIntegrationId?: string | undefined;
-  skillVersionId?: string | undefined;
-  actorUserId?: string | undefined;
-  requestedLimit?: number | undefined;
-}
-
-export interface CompleteImportJobInput {
-  importedCount: number;
-  queuedJudgeCount: number;
-}
-
-export interface ListImportJobsInput {
-  projectId: string;
-  status?: ImportJobStatus | undefined;
-  limit: number;
-}
-
-export interface PromoteExceptionToGoldenSetInput extends PromoteGoldenSetInput {
-  projectId: string;
-  caseId: string;
-  actorUserId?: string | undefined;
-  actorName?: string | undefined;
-}
-
-export interface RetireGoldenSetEntryInput {
-  projectId: string;
-  entryId: string;
-  actorUserId?: string | undefined;
-  reason?: string | undefined;
-}
-
-export interface LangSmithImportContext extends LangSmithIntegration {
-  apiKey: string;
-  limit: number;
-  redactionConfig?: TraceRedactionConfig | undefined;
-}
-
-export interface ClaimLangSmithImportTargetsInput {
-  now: Date;
-  intervalMs: number;
-  batchSize: number;
-  defaultLimit: number;
-}
-
-export interface LangfuseImportContext extends LangfuseIntegration {
-  publicKey: string;
-  secretKey: string;
-  limit: number;
-  redactionConfig?: TraceRedactionConfig | undefined;
-}
-
-export interface ClaimLangfuseImportTargetsInput {
-  now: Date;
-  intervalMs: number;
-  batchSize: number;
-  defaultLimit: number;
-}
-
-export interface IronsideImportContext extends IronsideIntegration {
-  apiKey: string;
-  limit: number;
-  redactionConfig?: TraceRedactionConfig | undefined;
-  syncState: IronsideSyncState;
-  revalidationRequired: boolean;
-  /** Monotonic connection identity CAS; never exposed through the public API. */
-  connectionRevision: number;
-}
-
-export interface ClaimIronsideImportTargetsInput {
-  now: Date;
-  intervalMs: number;
-  batchSize: number;
-  defaultLimit: number;
-}
-
-export interface LangSmithCredentials extends LangSmithIntegration {
-  apiKey: string;
-}
-
-export interface LangfuseCredentials extends LangfuseIntegration {
-  publicKey: string;
-  secretKey: string;
-}
-
-export interface IronsideCredentials extends IronsideIntegration {
-  apiKey: string;
-  connectionRevision: number;
-}
-
-export type FeedbackSyncProvider = "langsmith" | "langfuse" | "ironside";
-export type FeedbackSyncStatus = "pending" | "sending" | "synced" | "failed" | "blocked";
-
-export interface FeedbackSyncJobRecord {
-  id: string;
-  projectId: string;
-  judgeRunId: string;
-  provider: FeedbackSyncProvider;
-  status: FeedbackSyncStatus;
-}
-
-export interface FeedbackSyncContext {
-  id: string;
-  projectId: string;
-  provider: FeedbackSyncProvider;
-  judgeRun: JudgeRun & { modelBinding: SkillVersion["modelBinding"] };
-  sourceTraceId: string;
-  sourceTraceVersion: string | null;
-  criterionStableKey: string;
-  integration: LangSmithCredentials | LangfuseCredentials | IronsideCredentials;
-}
-
-export interface ListFeedbackSyncJobsInput {
-  projectId: string;
-  status?: FeedbackSyncStatus | undefined;
-  limit: number;
-}
-
-export interface FeedbackSyncJobListItem {
-  id: string;
-  projectId: string;
-  judgeRunId: string;
-  provider: FeedbackSyncProvider;
-  status: FeedbackSyncStatus;
-  attempts: number;
-  lastError: string | null;
-  createdAt: string;
 }
 
 function toPublicLangSmithIntegration(integration: LangSmithImportContext): LangSmithIntegration {
@@ -6203,70 +5344,6 @@ function demoTraceForGoldenEntry(entry: GoldenSetEntry): Trace {
 function nextPatchVersion(version: string): string {
   const [major = "0", minor = "0", patch = "0"] = version.split(".");
   return `${major}.${minor}.${Number(patch) + 1}`;
-}
-
-export type ConvergenceCursor = {
-  versionId: string;
-  criterionVersionId: string;
-  beforeVersionId: string | null;
-  snapshotCreatedAt: string;
-  snapshotId: string;
-  rank: number;
-  caseId: string;
-};
-
-export function convergencePageLimit(value: number | undefined): number {
-  if (value === undefined) return CONVERGENCE_CASE_PAGE_DEFAULT_LIMIT;
-  return Math.min(CONVERGENCE_CASE_PAGE_MAX_LIMIT, Math.max(1, Math.trunc(value)));
-}
-
-export function convergenceChangeRank(change: ConvergenceCaseChange): number {
-  if (change === "regressed") return 0;
-  if (change === "improved") return 1;
-  if (change === "still_disagree") return 2;
-  return 3;
-}
-
-export function encodeConvergenceCursor(cursor: ConvergenceCursor): string {
-  return Buffer.from(JSON.stringify({ v: 1, ...cursor }), "utf8").toString("base64url");
-}
-
-export function decodeConvergenceCursor(value: string | null): ConvergenceCursor | null {
-  if (value === null) return null;
-  try {
-    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as Record<string, unknown>;
-    if (
-      parsed.v !== 1 ||
-      !Number.isInteger(parsed.rank) ||
-      Number(parsed.rank) < 0 ||
-      Number(parsed.rank) > 3 ||
-      typeof parsed.versionId !== "string" ||
-      parsed.versionId.length === 0 ||
-      typeof parsed.criterionVersionId !== "string" ||
-      parsed.criterionVersionId.length === 0 ||
-      !(parsed.beforeVersionId === null || typeof parsed.beforeVersionId === "string") ||
-      typeof parsed.snapshotCreatedAt !== "string" ||
-      Number.isNaN(Date.parse(parsed.snapshotCreatedAt)) ||
-      typeof parsed.snapshotId !== "string" ||
-      parsed.snapshotId.length === 0 ||
-      typeof parsed.caseId !== "string" ||
-      parsed.caseId.length === 0
-    ) {
-      throw new InvalidConvergenceCursorError();
-    }
-    return {
-      versionId: parsed.versionId,
-      criterionVersionId: parsed.criterionVersionId,
-      beforeVersionId: parsed.beforeVersionId as string | null,
-      snapshotCreatedAt: parsed.snapshotCreatedAt,
-      snapshotId: parsed.snapshotId,
-      rank: Number(parsed.rank),
-      caseId: parsed.caseId
-    };
-  } catch (error) {
-    if (error instanceof InvalidConvergenceCursorError) throw error;
-    throw new InvalidConvergenceCursorError();
-  }
 }
 
 // B12 (M0 C8): demo parity with PG's attachActorNames — the seeded demo

@@ -13,8 +13,8 @@
     },
     "apps/api/src/repository.ts": {
       "classification": "refactor_candidate",
-      "reason": "Repository ports, inputs, errors, helpers, fixtures, and the demo implementation share one file.",
-      "revisit": "Separate compatibility exports, consumer ports, and demo composition while preserving facade identity."
+      "reason": "The compatibility barrel, broad repository port, golden regression and health helpers, fixtures, and in-memory demo implementation still share one file.",
+      "revisit": "Separate consumer ports and demo composition while preserving facade identity and shared-store behavior."
     },
     "pnpm-lock.yaml": {
       "classification": "generated",
