@@ -72,7 +72,6 @@ import {
   type DatasetDetail,
   type DatasetRevisionDetail,
   type EvalRun,
-  type EvaluatorExecutionContext,
   type TraceTestRunSource,
   type RunComparison,
   type SkillFormatV1,
@@ -93,7 +92,7 @@ import {
   VerdictSourceSchema
 } from "@coeval/shared";
 import { traceTestRunOutcome } from "@coeval/shared";
-import type { Queue, QueueSendOptions } from "@coeval/queue";
+import type { Queue } from "@coeval/queue";
 import { AgentSetupEligibilityError, AmbiguousProjectSkillError, AssessmentReceiptIntegrityError, AssessmentReceiptUnavailableError, CaseNotFoundError, CoevalRepository, CriterionStableKeyConflictError, DatasetNameTakenError, DatasetNotFoundError, DatasetRevisionConflictError, DatasetRevisionNotFoundError, DemoRepository, EvaluatorSuiteBindingError, EvaluatorSuiteIdempotencyConflictError, GoldenSetEntryAlreadyRetiredError, GoldenSetEntryNotFoundError, GoldenSetLabelConflictError, ImportSkillVersionBindingError, InvalidConvergenceCursorError, IronsideIntegrationAlreadyExistsError, IronsideIntegrationChangedError, IronsideIntegrationNotFoundError, LangfuseIntegrationNotFoundError, LangSmithIntegrationNotFoundError, NoCurrentSkillError, OnboardingCheckConflictError, RecursiveTraceSkippedError, RegressionGateJudgeError, RegressionGateUnavailableError, SealedValidationUnavailableError, SkillVersionNotSignableError, TraceTestNotFoundError, TraceTestRevisionConflictError, TraceTestSourceNotFoundError, TraceTestValidationNotReadyError, type IronsideImportContext, type LangfuseImportContext, type LangSmithImportContext } from "./repository.js";
 import type { CoevalAuth } from "./lib/auth.js";
 import {
@@ -128,7 +127,6 @@ import {
   createStrictJudgeProvider,
   isJudgeAuthError,
   judgeProviderEnvironmentKey,
-  judgeProviderAvailability,
   JudgeProviderUnavailableError,
   openAIJudgeProviderBaseUrl,
   resolveJudgeProviderApiKey
@@ -172,7 +170,6 @@ import { fetchJudgeModelCatalog, JudgeModelCatalogError } from "./lib/judge-mode
 import { computeRunComparisonDiff, runComparisonAgreement, runComparisonStatus } from "./lib/run-comparison.js";
 import { contentDigest, sha256Digest } from "./lib/assessment-receipt.js";
 import { canonicalEvaluatorSuiteManifestBytes } from "./lib/evaluator-suite.js";
-import { runEvalRunInline } from "./workers/eval-run.js";
 import { runExistingCaseBackfill } from "./workers/gate.js";
 import { assertImportJudgingAllowed, scheduleImportedCaseJudging } from "./workers/import-judging.js";
 import { judgeAndRecord } from "./workers/judge.js";
@@ -191,18 +188,10 @@ import {
   validateTraceTestPair,
   type TraceTestValidationRunner
 } from "./lib/trace-test-validator.js";
-
-type Variables = {
-  user: { id: string; email?: string; name?: string } | null;
-  session: unknown | null;
-  projectId: string;
-  // Set by the /api/v1/* key middleware; the batch endpoint uses it to debit
-  // additional rate-limit tokens (one per judged item).
-  apiKeyId?: string;
-  agentBootstrapAuth?:
-    | { kind: "deployment-token" }
-    | { kind: "pairing"; pairing: AgentSetupPairingRecord };
-};
+import {
+  createRequestServices,
+  type AppVariables
+} from "./request-services/index.js";
 
 // Guardrails on the API-keyed judge surface. Env-overridable so a deployment
 // can tune them without a release; the defaults assume one team's CI, not
@@ -346,7 +335,7 @@ export interface CreateAppOptions {
 }
 
 export function createApp(repository: CoevalRepository = new DemoRepository(), options: CreateAppOptions = {}) {
-  const app = new Hono<{ Variables: Variables }>();
+  const app = new Hono<{ Variables: AppVariables }>();
   const trustedOrigins = parseTrustedOrigins(process.env.TRUSTED_ORIGINS);
   const governedReviewRepository = options.governedReviewRepository === undefined
     ? options.pool ? new PgGovernedReviewRepository(options.pool) : null
@@ -369,6 +358,25 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
   const analysisMeasurementRepository = options.analysisMeasurementRepository === undefined
     ? options.pool ? new PgAnalysisMeasurementRepository(options.pool) : null
     : options.analysisMeasurementRepository;
+  const requestServices = createRequestServices({
+    repository,
+    ...(options.pool ? { pool: options.pool } : {}),
+    ...(options.queue ? { queue: options.queue } : {}),
+    ownerAuthorizationEnabled: Boolean(options.auth && options.pool),
+    rateLimitPerMinute: JUDGE_RATE_LIMIT_PER_MINUTE,
+    batchMaxItems: JUDGE_BATCH_MAX_ITEMS
+  });
+  const {
+    createDataset: createDatasetEvalRun,
+    createDatasetRevision: createDatasetRevisionEvalRun,
+    dispatch: dispatchEvalRun,
+    listJudgeProviders,
+    requireOwner,
+    resolveSkillVersionId,
+    startDataset: startDatasetEvalRun,
+    startDatasetRevision: startDatasetRevisionEvalRun,
+    takeRateTokens
+  } = requestServices;
 
   app.use("*", secureHeaders());
   app.use(
@@ -522,30 +530,6 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
   app.use("/api/trace-tests", singleBodyLimit);
   app.use("/api/trace-tests/*", singleBodyLimit);
 
-  // Token bucket per key: sustained rate is JUDGE_RATE_LIMIT_PER_MINUTE
-  // tokens/min; capacity is raised to the batch item cap so one full-size
-  // batch is a legal burst (otherwise a >limit-item batch could NEVER pass —
-  // the requested tokens would exceed what a full bucket holds). State lives
-  // in this createApp closure, so tests and multi-tenant processes don't
-  // bleed into each other across instances.
-  // Every /api/v1 request costs 1 token; the batch endpoint debits one more
-  // per additionally judged item, so batching can't multiply provider spend
-  // past the per-minute budget.
-  const RATE_BUCKET_CAPACITY = Math.max(JUDGE_RATE_LIMIT_PER_MINUTE, JUDGE_BATCH_MAX_ITEMS);
-  const rateBuckets = new Map<string, { tokens: number; refilledAt: number }>();
-  const takeRateTokens = (apiKeyId: string, count: number): boolean => {
-    const now = Date.now();
-    const bucket = rateBuckets.get(apiKeyId) ?? { tokens: RATE_BUCKET_CAPACITY, refilledAt: now };
-    bucket.tokens = Math.min(
-      RATE_BUCKET_CAPACITY,
-      bucket.tokens + ((now - bucket.refilledAt) / 60_000) * JUDGE_RATE_LIMIT_PER_MINUTE
-    );
-    bucket.refilledAt = now;
-    rateBuckets.set(apiKeyId, bucket);
-    if (bucket.tokens < count) return false;
-    bucket.tokens -= count;
-    return true;
-  };
   const isOwnerSessionContractWrite = (method: string, path: string): boolean =>
     method === "POST" && (
       path === "/api/v1/criteria" ||
@@ -668,53 +652,6 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     await next();
   });
 
-  // Resolve the optional caller-pinned skill version: default to the
-  // project's current version; reject ids that don't belong to this project
-  // (a typo'd id would otherwise surface as an FK 500 after traces were
-  // already imported, and another project's id would create a run whose
-  // every item fails).
-  const resolveSkillVersionId = async (
-    projectId: string,
-    requested: string | undefined,
-    authorization: {
-      context: EvaluatorExecutionContext;
-      resourceKind: string;
-      resourceId: string;
-    } = { context: "implicit_production", resourceKind: "api_route", resourceId: "current" }
-  ): Promise<{ id: string } | { invalid: string }> => {
-    let resolvedId: string;
-    if (requested) {
-      const version = await repository.getSkillVersion(projectId, requested);
-      if (!version) return { invalid: `Unknown skillVersionId for this project: ${requested}` };
-      resolvedId = version.id;
-    } else {
-      let skill;
-      try {
-        skill = await repository.getCurrentSkill(projectId);
-      } catch (error) {
-        if (error instanceof AmbiguousProjectSkillError) {
-          return { invalid: "This project has multiple criteria; provide skillVersionId explicitly." };
-        }
-        if (!(error instanceof NoCurrentSkillError)) throw error;
-        return { invalid: "No active skill version. Define one before judging." };
-      }
-      resolvedId = skill.currentVersion.id;
-    }
-    try {
-      await repository.authorizeSkillVersionExecution({
-        projectId,
-        skillVersionId: resolvedId,
-        context: authorization.context,
-        resourceKind: authorization.resourceKind,
-        resourceId: authorization.resourceId,
-        idempotencyKey: `route-auth:${authorization.context}:${authorization.resourceKind}:${authorization.resourceId}:${resolvedId}`
-      });
-    } catch (error) {
-      return { invalid: error instanceof Error ? error.message : "Evaluator version is not authorized for this operation." };
-    }
-    return { id: resolvedId };
-  };
-
   app.use("/api/*", async (c, next) => {
     // /api/v1/* authenticates via API key in the middleware above.
     if (c.req.path.startsWith("/api/v1/")) {
@@ -772,7 +709,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     }
   }));
 
-  const binaryCalibrationIdentity = (c: Context<{ Variables: Variables }>) => ({
+  const binaryCalibrationIdentity = (c: Context<{ Variables: AppVariables }>) => ({
     userId: c.get("user")?.id ?? null,
     projectId: c.get("projectId") ?? "",
     ...(c.get("apiKeyId") ? { apiKeyId: c.get("apiKeyId") } : {})
@@ -981,14 +918,8 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     return c.json({ error: "Active agent setup connection not found." }, 404);
   });
 
-  // Project/environment credential availability (no secrets). The skill
-  // editor uses it to offer only runnable providers. The mock remains a local
-  // demo option and is unavailable when a real database is wired.
-  const projectKeyProviders = async (projectId: string): Promise<ReadonlySet<string>> =>
-    new Set((await repository.listJudgeProviderKeys(projectId)).map((key) => key.provider));
-
   app.get("/api/judge/providers", async (c) => {
-    return c.json({ providers: judgeProviderAvailability(await projectKeyProviders(c.get("projectId")), !options.pool) });
+    return c.json({ providers: await listJudgeProviders(c.get("projectId")) });
   });
 
   app.get("/api/judge/providers/:provider/models", async (c) => {
@@ -1430,10 +1361,9 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         return c.json({
           error: error.message,
           unavailableProvider: error.provider,
-          availableProviders: judgeProviderAvailability(
-            await projectKeyProviders(projectId),
-            !options.pool
-          ).filter((provider) => provider.available).map((provider) => provider.provider)
+          availableProviders: (await listJudgeProviders(projectId))
+            .filter((provider) => provider.available)
+            .map((provider) => provider.provider)
         }, 503);
       }
       throw error;
@@ -1479,7 +1409,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
           return c.json({
             error: error.message,
             unavailableProvider: error.provider,
-            availableProviders: judgeProviderAvailability(await projectKeyProviders(c.get("projectId")), !options.pool).filter((p) => p.available).map((p) => p.provider)
+            availableProviders: (await listJudgeProviders(c.get("projectId"))).filter((p) => p.available).map((p) => p.provider)
           }, 503);
         }
         throw error;
@@ -1518,7 +1448,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         return c.json({
           error: error.message,
           unavailableProvider: error.provider,
-          availableProviders: judgeProviderAvailability(await projectKeyProviders(c.get("projectId")), !options.pool).filter((p) => p.available).map((p) => p.provider)
+          availableProviders: (await listJudgeProviders(c.get("projectId"))).filter((p) => p.available).map((p) => p.provider)
         }, 503);
       }
       if (error instanceof RegressionGateJudgeError) return c.json({ error: error.message }, 502);
@@ -2444,7 +2374,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         return c.json({
           error: error.message,
           unavailableProvider: error.provider,
-          availableProviders: judgeProviderAvailability(await projectKeyProviders(c.get("projectId")), !options.pool).filter((p) => p.available).map((p) => p.provider)
+          availableProviders: (await listJudgeProviders(c.get("projectId"))).filter((p) => p.available).map((p) => p.provider)
         }, 503);
       }
       // the provider rejected the credential — with a BYO project key
@@ -2649,17 +2579,12 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
           })
     });
 
-    if (run.status !== "completed") {
-      if (options.queue) {
-        await repository.armEvalRunItemDeliveryDeadline(projectId, run.id);
-        await options.queue.send("eval.run", { projectId, evalRunId: run.id }, { retryLimit: 5, retryBackoff: true });
-      } else {
-        // Queue-less (demo) mode judges inline before responding — the mock
-        // provider is cheap and the caps are small. PG mode keeps 202-then-poll.
-        await runEvalRunInline(repository, projectId, run.id);
-      }
-    }
-    const current = (await repository.getEvalRun(projectId, run.id)) ?? run;
+    // A fully cached batch is already terminal and must not fan out. Every
+    // nonterminal run goes through the same recovery-before-send boundary as
+    // session evals, comparisons, trace tests, and future extracted routers.
+    const current = run.status === "completed"
+      ? (await repository.getEvalRun(projectId, run.id)) ?? run
+      : await dispatchEvalRun(projectId, run);
 
     return c.json({
       evalRunId: run.id,
@@ -2843,16 +2768,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
   // Datasets: named case collections for repeatable eval runs. Mutations are
   // owner-only (curation acts, matching review queues); reads are open to
   // project members.
-  const requireOwner = async (c: Context<{ Variables: Variables }>, action: string): Promise<Response | null> => {
-    if (!options.auth || !options.pool) return null;
-    const user = c.get("user");
-    if (!user) return c.json({ error: "Unauthorized" }, 401);
-    const role = await userProjectRole(options.pool, { userId: user.id, projectId: c.get("projectId") });
-    if (role !== "owner") return c.json({ error: `Only owners can ${action}` }, 403);
-    return null;
-  };
-
-  const traceTestError = (c: Context<{ Variables: Variables }>, error: unknown): Response | null => {
+  const traceTestError = (c: Context<{ Variables: AppVariables }>, error: unknown): Response | null => {
     if (error instanceof TraceTestSourceNotFoundError || error instanceof TraceTestNotFoundError) {
       return c.json({ error: error.message }, 404);
     }
@@ -3517,113 +3433,6 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     if (!archived) return c.json({ error: "Dataset not found" }, 404);
     return c.json({ ok: true });
   });
-
-  // The ONE dataset→eval-run path, split into create + dispatch phases:
-  // creation snapshots the dataset's items into a run row (no tokens spent);
-  // dispatch fans out through the queue (PG mode) or judges inline (demo) —
-  // that's the provider-spending step. POST /api/eval-runs starts runs via
-  // startDatasetEvalRun (create + dispatch back-to-back); POST
-  // /api/run-comparisons persists both runs and the comparison row BEFORE
-  // dispatching either, so a midway failure never orphans a spending run.
-  // The comparison feature must never grow a second fan-out.
-  const createDatasetEvalRun = async (input: {
-    projectId: string;
-    dataset: DatasetDetail;
-    skillVersionId: string;
-    createdByUserId?: string | undefined;
-    sourceTraceTest?: TraceTestRunSource | undefined;
-  }): Promise<EvalRun> =>
-    repository.createEvalRun({
-      projectId: input.projectId,
-      skillVersionId: input.skillVersionId,
-      trigger: "manual",
-      datasetId: input.dataset.id,
-      ...(input.createdByUserId ? { createdByUserId: input.createdByUserId } : {}),
-      ...(input.sourceTraceTest ? { sourceTraceTest: input.sourceTraceTest } : {}),
-      items: input.dataset.items.map((item) => ({
-        caseId: item.caseId,
-        datasetItemId: item.id,
-        ...(item.expectedLabel ? { expectedLabel: item.expectedLabel } : {}),
-        ...(item.expectedFailStep !== null ? { expectedFailStep: item.expectedFailStep } : {})
-      }))
-    });
-
-  const createDatasetRevisionEvalRun = async (input: {
-    projectId: string;
-    revision: DatasetRevisionDetail;
-    skillVersionId: string;
-    createdByUserId?: string | undefined;
-  }): Promise<EvalRun> => {
-    if (input.revision.role === "sealed_validation") {
-      throw new SealedValidationUnavailableError();
-    }
-    if (input.revision.sourceKind === "analysis_population") {
-      throw new DatasetRevisionConflictError(
-        "Analysis population revisions cannot run through the ordinary evaluation path"
-      );
-    }
-    const items = input.revision.items.map((item) => {
-      if (!item.sourceCaseId) {
-        throw new DatasetRevisionConflictError(`Dataset revision item ${item.id} has no judgeable case identity`);
-      }
-      return {
-        caseId: item.sourceCaseId,
-        datasetRevisionItemId: item.id,
-        ...(item.referenceLabel ? { expectedLabel: item.referenceLabel } : {}),
-        ...(item.referenceFailStep !== null ? { expectedFailStep: item.referenceFailStep } : {})
-      };
-    });
-    return repository.createEvalRun({
-      projectId: input.projectId,
-      skillVersionId: input.skillVersionId,
-      trigger: "manual",
-      datasetRevisionId: input.revision.id,
-      ...(input.createdByUserId ? { createdByUserId: input.createdByUserId } : {}),
-      items
-    });
-  };
-
-  const dispatchEvalRun = async (
-    projectId: string,
-    run: EvalRun,
-    queueOptions: QueueSendOptions = {}
-  ): Promise<EvalRun> => {
-    if (options.queue) {
-      // Arm the domain recovery lease before the external queue write. A
-      // process death after send can then be reconciled even if eval.run dies
-      // before its handler starts.
-      await repository.armEvalRunItemDeliveryDeadline(projectId, run.id);
-      await options.queue.send("eval.run", { projectId, evalRunId: run.id }, {
-        retryLimit: 5,
-        retryBackoff: true,
-        ...queueOptions
-      });
-    } else {
-      await runEvalRunInline(repository, projectId, run.id);
-    }
-    return (await repository.getEvalRun(projectId, run.id)) ?? run;
-  };
-
-  const startDatasetEvalRun = async (input: {
-    projectId: string;
-    dataset: DatasetDetail;
-    skillVersionId: string;
-    createdByUserId?: string | undefined;
-    sourceTraceTest?: TraceTestRunSource | undefined;
-  }): Promise<EvalRun> => {
-    const run = await createDatasetEvalRun(input);
-    return dispatchEvalRun(input.projectId, run);
-  };
-
-  const startDatasetRevisionEvalRun = async (input: {
-    projectId: string;
-    revision: DatasetRevisionDetail;
-    skillVersionId: string;
-    createdByUserId?: string | undefined;
-  }): Promise<EvalRun> => {
-    const run = await createDatasetRevisionEvalRun(input);
-    return dispatchEvalRun(input.projectId, run);
-  };
 
   // Beginner trace-to-test path: materialize the enabled test's retained,
   // redacted source as one stable dataset case, then use the normal eval-run
