@@ -3,7 +3,7 @@
   "files": {
     "packages/db/migrations/0001_baseline.sql": {
       "classification": "structural_exception",
-      "reason": "ADR-0011 requires one checksummed current-schema migration during the clean-install period.",
+      "reason": "ADR-0011 requires one current-schema baseline migration during the clean-install period; the migration runner checksums it.",
       "revisit": "Revisit only when an accepted database-lifecycle decision ends the single-baseline policy."
     },
     "apps/api/src/repository.pg.ts": {

@@ -2,12 +2,18 @@
 
 import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import { relative, resolve } from "node:path";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  classifyInventoryDrift,
+  countLines,
+  isBinary,
+  validateConfig
+} from "./large-files-lib.mjs";
 
 const configPath = fileURLToPath(new URL("./large-files.json", import.meta.url));
 const config = JSON.parse(await readFile(configPath, "utf8"));
-validateConfig(config);
+validateConfig(config, configPath);
 
 const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
   encoding: "utf8"
@@ -19,8 +25,23 @@ const tracked = execFileSync("git", ["ls-files", "-z"], {
 }).split("\0").filter(Boolean);
 
 const rows = [];
+const unavailable = [];
+const binary = [];
 for (const path of tracked) {
-  const contents = await readFile(resolve(root, path));
+  let contents;
+  try {
+    contents = await readFile(resolve(root, path));
+  } catch (error) {
+    unavailable.push({
+      path,
+      code: error && typeof error === "object" && "code" in error ? String(error.code) : "unavailable"
+    });
+    continue;
+  }
+  if (isBinary(contents)) {
+    binary.push(path);
+    continue;
+  }
   const lines = countLines(contents);
   if (lines <= config.threshold) continue;
   const record = config.files[path];
@@ -34,10 +55,12 @@ for (const path of tracked) {
 
 rows.sort((left, right) => right.lines - left.lines || left.path.localeCompare(right.path));
 
-const trackedSet = new Set(tracked);
-const stale = Object.keys(config.files).filter((path) => {
-  if (!trackedSet.has(path)) return true;
-  return !rows.some((row) => row.path === path);
+const drift = classifyInventoryDrift({
+  configured: Object.keys(config.files),
+  tracked,
+  overThreshold: rows.map((row) => row.path),
+  unavailable: unavailable.map((row) => row.path),
+  binary
 });
 
 console.log(`Tracked files over ${config.threshold.toLocaleString("en-US")} lines: ${rows.length}`);
@@ -60,42 +83,28 @@ for (const classification of [
   console.log(`${classification}: ${counts[classification]?.length ?? 0}`);
 }
 
-if (stale.length > 0) {
+if (unavailable.length > 0) {
   console.log("");
-  console.log("Recorded entries no longer over the threshold (review the inventory):");
-  for (const path of stale.sort()) console.log(`- ${path}`);
+  console.log("Tracked paths unavailable in the working tree (not counted):");
+  for (const item of unavailable.sort((left, right) => left.path.localeCompare(right.path))) {
+    console.log(`- ${item.path} (${item.code})`);
+  }
+}
+
+if (drift.untracked.length > 0) {
+  console.log("");
+  console.log("Recorded inventory paths that are no longer tracked:");
+  for (const path of drift.untracked) console.log(`- ${path}`);
+}
+
+if (drift.belowThreshold.length > 0) {
+  console.log("");
+  console.log("Recorded entries no longer over the threshold (review the classification):");
+  for (const path of drift.belowThreshold) console.log(`- ${path}`);
 }
 
 const unclassified = rows.filter((row) => row.classification === "review_required");
 if (unclassified.length > 0) {
   console.log("");
   console.log("Review required: classify these files in tools/large-files.json.");
-}
-
-function countLines(contents) {
-  if (contents.length === 0) return 0;
-  let lines = 0;
-  for (const byte of contents) {
-    if (byte === 0x0a) lines += 1;
-  }
-  return contents.at(-1) === 0x0a ? lines : lines + 1;
-}
-
-function validateConfig(value) {
-  if (!value || !Number.isInteger(value.threshold) || value.threshold < 1 || !value.files || typeof value.files !== "object") {
-    throw new Error(`Invalid large-file inventory at ${relative(process.cwd(), configPath)}`);
-  }
-  const classifications = new Set([
-    "generated",
-    "structural_exception",
-    "refactor_candidate",
-    "cohesion_review"
-  ]);
-  for (const [path, record] of Object.entries(value.files)) {
-    if (!record || !classifications.has(record.classification) ||
-        typeof record.reason !== "string" || record.reason.trim().length === 0 ||
-        typeof record.revisit !== "string" || record.revisit.trim().length === 0) {
-      throw new Error(`Invalid classification for ${path} in ${relative(process.cwd(), configPath)}`);
-    }
-  }
 }

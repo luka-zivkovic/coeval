@@ -20,7 +20,9 @@ pnpm large-files
 The command reports every tracked file over the threshold and its current
 classification. It does not fail because a file is large. New unclassified
 files are shown as `review_required` so a reviewer can decide whether to split
-or document them.
+or document them. It reads the working tree, so unstaged edits affect the
+reported counts. Tracked paths unavailable in the working tree are listed
+separately without failing the command, and binary assets are ignored.
 
 ## Review rule
 
@@ -75,15 +77,15 @@ In particular:
   evidence classes.
 - `@coeval/shared` keeps its root public entry point unless a separate public
   API decision authorizes subpath exports.
-- During the accepted clean-install period, `0001_baseline.sql` remains one
-  checksummed current-schema migration. Its size is not permission to split or
-  reinterpret the schema.
+- During the accepted clean-install period, ADR-0011 keeps
+  `0001_baseline.sql` as one current-schema migration, and the migration runner
+  checksums it. Its size is not permission to split or reinterpret the schema.
 
 ## Current inventory
 
 The machine-readable classification lives in
 [`tools/large-files.json`](../tools/large-files.json). On 2026-08-31, Coeval
-has 25 tracked files over 1,000 lines:
+started this review with 25 tracked files over 1,000 lines:
 
 - 1 generated artifact;
 - 2 structural exceptions;
