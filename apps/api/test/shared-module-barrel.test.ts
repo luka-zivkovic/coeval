@@ -4,6 +4,8 @@ import * as judge from "../../../packages/shared/dist/judge.js";
 import * as legacyReview from "../../../packages/shared/dist/legacy-review.js";
 import * as projects from "../../../packages/shared/dist/projects.js";
 import * as skills from "../../../packages/shared/dist/skills.js";
+import * as traceTests from "../../../packages/shared/dist/trace-tests.js";
+import * as traces from "../../../packages/shared/dist/traces.js";
 import * as verdicts from "../../../packages/shared/dist/verdicts.js";
 
 const rootExports = shared as Record<string, unknown>;
@@ -28,6 +30,8 @@ describe("shared module barrel", () => {
     expectRootIdentity(legacyReview);
     expectRootIdentity(projects);
     expectRootIdentity(skills);
+    expectRootIdentity(traceTests);
+    expectRootIdentity(traces, new Set(["TraceStepsSchema"]));
     expectRootIdentity(verdicts);
   });
 });
