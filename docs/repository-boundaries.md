@@ -87,11 +87,16 @@ counters, scalar pointers, and promise-deduplication state. `DemoRepository`
 allocates exactly one store per facade instance; the store is an internal
 composition seam and is not re-exported by the public repository module. The
 CURRENT domain slices are `DemoProjectRepository`, which implements the seven
-`ProjectRepositoryPort` methods, and `DemoCriterionSuiteRepository`, which
-implements the nine `CriterionSuiteRepositoryPort` methods. The facade
-constructs both once with its exact store, gives the project slice only the
-narrow callbacks needed for cross-port reads, and preserves every public method
-path through direct delegation. Remaining domain slices are still TARGET work.
+`ProjectRepositoryPort` methods; `DemoCriterionSuiteRepository`, which
+implements the nine `CriterionSuiteRepositoryPort` methods; and
+`DemoSkillLifecycleRepository`, which implements the fifteen
+`SkillLifecycleRepositoryPort` methods. The facade constructs all three once
+with its exact store and gives the project and skill-lifecycle slices only
+narrow dependencies. The skill slice also receives two same-port facade
+callbacks so its composite create operation preserves the CURRENT subclass
+dispatch of `createSkillVersionPending` and `runRegressionGateForVersion`.
+Every public method path remains a direct facade delegation. Remaining domain
+slices are still TARGET work.
 
 The `pnpm repository-boundaries` gate remains PostgreSQL-only, while
 `demo-repository-store.test.ts` pins the Demo store inventory and composition
@@ -101,6 +106,11 @@ trace imported through another facade domain.
 `demo-criterion-repository.test.ts` pins the criterion/suite slice's ownership,
 single construction, exact facade delegates, cross-domain evaluator visibility,
 and suite binding, retry, and revision behavior.
+`demo-skill-repository.test.ts` pins the skill-lifecycle slice's ownership,
+single construction, exact store and provider identities, cross-port immutable
+regression-revision callbacks, facade polymorphism, selector isolation,
+onboarding replay and conflicts, signoff identity, exposure evidence,
+terminalization, filtered reads, and shared facade visibility.
 
 The shared store has these rules:
 
