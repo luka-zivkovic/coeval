@@ -2,7 +2,7 @@
 
 Status: **CURRENT implementation guidance**
 
-Last reviewed: 2026-09-01
+Last reviewed: 2026-09-02
 
 ## Purpose
 
@@ -45,12 +45,21 @@ human-verdict loading live in `repository.pg/dataset-revision-commands.ts`.
 Its five commands keep golden promotion, retirement, public revision creation,
 explicit regression-revision creation, and evaluator-version setup on their
 existing caller-owned clients.
+Eval-run counter terminalization and immutable assessment-receipt minting live
+in `repository.pg/assessment-receipt-commands.ts`. Both commands accept the
+caller-owned client, so cached run creation, item completion and failure,
+historical freeze, consumer comparison, and correction keep receipt creation
+inside their existing transactions. Receipt v1 canonical bytes and source
+snapshot construction remain unchanged.
 `repository-pg-support.test.ts` pins the support module surfaces, the sole
 `PgRepository` implementation owner, the complete 161-method public facade,
 and representative retirement-context query behavior;
 `repository-pg-trace-import-commands.test.ts` pins trace-lock and import
 behavior directly, while `repository-pg-dataset-revision-commands.test.ts`
 pins the dataset-revision command surface and representative behavior.
+`repository-pg-assessment-receipt-commands.test.ts` pins the two receipt/run
+commands, fail-closed gate order, counter transitions, canonical minting,
+idempotent replay, and the absence of connection or transaction ownership.
 
 The fixture also pins the one approved pool handoff from the main repository:
 `authorizeSkillVersionExecution` constructs `PgEvaluatorLifecycleRepository`
