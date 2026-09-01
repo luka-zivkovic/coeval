@@ -540,6 +540,10 @@ describe("DemoRepository shared store", () => {
       sourceFile("../src/repository/demo-projects.ts"),
       "DemoProjectRepository"
     );
+    const skillLifecycleRepository = classDeclaration(
+      sourceFile("../src/repository/demo-skills.ts"),
+      "DemoSkillLifecycleRepository"
+    );
     const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed, removeComments: true });
     const properties = repository.members.filter(ts.isPropertyDeclaration);
     expect(properties.map((property) =>
@@ -547,6 +551,7 @@ describe("DemoRepository shared store", () => {
     )).toEqual([
       "private readonly criterionSuiteRepository: DemoCriterionSuiteRepository;",
       "private readonly projectRepository: DemoProjectRepository;",
+      "private readonly skillLifecycleRepository: DemoSkillLifecycleRepository;",
       "private readonly store = new DemoRepositoryStore();"
     ]);
 
@@ -559,7 +564,7 @@ describe("DemoRepository shared store", () => {
       "options: { seedVerdicts?: boolean; } = {}"
     ]);
     expect(demoStoreCreations(repository, repositorySource)).toEqual(["new DemoRepositoryStore()"]);
-    expect(storeAccessNames(repository, criterionSuiteRepository, projectRepository))
+    expect(storeAccessNames(repository, criterionSuiteRepository, projectRepository, skillLifecycleRepository))
       .toEqual([...EXPECTED_STORE_FIELDS].sort());
   });
 
@@ -569,17 +574,19 @@ describe("DemoRepository shared store", () => {
     expect(analysis.storeModuleEdges).toEqual([
       'repository.ts:static-import:import { DemoRepositoryStore } from "./repository/demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
-      'repository/demo-projects.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";'
+      'repository/demo-projects.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-skills.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";'
     ]);
     expect(analysis.storeModuleSpecifierMentions).toEqual([
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
-      'repository/demo-projects.ts:ImportDeclaration:"./demo-store.js"'
+      'repository/demo-projects.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-skills.ts:ImportDeclaration:"./demo-store.js"'
     ]);
     expect(analysis.productionLoaderCalls).toEqual([]);
     expect(analysis.productionLoaderFactoryReferences).toEqual([]);
     expect(analysis.productionModuleObjectMutations).toEqual([
-      "repository.ts:demoSkill.isStarter:="
+      "repository/demo-skills.ts:demoSkill.isStarter:="
     ]);
     expect(analysis.productionAllocations).toEqual([
       "repository.ts:new DemoRepositoryStore()"
@@ -591,6 +598,8 @@ describe("DemoRepository shared store", () => {
       "repository/demo-criteria.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-projects.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-projects.ts:TypeReference:DemoRepositoryStore",
+      "repository/demo-skills.ts:ImportSpecifier:DemoRepositoryStore",
+      "repository/demo-skills.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-store.ts:ClassDeclaration:DemoRepositoryStore"
     ]);
     expect(analysis.repositoryClasses).toEqual(["DemoRepository"]);
@@ -599,6 +608,7 @@ describe("DemoRepository shared store", () => {
       "repository/contracts.ts",
       "repository/demo-criteria.ts",
       "repository/demo-projects.ts",
+      "repository/demo-skills.ts",
       "repository/demo-store.ts",
       "repository/errors.ts",
       "repository/helpers.ts",
@@ -615,7 +625,6 @@ describe("DemoRepository shared store", () => {
       "TypeAliasDeclaration:BinaryJudgeProvider",
       "InterfaceDeclaration:CoevalRepository",
       "ClassDeclaration:DemoRepository",
-      "FunctionDeclaration:gateFailureMessage",
       "FunctionDeclaration:toPublicLangSmithIntegration",
       "FunctionDeclaration:toPublicIronsideIntegration",
       "FunctionDeclaration:toPublicLangfuseIntegration",
@@ -626,7 +635,6 @@ describe("DemoRepository shared store", () => {
       "FunctionDeclaration:ageInDays",
       "FunctionDeclaration:goldenSetHealthRecommendations",
       "FunctionDeclaration:demoTraceForGoldenEntry",
-      "FunctionDeclaration:nextPatchVersion",
       "VariableStatement:DEMO_ACTOR_NAMES",
       "FunctionDeclaration:attachDemoActorNames"
     ]);
@@ -682,7 +690,8 @@ describe("DemoRepository shared store", () => {
       'repository.ts:static-import:import * as HiddenDemoStoreNamespace from "./repository/demo-store.js";',
       'repository.ts:static-import:import { DemoRepositoryStore } from "./repository/demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
-      'repository/demo-projects.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";'
+      'repository/demo-projects.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-skills.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";'
     ]);
     expect(erasedModuleAnalysis.productionLoaderCalls).toEqual([
       'repository.ts:import:import("./repository/demo-store.js")'
@@ -697,7 +706,8 @@ describe("DemoRepository shared store", () => {
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
-      'repository/demo-projects.ts:ImportDeclaration:"./demo-store.js"'
+      'repository/demo-projects.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-skills.ts:ImportDeclaration:"./demo-store.js"'
     ]);
   }, 30_000);
 
@@ -712,15 +722,15 @@ describe("DemoRepository shared store", () => {
           "const HIDDEN_DEMO_STATE = new Map<string, string>();\n" +
             "const DEMO_ACTOR_NAMES = new Map<string, string>(["
         ),
-        "function gateFailureMessage(error: unknown): string {",
+        "function toPublicLangSmithIntegration(integration: LangSmithImportContext): LangSmithIntegration {",
         "function hiddenDemoState(): Map<string, string> {\n" +
           "  return (hiddenDemoState as any).state ??= new Map<string, string>();\n" +
           "}\n\n" +
-          "function gateFailureMessage(error: unknown): string {"
+          "function toPublicLangSmithIntegration(integration: LangSmithImportContext): LangSmithIntegration {"
       ),
       "  async listProjects(): Promise<Project[]> {",
       "  async listProjects(): Promise<Project[]> {\n" +
-        '    const localOwner = gateFailureMessage as typeof gateFailureMessage & { state?: Map<string, string> };\n' +
+        '    const localOwner = toPublicLangSmithIntegration as typeof toPublicLangSmithIntegration & { state?: Map<string, string> };\n' +
         '    localOwner.state ??= new Map<string, string>();\n' +
         '    Object.defineProperty(localOwner, "definedState", { value: new Map<string, string>() });\n' +
         '    const importedOwner = traceTestValidationStatus as typeof traceTestValidationStatus & { state?: Map<string, string> };\n' +
@@ -760,9 +770,9 @@ describe("DemoRepository shared store", () => {
       'repository.ts:DEMO_ACTOR_NAMES.set("hidden", "state")',
       'repository.ts:Object.defineProperty(localOwner, "definedState", { value: new Map<string, string>() })',
       'repository.ts:Reflect.deleteProperty(importedOwner, "legacyState")',
-      "repository.ts:demoSkill.isStarter:=",
       "repository.ts:importedOwner.state:??=",
       "repository.ts:localOwner.state:??=",
+      "repository/demo-skills.ts:demoSkill.isStarter:=",
       "repository/helpers.ts:owner.state:??="
     ]);
     expect(shapeAnalysis.repositoryGraphModuleVariables).not.toEqual(
