@@ -105,10 +105,12 @@ implements all three `RunComparisonRepositoryPort` methods;
 `DemoHistoricalGateEvidenceRepository`, which implements all three deprecated
 `HistoricalGateEvidenceRepositoryPort` methods;
 `DemoTraceTestRepository`, which implements all seven
-`TraceTestRepositoryPort` methods; and `DemoDatasetRepository`, which
-implements all twelve `DatasetRepositoryPort` methods. The facade constructs
-all thirteen once with its exact store and gives the project, skill-lifecycle,
-golden-evidence, historical-gate-evidence, trace-import, trace-test, dataset,
+`TraceTestRepositoryPort` methods; `DemoDatasetRepository`, which
+implements all twelve `DatasetRepositoryPort` methods; and
+`DemoCaseEvidenceRepository`, which implements all twelve
+`CaseEvidenceRepositoryPort` methods. The facade constructs all fourteen once
+with its exact store and gives the project, skill-lifecycle, golden-evidence,
+historical-gate-evidence, trace-import, trace-test, dataset, case-evidence,
 integration, judge-feedback, and review-queue slices only narrow dependencies.
 The criterion/suite, run-comparison, and credential slices receive only that
 shared store. The skill, golden-evidence, and historical-gate-evidence slices
@@ -160,6 +162,13 @@ trace import, item insertion, same-port reads, and golden-set selection. In
 particular, `importDatasetExamples` still snapshots and restores `traces`,
 `traceSources`, `caseInputIdentities`, and `datasetItems` in place and still
 calls the facade's overridable `importTrace` and `addDatasetItems` methods.
+The case-evidence slice keeps case discovery, append-only verdict evidence,
+agreement and disagreement summaries, convergence pagination, and queue-item
+completion on the exact shared store. Lazy facade callbacks preserve case and
+skill reads, evaluator-version history, criterion resolution, evidence
+scaffolding exclusion, and demo reviewer-name projection without introducing
+a second evidence owner. Human verdict completion therefore mutates the exact
+queue-item identities consumed by the review-queue slice.
 The credential slice receives only the shared store: API keys return plaintext
 exactly once while the store retains only their hashes, judge-provider reads
 remain masked, and raw judge credentials remain available only through the
@@ -227,6 +236,11 @@ single construction, exact shared store, six lazy facade callbacks, and the
 golden-trace helper identity. It also pins project isolation, immutable
 revision defensive copies, and the in-place four-collection rollback plus
 successful cross-domain visibility.
+`demo-case-evidence-repository.test.ts` pins the case-evidence slice's
+whole-port ownership, single construction, exact shared store and eight narrow
+dependencies, facade polymorphism across case/skill/convergence reads, project
+isolation, demo actor projection, and cross-domain human-verdict completion on
+the review queue's exact item identities.
 
 The shared store has these rules:
 
