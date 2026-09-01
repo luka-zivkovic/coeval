@@ -90,14 +90,17 @@ CURRENT domain slices are `DemoProjectRepository`, which implements the seven
 `ProjectRepositoryPort` methods; `DemoCriterionSuiteRepository`, which
 implements the nine `CriterionSuiteRepositoryPort` methods;
 `DemoSkillLifecycleRepository`, which implements the fifteen
-`SkillLifecycleRepositoryPort` methods; and `DemoGoldenEvidenceRepository`,
-which implements the eight `GoldenEvidenceRepositoryPort` methods. The facade
-constructs all four once with its exact store and gives the project,
-skill-lifecycle, and golden-evidence slices only narrow dependencies. The
-skill and golden-evidence slices receive same-port facade callbacks where
-their composite operations must preserve CURRENT subclass dispatch. Every
-public method path remains a direct facade delegation. Remaining domain slices
-are still TARGET work.
+`SkillLifecycleRepositoryPort` methods; `DemoGoldenEvidenceRepository`,
+which implements the eight `GoldenEvidenceRepositoryPort` methods; and
+`DemoTraceImportRepository`, which implements the seven
+`TraceImportRepositoryPort` methods. The facade constructs all five once with
+its exact store and gives the project, skill-lifecycle, golden-evidence, and
+trace-import slices only narrow dependencies. The skill and golden-evidence
+slices receive same-port facade callbacks where their composite operations
+must preserve CURRENT subclass dispatch. The trace-import slice resolves skill
+versions through the facade so existing subclass dispatch remains intact.
+Every public method path remains a direct facade delegation. Remaining domain
+slices are still TARGET work.
 
 The `pnpm repository-boundaries` gate remains PostgreSQL-only, while
 `demo-repository-store.test.ts` pins the Demo store inventory and composition
@@ -116,6 +119,10 @@ terminalization, filtered reads, and shared facade visibility.
 single construction, exact store and callback identities, facade polymorphism,
 criterion-version scoping, case/example/health projections, promotion and
 retirement error identity, frozen revision refresh, and shared visibility.
+`demo-trace-import-repository.test.ts` pins the trace-import slice's ownership,
+single construction, exact store and resolver identity, facade polymorphism,
+trace deduplication and immutable origin metadata, raw-input identity before
+redaction, recursion rejection, and import-job lifecycle/counting behavior.
 
 The shared store has these rules:
 
@@ -151,8 +158,10 @@ CURRENT Demo behavior already has one important compensating transaction:
 `importDatasetExamples` snapshots `traces`, `traceSources`,
 `caseInputIdentities`, and `datasetItems`, then restores all four after any
 mid-flow failure. A shared-store extraction must preserve that whole rollback
-boundary; splitting the trace import and dataset-membership writes must not
-turn it into partial recovery.
+boundary. The orchestration remains on the facade and continues to call its
+public `importTrace` method, so trace-import extraction does not split the
+rollback or bypass subclass dispatch. A later dataset slice must not turn that
+four-collection recovery into partial recovery.
 
 ## Extraction order
 
