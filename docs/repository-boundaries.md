@@ -80,7 +80,7 @@ dataset-example import must create traces and membership on the same client;
 candidate creation must bind its revision, credential, and version on the same
 client; and terminal evaluation updates must mint receipts on the same client.
 
-## DemoRepository shared store and domain slices (CURRENT; further slices remain TARGET)
+## DemoRepository shared store, composition, and domain slices (CURRENT)
 
 `DemoRepositoryStore` owns the demo facade's mutable maps, arrays, sets,
 counters, scalar pointers, and promise-deduplication state. `DemoRepository`
@@ -110,8 +110,9 @@ implements all twelve `DatasetRepositoryPort` methods;
 `DemoCaseEvidenceRepository`, which implements all twelve
 `CaseEvidenceRepositoryPort` methods; and `DemoEvaluationRepository`, which
 implements all twenty-five `EvalRunRepositoryPort` methods and all five
-`AssessmentReceiptRepositoryPort` methods. The facade constructs all fifteen
-once with its exact store and gives the project, skill-lifecycle, golden-evidence,
+`AssessmentReceiptRepositoryPort` methods. `repository/demo-composition.ts`
+seeds the exact fixture graph and constructs all fifteen slices once with the
+facade's exact store. It gives the project, skill-lifecycle, golden-evidence,
 historical-gate-evidence, trace-import, trace-test, dataset, case-evidence,
 evaluation, integration, judge-feedback, and review-queue slices only narrow
 dependencies.
@@ -184,11 +185,17 @@ The credential slice receives only the shared store: API keys return plaintext
 exactly once while the store retains only their hashes, judge-provider reads
 remain masked, and raw judge credentials remain available only through the
 worker lookup. Every public method path remains a direct facade delegation.
-Remaining domain slices are still TARGET work.
+The composition factory owns no repository-domain mutable state and does not
+read the facade while constructing the slices; its callbacks remain lazy so
+CURRENT subclass dispatch is preserved. The actor-name lookup remains the one
+intentional module-level fixture map.
 
 The `pnpm repository-boundaries` gate remains PostgreSQL-only, while
 `demo-repository-store.test.ts` pins the Demo store inventory and composition
-graph. `demo-project-repository.test.ts` pins the first slice's ownership,
+graph. `demo-repository-composition.test.ts` pins the composition module's
+exact export and declaration surface, fifteen-property order, construction and
+return order, one root handoff, lazy facade access, and shared store/provider
+identities. `demo-project-repository.test.ts` pins the first slice's ownership,
 single construction, stable facade delegates, and immediate visibility of a
 trace imported through another facade domain.
 `demo-criterion-repository.test.ts` pins the criterion/suite slice's ownership,
@@ -272,8 +279,8 @@ The shared store has these rules:
   in-flight promise maps, dispatch leases, and counters keep their current
   lifetime and ordering;
 - the public `DemoRepository` remains the single `CoevalRepository` facade and
-  creates each CURRENT or future domain slice once in its constructor, never
-  per request;
+  delegates its one-time fixture seeding and fifteen-slice construction to the
+  composition factory, never constructing a slice per request;
   and
 - future slices receive the facade's exact store reference; they do not create
   a store or expose it as public API.

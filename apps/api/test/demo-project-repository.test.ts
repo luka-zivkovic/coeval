@@ -224,18 +224,18 @@ describe("Demo project repository slice", () => {
     const analysis = projectSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoProjectRepository"]);
     expect(analysis.allocations).toEqual([
-      "repository.ts:DemoRepository.constructor:new DemoProjectRepository(this.store, { getCurrentSkill: (projectId) => this.getCurrentSkill(projectId), getCurrentSkillForCriterion: (projectId, criterionId) => this.getCurrentSkillForCriterion(projectId, criterionId), isEvidenceScaffoldingCase: (caseId) => this.isEvidenceScaffoldingCase(caseId), listGoldenSet: (projectId, criterionVersionId) => this.listGoldenSet(projectId, criterionVersionId), syntheticTraceForBuiltinCase: (caseId) => this.syntheticTraceForBuiltinCase(caseId) })"
+      "repository/demo-composition.ts:createDemoRepositoryComposition:new DemoProjectRepository(store, { getCurrentSkill: (projectId) => facade.getCurrentSkill(projectId), getCurrentSkillForCriterion: (projectId, criterionId) => facade.getCurrentSkillForCriterion(projectId, criterionId), isEvidenceScaffoldingCase: (caseId) => isEvidenceScaffoldingCase(store, caseId), listGoldenSet: (projectId, criterionVersionId) => facade.listGoldenSet(projectId, criterionVersionId), syntheticTraceForBuiltinCase })"
     ]);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoProjectRepository } from "./repository/demo-projects.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoProjectRepository } from "./demo-projects.js";'
     ]);
     expect(analysis.moduleSpecifierMentions).toEqual([
-      'repository.ts:ImportDeclaration:"./repository/demo-projects.js"'
+      'repository/demo-composition.ts:ImportDeclaration:"./demo-projects.js"'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoProjectRepository",
-      "repository.ts:NewExpression:DemoProjectRepository",
-      "repository.ts:TypeReference:DemoProjectRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoProjectRepository",
+      "repository/demo-composition.ts:NewExpression:DemoProjectRepository",
+      "repository/demo-composition.ts:TypeReference:DemoProjectRepository",
       "repository/demo-projects.ts:ClassDeclaration:DemoProjectRepository"
     ]);
   }, 30_000);

@@ -227,18 +227,18 @@ describe("Demo criterion and evaluator-suite repository slice", () => {
     const analysis = criterionSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoCriterionSuiteRepository"]);
     expect(analysis.allocations).toEqual([
-      "repository.ts:DemoRepository.constructor:new DemoCriterionSuiteRepository(this.store)"
+      "repository/demo-composition.ts:createDemoRepositoryComposition:new DemoCriterionSuiteRepository(store)"
     ]);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoCriterionSuiteRepository } from "./repository/demo-criteria.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoCriterionSuiteRepository } from "./demo-criteria.js";'
     ]);
     expect(analysis.moduleSpecifierMentions).toEqual([
-      'repository.ts:ImportDeclaration:"./repository/demo-criteria.js"'
+      'repository/demo-composition.ts:ImportDeclaration:"./demo-criteria.js"'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoCriterionSuiteRepository",
-      "repository.ts:NewExpression:DemoCriterionSuiteRepository",
-      "repository.ts:TypeReference:DemoCriterionSuiteRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoCriterionSuiteRepository",
+      "repository/demo-composition.ts:NewExpression:DemoCriterionSuiteRepository",
+      "repository/demo-composition.ts:TypeReference:DemoCriterionSuiteRepository",
       "repository/demo-criteria.ts:ClassDeclaration:DemoCriterionSuiteRepository"
     ]);
 

@@ -120,7 +120,9 @@ function nearestFunctionOwner(node: ts.Node): string {
       const className = ts.isClassDeclaration(parent) ? parent.name?.text : undefined;
       return `${className ?? "<class>"}.${current.name.getText()}`;
     }
-    if (ts.isFunctionLike(current)) return "<anonymous>";
+    if (ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current)) {
+      return ts.isFunctionDeclaration(current) && current.name ? current.name.text : "<anonymous>";
+    }
   }
   return "<module>";
 }
@@ -262,15 +264,15 @@ describe("Demo evaluation and assessment-receipt repository slice", () => {
     expect(analysis.compilerExports).toEqual(["DemoEvaluationRepository"]);
     expect(analysis.allocations).toHaveLength(1);
     expect(analysis.allocations[0]).toMatch(
-      /^repository\.ts:DemoRepository\.constructor:new DemoEvaluationRepository\(this\.store, \{/
+      /^repository\/demo-composition\.ts:createDemoRepositoryComposition:new DemoEvaluationRepository\(store, \{/
     );
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoEvaluationRepository } from "./repository/demo-evaluation.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoEvaluationRepository } from "./demo-evaluation.js";'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoEvaluationRepository",
-      "repository.ts:NewExpression:DemoEvaluationRepository",
-      "repository.ts:TypeReference:DemoEvaluationRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoEvaluationRepository",
+      "repository/demo-composition.ts:NewExpression:DemoEvaluationRepository",
+      "repository/demo-composition.ts:TypeReference:DemoEvaluationRepository",
       "repository/demo-evaluation.ts:ClassDeclaration:DemoEvaluationRepository"
     ]);
 

@@ -103,7 +103,9 @@ function nearestFunctionOwner(node: ts.Node): string {
       const className = ts.isClassDeclaration(parent) ? parent.name?.text : undefined;
       return `${className ?? "<class>"}.${current.name.getText()}`;
     }
-    if (ts.isFunctionLike(current)) return "<anonymous>";
+    if (ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current)) {
+      return ts.isFunctionDeclaration(current) && current.name ? current.name.text : "<anonymous>";
+    }
   }
   return "<module>";
 }
@@ -249,14 +251,14 @@ describe("Demo dataset repository slice", () => {
     const analysis = datasetSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoDatasetRepository"]);
     expect(analysis.allocations).toHaveLength(1);
-    expect(analysis.allocations[0]).toMatch(/^repository\.ts:DemoRepository\.constructor:new DemoDatasetRepository\(this\.store, \{/);
+    expect(analysis.allocations[0]).toMatch(/^repository\/demo-composition\.ts:createDemoRepositoryComposition:new DemoDatasetRepository\(store, \{/);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoDatasetRepository } from "./repository/demo-datasets.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoDatasetRepository } from "./demo-datasets.js";'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoDatasetRepository",
-      "repository.ts:NewExpression:DemoDatasetRepository",
-      "repository.ts:TypeReference:DemoDatasetRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoDatasetRepository",
+      "repository/demo-composition.ts:NewExpression:DemoDatasetRepository",
+      "repository/demo-composition.ts:TypeReference:DemoDatasetRepository",
       "repository/demo-datasets.ts:ClassDeclaration:DemoDatasetRepository"
     ]);
 

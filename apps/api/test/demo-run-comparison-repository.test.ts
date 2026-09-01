@@ -81,7 +81,9 @@ function nearestFunctionOwner(node: ts.Node): string {
       const className = ts.isClassDeclaration(parent) ? parent.name?.text : undefined;
       return `${className ?? "<class>"}.${current.name.getText()}`;
     }
-    if (ts.isFunctionLike(current)) return "<anonymous>";
+    if (ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current)) {
+      return ts.isFunctionDeclaration(current) && current.name ? current.name.text : "<anonymous>";
+    }
   }
   return "<module>";
 }
@@ -262,18 +264,18 @@ describe("Demo run-comparison repository slice", () => {
     const analysis = runComparisonSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoRunComparisonRepository"]);
     expect(analysis.allocations).toEqual([
-      "repository.ts:DemoRepository.constructor:new DemoRunComparisonRepository(this.store)"
+      "repository/demo-composition.ts:createDemoRepositoryComposition:new DemoRunComparisonRepository(store)"
     ]);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoRunComparisonRepository } from "./repository/demo-run-comparisons.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoRunComparisonRepository } from "./demo-run-comparisons.js";'
     ]);
     expect(analysis.moduleSpecifierMentions).toEqual([
-      'repository.ts:ImportDeclaration:"./repository/demo-run-comparisons.js"'
+      'repository/demo-composition.ts:ImportDeclaration:"./demo-run-comparisons.js"'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoRunComparisonRepository",
-      "repository.ts:NewExpression:DemoRunComparisonRepository",
-      "repository.ts:TypeReference:DemoRunComparisonRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoRunComparisonRepository",
+      "repository/demo-composition.ts:NewExpression:DemoRunComparisonRepository",
+      "repository/demo-composition.ts:TypeReference:DemoRunComparisonRepository",
       "repository/demo-run-comparisons.ts:ClassDeclaration:DemoRunComparisonRepository"
     ]);
 

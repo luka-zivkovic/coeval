@@ -11,11 +11,6 @@
       "reason": "One persistence class contains several independently changing transaction and read-model groups.",
       "revisit": "Split only after transaction ownership and client-scoped command boundaries are mapped."
     },
-    "apps/api/src/repository.ts": {
-      "classification": "refactor_candidate",
-      "reason": "The compatibility facade still colocates composition, fixture seeding, demo trace synthesis, actor names, and port delegates; mutable state has one named store, every domain port has an internal slice, and pure golden regression/health computations have an internal helper module.",
-      "revisit": "Extract the remaining demo fixture and composition seams while preserving facade identity, cross-domain visibility, and rollback behavior."
-    },
     "pnpm-lock.yaml": {
       "classification": "generated",
       "reason": "pnpm owns this dependency lockfile.",

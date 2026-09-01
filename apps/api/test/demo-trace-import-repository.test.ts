@@ -257,18 +257,18 @@ describe("Demo trace-import repository slice", () => {
     const analysis = traceImportSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoTraceImportRepository"]);
     expect(analysis.allocations).toEqual([
-      "repository.ts:DemoRepository.constructor:new DemoTraceImportRepository(this.store, { resolveImportSkillVersionId: (projectId, requested) => this.resolveImportSkillVersionId(projectId, requested) })"
+      "repository/demo-composition.ts:createDemoRepositoryComposition:new DemoTraceImportRepository(store, { resolveImportSkillVersionId: (projectId, requested) => resolveImportSkillVersionId(facade, projectId, requested) })"
     ]);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoTraceImportRepository } from "./repository/demo-trace-import.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoTraceImportRepository } from "./demo-trace-import.js";'
     ]);
     expect(analysis.moduleSpecifierMentions).toEqual([
-      'repository.ts:ImportDeclaration:"./repository/demo-trace-import.js"'
+      'repository/demo-composition.ts:ImportDeclaration:"./demo-trace-import.js"'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoTraceImportRepository",
-      "repository.ts:NewExpression:DemoTraceImportRepository",
-      "repository.ts:TypeReference:DemoTraceImportRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoTraceImportRepository",
+      "repository/demo-composition.ts:NewExpression:DemoTraceImportRepository",
+      "repository/demo-composition.ts:TypeReference:DemoTraceImportRepository",
       "repository/demo-trace-import.ts:ClassDeclaration:DemoTraceImportRepository"
     ]);
 

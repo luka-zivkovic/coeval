@@ -84,7 +84,9 @@ function nearestFunctionOwner(node: ts.Node): string {
       const className = ts.isClassDeclaration(parent) ? parent.name?.text : undefined;
       return `${className ?? "<class>"}.${current.name.getText()}`;
     }
-    if (ts.isFunctionLike(current)) return "<anonymous>";
+    if (ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current)) {
+      return ts.isFunctionDeclaration(current) && current.name ? current.name.text : "<anonymous>";
+    }
   }
   return "<module>";
 }
@@ -233,18 +235,18 @@ describe("Demo review-queue repository slice", () => {
     const analysis = reviewQueueSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoReviewQueueRepository"]);
     expect(analysis.allocations).toEqual([
-      "repository.ts:DemoRepository.constructor:new DemoReviewQueueRepository(this.store, { caseExistsForProject: (projectId, caseId) => this.caseExistsForProject(projectId, caseId), getCurrentSkill: (projectId) => this.getCurrentSkill(projectId) })"
+      "repository/demo-composition.ts:createDemoRepositoryComposition:new DemoReviewQueueRepository(store, { caseExistsForProject: (projectId, caseId) => facade.caseExistsForProject(projectId, caseId), getCurrentSkill: (projectId) => facade.getCurrentSkill(projectId) })"
     ]);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoReviewQueueRepository } from "./repository/demo-review-queues.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoReviewQueueRepository } from "./demo-review-queues.js";'
     ]);
     expect(analysis.moduleSpecifierMentions).toEqual([
-      'repository.ts:ImportDeclaration:"./repository/demo-review-queues.js"'
+      'repository/demo-composition.ts:ImportDeclaration:"./demo-review-queues.js"'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoReviewQueueRepository",
-      "repository.ts:NewExpression:DemoReviewQueueRepository",
-      "repository.ts:TypeReference:DemoReviewQueueRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoReviewQueueRepository",
+      "repository/demo-composition.ts:NewExpression:DemoReviewQueueRepository",
+      "repository/demo-composition.ts:TypeReference:DemoReviewQueueRepository",
       "repository/demo-review-queues.ts:ClassDeclaration:DemoReviewQueueRepository"
     ]);
 

@@ -81,7 +81,9 @@ function nearestFunctionOwner(node: ts.Node): string {
       const className = ts.isClassDeclaration(parent) ? parent.name?.text : undefined;
       return `${className ?? "<class>"}.${current.name.getText()}`;
     }
-    if (ts.isFunctionLike(current)) return "<anonymous>";
+    if (ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current)) {
+      return ts.isFunctionDeclaration(current) && current.name ? current.name.text : "<anonymous>";
+    }
   }
   return "<module>";
 }
@@ -261,18 +263,18 @@ describe("Demo historical gate-evidence repository slice", () => {
     const analysis = historicalGateSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoHistoricalGateEvidenceRepository"]);
     expect(analysis.allocations).toEqual([
-      "repository.ts:DemoRepository.constructor:new DemoHistoricalGateEvidenceRepository(this.store, { getEvalRun: (projectId, evalRunId) => this.getEvalRun(projectId, evalRunId), getEvalRunDetail: (projectId, evalRunId) => this.getEvalRunDetail(projectId, evalRunId), getGateCheckDetail: (projectId, gateCheckId) => this.getGateCheckDetail(projectId, gateCheckId) })"
+      "repository/demo-composition.ts:createDemoRepositoryComposition:new DemoHistoricalGateEvidenceRepository(store, { getEvalRun: (projectId, evalRunId) => facade.getEvalRun(projectId, evalRunId), getEvalRunDetail: (projectId, evalRunId) => facade.getEvalRunDetail(projectId, evalRunId), getGateCheckDetail: (projectId, gateCheckId) => facade.getGateCheckDetail(projectId, gateCheckId) })"
     ]);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoHistoricalGateEvidenceRepository } from "./repository/demo-historical-gates.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoHistoricalGateEvidenceRepository } from "./demo-historical-gates.js";'
     ]);
     expect(analysis.moduleSpecifierMentions).toEqual([
-      'repository.ts:ImportDeclaration:"./repository/demo-historical-gates.js"'
+      'repository/demo-composition.ts:ImportDeclaration:"./demo-historical-gates.js"'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoHistoricalGateEvidenceRepository",
-      "repository.ts:NewExpression:DemoHistoricalGateEvidenceRepository",
-      "repository.ts:TypeReference:DemoHistoricalGateEvidenceRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoHistoricalGateEvidenceRepository",
+      "repository/demo-composition.ts:NewExpression:DemoHistoricalGateEvidenceRepository",
+      "repository/demo-composition.ts:TypeReference:DemoHistoricalGateEvidenceRepository",
       "repository/demo-historical-gates.ts:ClassDeclaration:DemoHistoricalGateEvidenceRepository"
     ]);
 

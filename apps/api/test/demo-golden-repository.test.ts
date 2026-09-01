@@ -245,18 +245,18 @@ describe("Demo golden evidence repository slice", () => {
     const analysis = goldenSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoGoldenEvidenceRepository"]);
     expect(analysis.allocations).toEqual([
-      "repository.ts:DemoRepository.constructor:new DemoGoldenEvidenceRepository(this.store, { buildGoldenSetHealthSummary, getCaseDetail: (projectId, caseId, skillVersionId) => this.getCaseDetail(projectId, caseId, skillVersionId), getDemoActorName: (actorUserId) => DEMO_ACTOR_NAMES.get(actorUserId), getOrCreateRegressionDatasetRevision: (projectId, actorUserId, criterionVersionId) => this.getOrCreateRegressionDatasetRevision(projectId, actorUserId, criterionVersionId), listGoldenSet: (projectId, criterionVersionId) => this.listGoldenSet(projectId, criterionVersionId), resolveGoldenCriterionVersion: (projectId, requested) => this.resolveGoldenCriterionVersion(projectId, requested), syntheticTraceForBuiltinCase: (caseId) => this.syntheticTraceForBuiltinCase(caseId) })"
+      "repository/demo-composition.ts:createDemoRepositoryComposition:new DemoGoldenEvidenceRepository(store, { buildGoldenSetHealthSummary, getCaseDetail: (projectId, caseId, skillVersionId) => facade.getCaseDetail(projectId, caseId, skillVersionId), getDemoActorName: (actorUserId) => DEMO_ACTOR_NAMES.get(actorUserId), getOrCreateRegressionDatasetRevision: (projectId, actorUserId, criterionVersionId) => facade.getOrCreateRegressionDatasetRevision(projectId, actorUserId, criterionVersionId), listGoldenSet: (projectId, criterionVersionId) => facade.listGoldenSet(projectId, criterionVersionId), resolveGoldenCriterionVersion: (projectId, requested) => resolveGoldenCriterionVersion(facade, store, projectId, requested), syntheticTraceForBuiltinCase })"
     ]);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoGoldenEvidenceRepository } from "./repository/demo-golden.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoGoldenEvidenceRepository } from "./demo-golden.js";'
     ]);
     expect(analysis.moduleSpecifierMentions).toEqual([
-      'repository.ts:ImportDeclaration:"./repository/demo-golden.js"'
+      'repository/demo-composition.ts:ImportDeclaration:"./demo-golden.js"'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoGoldenEvidenceRepository",
-      "repository.ts:NewExpression:DemoGoldenEvidenceRepository",
-      "repository.ts:TypeReference:DemoGoldenEvidenceRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoGoldenEvidenceRepository",
+      "repository/demo-composition.ts:NewExpression:DemoGoldenEvidenceRepository",
+      "repository/demo-composition.ts:TypeReference:DemoGoldenEvidenceRepository",
       "repository/demo-golden.ts:ClassDeclaration:DemoGoldenEvidenceRepository"
     ]);
 
