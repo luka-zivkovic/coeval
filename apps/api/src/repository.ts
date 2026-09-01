@@ -232,6 +232,7 @@ import { DemoIntegrationRepository } from "./repository/demo-integrations.js";
 import { DemoJudgeFeedbackRepository } from "./repository/demo-feedback.js";
 import { DemoProjectRepository } from "./repository/demo-projects.js";
 import { DemoReviewQueueRepository } from "./repository/demo-review-queues.js";
+import { DemoRunComparisonRepository } from "./repository/demo-run-comparisons.js";
 import { DemoSkillLifecycleRepository } from "./repository/demo-skills.js";
 import { DemoTraceImportRepository } from "./repository/demo-trace-import.js";
 export * from "./repository/contracts.js";
@@ -265,6 +266,7 @@ export class DemoRepository implements CoevalRepository {
   private readonly judgeFeedbackRepository: DemoJudgeFeedbackRepository;
   private readonly projectRepository: DemoProjectRepository;
   private readonly reviewQueueRepository: DemoReviewQueueRepository;
+  private readonly runComparisonRepository: DemoRunComparisonRepository;
   private readonly skillLifecycleRepository: DemoSkillLifecycleRepository;
   private readonly traceImportRepository: DemoTraceImportRepository;
   private readonly store = new DemoRepositoryStore();
@@ -336,6 +338,7 @@ export class DemoRepository implements CoevalRepository {
       caseExistsForProject: (projectId, caseId) => this.caseExistsForProject(projectId, caseId),
       getCurrentSkill: (projectId) => this.getCurrentSkill(projectId)
     });
+    this.runComparisonRepository = new DemoRunComparisonRepository(this.store);
     this.criterionSuiteRepository = new DemoCriterionSuiteRepository(this.store);
     this.skillLifecycleRepository = new DemoSkillLifecycleRepository(this.store, this.judgeProvider, {
       createSkillVersionPending: (skillId, input, context) =>
@@ -2329,53 +2332,15 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async createRunComparison(input: CreateRunComparisonInputDb): Promise<RunComparison> {
-    if (input.datasetRevisionId) {
-      const revision = this.store.datasetRevisions.find((candidate) =>
-        candidate.id === input.datasetRevisionId &&
-        candidate.projectId === input.projectId &&
-        candidate.sourceDatasetId === input.datasetId
-      );
-      const runA = this.store.evalRuns.find((candidate) => candidate.id === input.runAId && candidate.projectId === input.projectId);
-      const runB = this.store.evalRuns.find((candidate) => candidate.id === input.runBId && candidate.projectId === input.projectId);
-      if (!revision || runA?.datasetRevisionId !== revision.id || runB?.datasetRevisionId !== revision.id) {
-        throw new DatasetRevisionConflictError(
-          "Run comparison revision must match its dataset and both eval runs"
-        );
-      }
-    }
-    const comparison: RunComparison = {
-      id: `rcmp_${randomUUID()}`,
-      projectId: input.projectId,
-      datasetId: input.datasetId,
-      datasetRevisionId: input.datasetRevisionId ?? null,
-      versionAId: input.versionAId,
-      versionBId: input.versionBId,
-      runAId: input.runAId,
-      runBId: input.runBId,
-      createdAt: new Date().toISOString()
-    };
-    this.store.runComparisons.push(comparison);
-    return { ...comparison };
+    return this.runComparisonRepository.createRunComparison(input);
   }
 
   async getRunComparison(projectId: string, runComparisonId: string): Promise<RunComparison | null> {
-    const comparison = this.store.runComparisons.find(
-      (candidate) => candidate.id === runComparisonId && candidate.projectId === projectId
-    );
-    return comparison ? { ...comparison } : null;
+    return this.runComparisonRepository.getRunComparison(projectId, runComparisonId);
   }
 
   async listRunComparisons(projectId: string, opts?: { limit?: number | undefined }): Promise<RunComparison[]> {
-    return this.store.runComparisons
-      .filter((comparison) => comparison.projectId === projectId)
-      // id desc tiebreaker mirrors the PG repository: same-millisecond rows
-      // still list in a stable order.
-      .sort(
-        (left, right) =>
-          right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id)
-      )
-      .slice(0, opts?.limit ?? 50)
-      .map((comparison) => ({ ...comparison }));
+    return this.runComparisonRepository.listRunComparisons(projectId, opts);
   }
 
   // --- Historical gate evidence compatibility ------------------------------
