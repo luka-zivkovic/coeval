@@ -106,18 +106,25 @@ implements all three `RunComparisonRepositoryPort` methods;
 `HistoricalGateEvidenceRepositoryPort` methods;
 `DemoTraceTestRepository`, which implements all seven
 `TraceTestRepositoryPort` methods; `DemoDatasetRepository`, which
-implements all twelve `DatasetRepositoryPort` methods; and
+implements all twelve `DatasetRepositoryPort` methods;
 `DemoCaseEvidenceRepository`, which implements all twelve
-`CaseEvidenceRepositoryPort` methods. The facade constructs all fourteen once
-with its exact store and gives the project, skill-lifecycle, golden-evidence,
+`CaseEvidenceRepositoryPort` methods; and `DemoEvaluationRepository`, which
+implements all twenty-five `EvalRunRepositoryPort` methods and all five
+`AssessmentReceiptRepositoryPort` methods. The facade constructs all fifteen
+once with its exact store and gives the project, skill-lifecycle, golden-evidence,
 historical-gate-evidence, trace-import, trace-test, dataset, case-evidence,
-integration, judge-feedback, and review-queue slices only narrow dependencies.
+evaluation, integration, judge-feedback, and review-queue slices only narrow
+dependencies.
 The criterion/suite, run-comparison, and credential slices receive only that
 shared store. The skill, golden-evidence, and historical-gate-evidence slices
 receive same-port facade callbacks where their composite operations must
 preserve CURRENT subclass dispatch. The trace-test slice resolves a source case
 through a lazy facade callback so existing subclass dispatch remains intact.
 The trace-import slice resolves skill versions through the facade boundary.
+The evaluation slice keeps eval-run terminalization and assessment-receipt
+materialization in one shared-store consistency group. Its lazy same-port and
+skill callbacks preserve facade polymorphism while terminal release-evidence
+runs mint the frozen receipt artifact against the same run/item identities.
 The integration slice also uses the resolver boundary so scheduled imports
 retain exact evaluator-version selection and subclass dispatch. It owns each
 provider's public projection, private worker credential context, poll cadence,
@@ -241,6 +248,12 @@ whole-port ownership, single construction, exact shared store and eight narrow
 dependencies, facade polymorphism across case/skill/convergence reads, project
 isolation, demo actor projection, and cross-domain human-verdict completion on
 the review queue's exact item identities.
+`demo-evaluation-repository.test.ts` pins the evaluation and assessment-receipt
+slice's whole-port ownership, single construction, exact shared store and eight
+lazy facade callbacks, facade polymorphism across convergence, run-detail,
+skill-version, and receipt reads, and defensive frozen-artifact copies on the
+same store-owned evidence identities. It directly pins complete and incomplete
+terminal receipt minting plus in-place run/item rollback when minting fails.
 
 The shared store has these rules:
 
