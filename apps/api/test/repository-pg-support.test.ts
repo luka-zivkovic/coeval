@@ -172,6 +172,8 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(EXPECTED_MAPPER_EXPORTS);
     expect(namedImports(repositorySource, "./repository.pg/golden-commands.js"))
       .toEqual(["loadGoldenSetRetirementContext"]);
+    expect(namedImports(repositorySource, "./repository.pg/trace-import-commands.js"))
+      .toEqual(["importTraceOnClient", "lockTraceImportIdentity"]);
     expect(repositorySource.statements.filter((statement) => !ts.isImportDeclaration(statement)).map((statement) =>
       `${ts.SyntaxKind[statement.kind]}:${ts.isClassDeclaration(statement) ? statement.name?.text : "<anonymous>"}`
     )).toEqual(["ClassDeclaration:PgRepository"]);
@@ -184,8 +186,8 @@ describe("PostgreSQL repository support modules", () => {
     const privateMethods = methods.filter((method) =>
       ts.getModifiers(method)?.some((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword)
     );
-    expect(methods).toHaveLength(192);
-    expect(privateMethods).toHaveLength(31);
+    expect(methods).toHaveLength(190);
+    expect(privateMethods).toHaveLength(29);
     expect(methods.length - privateMethods.length).toBe(161);
   }, 30_000);
 
