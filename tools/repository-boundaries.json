@@ -3,7 +3,8 @@
   "sources": [
     "apps/api/src/repository.pg.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
-    "apps/api/src/repository.pg/mappers.ts"
+    "apps/api/src/repository.pg/mappers.ts",
+    "apps/api/src/repository.pg/trace-import-commands.ts"
   ],
   "externalPoolDelegates": [
     "PgEvaluatorLifecycleRepository"
@@ -484,8 +485,8 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try>loop :: client_command:lockTraceImportIdentity",
-        "try>loop :: client_command:importTraceOnClient",
+        "try>loop :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#lockTraceImportIdentity",
+        "try>loop :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -504,7 +505,7 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try :: client_command:importTraceOnClient",
+        "try :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -772,6 +773,30 @@
       ]
     },
     {
+      "method": "apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "importDatasetExamples",
+        "importTrace"
+      ]
+    },
+    {
+      "method": "apps/api/src/repository.pg/trace-import-commands.ts#lockTraceImportIdentity",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
+        "importDatasetExamples"
+      ]
+    },
+    {
       "method": "bumpEvalRunCounters",
       "scope": "private_method",
       "isPrivate": true,
@@ -806,18 +831,6 @@
         "getOrCreateRegressionDatasetRevision",
         "promoteExceptionToGoldenSet",
         "retireGoldenSetEntry"
-      ]
-    },
-    {
-      "method": "importTraceOnClient",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "importDatasetExamples",
-        "importTrace"
       ]
     },
     {
@@ -866,18 +879,6 @@
       "callers": [
         "createDatasetRevision",
         "getOrCreateRegressionDatasetRevisionWithClient"
-      ]
-    },
-    {
-      "method": "lockTraceImportIdentity",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "importDatasetExamples",
-        "importTraceOnClient"
       ]
     },
     {
