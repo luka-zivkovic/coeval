@@ -100,21 +100,23 @@ which implements all twenty-three `IntegrationRepositoryPort` methods for
 LangSmith, Langfuse, and Ironside; `DemoJudgeFeedbackRepository`, which
 implements all ten `JudgeFeedbackRepositoryPort` methods;
 `DemoReviewQueueRepository`, which implements all seven
-`ReviewQueueRepositoryPort` methods; and `DemoRunComparisonRepository`, which
-implements all three `RunComparisonRepositoryPort` methods. The facade
-constructs all ten once with its exact store and gives the project,
-skill-lifecycle, golden-evidence, trace-import, integration, judge-feedback,
-and review-queue slices only narrow dependencies. The criterion/suite,
-run-comparison, and credential slices receive only that shared store. The skill
-and golden-evidence slices receive same-port facade callbacks where their
-composite operations must preserve CURRENT subclass dispatch. The trace-import
-slice resolves skill versions through the facade so existing subclass dispatch
-remains intact. The integration slice uses that same resolver boundary so
-scheduled imports retain exact evaluator-version selection and subclass
-dispatch. It owns each provider's public projection, private worker credential
-context, poll cadence, selection-failure job, project isolation, and Ironside
-connection-revision and opaque-cursor compare-and-set behavior as one cohesive
-consistency group.
+`ReviewQueueRepositoryPort` methods; `DemoRunComparisonRepository`, which
+implements all three `RunComparisonRepositoryPort` methods; and
+`DemoHistoricalGateEvidenceRepository`, which implements all three deprecated
+`HistoricalGateEvidenceRepositoryPort` methods. The facade constructs all
+eleven once with its exact store and gives the project, skill-lifecycle,
+golden-evidence, historical-gate-evidence, trace-import, integration,
+judge-feedback, and review-queue slices only narrow dependencies. The
+criterion/suite, run-comparison, and credential slices receive only that shared
+store. The skill, golden-evidence, and historical-gate-evidence slices receive
+same-port facade callbacks where their composite operations must preserve
+CURRENT subclass dispatch. The trace-import slice resolves skill versions
+through the facade so existing subclass dispatch remains intact. The
+integration slice uses that same resolver boundary so scheduled imports retain
+exact evaluator-version selection and subclass dispatch. It owns each
+provider's public projection, private worker credential context, poll cadence,
+selection-failure job, project isolation, and Ironside connection-revision and
+opaque-cursor compare-and-set behavior as one cohesive consistency group.
 The judge-feedback slice receives only the exact shared store plus the facade's
 built-in trace synthesizer and same-port worker-context callback. It keeps
 pinned evaluator-version context, idempotent judge-run recording,
@@ -135,6 +137,12 @@ participants on the exact shared store. It preserves the immutable-revision
 consistency check, project isolation, deterministic newest-first ordering,
 bounded reads, and defensive copy boundary without creating another eval-run
 or dataset owner.
+The historical-gate-evidence slice keeps deprecated compatibility rows on the
+exact shared store and projects them through the facade's eval-run reads. It
+preserves item status/agreement/error snapshots, historical decision
+derivation, project isolation, deterministic newest-first ordering, bounded
+reads, and same-port facade dispatch without giving Coeval any release-policy
+ownership.
 The credential slice receives only the shared store: API keys return plaintext
 exactly once while the store retains only their hashes, judge-provider reads
 remain masked, and raw judge credentials remain available only through the
@@ -187,6 +195,11 @@ completion on the same item identities.
 whole-port ownership, single construction, exact shared store, facade
 delegates, immutable revision/run validation, project isolation, ordering,
 limits, legacy nullable-revision behavior, and defensive copies.
+`demo-historical-gate-repository.test.ts` pins the historical compatibility
+slice's whole-port ownership, single construction, exact shared store and
+facade callbacks, polymorphic eval-run and same-port reads, item projection,
+vanished-row behavior, project isolation, historical decision derivation,
+ordering, filtering, limits, and the default bounded read.
 
 The shared store has these rules:
 

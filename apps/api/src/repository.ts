@@ -32,9 +32,8 @@ import {
   EvalRun,
   EvalRunDetail,
   EvalRunItem,
-  GateCheck,
-  GateCheckDetail,
-  GateCheckItem,
+  type GateCheck,
+  type GateCheckDetail,
   ExceptionDetail,
   FeedbackSyncJob,
   GOLDEN_SET_STALE_AFTER_DAYS,
@@ -94,7 +93,7 @@ import {
   VerdictLabel,
   VerdictRecord
 } from "@coeval/shared";
-import { deriveGateCheckDecision, renderJudgePromptContent, verdictLabelFromPayload } from "@coeval/shared";
+import { renderJudgePromptContent, verdictLabelFromPayload } from "@coeval/shared";
 import {
   buildAssessmentReceipt,
   canonicalReceiptBytes,
@@ -228,6 +227,7 @@ import { DemoRepositoryStore } from "./repository/demo-store.js";
 import { DemoCredentialRepository } from "./repository/demo-credentials.js";
 import { DemoCriterionSuiteRepository } from "./repository/demo-criteria.js";
 import { DemoGoldenEvidenceRepository } from "./repository/demo-golden.js";
+import { DemoHistoricalGateEvidenceRepository } from "./repository/demo-historical-gates.js";
 import { DemoIntegrationRepository } from "./repository/demo-integrations.js";
 import { DemoJudgeFeedbackRepository } from "./repository/demo-feedback.js";
 import { DemoProjectRepository } from "./repository/demo-projects.js";
@@ -262,6 +262,7 @@ export class DemoRepository implements CoevalRepository {
   private readonly credentialRepository: DemoCredentialRepository;
   private readonly criterionSuiteRepository: DemoCriterionSuiteRepository;
   private readonly goldenEvidenceRepository: DemoGoldenEvidenceRepository;
+  private readonly historicalGateEvidenceRepository: DemoHistoricalGateEvidenceRepository;
   private readonly integrationRepository: DemoIntegrationRepository;
   private readonly judgeFeedbackRepository: DemoJudgeFeedbackRepository;
   private readonly projectRepository: DemoProjectRepository;
@@ -363,6 +364,11 @@ export class DemoRepository implements CoevalRepository {
       resolveGoldenCriterionVersion: (projectId, requested) =>
         this.resolveGoldenCriterionVersion(projectId, requested),
       syntheticTraceForBuiltinCase: (caseId) => this.syntheticTraceForBuiltinCase(caseId)
+    });
+    this.historicalGateEvidenceRepository = new DemoHistoricalGateEvidenceRepository(this.store, {
+      getEvalRun: (projectId, evalRunId) => this.getEvalRun(projectId, evalRunId),
+      getEvalRunDetail: (projectId, evalRunId) => this.getEvalRunDetail(projectId, evalRunId),
+      getGateCheckDetail: (projectId, gateCheckId) => this.getGateCheckDetail(projectId, gateCheckId)
     });
     this.integrationRepository = new DemoIntegrationRepository(this.store, {
       resolveImportSkillVersionId: (projectId, requested) =>
@@ -2353,90 +2359,15 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async createGateCheck(input: CreateGateCheckInputDb): Promise<GateCheckDetail> {
-    const createdAt = new Date().toISOString();
-    this.store.gateChecks.unshift({
-      id: `gate_${randomUUID()}`,
-      projectId: input.projectId,
-      skillVersionId: input.skillVersionId,
-      evalRunId: input.evalRunId,
-      label: input.label ?? null,
-      metadata: input.metadata ?? {},
-      maxDisagreements: input.maxDisagreements,
-      createdAt,
-      items: input.items.map((item) => ({ id: `gati_${randomUUID()}`, ...item, createdAt }))
-    });
-    const detail = await this.getGateCheckDetail(input.projectId, this.store.gateChecks[0]!.id);
-    if (!detail) throw new Error(`Gate check vanished after create: ${this.store.gateChecks[0]!.id}`);
-    return detail;
+    return this.historicalGateEvidenceRepository.createGateCheck(input);
   }
 
   async getGateCheckDetail(projectId: string, gateCheckId: string): Promise<GateCheckDetail | null> {
-    const stored = this.store.gateChecks.find((candidate) => candidate.id === gateCheckId && candidate.projectId === projectId);
-    if (!stored) return null;
-    const run = await this.getEvalRunDetail(projectId, stored.evalRunId);
-    if (!run) return null;
-    const items: GateCheckItem[] = stored.items.map((item) => {
-      const evalItem = run.items.find((candidate) => candidate.caseId === item.candidateCaseId);
-      return {
-        id: item.id,
-        gateCheckId: stored.id,
-        goldenEntryId: item.goldenEntryId,
-        goldenCaseId: item.goldenCaseId,
-        caseKey: item.caseKey,
-        candidateCaseId: item.candidateCaseId,
-        expectedLabel: item.expectedLabel,
-        status: evalItem?.status === "completed" ? "completed" : evalItem?.status === "failed" ? "failed" : "pending",
-        judgedLabel: evalItem?.resultLabel ?? null,
-        agreement: evalItem?.agreement ?? null,
-        cached: evalItem?.cached ?? false,
-        error: evalItem?.error ?? null,
-        createdAt: item.createdAt
-      };
-    });
-    return { ...this.projectGateCheck(stored, run), items };
+    return this.historicalGateEvidenceRepository.getGateCheckDetail(projectId, gateCheckId);
   }
 
   async listGateChecks(projectId: string, opts?: { limit?: number | undefined }): Promise<GateCheck[]> {
-    const checks: GateCheck[] = [];
-    for (const stored of this.store.gateChecks) {
-      if (stored.projectId !== projectId) continue;
-      const run = await this.getEvalRun(projectId, stored.evalRunId);
-      if (!run) continue;
-      checks.push(this.projectGateCheck(stored, run));
-    }
-    return checks
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-      .slice(0, opts?.limit ?? 50);
-  }
-
-  private projectGateCheck(
-    stored: (typeof this.store.gateChecks)[number],
-    run: EvalRun
-  ): GateCheck {
-    const decision = deriveGateCheckDecision({
-      runStatus: run.status,
-      totalItems: run.totalItems,
-      completedItems: run.completedItems,
-      failedItems: run.failedItems,
-      agreedItems: run.agreedItems,
-      maxDisagreements: stored.maxDisagreements
-    });
-    return {
-      id: stored.id,
-      projectId: stored.projectId,
-      skillVersionId: stored.skillVersionId,
-      evalRunId: stored.evalRunId,
-      label: stored.label,
-      metadata: stored.metadata,
-      maxDisagreements: stored.maxDisagreements,
-      status: decision.status,
-      totalCandidates: run.totalItems,
-      judgedCandidates: run.completedItems,
-      erroredCandidates: run.failedItems,
-      disagreements: decision.disagreements,
-      createdAt: stored.createdAt,
-      finishedAt: run.finishedAt
-    };
+    return this.historicalGateEvidenceRepository.listGateChecks(projectId, opts);
   }
 
   private isRunFinished(run: EvalRun): boolean {

@@ -13,7 +13,7 @@
     },
     "apps/api/src/repository.ts": {
       "classification": "refactor_candidate",
-      "reason": "The compatibility facade still colocates most in-memory demo domains, golden regression and health helpers, and fixtures; mutable state has one named store, while the project, criterion/suite, skill-lifecycle, golden-evidence, trace-import, integration, judge-feedback, review-queue, run-comparison, API-key, and judge-credential ports have internal slices.",
+      "reason": "The compatibility facade still colocates most in-memory demo domains, golden regression and health helpers, and fixtures; mutable state has one named store, while the project, criterion/suite, skill-lifecycle, golden-evidence, historical-gate-evidence, trace-import, integration, judge-feedback, review-queue, run-comparison, API-key, and judge-credential ports have internal slices.",
       "revisit": "Extract the remaining demo consistency groups against the shared store while preserving facade identity, cross-domain visibility, and rollback behavior."
     },
     "pnpm-lock.yaml": {
@@ -25,6 +25,11 @@
       "classification": "refactor_candidate",
       "reason": "Route, domain, import-worker, poller, and feedback-worker suites share one test file.",
       "revisit": "Characterize titles and auth coverage, then shard by behavior with shared support."
+    },
+    "apps/api/test/demo-repository-store.test.ts": {
+      "classification": "cohesion_review",
+      "reason": "One compiler-backed whole-program guard pins DemoRepositoryStore ownership, composition, module state, loader edges, adversarial escapes, and the cross-domain rollback seam.",
+      "revisit": "Before 1,200 lines or another runtime seam is added, extract reusable analyzer support and the rollback scenario only if the exact production inventory and every adversarial mutation remain fail-closed and reviewable."
     },
     "apps/api/src/governed-review/repository.pg.ts": {
       "classification": "refactor_candidate",

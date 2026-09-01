@@ -544,6 +544,10 @@ describe("DemoRepository shared store", () => {
       sourceFile("../src/repository/demo-golden.ts"),
       "DemoGoldenEvidenceRepository"
     );
+    const historicalGateEvidenceRepository = classDeclaration(
+      sourceFile("../src/repository/demo-historical-gates.ts"),
+      "DemoHistoricalGateEvidenceRepository"
+    );
     const integrationRepository = classDeclaration(
       sourceFile("../src/repository/demo-integrations.ts"),
       "DemoIntegrationRepository"
@@ -580,6 +584,7 @@ describe("DemoRepository shared store", () => {
       "private readonly credentialRepository: DemoCredentialRepository;",
       "private readonly criterionSuiteRepository: DemoCriterionSuiteRepository;",
       "private readonly goldenEvidenceRepository: DemoGoldenEvidenceRepository;",
+      "private readonly historicalGateEvidenceRepository: DemoHistoricalGateEvidenceRepository;",
       "private readonly integrationRepository: DemoIntegrationRepository;",
       "private readonly judgeFeedbackRepository: DemoJudgeFeedbackRepository;",
       "private readonly projectRepository: DemoProjectRepository;",
@@ -604,6 +609,7 @@ describe("DemoRepository shared store", () => {
       credentialRepository,
       criterionSuiteRepository,
       goldenEvidenceRepository,
+      historicalGateEvidenceRepository,
       integrationRepository,
       judgeFeedbackRepository,
       projectRepository,
@@ -624,6 +630,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-feedback.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-golden.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-historical-gates.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-integrations.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-projects.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-review-queues.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -637,6 +644,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-feedback.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-golden.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-historical-gates.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-integrations.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-projects.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-review-queues.ts:ImportDeclaration:"./demo-store.js"',
@@ -663,6 +671,8 @@ describe("DemoRepository shared store", () => {
       "repository/demo-feedback.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-golden.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-golden.ts:TypeReference:DemoRepositoryStore",
+      "repository/demo-historical-gates.ts:ImportSpecifier:DemoRepositoryStore",
+      "repository/demo-historical-gates.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-integrations.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-integrations.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-projects.ts:ImportSpecifier:DemoRepositoryStore",
@@ -685,6 +695,7 @@ describe("DemoRepository shared store", () => {
       "repository/demo-criteria.ts",
       "repository/demo-feedback.ts",
       "repository/demo-golden.ts",
+      "repository/demo-historical-gates.ts",
       "repository/demo-integrations.ts",
       "repository/demo-projects.ts",
       "repository/demo-review-queues.ts",
@@ -772,6 +783,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-feedback.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-golden.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-historical-gates.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-integrations.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-projects.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-review-queues.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -795,6 +807,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-feedback.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-golden.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-historical-gates.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-integrations.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-projects.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-review-queues.ts:ImportDeclaration:"./demo-store.js"',
