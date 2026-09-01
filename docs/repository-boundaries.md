@@ -95,20 +95,28 @@ which implements the eight `GoldenEvidenceRepositoryPort` methods;
 `DemoTraceImportRepository`, which implements the seven
 `TraceImportRepositoryPort` methods; `DemoCredentialRepository`, which
 implements the four `ApiKeyRepositoryPort` methods and four
-`JudgeCredentialRepositoryPort` methods; and `DemoIntegrationRepository`,
+`JudgeCredentialRepositoryPort` methods; `DemoIntegrationRepository`,
 which implements all twenty-three `IntegrationRepositoryPort` methods for
-LangSmith, Langfuse, and Ironside. The facade constructs all seven once with
-its exact store and gives the project, skill-lifecycle, golden-evidence,
-trace-import, and integration slices only narrow dependencies. The skill and
-golden-evidence slices receive same-port facade callbacks where their composite
-operations must preserve CURRENT subclass dispatch. The trace-import slice
-resolves skill versions through the facade so existing subclass dispatch
-remains intact. The integration slice uses that same resolver boundary so
-scheduled imports retain exact evaluator-version selection and subclass
-dispatch. It owns each provider's public projection, private worker credential
-context, poll cadence, selection-failure job, project isolation, and Ironside
-connection-revision and opaque-cursor compare-and-set behavior as one cohesive
-consistency group.
+LangSmith, Langfuse, and Ironside; and `DemoJudgeFeedbackRepository`, which
+implements all ten `JudgeFeedbackRepositoryPort` methods. The facade constructs
+all eight once with its exact store and gives the project, skill-lifecycle,
+golden-evidence, trace-import, integration, and judge-feedback slices only
+narrow dependencies. The skill and golden-evidence slices receive same-port
+facade callbacks where their composite operations must preserve CURRENT
+subclass dispatch. The trace-import slice resolves skill versions through the
+facade so existing subclass dispatch remains intact. The integration slice uses
+that same resolver boundary so scheduled imports retain exact evaluator-version
+selection and subclass dispatch. It owns each provider's public projection,
+private worker credential context, poll cadence, selection-failure job, project
+isolation, and Ironside connection-revision and opaque-cursor compare-and-set
+behavior as one cohesive consistency group.
+The judge-feedback slice receives only the exact shared store plus the facade's
+built-in trace synthesizer and same-port worker-context callback. It keeps
+pinned evaluator-version context, idempotent judge-run recording,
+provider/source matching, feedback-job deduplication and state transitions, and
+Ironside requeue discovery together. Raw provider credentials remain confined
+to worker-only feedback contexts; public job lists never expose the
+credential-bearing integration objects.
 The credential slice receives only the shared store: API keys return plaintext
 exactly once while the store retains only their hashes, judge-provider reads
 remain masked, and raw judge credentials remain available only through the
@@ -147,6 +155,11 @@ credential-private public projections, project-isolated worker contexts,
 polling cadence and bounded claims, failed exact-version selection evidence,
 Ironside quarantine and opaque-cursor compare-and-set behavior, and source
 detachment on deletion.
+`demo-feedback-repository.test.ts` pins the judge-feedback slice's whole-port
+ownership, single construction, exact shared store and both facade callbacks,
+pinned-version context, idempotent run recording, source/provider/project
+matching, worker-only credential context, sync deduplication, attempts/errors,
+and blocked/pending/succeeded transitions.
 
 The shared store has these rules:
 
