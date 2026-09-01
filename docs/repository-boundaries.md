@@ -80,15 +80,23 @@ dataset-example import must create traces and membership on the same client;
 candidate creation must bind its revision, credential, and version on the same
 client; and terminal evaluation updates must mint receipts on the same client.
 
-## DemoRepository shared store (CURRENT; domain slices remain TARGET)
+## DemoRepository shared store and project slice (CURRENT; further slices remain TARGET)
 
 `DemoRepositoryStore` owns the demo facade's mutable maps, arrays, sets,
 counters, scalar pointers, and promise-deduplication state. `DemoRepository`
 allocates exactly one store per facade instance; the store is an internal
 composition seam and is not re-exported by the public repository module. The
-`pnpm repository-boundaries` gate remains PostgreSQL-only, while
-`demo-repository-store.test.ts` pins the Demo store inventory and facade
-composition.
+first CURRENT domain slice is `DemoProjectRepository`, which implements the
+seven `ProjectRepositoryPort` methods. The facade constructs that slice once
+with its exact store plus narrow callbacks for cross-port reads, then preserves
+the public method path through direct delegation. Remaining domain slices are
+still TARGET work.
+
+The `pnpm repository-boundaries` gate remains PostgreSQL-only, while
+`demo-repository-store.test.ts` pins the Demo store inventory and composition
+graph. `demo-project-repository.test.ts` pins the first slice's ownership,
+single construction, stable facade delegates, and immediate visibility of a
+trace imported through another facade domain.
 
 The shared store has these rules:
 
@@ -100,7 +108,8 @@ The shared store has these rules:
   in-flight promise maps, dispatch leases, and counters keep their current
   lifetime and ordering;
 - the public `DemoRepository` remains the single `CoevalRepository` facade and
-  will create future domain slices once in its constructor, never per request;
+  creates each CURRENT or future domain slice once in its constructor, never
+  per request;
   and
 - future slices receive the facade's exact store reference; they do not create
   a store or expose it as public API.
