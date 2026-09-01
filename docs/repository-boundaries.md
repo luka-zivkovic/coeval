@@ -39,11 +39,18 @@ command. Trace identity locking and trace insertion live together in
 `repository.pg/trace-import-commands.ts`; both functions accept the caller's
 `PoolClient`, so single-trace and dataset-example ingestion retain their
 existing transaction owners and all-or-nothing boundary.
+Criterion-version resolution, golden-backed regression snapshot preparation,
+immutable dataset-revision insertion, retained input-identity recovery, and
+human-verdict loading live in `repository.pg/dataset-revision-commands.ts`.
+Its five commands keep golden promotion, retirement, public revision creation,
+explicit regression-revision creation, and evaluator-version setup on their
+existing caller-owned clients.
 `repository-pg-support.test.ts` pins the support module surfaces, the sole
 `PgRepository` implementation owner, the complete 161-method public facade,
 and representative retirement-context query behavior;
 `repository-pg-trace-import-commands.test.ts` pins trace-lock and import
-behavior directly.
+behavior directly, while `repository-pg-dataset-revision-commands.test.ts`
+pins the dataset-revision command surface and representative behavior.
 
 The fixture also pins the one approved pool handoff from the main repository:
 `authorizeSkillVersionExecution` constructs `PgEvaluatorLifecycleRepository`
