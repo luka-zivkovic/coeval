@@ -66,9 +66,28 @@ const EXPECTED_STORE_FIELDS = [
   "gateChecks"
 ] as const;
 
+const EXPECTED_COMPOSITION_FIELDS = [
+  "caseEvidenceRepository",
+  "credentialRepository",
+  "criterionSuiteRepository",
+  "datasetRepository",
+  "evaluationRepository",
+  "goldenEvidenceRepository",
+  "historicalGateEvidenceRepository",
+  "integrationRepository",
+  "judgeFeedbackRepository",
+  "projectRepository",
+  "reviewQueueRepository",
+  "runComparisonRepository",
+  "skillLifecycleRepository",
+  "traceImportRepository",
+  "traceTestRepository"
+] as const;
+
 const API_DIRECTORY = fileURLToPath(new URL("../", import.meta.url));
 const API_SOURCE_DIRECTORY = path.join(API_DIRECTORY, "src");
 const REPOSITORY_PATH = path.join(API_SOURCE_DIRECTORY, "repository.ts");
+const COMPOSITION_PATH = path.join(API_SOURCE_DIRECTORY, "repository/demo-composition.ts");
 const STORE_PATH = path.join(API_SOURCE_DIRECTORY, "repository/demo-store.ts");
 const REPOSITORY_HELPERS_PATH = path.join(API_SOURCE_DIRECTORY, "repository/helpers.ts");
 const REPOSITORY_SOURCE_DIRECTORY = path.dirname(STORE_PATH);
@@ -597,21 +616,9 @@ describe("DemoRepository shared store", () => {
     expect(properties.map((property) =>
       printer.printNode(ts.EmitHint.Unspecified, property, repositorySource).replace(/\s+/g, " ").trim()
     )).toEqual([
-      "private readonly caseEvidenceRepository: DemoCaseEvidenceRepository;",
-      "private readonly credentialRepository: DemoCredentialRepository;",
-      "private readonly criterionSuiteRepository: DemoCriterionSuiteRepository;",
-      "private readonly datasetRepository: DemoDatasetRepository;",
-      "private readonly evaluationRepository: DemoEvaluationRepository;",
-      "private readonly goldenEvidenceRepository: DemoGoldenEvidenceRepository;",
-      "private readonly historicalGateEvidenceRepository: DemoHistoricalGateEvidenceRepository;",
-      "private readonly integrationRepository: DemoIntegrationRepository;",
-      "private readonly judgeFeedbackRepository: DemoJudgeFeedbackRepository;",
-      "private readonly projectRepository: DemoProjectRepository;",
-      "private readonly reviewQueueRepository: DemoReviewQueueRepository;",
-      "private readonly runComparisonRepository: DemoRunComparisonRepository;",
-      "private readonly skillLifecycleRepository: DemoSkillLifecycleRepository;",
-      "private readonly traceImportRepository: DemoTraceImportRepository;",
-      "private readonly traceTestRepository: DemoTraceTestRepository;",
+      ...EXPECTED_COMPOSITION_FIELDS.map((name) =>
+        `private readonly ${name}!: DemoRepositoryComposition["${name}"];`
+      ),
       "private readonly store = new DemoRepositoryStore();"
     ]);
 
@@ -651,6 +658,7 @@ describe("DemoRepository shared store", () => {
     expect(analysis.storeModuleEdges).toEqual([
       'repository.ts:static-import:import { DemoRepositoryStore } from "./repository/demo-store.js";',
       'repository/demo-case-evidence.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-composition.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-datasets.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -669,6 +677,7 @@ describe("DemoRepository shared store", () => {
     expect(analysis.storeModuleSpecifierMentions).toEqual([
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
       'repository/demo-case-evidence.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-composition.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-datasets.ts:ImportDeclaration:"./demo-store.js"',
@@ -697,6 +706,11 @@ describe("DemoRepository shared store", () => {
       "repository.ts:NewExpression:DemoRepositoryStore",
       "repository/demo-case-evidence.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-case-evidence.ts:TypeReference:DemoRepositoryStore",
+      "repository/demo-composition.ts:ImportSpecifier:DemoRepositoryStore",
+      "repository/demo-composition.ts:TypeReference:DemoRepositoryStore",
+      "repository/demo-composition.ts:TypeReference:DemoRepositoryStore",
+      "repository/demo-composition.ts:TypeReference:DemoRepositoryStore",
+      "repository/demo-composition.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-credentials.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-credentials.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-criteria.ts:ImportSpecifier:DemoRepositoryStore",
@@ -732,6 +746,7 @@ describe("DemoRepository shared store", () => {
       "repository.ts",
       "repository/contracts.ts",
       "repository/demo-case-evidence.ts",
+      "repository/demo-composition.ts",
       "repository/demo-credentials.ts",
       "repository/demo-criteria.ts",
       "repository/demo-datasets.ts",
@@ -756,14 +771,10 @@ describe("DemoRepository shared store", () => {
     expect(analysis.repositoryGraphStaticOrAccessorMembers).toEqual([]);
     expect(analysis.repositoryImports).toMatchSnapshot("demo repository imports");
     expect(analysis.repositoryUnexpectedMemberKinds).toEqual([]);
-    expect(analysis.repositoryModuleVariables).toEqual([
-      'DEMO_ACTOR_NAMES = new Map<string, string>([ ["user_maya", "Maya"], ["user_jules", "Jules"], ["user_priya", "Priya"] ])'
-    ]);
+    expect(analysis.repositoryModuleVariables).toEqual([]);
     expect(analysis.repositoryTopLevelDeclarations).toEqual([
       "InterfaceDeclaration:CoevalRepository",
-      "ClassDeclaration:DemoRepository",
-      "FunctionDeclaration:demoTraceForGoldenEntry",
-      "VariableStatement:DEMO_ACTOR_NAMES"
+      "ClassDeclaration:DemoRepository"
     ]);
     expect(analysis.repositoryUnexpectedStatements).toEqual([]);
     expect(analysis.storeTopLevelDeclarations).toEqual(["ClassDeclaration:DemoRepositoryStore"]);
@@ -817,6 +828,7 @@ describe("DemoRepository shared store", () => {
       'repository.ts:static-import:import * as HiddenDemoStoreNamespace from "./repository/demo-store.js";',
       'repository.ts:static-import:import { DemoRepositoryStore } from "./repository/demo-store.js";',
       'repository/demo-case-evidence.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-composition.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-datasets.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -845,6 +857,7 @@ describe("DemoRepository shared store", () => {
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
       'repository/demo-case-evidence.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-composition.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-datasets.ts:ImportDeclaration:"./demo-store.js"',
@@ -864,11 +877,12 @@ describe("DemoRepository shared store", () => {
 
   it("rejects hidden module state, function-object state, accessors, and extra exports", () => {
     const repositorySource = fs.readFileSync(REPOSITORY_PATH, "utf8");
+    const compositionSource = fs.readFileSync(COMPOSITION_PATH, "utf8");
     const storeSource = fs.readFileSync(STORE_PATH, "utf8");
-    const hiddenStateMutation = replaceOnce(
+    const hiddenCompositionStateMutation = replaceOnce(
       replaceOnce(
         replaceOnce(
-          repositorySource,
+          compositionSource,
           "const DEMO_ACTOR_NAMES = new Map<string, string>([",
           "const HIDDEN_DEMO_STATE = new Map<string, string>();\n" +
             "const DEMO_ACTOR_NAMES = new Map<string, string>(["
@@ -879,16 +893,21 @@ describe("DemoRepository shared store", () => {
           "}\n\n" +
           "function demoTraceForGoldenEntry("
       ),
+      "): DemoRepositoryComposition {",
+      "): DemoRepositoryComposition {\n" +
+        '  DEMO_ACTOR_NAMES.set("hidden", "state");\n' +
+        '  hiddenDemoState().set("hidden", "state");'
+    );
+    const hiddenRepositoryStateMutation = replaceOnce(
+      repositorySource,
       "  async listProjects(): Promise<Project[]> {",
       "  async listProjects(): Promise<Project[]> {\n" +
-        '    const localOwner = runGoldenSetRegression as typeof runGoldenSetRegression & { state?: Map<string, string> };\n' +
+        '    const localOwner = createDemoRepositoryComposition as typeof createDemoRepositoryComposition & { state?: Map<string, string> };\n' +
         '    localOwner.state ??= new Map<string, string>();\n' +
         '    Object.defineProperty(localOwner, "definedState", { value: new Map<string, string>() });\n' +
-        '    const importedOwner = datasetInputIdentity as typeof datasetInputIdentity & { state?: Map<string, string> };\n' +
+        '    const importedOwner = DemoRepositoryStore as typeof DemoRepositoryStore & { state?: Map<string, string> };\n' +
         '    importedOwner.state ??= new Map<string, string>();\n' +
-        '    Reflect.deleteProperty(importedOwner, "legacyState");\n' +
-        '    DEMO_ACTOR_NAMES.set("hidden", "state");\n' +
-        '    hiddenDemoState().set("hidden", "state");'
+        '    Reflect.deleteProperty(importedOwner, "legacyState");'
     );
     const helpersSource = fs.readFileSync(REPOSITORY_HELPERS_PATH, "utf8");
     const hiddenHelperStateMutation = replaceOnce(
@@ -906,23 +925,19 @@ describe("DemoRepository shared store", () => {
         "  readonly traces = new Map<string, Trace>();"
     ) + "\nexport const GLOBAL_DEMO_STORE = new DemoRepositoryStore();\n";
     const shapeAnalysis = storeBoundaryAnalysis(createApiProgram(new Map([
-      [REPOSITORY_PATH, hiddenStateMutation],
+      [REPOSITORY_PATH, hiddenRepositoryStateMutation],
+      [COMPOSITION_PATH, hiddenCompositionStateMutation],
       [REPOSITORY_HELPERS_PATH, hiddenHelperStateMutation],
       [STORE_PATH, accessorAndExportMutation]
     ])));
-    expect(shapeAnalysis.repositoryModuleVariables).not.toEqual([
-      'DEMO_ACTOR_NAMES = new Map<string, string>([ ["user_maya", "Maya"], ["user_jules", "Jules"], ["user_priya", "Priya"] ])'
-    ]);
-    expect(shapeAnalysis.repositoryTopLevelDeclarations).toContain(
-      "FunctionDeclaration:hiddenDemoState"
-    );
+    expect(shapeAnalysis.repositoryModuleVariables).toEqual([]);
     expect(shapeAnalysis.productionModuleObjectMutations).toEqual([
-      "repository.ts:(hiddenDemoState as any).state:??=",
-      'repository.ts:DEMO_ACTOR_NAMES.set("hidden", "state")',
       'repository.ts:Object.defineProperty(localOwner, "definedState", { value: new Map<string, string>() })',
       'repository.ts:Reflect.deleteProperty(importedOwner, "legacyState")',
       "repository.ts:importedOwner.state:??=",
       "repository.ts:localOwner.state:??=",
+      "repository/demo-composition.ts:(hiddenDemoState as any).state:??=",
+      'repository/demo-composition.ts:DEMO_ACTOR_NAMES.set("hidden", "state")',
       "repository/demo-skills.ts:demoSkill.isStarter:=",
       "repository/helpers.ts:owner.state:??="
     ]);

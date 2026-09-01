@@ -265,18 +265,18 @@ describe("Demo skill lifecycle repository slice", () => {
     const analysis = skillSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoSkillLifecycleRepository"]);
     expect(analysis.allocations).toEqual([
-      "repository.ts:DemoRepository.constructor:new DemoSkillLifecycleRepository(this.store, this.judgeProvider, { createSkillVersionPending: (skillId, input, context) => this.createSkillVersionPending(skillId, input, context), getDatasetRevisionDetail: (projectId, revisionId) => this.getDatasetRevisionDetail(projectId, revisionId), getOrCreateRegressionDatasetRevision: (projectId, actorUserId, resolvedCriterionVersionId) => this.getOrCreateRegressionDatasetRevision(projectId, actorUserId, resolvedCriterionVersionId), previousVerdictsFromRun, runRegressionGateForVersion: (job) => this.runRegressionGateForVersion(job), runGoldenSetRegression })"
+      "repository/demo-composition.ts:createDemoRepositoryComposition:new DemoSkillLifecycleRepository(store, judgeProvider, { createSkillVersionPending: (skillId, input, context) => facade.createSkillVersionPending(skillId, input, context), getDatasetRevisionDetail: (projectId, revisionId) => facade.getDatasetRevisionDetail(projectId, revisionId), getOrCreateRegressionDatasetRevision: (projectId, actorUserId, resolvedCriterionVersionId) => facade.getOrCreateRegressionDatasetRevision(projectId, actorUserId, resolvedCriterionVersionId), previousVerdictsFromRun, runRegressionGateForVersion: (job) => facade.runRegressionGateForVersion(job), runGoldenSetRegression })"
     ]);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoSkillLifecycleRepository } from "./repository/demo-skills.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoSkillLifecycleRepository } from "./demo-skills.js";'
     ]);
     expect(analysis.moduleSpecifierMentions).toEqual([
-      'repository.ts:ImportDeclaration:"./repository/demo-skills.js"'
+      'repository/demo-composition.ts:ImportDeclaration:"./demo-skills.js"'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoSkillLifecycleRepository",
-      "repository.ts:NewExpression:DemoSkillLifecycleRepository",
-      "repository.ts:TypeReference:DemoSkillLifecycleRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoSkillLifecycleRepository",
+      "repository/demo-composition.ts:NewExpression:DemoSkillLifecycleRepository",
+      "repository/demo-composition.ts:TypeReference:DemoSkillLifecycleRepository",
       "repository/demo-skills.ts:ClassDeclaration:DemoSkillLifecycleRepository"
     ]);
 

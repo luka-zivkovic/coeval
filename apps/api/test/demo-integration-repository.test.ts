@@ -116,6 +116,9 @@ function nearestFunctionOwner(node: ts.Node): string {
       const className = ts.isClassDeclaration(parent) ? parent.name?.text : undefined;
       return `${className ?? "<class>"}.${current.name.getText()}`;
     }
+    if (ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current)) {
+      return ts.isFunctionDeclaration(current) && current.name ? current.name.text : "<anonymous>";
+    }
   }
   return "<module>";
 }
@@ -287,18 +290,18 @@ describe("Demo integration repository slice", () => {
     const analysis = integrationSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoIntegrationRepository"]);
     expect(analysis.allocations).toEqual([
-      "repository.ts:DemoRepository.constructor:new DemoIntegrationRepository(this.store, { resolveImportSkillVersionId: (projectId, requested) => this.resolveImportSkillVersionId(projectId, requested) })"
+      "repository/demo-composition.ts:createDemoRepositoryComposition:new DemoIntegrationRepository(store, { resolveImportSkillVersionId: (projectId, requested) => resolveImportSkillVersionId(facade, projectId, requested) })"
     ]);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoIntegrationRepository } from "./repository/demo-integrations.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoIntegrationRepository } from "./demo-integrations.js";'
     ]);
     expect(analysis.moduleSpecifierMentions).toEqual([
-      'repository.ts:ImportDeclaration:"./repository/demo-integrations.js"'
+      'repository/demo-composition.ts:ImportDeclaration:"./demo-integrations.js"'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoIntegrationRepository",
-      "repository.ts:NewExpression:DemoIntegrationRepository",
-      "repository.ts:TypeReference:DemoIntegrationRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoIntegrationRepository",
+      "repository/demo-composition.ts:NewExpression:DemoIntegrationRepository",
+      "repository/demo-composition.ts:TypeReference:DemoIntegrationRepository",
       "repository/demo-integrations.ts:ClassDeclaration:DemoIntegrationRepository"
     ]);
 

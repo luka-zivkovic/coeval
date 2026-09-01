@@ -24,6 +24,7 @@ const EXPECTED_ALL_FUNCTIONS = [
 const API_DIRECTORY = fileURLToPath(new URL("../", import.meta.url));
 const API_SOURCE_DIRECTORY = path.join(API_DIRECTORY, "src");
 const REPOSITORY_PATH = path.join(API_SOURCE_DIRECTORY, "repository.ts");
+const COMPOSITION_PATH = path.join(API_SOURCE_DIRECTORY, "repository/demo-composition.ts");
 const GOLDEN_HELPERS_PATH = path.join(API_SOURCE_DIRECTORY, "repository/golden-helpers.ts");
 
 function sourceFile(filePath: string): ts.SourceFile {
@@ -74,6 +75,7 @@ describe("golden repository helpers", () => {
   it("preserves the exact root surface behind one pure helper module", () => {
     const helperSource = sourceFile(GOLDEN_HELPERS_PATH);
     const repositorySource = sourceFile(REPOSITORY_PATH);
+    const compositionSource = sourceFile(COMPOSITION_PATH);
     const functions = helperSource.statements.filter(ts.isFunctionDeclaration);
     const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed, removeComments: true });
     const program = createApiProgram();
@@ -115,8 +117,12 @@ describe("golden repository helpers", () => {
       ts.isStringLiteralLike(statement.moduleSpecifier) &&
       statement.moduleSpecifier.text === "./repository/golden-helpers.js"
     ).map((statement) => ts.SyntaxKind[statement.kind])).toEqual([
-      "ImportDeclaration",
       "ExportDeclaration"
     ]);
+    expect(compositionSource.statements.filter((statement) =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteralLike(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === "./golden-helpers.js"
+    )).toHaveLength(1);
   });
 });

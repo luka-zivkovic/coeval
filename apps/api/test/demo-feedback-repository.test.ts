@@ -84,6 +84,9 @@ function nearestFunctionOwner(node: ts.Node): string {
       const className = ts.isClassDeclaration(parent) ? parent.name?.text : undefined;
       return `${className ?? "<class>"}.${current.name.getText()}`;
     }
+    if (ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current)) {
+      return ts.isFunctionDeclaration(current) && current.name ? current.name.text : "<anonymous>";
+    }
   }
   return "<module>";
 }
@@ -225,15 +228,15 @@ describe("Demo judge-feedback repository slice", () => {
     const analysis = feedbackSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoJudgeFeedbackRepository"]);
     expect(analysis.allocations).toEqual([
-      "repository.ts:DemoRepository.constructor:new DemoJudgeFeedbackRepository(this.store, { loadFeedbackSyncContext: (job) => this.loadFeedbackSyncContext(job), syntheticTraceForBuiltinCase: (caseId) => this.syntheticTraceForBuiltinCase(caseId) })"
+      "repository/demo-composition.ts:createDemoRepositoryComposition:new DemoJudgeFeedbackRepository(store, { loadFeedbackSyncContext: (job) => facade.loadFeedbackSyncContext(job), syntheticTraceForBuiltinCase })"
     ]);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoJudgeFeedbackRepository } from "./repository/demo-feedback.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoJudgeFeedbackRepository } from "./demo-feedback.js";'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoJudgeFeedbackRepository",
-      "repository.ts:NewExpression:DemoJudgeFeedbackRepository",
-      "repository.ts:TypeReference:DemoJudgeFeedbackRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoJudgeFeedbackRepository",
+      "repository/demo-composition.ts:NewExpression:DemoJudgeFeedbackRepository",
+      "repository/demo-composition.ts:TypeReference:DemoJudgeFeedbackRepository",
       "repository/demo-feedback.ts:ClassDeclaration:DemoJudgeFeedbackRepository"
     ]);
 

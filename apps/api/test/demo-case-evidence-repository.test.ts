@@ -105,7 +105,9 @@ function nearestFunctionOwner(node: ts.Node): string {
       const className = ts.isClassDeclaration(parent) ? parent.name?.text : undefined;
       return `${className ?? "<class>"}.${current.name.getText()}`;
     }
-    if (ts.isFunctionLike(current)) return "<anonymous>";
+    if (ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current)) {
+      return ts.isFunctionDeclaration(current) && current.name ? current.name.text : "<anonymous>";
+    }
   }
   return "<module>";
 }
@@ -251,15 +253,15 @@ describe("Demo case evidence repository slice", () => {
     const analysis = caseEvidenceSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoCaseEvidenceRepository"]);
     expect(analysis.allocations).toHaveLength(1);
-    expect(analysis.allocations[0]).toMatch(/^repository\.ts:DemoRepository\.constructor:new DemoCaseEvidenceRepository\(this\.store, \{/);
+    expect(analysis.allocations[0]).toMatch(/^repository\/demo-composition\.ts:createDemoRepositoryComposition:new DemoCaseEvidenceRepository\(store, \{/);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoCaseEvidenceRepository } from "./repository/demo-case-evidence.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoCaseEvidenceRepository } from "./demo-case-evidence.js";'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoCaseEvidenceRepository",
-      "repository.ts:NewExpression:DemoCaseEvidenceRepository",
-      "repository.ts:TypeReference:DemoCaseEvidenceRepository",
-      "repository/demo-case-evidence.ts:ClassDeclaration:DemoCaseEvidenceRepository"
+      "repository/demo-case-evidence.ts:ClassDeclaration:DemoCaseEvidenceRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoCaseEvidenceRepository",
+      "repository/demo-composition.ts:NewExpression:DemoCaseEvidenceRepository",
+      "repository/demo-composition.ts:TypeReference:DemoCaseEvidenceRepository"
     ]);
 
     const repositoryInstance = new DemoRepository();

@@ -228,36 +228,18 @@ exports[`DemoRepository shared store > pins every store field declaration and in
 exports[`DemoRepository shared store > pins store ownership across production and module state across the repository graph > demo repository imports 1`] = `
 [
   "import { MockJudgeProvider, type JudgeProvider, type Trace } from "@coeval/audit/runtime";",
-  "import { demoExceptions, demoGoldenSet, demoProject, demoSkill, demoSkillPrevVersion, demoVerdicts } from "@coeval/db";",
+  "import { demoProject } from "@coeval/db";",
   "import { type Criterion, type CriterionDetail, type CriterionVersion, type CreateCriterionInput, type CreateCriterionVersionInput, type CreatedCriterion, type CreateEvaluatorSuiteManifestInput, type EvaluatorSuite, type EvaluatorSuiteManifest, type EvaluatorExecutionContext, type JudgeCardAuditEntry, type GateRunJob, ApiKey, CreatedApiKey, CreateSkillVersionInput, DashboardSummary, Dataset, DatasetDetail, DatasetItem, DatasetRevision, DatasetRevisionDetail, EvalRun, EvalRunDetail, EvalRunItem, type GateCheck, type GateCheckDetail, ExceptionDetail, FeedbackSyncJob, GoldenSetHealthSummary, GoldenSetEntry, ConvergenceAuditPage, SelfConsistencyReport, DisagreementSummary, ImportJobRecord, JudgeHumanDisagreementSummary, JudgeRun, KappaSummary, LangfuseConnectionTestResult, LangfuseImportJob, LangfuseImportTarget, LangfuseIntegration, LangfuseIntegrationInput, IronsideConnectionTestResult, IronsideImportJob, IronsideImportTarget, IronsideIntegration, IronsideIntegrationInput, type IronsideEvaluatorContext, IronsideSyncState, UpdateIronsideIntegrationInput, ReviewQueue, ReviewQueueDetail, ReviewQueueItem, ReviewQueueStatus, JudgeRunJob, LangSmithConnectionTestResult, LangSmithImportJob, LangSmithImportTarget, LangSmithIntegration, LangSmithIntegrationInput, ManualTraceImportInput, OnboardingEvidenceInventory, Project, ProjectSettings, RegressionRunResult, RetentionPruneResult, RunComparison, Skill, JudgeKeyProvider, JudgeProviderKey, SkillFormatExample, SkillVersion, TraceTestDetail, TraceTestSummary, TraceTestValidation, CaseSource, UpdateLangfuseIntegrationInput, UpdateLangSmithIntegrationInput, UpdateProjectSettingsInput, VerdictRecord } from "@coeval/shared";",
-  "import { evaluatorSuiteCriterionDigest } from "./lib/evaluator-suite.js";",
-  "import { datasetInputIdentity } from "./lib/dataset-revision.js";",
   "import type { ProjectRepositoryPort, CriterionSuiteRepositoryPort, SkillLifecycleRepositoryPort, GoldenEvidenceRepositoryPort, TraceImportRepositoryPort, IntegrationRepositoryPort, JudgeFeedbackRepositoryPort, CaseEvidenceRepositoryPort, ReviewQueueRepositoryPort, ApiKeyRepositoryPort, TraceTestRepositoryPort, DatasetRepositoryPort, JudgeCredentialRepositoryPort, EvalRunRepositoryPort, AssessmentReceiptRepositoryPort, RunComparisonRepositoryPort, HistoricalGateEvidenceRepositoryPort } from "./repository/ports.js";",
   "import type { CreateSkillVersionContext, ConvergenceAuditPageInput, AssessmentReceiptArtifact, AssessmentReceiptComparison, CompareAssessmentReceiptCopyInput, CreateAssessmentReceiptCorrectionInput, CreateGateCheckInputDb, CreateRunComparisonInputDb, CreateEvalRunInputDb, CreateConvergenceEvalRunInputDb, CreateImportedCaseEvalRunInputDb, EvalRunDispatchInputDb, EvalRunDispatchClaim, EvalRunItemExecutionInputDb, EvalRunItemExecutionClaim, EvalRunItemReleaseDisposition, EvalRunItemReleaseOptions, StaleEvalRunItemExecution, CompleteEvalRunItemInputDb, FailEvalRunItemInputDb, CreateApiKeyInputDb, CreateTraceTestInputDb, ReviseTraceTestInputDb, RecordTraceTestValidationInputDb, EnableTraceTestInputDb, RecordTraceTestFunnelEventInputDb, CreateDatasetInputDb, AddDatasetItemsInputDb, ImportDatasetExamplesDbInput, ImportDatasetExamplesDbResult, CreateDatasetRevisionDbInput, AddQueueItemsInputDb, CreateReviewQueueInputDb, RecordVerdictInput, ListCasesOptions, CaseListEntry, ListVerdictsInput, TraceImportResult, JudgeRunContext, RecordJudgeRunInput, TraceImportContext, CreateImportJobInput, CompleteImportJobInput, ListImportJobsInput, PromoteExceptionToGoldenSetInput, RetireGoldenSetEntryInput, LangSmithImportContext, ClaimLangSmithImportTargetsInput, LangfuseImportContext, ClaimLangfuseImportTargetsInput, IronsideImportContext, ClaimIronsideImportTargetsInput, FeedbackSyncProvider, FeedbackSyncJobRecord, FeedbackSyncContext, ListFeedbackSyncJobsInput, FeedbackSyncJobListItem } from "./repository/contracts.js";",
-  "import { DatasetRevisionConflictError } from "./repository/errors.js";",
-  "import { buildGoldenSetHealthSummary, previousVerdictsFromRun, runGoldenSetRegression } from "./repository/golden-helpers.js";",
+  "import { createDemoRepositoryComposition, type DemoRepositoryComposition } from "./repository/demo-composition.js";",
   "import { DemoRepositoryStore } from "./repository/demo-store.js";",
-  "import { DemoCaseEvidenceRepository } from "./repository/demo-case-evidence.js";",
-  "import { DemoCredentialRepository } from "./repository/demo-credentials.js";",
-  "import { DemoCriterionSuiteRepository } from "./repository/demo-criteria.js";",
-  "import { DemoDatasetRepository } from "./repository/demo-datasets.js";",
-  "import { DemoEvaluationRepository } from "./repository/demo-evaluation.js";",
-  "import { DemoGoldenEvidenceRepository } from "./repository/demo-golden.js";",
-  "import { DemoHistoricalGateEvidenceRepository } from "./repository/demo-historical-gates.js";",
-  "import { DemoIntegrationRepository } from "./repository/demo-integrations.js";",
-  "import { DemoJudgeFeedbackRepository } from "./repository/demo-feedback.js";",
-  "import { DemoProjectRepository } from "./repository/demo-projects.js";",
-  "import { DemoReviewQueueRepository } from "./repository/demo-review-queues.js";",
-  "import { DemoRunComparisonRepository } from "./repository/demo-run-comparisons.js";",
-  "import { DemoSkillLifecycleRepository } from "./repository/demo-skills.js";",
-  "import { DemoTraceImportRepository } from "./repository/demo-trace-import.js";",
-  "import { DemoTraceTestRepository } from "./repository/demo-trace-tests.js";",
 ]
 `;
 
 exports[`DemoRepository shared store > pins store ownership across production and module state across the repository graph > repository graph module state 1`] = `
 [
-  "repository.ts:DEMO_ACTOR_NAMES = new Map<string, string>([ ["user_maya", "Maya"], ["user_jules", "Jules"], ["user_priya", "Priya"] ])",
+  "repository/demo-composition.ts:DEMO_ACTOR_NAMES = new Map<string, string>([ ["user_maya", "Maya"], ["user_jules", "Jules"], ["user_priya", "Priya"] ])",
   "repository/helpers.ts:TRACE_INGESTION_PURPOSES_BY_SOURCE = { manual: [ "analysis_eligible_manual", "judge_api", "judge_batch_general", "dataset_example", "trace_test_synthetic" ], langsmith: ["analysis_eligible_langsmith"], langfuse: ["analysis_eligible_langfuse"], ironside: ["analysis_eligible_ironside"], release_evidence: ["release_evidence"], gate_candidate: [] } as const satisfies Record<CaseSource, readonly RuntimeIngestionPurpose[]>",
 ]
 `;

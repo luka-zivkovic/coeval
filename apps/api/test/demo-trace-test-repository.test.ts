@@ -95,7 +95,9 @@ function nearestFunctionOwner(node: ts.Node): string {
       const className = ts.isClassDeclaration(parent) ? parent.name?.text : undefined;
       return `${className ?? "<class>"}.${current.name.getText()}`;
     }
-    if (ts.isFunctionLike(current)) return "<anonymous>";
+    if (ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current)) {
+      return ts.isFunctionDeclaration(current) && current.name ? current.name.text : "<anonymous>";
+    }
   }
   return "<module>";
 }
@@ -298,18 +300,18 @@ describe("Demo trace-test repository slice", () => {
     const analysis = traceTestSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoTraceTestRepository"]);
     expect(analysis.allocations).toEqual([
-      "repository.ts:DemoRepository.constructor:new DemoTraceTestRepository(this.store, { getCaseDetail: (projectId, caseId) => this.getCaseDetail(projectId, caseId) })"
+      "repository/demo-composition.ts:createDemoRepositoryComposition:new DemoTraceTestRepository(store, { getCaseDetail: (projectId, caseId) => facade.getCaseDetail(projectId, caseId) })"
     ]);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoTraceTestRepository } from "./repository/demo-trace-tests.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoTraceTestRepository } from "./demo-trace-tests.js";'
     ]);
     expect(analysis.moduleSpecifierMentions).toEqual([
-      'repository.ts:ImportDeclaration:"./repository/demo-trace-tests.js"'
+      'repository/demo-composition.ts:ImportDeclaration:"./demo-trace-tests.js"'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoTraceTestRepository",
-      "repository.ts:NewExpression:DemoTraceTestRepository",
-      "repository.ts:TypeReference:DemoTraceTestRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoTraceTestRepository",
+      "repository/demo-composition.ts:NewExpression:DemoTraceTestRepository",
+      "repository/demo-composition.ts:TypeReference:DemoTraceTestRepository",
       "repository/demo-trace-tests.ts:ClassDeclaration:DemoTraceTestRepository"
     ]);
 

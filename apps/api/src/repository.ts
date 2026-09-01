@@ -1,5 +1,5 @@
 import { MockJudgeProvider, type JudgeProvider, type Trace } from "@coeval/audit/runtime";
-import { demoExceptions, demoGoldenSet, demoProject, demoSkill, demoSkillPrevVersion, demoVerdicts } from "@coeval/db";
+import { demoProject } from "@coeval/db";
 import {
   type Criterion,
   type CriterionDetail,
@@ -82,27 +82,15 @@ import {
   UpdateProjectSettingsInput,
   VerdictRecord
 } from "@coeval/shared";
-import {
-  evaluatorSuiteCriterionDigest
-} from "./lib/evaluator-suite.js";
-import { datasetInputIdentity } from "./lib/dataset-revision.js";
 import type {
-  ProjectRepositoryPort,
-  CriterionSuiteRepositoryPort,
-  SkillLifecycleRepositoryPort,
-  GoldenEvidenceRepositoryPort,
-  TraceImportRepositoryPort,
-  IntegrationRepositoryPort,
-  JudgeFeedbackRepositoryPort,
-  CaseEvidenceRepositoryPort,
-  ReviewQueueRepositoryPort,
-  ApiKeyRepositoryPort,
-  TraceTestRepositoryPort,
-  DatasetRepositoryPort,
-  JudgeCredentialRepositoryPort,
-  EvalRunRepositoryPort,
-  AssessmentReceiptRepositoryPort,
-  RunComparisonRepositoryPort,
+  ProjectRepositoryPort, CriterionSuiteRepositoryPort,
+  SkillLifecycleRepositoryPort, GoldenEvidenceRepositoryPort,
+  TraceImportRepositoryPort, IntegrationRepositoryPort,
+  JudgeFeedbackRepositoryPort, CaseEvidenceRepositoryPort,
+  ReviewQueueRepositoryPort, ApiKeyRepositoryPort,
+  TraceTestRepositoryPort, DatasetRepositoryPort,
+  JudgeCredentialRepositoryPort, EvalRunRepositoryPort,
+  AssessmentReceiptRepositoryPort, RunComparisonRepositoryPort,
   HistoricalGateEvidenceRepositoryPort
 } from "./repository/ports.js";
 import type {
@@ -164,35 +152,11 @@ import type {
   ListFeedbackSyncJobsInput,
   FeedbackSyncJobListItem
 } from "./repository/contracts.js";
-import { DatasetRevisionConflictError } from "./repository/errors.js";
-import {
-  buildGoldenSetHealthSummary,
-  previousVerdictsFromRun,
-  runGoldenSetRegression
-} from "./repository/golden-helpers.js";
+import { createDemoRepositoryComposition, type DemoRepositoryComposition } from "./repository/demo-composition.js";
 import { DemoRepositoryStore } from "./repository/demo-store.js";
-import { DemoCaseEvidenceRepository } from "./repository/demo-case-evidence.js";
-import { DemoCredentialRepository } from "./repository/demo-credentials.js";
-import { DemoCriterionSuiteRepository } from "./repository/demo-criteria.js";
-import { DemoDatasetRepository } from "./repository/demo-datasets.js";
-import { DemoEvaluationRepository } from "./repository/demo-evaluation.js";
-import { DemoGoldenEvidenceRepository } from "./repository/demo-golden.js";
-import { DemoHistoricalGateEvidenceRepository } from "./repository/demo-historical-gates.js";
-import { DemoIntegrationRepository } from "./repository/demo-integrations.js";
-import { DemoJudgeFeedbackRepository } from "./repository/demo-feedback.js";
-import { DemoProjectRepository } from "./repository/demo-projects.js";
-import { DemoReviewQueueRepository } from "./repository/demo-review-queues.js";
-import { DemoRunComparisonRepository } from "./repository/demo-run-comparisons.js";
-import { DemoSkillLifecycleRepository } from "./repository/demo-skills.js";
-import { DemoTraceImportRepository } from "./repository/demo-trace-import.js";
-import { DemoTraceTestRepository } from "./repository/demo-trace-tests.js";
 export * from "./repository/contracts.js";
 export * from "./repository/errors.js";
-export {
-  buildGoldenSetHealthSummary,
-  previousVerdictsFromRun,
-  runGoldenSetRegression
-} from "./repository/golden-helpers.js";
+export { buildGoldenSetHealthSummary, previousVerdictsFromRun, runGoldenSetRegression } from "./repository/golden-helpers.js";
 export * from "./repository/helpers.js";
 
 export interface CoevalRepository extends
@@ -215,177 +179,28 @@ export interface CoevalRepository extends
   HistoricalGateEvidenceRepositoryPort {}
 
 export class DemoRepository implements CoevalRepository {
-  private readonly caseEvidenceRepository: DemoCaseEvidenceRepository;
-  private readonly credentialRepository: DemoCredentialRepository;
-  private readonly criterionSuiteRepository: DemoCriterionSuiteRepository;
-  private readonly datasetRepository: DemoDatasetRepository;
-  private readonly evaluationRepository: DemoEvaluationRepository;
-  private readonly goldenEvidenceRepository: DemoGoldenEvidenceRepository;
-  private readonly historicalGateEvidenceRepository: DemoHistoricalGateEvidenceRepository;
-  private readonly integrationRepository: DemoIntegrationRepository;
-  private readonly judgeFeedbackRepository: DemoJudgeFeedbackRepository;
-  private readonly projectRepository: DemoProjectRepository;
-  private readonly reviewQueueRepository: DemoReviewQueueRepository;
-  private readonly runComparisonRepository: DemoRunComparisonRepository;
-  private readonly skillLifecycleRepository: DemoSkillLifecycleRepository;
-  private readonly traceImportRepository: DemoTraceImportRepository;
-  private readonly traceTestRepository: DemoTraceTestRepository;
+  private readonly caseEvidenceRepository!: DemoRepositoryComposition["caseEvidenceRepository"];
+  private readonly credentialRepository!: DemoRepositoryComposition["credentialRepository"];
+  private readonly criterionSuiteRepository!: DemoRepositoryComposition["criterionSuiteRepository"];
+  private readonly datasetRepository!: DemoRepositoryComposition["datasetRepository"];
+  private readonly evaluationRepository!: DemoRepositoryComposition["evaluationRepository"];
+  private readonly goldenEvidenceRepository!: DemoRepositoryComposition["goldenEvidenceRepository"];
+  private readonly historicalGateEvidenceRepository!: DemoRepositoryComposition["historicalGateEvidenceRepository"];
+  private readonly integrationRepository!: DemoRepositoryComposition["integrationRepository"];
+  private readonly judgeFeedbackRepository!: DemoRepositoryComposition["judgeFeedbackRepository"];
+  private readonly projectRepository!: DemoRepositoryComposition["projectRepository"];
+  private readonly reviewQueueRepository!: DemoRepositoryComposition["reviewQueueRepository"];
+  private readonly runComparisonRepository!: DemoRepositoryComposition["runComparisonRepository"];
+  private readonly skillLifecycleRepository!: DemoRepositoryComposition["skillLifecycleRepository"];
+  private readonly traceImportRepository!: DemoRepositoryComposition["traceImportRepository"];
+  private readonly traceTestRepository!: DemoRepositoryComposition["traceTestRepository"];
   private readonly store = new DemoRepositoryStore();
 
   constructor(
     private readonly judgeProvider: JudgeProvider = new MockJudgeProvider(),
     options: { seedVerdicts?: boolean } = {}
   ) {
-    const criterionId = demoSkill.criterionId;
-    const criterionVersionId = demoSkill.currentVersion.criterionVersionId;
-    this.store.criteria.push({
-      id: criterionId,
-      projectId: demoProject.id,
-      stableKey: `skill:${demoSkill.id}`,
-      sourceKind: "native",
-      createdByUserId: null,
-      createdAt: demoProject.updatedAt
-    });
-    this.store.criterionVersions.push({
-      id: criterionVersionId,
-      projectId: demoProject.id,
-      criterionId,
-      revision: 1,
-      name: demoSkill.name,
-      definition: demoSkill.description,
-      criterionDigest: evaluatorSuiteCriterionDigest({
-        criterionId,
-        criterionVersionId,
-        criterionName: demoSkill.name,
-        criterionDefinition: demoSkill.description
-      }),
-      sourceKind: "native",
-      createdByUserId: null,
-      createdAt: demoProject.updatedAt
-    });
-    this.store.skillVersionCriteria.set(demoSkillPrevVersion.id, criterionVersionId);
-    this.store.skillVersionCriteria.set(demoSkill.currentVersion.id, criterionVersionId);
-    this.store.criterionSkills.set(criterionId, demoSkill);
-    if (options.seedVerdicts) this.store.verdicts.push(...demoVerdicts);
-    // Demo fixtures are authored in source rather than imported through the
-    // runtime redaction path. Capture their original input identity up front
-    // so the demo never hashes a redacted fallback while calling it exact.
-    for (const entry of demoGoldenSet) {
-      this.store.caseInputIdentities.set(
-        entry.caseId,
-        datasetInputIdentity({ input: demoTraceForGoldenEntry(entry).input })
-      );
-    }
-    for (const exception of demoExceptions) {
-      const trace = this.syntheticTraceForBuiltinCase(exception.id);
-      if (trace) this.store.caseInputIdentities.set(exception.id, datasetInputIdentity({ input: trace.input }));
-    }
-    // A2.2c: when seeding, expose the predecessor version too so the convergence
-    // audit has a real before→after to compare. Without seeding, the version
-    // list lazy-inits to just the current version (existing behaviour).
-    this.store.skillVersions = options.seedVerdicts
-      ? [structuredClone(demoSkillPrevVersion), structuredClone(demoSkill.currentVersion)]
-      : null;
-    this.caseEvidenceRepository = new DemoCaseEvidenceRepository(this.store, {
-      caseExistsForProject: (projectId, caseId) =>
-        this.caseExistsForProject(projectId, caseId),
-      getCaseDetail: (projectId, caseId, skillVersionId) =>
-        this.getCaseDetail(projectId, caseId, skillVersionId),
-      getCurrentSkill: (projectId) => this.getCurrentSkill(projectId),
-      getDemoActorName: (actorUserId) => DEMO_ACTOR_NAMES.get(actorUserId),
-      getSkillVersion: (projectId, skillVersionId) =>
-        this.getSkillVersion(projectId, skillVersionId),
-      isEvidenceScaffoldingCase: (caseId) => this.isEvidenceScaffoldingCase(caseId),
-      listSkillVersions: (projectId, skillId, limit) =>
-        this.listSkillVersions(projectId, skillId, limit),
-      resolveGoldenCriterionVersion: (projectId, requested) =>
-        this.resolveGoldenCriterionVersion(projectId, requested)
-    });
-    this.credentialRepository = new DemoCredentialRepository(this.store);
-    this.projectRepository = new DemoProjectRepository(this.store, {
-      getCurrentSkill: (projectId) => this.getCurrentSkill(projectId),
-      getCurrentSkillForCriterion: (projectId, criterionId) =>
-        this.getCurrentSkillForCriterion(projectId, criterionId),
-      isEvidenceScaffoldingCase: (caseId) => this.isEvidenceScaffoldingCase(caseId),
-      listGoldenSet: (projectId, criterionVersionId) => this.listGoldenSet(projectId, criterionVersionId),
-      syntheticTraceForBuiltinCase: (caseId) => this.syntheticTraceForBuiltinCase(caseId)
-    });
-    this.reviewQueueRepository = new DemoReviewQueueRepository(this.store, {
-      caseExistsForProject: (projectId, caseId) => this.caseExistsForProject(projectId, caseId),
-      getCurrentSkill: (projectId) => this.getCurrentSkill(projectId)
-    });
-    this.runComparisonRepository = new DemoRunComparisonRepository(this.store);
-    this.criterionSuiteRepository = new DemoCriterionSuiteRepository(this.store);
-    this.datasetRepository = new DemoDatasetRepository(this.store, {
-      addDatasetItems: (input) => this.addDatasetItems(input),
-      caseExistsForProject: (projectId, caseId) => this.caseExistsForProject(projectId, caseId),
-      getDatasetDetail: (projectId, datasetId) => this.getDatasetDetail(projectId, datasetId),
-      getDatasetRevisionDetail: (projectId, revisionId) =>
-        this.getDatasetRevisionDetail(projectId, revisionId),
-      importTrace: (projectId, source, input, context) =>
-        this.importTrace(projectId, source, input, context),
-      listGoldenSet: (projectId, criterionVersionId) =>
-        this.listGoldenSet(projectId, criterionVersionId),
-      traceForGoldenEntry: demoTraceForGoldenEntry
-    });
-    this.evaluationRepository = new DemoEvaluationRepository(this.store, {
-      armEvalRunItemDeliveryDeadline: (projectId, evalRunId) =>
-        this.armEvalRunItemDeliveryDeadline(projectId, evalRunId),
-      createConvergenceEvalRun: (input) => this.createConvergenceEvalRun(input),
-      createEvalRun: (input) => this.createEvalRun(input),
-      getEvalRun: (projectId, evalRunId) => this.getEvalRun(projectId, evalRunId),
-      getEvalRunDetail: (projectId, evalRunId) => this.getEvalRunDetail(projectId, evalRunId),
-      getOrFreezeAssessmentReceipt: (projectId, evalRunId) =>
-        this.getOrFreezeAssessmentReceipt(projectId, evalRunId),
-      getSkillVersion: (projectId, skillVersionId) =>
-        this.getSkillVersion(projectId, skillVersionId),
-      listPendingEvalRunItems: (projectId, evalRunId) =>
-        this.listPendingEvalRunItems(projectId, evalRunId)
-    });
-    this.skillLifecycleRepository = new DemoSkillLifecycleRepository(this.store, this.judgeProvider, {
-      createSkillVersionPending: (skillId, input, context) =>
-        this.createSkillVersionPending(skillId, input, context),
-      getDatasetRevisionDetail: (projectId, revisionId) =>
-        this.getDatasetRevisionDetail(projectId, revisionId),
-      getOrCreateRegressionDatasetRevision: (projectId, actorUserId, resolvedCriterionVersionId) =>
-        this.getOrCreateRegressionDatasetRevision(projectId, actorUserId, resolvedCriterionVersionId),
-      previousVerdictsFromRun,
-      runRegressionGateForVersion: (job) => this.runRegressionGateForVersion(job),
-      runGoldenSetRegression
-    });
-    this.goldenEvidenceRepository = new DemoGoldenEvidenceRepository(this.store, {
-      buildGoldenSetHealthSummary,
-      getCaseDetail: (projectId, caseId, skillVersionId) =>
-        this.getCaseDetail(projectId, caseId, skillVersionId),
-      getDemoActorName: (actorUserId) => DEMO_ACTOR_NAMES.get(actorUserId),
-      getOrCreateRegressionDatasetRevision: (projectId, actorUserId, criterionVersionId) =>
-        this.getOrCreateRegressionDatasetRevision(projectId, actorUserId, criterionVersionId),
-      listGoldenSet: (projectId, criterionVersionId) =>
-        this.listGoldenSet(projectId, criterionVersionId),
-      resolveGoldenCriterionVersion: (projectId, requested) =>
-        this.resolveGoldenCriterionVersion(projectId, requested),
-      syntheticTraceForBuiltinCase: (caseId) => this.syntheticTraceForBuiltinCase(caseId)
-    });
-    this.historicalGateEvidenceRepository = new DemoHistoricalGateEvidenceRepository(this.store, {
-      getEvalRun: (projectId, evalRunId) => this.getEvalRun(projectId, evalRunId),
-      getEvalRunDetail: (projectId, evalRunId) => this.getEvalRunDetail(projectId, evalRunId),
-      getGateCheckDetail: (projectId, gateCheckId) => this.getGateCheckDetail(projectId, gateCheckId)
-    });
-    this.integrationRepository = new DemoIntegrationRepository(this.store, {
-      resolveImportSkillVersionId: (projectId, requested) =>
-        this.resolveImportSkillVersionId(projectId, requested)
-    });
-    this.judgeFeedbackRepository = new DemoJudgeFeedbackRepository(this.store, {
-      loadFeedbackSyncContext: (job) => this.loadFeedbackSyncContext(job),
-      syntheticTraceForBuiltinCase: (caseId) => this.syntheticTraceForBuiltinCase(caseId)
-    });
-    this.traceImportRepository = new DemoTraceImportRepository(this.store, {
-      resolveImportSkillVersionId: (projectId, requested) =>
-        this.resolveImportSkillVersionId(projectId, requested)
-    });
-    this.traceTestRepository = new DemoTraceTestRepository(this.store, {
-      getCaseDetail: (projectId, caseId) => this.getCaseDetail(projectId, caseId)
-    });
+    Object.assign(this, createDemoRepositoryComposition(this, this.store, this.judgeProvider, options));
   }
 
   async listProjects(): Promise<Project[]> {
@@ -410,13 +225,6 @@ export class DemoRepository implements CoevalRepository {
 
   async getDashboardSummary(projectId = demoProject.id, criterionId?: string | undefined): Promise<DashboardSummary> {
     return this.projectRepository.getDashboardSummary(projectId, criterionId);
-  }
-
-  // Derived product-gate cases (case source 'gate_candidate') are judging
-  // scaffolding: excluded from dashboards, exceptions, and backfills.
-  private isEvidenceScaffoldingCase(caseId: string): boolean {
-    const source = this.store.traceSources.get(caseId)?.source;
-    return source === "gate_candidate" || source === "release_evidence";
   }
 
   async listCriteria(projectId: string): Promise<Criterion[]> {
@@ -591,15 +399,6 @@ export class DemoRepository implements CoevalRepository {
     return this.credentialRepository.getJudgeProviderCredential(projectId, provider);
   }
 
-  private async resolveImportSkillVersionId(projectId: string, requested?: string | undefined): Promise<string> {
-    if (requested) {
-      const version = await this.getSkillVersion(projectId, requested);
-      if (!version) throw new DatasetRevisionConflictError(`Unknown import skillVersionId for this project: ${requested}`);
-      return version.id;
-    }
-    return (await this.getCurrentSkill(projectId)).currentVersion.id;
-  }
-
   async createImportJob(input: CreateImportJobInput): Promise<ImportJobRecord> {
     return this.traceImportRepository.createImportJob(input);
   }
@@ -734,23 +533,6 @@ export class DemoRepository implements CoevalRepository {
 
   async loadJudgeRunContext(job: JudgeRunJob): Promise<JudgeRunContext> {
     return this.judgeFeedbackRepository.loadJudgeRunContext(job);
-  }
-
-  private syntheticTraceForBuiltinCase(caseId: string): Trace | null {
-    const exception = demoExceptions.find((candidate) => candidate.id === caseId);
-    if (exception) {
-      // Embedding the judge's original reason keeps the mock heuristic
-      // coherent: a failing exception re-judges as fail.
-      return {
-        id: exception.traceId,
-        input: { text: "Demo customer support question" },
-        output: { text: `Demo AI answer. Judge note: ${exception.reason}` },
-        metadata: { source: "demo" }
-      };
-    }
-    const golden = demoGoldenSet.find((entry) => entry.caseId === caseId);
-    if (golden) return demoTraceForGoldenEntry(golden);
-    return null;
   }
 
   async recordJudgeRun(input: RecordJudgeRunInput): Promise<JudgeRun> {
@@ -1119,29 +901,6 @@ export class DemoRepository implements CoevalRepository {
     return this.reviewQueueRepository.getNextPendingQueueItem(projectId, queueId, opts);
   }
 
-  private async resolveGoldenCriterionVersion(
-    projectId: string,
-    requested?: string | undefined
-  ): Promise<string> {
-    if (requested) {
-      const exists = this.store.criterionVersions.some((candidate) =>
-        candidate.projectId === projectId && candidate.id === requested
-      );
-      if (!exists) {
-        throw new DatasetRevisionConflictError(
-          `Criterion version does not belong to this project: ${requested}`
-        );
-      }
-      return requested;
-    }
-    const current = await this.getCurrentSkill(projectId);
-    const criterionVersionId = this.store.skillVersionCriteria.get(current.currentVersion.id);
-    if (!criterionVersionId) {
-      throw new DatasetRevisionConflictError("Current evaluator has no immutable criterion version binding");
-    }
-    return criterionVersionId;
-  }
-
   async closeReviewQueue(projectId: string, queueId: string): Promise<ReviewQueue | null> {
     return this.reviewQueueRepository.closeReviewQueue(projectId, queueId);
   }
@@ -1232,23 +991,3 @@ export class DemoRepository implements CoevalRepository {
     return this.skillLifecycleRepository.listSkillVersions(_projectId, skillId, limit);
   }
 }
-
-function demoTraceForGoldenEntry(entry: GoldenSetEntry): Trace {
-  return {
-    id: entry.traceId,
-    input: { caseId: entry.caseId },
-    output: entry.agreedLabel === "pass"
-      ? { message: `${entry.reason} Minor borderline tone note for strict regression testing.` }
-      : { message: `${entry.reason} incorrect failure signal.` },
-    metadata: { goldenSetEntryId: entry.id }
-  };
-}
-
-// B12 (M0 C8): demo parity with PG's attachActorNames — the seeded demo
-// reviewers resolve to display names so the trust feeds read "Maya · Pass" in
-// demo exactly like prod, and the web needs no id-prettifying fallback.
-const DEMO_ACTOR_NAMES = new Map<string, string>([
-  ["user_maya", "Maya"],
-  ["user_jules", "Jules"],
-  ["user_priya", "Priya"]
-]);

@@ -236,18 +236,18 @@ describe("Demo credential repository slice", () => {
     const analysis = credentialSliceAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoCredentialRepository"]);
     expect(analysis.allocations).toEqual([
-      "repository.ts:DemoRepository.constructor:new DemoCredentialRepository(this.store)"
+      "repository/demo-composition.ts:createDemoRepositoryComposition:new DemoCredentialRepository(store)"
     ]);
     expect(analysis.moduleEdges).toEqual([
-      'repository.ts:ImportDeclaration:import { DemoCredentialRepository } from "./repository/demo-credentials.js";'
+      'repository/demo-composition.ts:ImportDeclaration:import { DemoCredentialRepository } from "./demo-credentials.js";'
     ]);
     expect(analysis.moduleSpecifierMentions).toEqual([
-      'repository.ts:ImportDeclaration:"./repository/demo-credentials.js"'
+      'repository/demo-composition.ts:ImportDeclaration:"./demo-credentials.js"'
     ]);
     expect(analysis.references).toEqual([
-      "repository.ts:ImportSpecifier:DemoCredentialRepository",
-      "repository.ts:NewExpression:DemoCredentialRepository",
-      "repository.ts:TypeReference:DemoCredentialRepository",
+      "repository/demo-composition.ts:ImportSpecifier:DemoCredentialRepository",
+      "repository/demo-composition.ts:NewExpression:DemoCredentialRepository",
+      "repository/demo-composition.ts:TypeReference:DemoCredentialRepository",
       "repository/demo-credentials.ts:ClassDeclaration:DemoCredentialRepository"
     ]);
 
