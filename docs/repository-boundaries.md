@@ -101,18 +101,21 @@ LangSmith, Langfuse, and Ironside; `DemoJudgeFeedbackRepository`, which
 implements all ten `JudgeFeedbackRepositoryPort` methods;
 `DemoReviewQueueRepository`, which implements all seven
 `ReviewQueueRepositoryPort` methods; `DemoRunComparisonRepository`, which
-implements all three `RunComparisonRepositoryPort` methods; and
+implements all three `RunComparisonRepositoryPort` methods;
 `DemoHistoricalGateEvidenceRepository`, which implements all three deprecated
-`HistoricalGateEvidenceRepositoryPort` methods. The facade constructs all
-eleven once with its exact store and gives the project, skill-lifecycle,
-golden-evidence, historical-gate-evidence, trace-import, integration,
-judge-feedback, and review-queue slices only narrow dependencies. The
-criterion/suite, run-comparison, and credential slices receive only that shared
-store. The skill, golden-evidence, and historical-gate-evidence slices receive
-same-port facade callbacks where their composite operations must preserve
-CURRENT subclass dispatch. The trace-import slice resolves skill versions
-through the facade so existing subclass dispatch remains intact. The
-integration slice uses that same resolver boundary so scheduled imports retain
+`HistoricalGateEvidenceRepositoryPort` methods; and
+`DemoTraceTestRepository`, which implements all seven
+`TraceTestRepositoryPort` methods. The facade constructs all twelve once with
+its exact store and gives the project, skill-lifecycle, golden-evidence,
+historical-gate-evidence, trace-import, trace-test, integration, judge-feedback,
+and review-queue slices only narrow dependencies. The criterion/suite,
+run-comparison, and credential slices receive only that shared store. The
+skill, golden-evidence, and historical-gate-evidence slices receive same-port
+facade callbacks where their composite operations must preserve CURRENT
+subclass dispatch. The trace-test slice resolves a source case through a lazy
+facade callback so existing subclass dispatch remains intact. The trace-import
+slice resolves skill versions through that same facade boundary. The
+integration slice also uses the resolver boundary so scheduled imports retain
 exact evaluator-version selection and subclass dispatch. It owns each
 provider's public projection, private worker credential context, poll cadence,
 selection-failure job, project isolation, and Ironside connection-revision and
@@ -143,6 +146,12 @@ preserves item status/agreement/error snapshots, historical decision
 derivation, project isolation, deterministic newest-first ordering, bounded
 reads, and same-port facade dispatch without giving Coeval any release-policy
 ownership.
+The trace-test slice keeps retained source snapshots, append-only draft and
+enabled revisions, validation evidence, and content-free funnel idempotency on
+the exact shared store. It preserves source-case fallback through the facade,
+revision conflicts, validation eligibility, project isolation, defensive
+copies, and deterministic reads without changing the current trace-test wire
+or lifecycle semantics.
 The credential slice receives only the shared store: API keys return plaintext
 exactly once while the store retains only their hashes, judge-provider reads
 remain masked, and raw judge credentials remain available only through the
@@ -200,6 +209,11 @@ slice's whole-port ownership, single construction, exact shared store and
 facade callbacks, polymorphic eval-run and same-port reads, item projection,
 vanished-row behavior, project isolation, historical decision derivation,
 ordering, filtering, limits, and the default bounded read.
+`demo-trace-test-repository.test.ts` pins the trace-test slice's whole-port
+ownership, single construction, exact shared store and source-case callback,
+facade polymorphism, source snapshots, imported-trace visibility, revisions,
+validation defaults and eligibility, enablement, project isolation, ordering,
+filtering, defensive copies, and content-free funnel idempotency.
 
 The shared store has these rules:
 

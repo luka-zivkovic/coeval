@@ -207,16 +207,9 @@ import {
   RegressionGateJudgeError,
   AmbiguousProjectSkillError,
   DatasetNotFoundError,
-  DatasetNameTakenError,
-  TraceTestSourceNotFoundError,
-  TraceTestNotFoundError,
-  TraceTestRevisionConflictError,
-  TraceTestValidationNotReadyError
+  DatasetNameTakenError
 } from "./repository/errors.js";
 import {
-  traceTestValidationStatus,
-  traceTestValidationDiagnostic,
-  traceTestValidationIsEnableEligible,
   computeEvalRunSpend,
   convergencePageLimit,
   convergenceChangeRank,
@@ -235,6 +228,7 @@ import { DemoReviewQueueRepository } from "./repository/demo-review-queues.js";
 import { DemoRunComparisonRepository } from "./repository/demo-run-comparisons.js";
 import { DemoSkillLifecycleRepository } from "./repository/demo-skills.js";
 import { DemoTraceImportRepository } from "./repository/demo-trace-import.js";
+import { DemoTraceTestRepository } from "./repository/demo-trace-tests.js";
 export * from "./repository/contracts.js";
 export * from "./repository/errors.js";
 export * from "./repository/helpers.js";
@@ -270,6 +264,7 @@ export class DemoRepository implements CoevalRepository {
   private readonly runComparisonRepository: DemoRunComparisonRepository;
   private readonly skillLifecycleRepository: DemoSkillLifecycleRepository;
   private readonly traceImportRepository: DemoTraceImportRepository;
+  private readonly traceTestRepository: DemoTraceTestRepository;
   private readonly store = new DemoRepositoryStore();
 
   constructor(
@@ -381,6 +376,9 @@ export class DemoRepository implements CoevalRepository {
     this.traceImportRepository = new DemoTraceImportRepository(this.store, {
       resolveImportSkillVersionId: (projectId, requested) =>
         this.resolveImportSkillVersionId(projectId, requested)
+    });
+    this.traceTestRepository = new DemoTraceTestRepository(this.store, {
+      getCaseDetail: (projectId, caseId) => this.getCaseDetail(projectId, caseId)
     });
   }
 
@@ -837,218 +835,31 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async createTraceTest(input: CreateTraceTestInputDb): Promise<TraceTestDetail> {
-    if (input.projectId !== demoProject.id) throw new TraceTestSourceNotFoundError(input.sourceCaseId);
-    const stored = this.store.traces.get(input.sourceCaseId);
-    const detail = stored ? null : await this.getCaseDetail(input.projectId, input.sourceCaseId);
-    if (!stored && !detail) throw new TraceTestSourceNotFoundError(input.sourceCaseId);
-    const source = stored ?? detail!.trace;
-    const sourceSnapshot = {
-      input: source.input,
-      output: source.output,
-      metadata: source.metadata ?? {},
-      ...(source.steps ? { steps: source.steps } : {})
-    };
-    const traceSource = this.store.traceSources.get(input.sourceCaseId);
-    const createdAt = new Date().toISOString();
-    const record = {
-      id: `tt_${randomUUID()}`,
-      projectId: input.projectId,
-      sourceCaseId: input.sourceCaseId,
-      sourceCaseRef: input.sourceCaseId,
-      sourceTraceRef: traceSource?.sourceTraceId ?? source.id,
-      sourceSnapshot: structuredClone(sourceSnapshot),
-      sourceScope: structuredClone(input.sourceScope),
-      currentRevision: 1,
-      enabledRevision: null,
-      createdByUserId: input.createdByUserId ?? null,
-      createdAt,
-      updatedAt: createdAt
-    };
-    this.store.traceTests.push(record);
-    this.store.traceTestRevisions.push({
-      id: `ttr_${randomUUID()}`,
-      traceTestId: record.id,
-      revision: 1,
-      lifecycle: "draft",
-      desiredBehavior: input.desiredBehavior,
-      scenario: input.scenario,
-      expectedBehavior: input.expectedBehavior,
-      mustDo: structuredClone(input.mustDo),
-      mustAvoid: structuredClone(input.mustAvoid),
-      goodExample: structuredClone(input.goodExample),
-      badExample: structuredClone(input.badExample),
-      checker: structuredClone(input.checker),
-      draftProvenance: structuredClone(input.draftProvenance),
-      validationId: null,
-      validatedRevision: null,
-      createdByUserId: input.createdByUserId ?? null,
-      reviewedByUserId: null,
-      createdAt,
-      reviewedAt: null
-    });
-    return this.toTraceTestDetail(record);
+    return this.traceTestRepository.createTraceTest(input);
   }
 
   async listTraceTests(projectId: string, sourceCaseRef?: string): Promise<TraceTestSummary[]> {
-    return this.store.traceTests
-      .filter((test) => test.projectId === projectId && (!sourceCaseRef || test.sourceCaseRef === sourceCaseRef))
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id))
-      .map((test) => this.toTraceTestSummary(test));
+    return this.traceTestRepository.listTraceTests(projectId, sourceCaseRef);
   }
 
   async getTraceTest(projectId: string, traceTestId: string): Promise<TraceTestDetail | null> {
-    const test = this.store.traceTests.find((candidate) => candidate.id === traceTestId && candidate.projectId === projectId);
-    return test ? this.toTraceTestDetail(test) : null;
+    return this.traceTestRepository.getTraceTest(projectId, traceTestId);
   }
 
   async reviseTraceTest(input: ReviseTraceTestInputDb): Promise<TraceTestDetail> {
-    const test = this.store.traceTests.find((candidate) => candidate.id === input.traceTestId && candidate.projectId === input.projectId);
-    if (!test) throw new TraceTestNotFoundError(input.traceTestId);
-    if (test.currentRevision !== input.expectedRevision) {
-      throw new TraceTestRevisionConflictError(input.expectedRevision, test.currentRevision);
-    }
-    const createdAt = new Date().toISOString();
-    const revision = test.currentRevision + 1;
-    this.store.traceTestRevisions.push({
-      id: `ttr_${randomUUID()}`,
-      traceTestId: test.id,
-      revision,
-      lifecycle: "draft",
-      desiredBehavior: input.desiredBehavior,
-      scenario: input.scenario,
-      expectedBehavior: input.expectedBehavior,
-      mustDo: structuredClone(input.mustDo),
-      mustAvoid: structuredClone(input.mustAvoid),
-      goodExample: structuredClone(input.goodExample),
-      badExample: structuredClone(input.badExample),
-      checker: structuredClone(input.checker),
-      draftProvenance: structuredClone(input.draftProvenance),
-      validationId: null,
-      validatedRevision: null,
-      createdByUserId: input.createdByUserId ?? null,
-      reviewedByUserId: null,
-      createdAt,
-      reviewedAt: null
-    });
-    test.currentRevision = revision;
-    test.updatedAt = createdAt;
-    return this.toTraceTestDetail(test);
+    return this.traceTestRepository.reviseTraceTest(input);
   }
 
   async recordTraceTestValidation(input: RecordTraceTestValidationInputDb): Promise<TraceTestValidation> {
-    const test = this.store.traceTests.find((candidate) => candidate.id === input.traceTestId && candidate.projectId === input.projectId);
-    if (!test) throw new TraceTestNotFoundError(input.traceTestId);
-    if (test.currentRevision !== input.revision) {
-      throw new TraceTestRevisionConflictError(input.revision, test.currentRevision);
-    }
-    const validation: TraceTestValidation = {
-      id: `ttv_${randomUUID()}`,
-      traceTestId: test.id,
-      revision: input.revision,
-      status: traceTestValidationStatus(input.badEvidence.result, input.goodEvidence.result),
-      badEvidence: {
-        output: structuredClone(input.badEvidence.output),
-        result: input.badEvidence.result,
-        note: input.badEvidence.note,
-        expectedResult: "fail",
-        attempts: input.badAttempts ?? 0,
-        usage: input.badUsage ?? null
-      },
-      goodEvidence: {
-        output: structuredClone(input.goodEvidence.output),
-        result: input.goodEvidence.result,
-        note: input.goodEvidence.note,
-        expectedResult: "pass",
-        attempts: input.goodAttempts ?? 0,
-        usage: input.goodUsage ?? null
-      },
-      method: input.method ?? "automated",
-      diagnostic: input.diagnostic ?? traceTestValidationDiagnostic(input.badEvidence.result, input.goodEvidence.result),
-      evaluator: input.evaluator ?? null,
-      overrideReason: input.overrideReason ?? null,
-      recordedByUserId: input.recordedByUserId ?? null,
-      createdAt: new Date().toISOString()
-    };
-    this.store.traceTestValidations.push(validation);
-    return structuredClone(validation);
+    return this.traceTestRepository.recordTraceTestValidation(input);
   }
 
   async enableTraceTest(input: EnableTraceTestInputDb): Promise<TraceTestDetail> {
-    const test = this.store.traceTests.find((candidate) => candidate.id === input.traceTestId && candidate.projectId === input.projectId);
-    if (!test) throw new TraceTestNotFoundError(input.traceTestId);
-    if (test.currentRevision !== input.expectedRevision) {
-      throw new TraceTestRevisionConflictError(input.expectedRevision, test.currentRevision);
-    }
-    const validation = this.store.traceTestValidations.find(
-      (candidate) => candidate.id === input.validationId && candidate.traceTestId === test.id && candidate.revision === input.expectedRevision
-    );
-    if (!validation || !traceTestValidationIsEnableEligible(validation)) {
-      throw new TraceTestValidationNotReadyError("A successful validation for the current draft is required before enabling this test");
-    }
-    const current = this.store.traceTestRevisions.find(
-      (candidate) => candidate.traceTestId === test.id && candidate.revision === input.expectedRevision
-    );
-    if (!current) throw new TraceTestRevisionConflictError(input.expectedRevision, test.currentRevision);
-    if (current.lifecycle !== "draft") {
-      throw new TraceTestValidationNotReadyError("Create a new draft revision before enabling this test again");
-    }
-    const reviewedAt = new Date().toISOString();
-    const revision = test.currentRevision + 1;
-    this.store.traceTestRevisions.push({
-      ...structuredClone(current),
-      id: `ttr_${randomUUID()}`,
-      revision,
-      lifecycle: "enabled",
-      validationId: validation.id,
-      validatedRevision: input.expectedRevision,
-      createdByUserId: current.createdByUserId,
-      reviewedByUserId: input.reviewedByUserId,
-      createdAt: reviewedAt,
-      reviewedAt
-    });
-    test.currentRevision = revision;
-    test.enabledRevision = revision;
-    test.updatedAt = reviewedAt;
-    return this.toTraceTestDetail(test);
+    return this.traceTestRepository.enableTraceTest(input);
   }
 
   async recordTraceTestFunnelEvent(input: RecordTraceTestFunnelEventInputDb): Promise<void> {
-    // Demo mode mirrors production idempotency without retaining source or
-    // draft content. The set is intentionally not exposed as a product API.
-    this.store.traceTestFunnelEvents.add(`${input.projectId}:${input.journeyId}:${input.event}`);
-  }
-
-  private toTraceTestSummary(test: (typeof this.store.traceTests)[number]): TraceTestSummary {
-    return {
-      id: test.id,
-      projectId: test.projectId,
-      sourceCaseId: test.sourceCaseId,
-      sourceCaseRef: test.sourceCaseRef,
-      sourceTraceRef: test.sourceTraceRef,
-      lifecycle: test.enabledRevision === null ? "draft" : "enabled",
-      currentRevision: test.currentRevision,
-      enabledRevision: test.enabledRevision,
-      hasUnpublishedChanges: test.enabledRevision !== null && test.currentRevision !== test.enabledRevision,
-      createdAt: test.createdAt,
-      updatedAt: test.updatedAt
-    };
-  }
-
-  private toTraceTestDetail(test: (typeof this.store.traceTests)[number]): TraceTestDetail {
-    return {
-      ...this.toTraceTestSummary(test),
-      sourceSnapshot: structuredClone(test.sourceSnapshot),
-      sourceScope: structuredClone(test.sourceScope),
-      createdByUserId: test.createdByUserId,
-      revisions: this.store.traceTestRevisions
-        .filter((revision) => revision.traceTestId === test.id)
-        .sort((left, right) => left.revision - right.revision)
-        .map((revision) => structuredClone(revision)),
-      validations: this.store.traceTestValidations
-        .filter((validation) => validation.traceTestId === test.id)
-        .sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id))
-        .map((validation) => structuredClone(validation))
-    };
+    return this.traceTestRepository.recordTraceTestFunnelEvent(input);
   }
 
   async createDataset(input: CreateDatasetInputDb): Promise<Dataset> {
