@@ -13,8 +13,8 @@
     },
     "apps/api/src/repository.ts": {
       "classification": "refactor_candidate",
-      "reason": "The compatibility facade, golden regression and health helpers, fixtures, and in-memory demo implementation still share one file.",
-      "revisit": "Introduce shared demo state, then separate domain implementations while preserving facade identity and cross-domain behavior."
+      "reason": "The compatibility facade still colocates the full in-memory demo implementation, golden regression and health helpers, and fixtures; mutable state now has one named store.",
+      "revisit": "Extract demo domain slices against the shared store while preserving facade identity, cross-domain visibility, and rollback behavior."
     },
     "pnpm-lock.yaml": {
       "classification": "generated",

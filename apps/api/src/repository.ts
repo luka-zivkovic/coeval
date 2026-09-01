@@ -41,7 +41,6 @@ import {
   FeedbackSyncJob,
   GOLDEN_SET_STALE_AFTER_DAYS,
   GoldenSetHealthSummary,
-  GoldenSetRetirementContext,
   GoldenSetEntry,
   ConvergenceAuditPage,
   SelfConsistencyReport,
@@ -62,7 +61,6 @@ import {
   IronsideIntegrationInput,
   type IronsideEvaluatorContext,
   IronsideSyncState,
-  RuntimeIngestionPurpose,
   UpdateIronsideIntegrationInput,
   ReviewQueue,
   ReviewQueueDetail,
@@ -90,8 +88,6 @@ import {
   SkillFormatExample,
   SkillVersion,
   TraceTestDetail,
-  TraceTestRevision,
-  TraceTestSourceScope,
   TraceTestSummary,
   TraceTestValidation,
   CaseSource,
@@ -205,7 +201,6 @@ import type {
   IronsideImportContext,
   ClaimIronsideImportTargetsInput,
   FeedbackSyncProvider,
-  FeedbackSyncStatus,
   FeedbackSyncJobRecord,
   FeedbackSyncContext,
   ListFeedbackSyncJobsInput,
@@ -257,6 +252,7 @@ import {
   encodeConvergenceCursor,
   decodeConvergenceCursor
 } from "./repository/helpers.js";
+import { DemoRepositoryStore } from "./repository/demo-store.js";
 export * from "./repository/contracts.js";
 export * from "./repository/errors.js";
 export * from "./repository/helpers.js";
@@ -281,126 +277,7 @@ export interface CoevalRepository extends
   HistoricalGateEvidenceRepositoryPort {}
 
 export class DemoRepository implements CoevalRepository {
-  private readonly traces = new Map<string, Trace>();
-  private readonly caseInputIdentities = new Map<string, ReturnType<typeof datasetInputIdentity>>();
-  private readonly traceSources = new Map<string, {
-    source: CaseSource;
-    sourceTraceId: string;
-    sourceTraceVersion?: string | undefined;
-    sourceRemoteProjectId?: string | undefined;
-    rawTraceId: string;
-    ingestionPurpose: RuntimeIngestionPurpose;
-    createdAt: string;
-    sourceIntegrationId?: string | undefined;
-    importJobId?: string | undefined;
-  }>();
-  private readonly judgeRuns: JudgeRun[] = [];
-  // Empty by default (tests construct DemoRepository directly and assert on
-  // recordVerdict behaviour from a clean slate). The demo *server* opts into
-  // seeding via the constructor so κ / disagreement feeds / calibration are
-  // non-empty in a real demo. recordVerdict appends (append-only).
-  private readonly verdicts: VerdictRecord[];
-  // skill version history. Seeded with the demo version on first
-  // access (lazy so we don't have to thread the seed through the constructor)
-  // and appended on every createSkillVersion call.
-  private skillVersions: SkillVersion[] | null = null;
-  // regression runs keyed by skill version id, so the version's Judge
-  // Card can read back "what flipped when this shipped." Newest run wins per
-  // version (the override re-submit produces a second run for the same edit).
-  private readonly regressionRuns = new Map<string, RegressionRunResult>();
-  private readonly reviewQueues: Array<{
-    id: string;
-    projectId: string;
-    name: string;
-    description: string | null;
-    status: ReviewQueueStatus;
-    createdByUserId: string | null;
-    createdAt: string;
-    closedAt: string | null;
-  }> = [];
-  private readonly reviewQueueItems: ReviewQueueItem[] = [];
-  private readonly langSmithIntegrations = new Map<string, LangSmithImportContext & { pollEnabled: boolean; pollIntervalMs: number }>();
-  private readonly langSmithLastPolledAt = new Map<string, number>();
-  private readonly langfuseIntegrations = new Map<string, LangfuseImportContext & { pollEnabled: boolean; pollIntervalMs: number }>();
-  private readonly langfuseLastPolledAt = new Map<string, number>();
-  private readonly ironsideIntegrations = new Map<string, IronsideImportContext & { pollEnabled: boolean; pollIntervalMs: number }>();
-  private readonly ironsideLastPolledAt = new Map<string, number>();
-  private readonly feedbackJobs = new Map<string, FeedbackSyncContext & { status: FeedbackSyncStatus }>();
-  private readonly feedbackJobAttempts = new Map<string, number>();
-  private readonly feedbackJobLastError = new Map<string, string>();
-  private readonly feedbackJobRunIds = new Map<string, string>();
-  private readonly promotedGoldenSet: GoldenSetEntry[] = [];
-  private readonly retiredGoldenSetEntries = new Map<string, GoldenSetRetirementContext>();
-  private readonly importJobs: ImportJobRecord[] = [];
-  // Eval-as-a-service API keys (in-memory). Stores the record + the key hash;
-  // the plaintext key is returned only at creation.
-  private readonly apiKeys: Array<{ record: ApiKey; keyHash: string }> = [];
-  private readonly traceTests: Array<{
-    id: string;
-    projectId: string;
-    sourceCaseId: string | null;
-    sourceCaseRef: string;
-    sourceTraceRef: string;
-    sourceSnapshot: unknown;
-    sourceScope: TraceTestSourceScope;
-    currentRevision: number;
-    enabledRevision: number | null;
-    createdByUserId: string | null;
-    createdAt: string;
-    updatedAt: string;
-  }> = [];
-  private readonly traceTestRevisions: TraceTestRevision[] = [];
-  private readonly traceTestValidations: TraceTestValidation[] = [];
-  private readonly traceTestFunnelEvents = new Set<string>();
-  private readonly datasets: Array<{
-    id: string;
-    projectId: string;
-    name: string;
-    description: string | null;
-    kind: DatasetKind;
-    createdAt: string;
-    archivedAt: string | null;
-  }> = [];
-  private readonly datasetItems: DatasetItem[] = [];
-  private readonly datasetRevisions: DatasetRevision[] = [];
-  private readonly datasetRevisionItems: DatasetRevisionItem[] = [];
-  private readonly datasetExposureEvents: DatasetExposureEvent[] = [];
-  private readonly datasetRevisionIdempotency = new Map<string, string>();
-  private regressionDatasetRevisionId: string | null = null;
-  private readonly regressionDatasetRevisionIdsByCriterion = new Map<string, string>();
-  private readonly evalRuns: EvalRun[] = [];
-  private readonly evalRunItems: EvalRunItem[] = [];
-  private readonly convergenceEvalRuns = new Map<string, Promise<EvalRunDetail>>();
-  private readonly importedCaseEvalRuns = new Map<string, Promise<EvalRunDetail>>();
-  private readonly evalRunDispatches = new Map<string, {
-    jobId: string;
-    dispatchToken: string | null;
-    claimedAt: number | null;
-    dispatched: boolean;
-  }>();
-  private readonly evalRunItemQueueJobs = new Map<string, string>();
-  private readonly evalRunItemDeliveryDeadlines = new Map<string, number>();
-  private readonly evalRunItemExecutions = new Map<string, {
-    executionToken: string;
-    claimedAt: number;
-    providerCallStarted: boolean;
-    providerCallReturned: boolean;
-  }>();
-  private readonly assessmentReceiptArtifacts: AssessmentReceiptArtifact[] = [];
-  private readonly assessmentReceiptComparisons: AssessmentReceiptComparison[] = [];
-  private readonly runComparisons: RunComparison[] = [];
-  private readonly criteria: Criterion[] = [];
-  private readonly criterionVersions: CriterionVersion[] = [];
-  private readonly evaluatorSuites: EvaluatorSuite[] = [];
-  private readonly evaluatorSuiteManifests: Array<{
-    manifest: EvaluatorSuiteManifest;
-    canonicalBytes: Buffer;
-    idempotencyKey: string;
-    requestDigest: string;
-  }> = [];
-  private readonly skillVersionCriteria = new Map<string, string>();
-  private readonly onboardingCheckRequests = new Map<string, { requestDigest: string; versionId: string }>();
-  private readonly criterionSkills = new Map<string, Skill>();
+  private readonly store = new DemoRepositoryStore();
 
   constructor(
     private readonly judgeProvider: JudgeProvider = new MockJudgeProvider(),
@@ -408,7 +285,7 @@ export class DemoRepository implements CoevalRepository {
   ) {
     const criterionId = demoSkill.criterionId;
     const criterionVersionId = demoSkill.currentVersion.criterionVersionId;
-    this.criteria.push({
+    this.store.criteria.push({
       id: criterionId,
       projectId: demoProject.id,
       stableKey: `skill:${demoSkill.id}`,
@@ -416,7 +293,7 @@ export class DemoRepository implements CoevalRepository {
       createdByUserId: null,
       createdAt: demoProject.updatedAt
     });
-    this.criterionVersions.push({
+    this.store.criterionVersions.push({
       id: criterionVersionId,
       projectId: demoProject.id,
       criterionId,
@@ -433,27 +310,27 @@ export class DemoRepository implements CoevalRepository {
       createdByUserId: null,
       createdAt: demoProject.updatedAt
     });
-    this.skillVersionCriteria.set(demoSkillPrevVersion.id, criterionVersionId);
-    this.skillVersionCriteria.set(demoSkill.currentVersion.id, criterionVersionId);
-    this.criterionSkills.set(criterionId, demoSkill);
-    this.verdicts = options.seedVerdicts ? [...demoVerdicts] : [];
+    this.store.skillVersionCriteria.set(demoSkillPrevVersion.id, criterionVersionId);
+    this.store.skillVersionCriteria.set(demoSkill.currentVersion.id, criterionVersionId);
+    this.store.criterionSkills.set(criterionId, demoSkill);
+    if (options.seedVerdicts) this.store.verdicts.push(...demoVerdicts);
     // Demo fixtures are authored in source rather than imported through the
     // runtime redaction path. Capture their original input identity up front
     // so the demo never hashes a redacted fallback while calling it exact.
     for (const entry of demoGoldenSet) {
-      this.caseInputIdentities.set(
+      this.store.caseInputIdentities.set(
         entry.caseId,
         datasetInputIdentity({ input: demoTraceForGoldenEntry(entry).input })
       );
     }
     for (const exception of demoExceptions) {
       const trace = this.syntheticTraceForBuiltinCase(exception.id);
-      if (trace) this.caseInputIdentities.set(exception.id, datasetInputIdentity({ input: trace.input }));
+      if (trace) this.store.caseInputIdentities.set(exception.id, datasetInputIdentity({ input: trace.input }));
     }
     // A2.2c: when seeding, expose the predecessor version too so the convergence
     // audit has a real before→after to compare. Without seeding, the version
     // list lazy-inits to just the current version (existing behaviour).
-    this.skillVersions = options.seedVerdicts
+    this.store.skillVersions = options.seedVerdicts
       ? [structuredClone(demoSkillPrevVersion), structuredClone(demoSkill.currentVersion)]
       : null;
   }
@@ -505,18 +382,18 @@ export class DemoRepository implements CoevalRepository {
     // Gate candidates and release evidence are invisible to
     // every dashboard number — trace counts, coverage, and the verdict chart
     // (mirrors the PG exclusions on case_type = 'gate_candidate').
-    const countedRuns = this.judgeRuns.filter((run) =>
+    const countedRuns = this.store.judgeRuns.filter((run) =>
       !this.isEvidenceScaffoldingCase(run.caseId) &&
-      this.skillVersionCriteria.get(run.skillVersionId) === criterionVersionId
+      this.store.skillVersionCriteria.get(run.skillVersionId) === criterionVersionId
     );
     const isLegacyCriterion = criterionId === undefined || criterionId === demoSkill.criterionId;
     const exceptions = isLegacyCriterion
       ? summary.exceptions.filter((exception) => {
-          const scopedVerdicts = this.verdicts.filter((verdict) =>
+          const scopedVerdicts = this.store.verdicts.filter((verdict) =>
             verdict.projectId === projectId &&
             verdict.caseId === exception.id &&
             verdict.skillVersionId !== null &&
-            this.skillVersionCriteria.get(verdict.skillVersionId) === criterionVersionId
+            this.store.skillVersionCriteria.get(verdict.skillVersionId) === criterionVersionId
           );
           const latestResolution = scopedVerdicts
             .filter((verdict) => verdict.source === "human" || verdict.source === "adjudicated")
@@ -572,12 +449,12 @@ export class DemoRepository implements CoevalRepository {
         goldenSetSize
       };
     }
-    const countedTraces = [...this.traceSources.values()]
+    const countedTraces = [...this.store.traceSources.values()]
       .filter((traceSource) => traceSource.source !== "gate_candidate" && traceSource.source !== "release_evidence").length;
     // P1-4 parity with PG: one vote per case — the latest judge verdict on
     // each judged case, not every run row (re-judges and repeat probes would
     // inflate the chart).
-    const latestByCase = new Map<string, (typeof this.judgeRuns)[number]>();
+    const latestByCase = new Map<string, (typeof this.store.judgeRuns)[number]>();
     for (const run of countedRuns) {
       const prior = latestByCase.get(run.caseId);
       if (!prior || run.createdAt >= prior.createdAt) latestByCase.set(run.caseId, run);
@@ -606,25 +483,25 @@ export class DemoRepository implements CoevalRepository {
   // Derived product-gate cases (case source 'gate_candidate') are judging
   // scaffolding: excluded from dashboards, exceptions, and backfills.
   private isEvidenceScaffoldingCase(caseId: string): boolean {
-    const source = this.traceSources.get(caseId)?.source;
+    const source = this.store.traceSources.get(caseId)?.source;
     return source === "gate_candidate" || source === "release_evidence";
   }
 
   async listCriteria(projectId: string): Promise<Criterion[]> {
-    return this.criteria
+    return this.store.criteria
       .filter((criterion) => criterion.projectId === projectId)
       .sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id))
       .map((criterion) => structuredClone(criterion));
   }
 
   async getCriterion(projectId: string, criterionId: string): Promise<CriterionDetail | null> {
-    const criterion = this.criteria.find((candidate) =>
+    const criterion = this.store.criteria.find((candidate) =>
       candidate.projectId === projectId && candidate.id === criterionId
     );
     if (!criterion) return null;
     return {
       criterion: structuredClone(criterion),
-      versions: this.criterionVersions
+      versions: this.store.criterionVersions
         .filter((version) => version.projectId === projectId && version.criterionId === criterionId)
         .sort((left, right) => right.revision - left.revision || right.id.localeCompare(left.id))
         .map((version) => structuredClone(version))
@@ -636,7 +513,7 @@ export class DemoRepository implements CoevalRepository {
     input: CreateCriterionInput,
     context: { actorUserId?: string | undefined }
   ): Promise<CreatedCriterion> {
-    if (this.criteria.some((criterion) =>
+    if (this.store.criteria.some((criterion) =>
       criterion.projectId === projectId && criterion.stableKey === input.stableKey
     )) {
       throw new CriterionStableKeyConflictError(input.stableKey);
@@ -704,12 +581,12 @@ export class DemoRepository implements CoevalRepository {
       isStarter: false,
       currentVersion: skillVersion
     };
-    this.criteria.push(criterion);
-    this.criterionVersions.push(version);
-    if (this.skillVersions === null) this.skillVersions = [structuredClone(demoSkill.currentVersion)];
-    this.skillVersions.push(skillVersion);
-    this.skillVersionCriteria.set(skillVersion.id, version.id);
-    this.criterionSkills.set(criterion.id, evaluator);
+    this.store.criteria.push(criterion);
+    this.store.criterionVersions.push(version);
+    if (this.store.skillVersions === null) this.store.skillVersions = [structuredClone(demoSkill.currentVersion)];
+    this.store.skillVersions.push(skillVersion);
+    this.store.skillVersionCriteria.set(skillVersion.id, version.id);
+    this.store.criterionSkills.set(criterion.id, evaluator);
     return {
       criterion: structuredClone(criterion),
       versions: [structuredClone(version)],
@@ -723,10 +600,10 @@ export class DemoRepository implements CoevalRepository {
     input: CreateCriterionVersionInput,
     context: { actorUserId?: string | undefined }
   ): Promise<CriterionVersion | null> {
-    if (!this.criteria.some((criterion) =>
+    if (!this.store.criteria.some((criterion) =>
       criterion.projectId === projectId && criterion.id === criterionId
     )) return null;
-    const prior = this.criterionVersions.filter((version) =>
+    const prior = this.store.criterionVersions.filter((version) =>
       version.projectId === projectId && version.criterionId === criterionId
     );
     const id = `criterionv_${randomUUID()}`;
@@ -747,19 +624,19 @@ export class DemoRepository implements CoevalRepository {
       createdByUserId: context.actorUserId ?? null,
       createdAt: new Date().toISOString()
     };
-    this.criterionVersions.push(version);
+    this.store.criterionVersions.push(version);
     return structuredClone(version);
   }
 
   async listEvaluatorSuites(projectId: string): Promise<EvaluatorSuite[]> {
-    return this.evaluatorSuites
+    return this.store.evaluatorSuites
       .filter((suite) => suite.projectId === projectId)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id))
       .map((suite) => structuredClone(suite));
   }
 
   async getEvaluatorSuite(projectId: string, suiteId: string): Promise<EvaluatorSuite | null> {
-    const suite = this.evaluatorSuites.find((candidate) =>
+    const suite = this.store.evaluatorSuites.find((candidate) =>
       candidate.projectId === projectId && candidate.id === suiteId
     );
     return suite ? structuredClone(suite) : null;
@@ -776,7 +653,7 @@ export class DemoRepository implements CoevalRepository {
     ) {
       throw new EvaluatorSuiteBindingError("Evaluator suite members must bind distinct criteria and evaluator versions.");
     }
-    const retried = this.evaluatorSuiteManifests.find((entry) =>
+    const retried = this.store.evaluatorSuiteManifests.find((entry) =>
       entry.manifest.projectId === projectId && entry.idempotencyKey === input.idempotencyKey
     );
     if (retried) {
@@ -786,19 +663,19 @@ export class DemoRepository implements CoevalRepository {
       return parseCanonicalEvaluatorSuiteManifestBytes(retried.canonicalBytes);
     }
     const existingSuite = input.suiteId
-      ? this.evaluatorSuites.find((suite) => suite.projectId === projectId && suite.id === input.suiteId)
+      ? this.store.evaluatorSuites.find((suite) => suite.projectId === projectId && suite.id === input.suiteId)
       : undefined;
     if (input.suiteId && !existingSuite) {
       throw new EvaluatorSuiteBindingError(`Evaluator suite not found in this project: ${input.suiteId}`);
     }
     const suiteId = existingSuite?.id ?? `suite_${randomUUID()}`;
     const memberInputs = input.members.map((binding, position) => {
-      const criterionVersion = this.criterionVersions.find((version) =>
+      const criterionVersion = this.store.criterionVersions.find((version) =>
         version.projectId === projectId && version.id === binding.criterionVersionId
       );
-      const skillVersion = (this.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
+      const skillVersion = (this.store.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
         .find((version) => version.id === binding.skillVersionId);
-      if (!criterionVersion || !skillVersion || this.skillVersionCriteria.get(skillVersion.id) !== criterionVersion.id) {
+      if (!criterionVersion || !skillVersion || this.store.skillVersionCriteria.get(skillVersion.id) !== criterionVersion.id) {
         throw new EvaluatorSuiteBindingError(
           `Suite member ${position} must bind a criterion version to its exact evaluator version in this project.`
         );
@@ -816,7 +693,7 @@ export class DemoRepository implements CoevalRepository {
         "Evaluator suite members must bind distinct stable criteria, not multiple versions of one criterion."
       );
     }
-    const priorRevisions = this.evaluatorSuiteManifests
+    const priorRevisions = this.store.evaluatorSuiteManifests
       .filter((entry) => entry.manifest.projectId === projectId && entry.manifest.suiteId === suiteId)
       .map((entry) => entry.manifest.revision);
     const manifest = buildEvaluatorSuiteManifest({
@@ -830,14 +707,14 @@ export class DemoRepository implements CoevalRepository {
     const canonicalBytes = canonicalEvaluatorSuiteManifestBytes(manifest);
     parseCanonicalEvaluatorSuiteManifestBytes(canonicalBytes);
     if (!existingSuite) {
-      this.evaluatorSuites.push({
+      this.store.evaluatorSuites.push({
         id: suiteId,
         projectId,
         createdByUserId: context.actorUserId ?? null,
         createdAt: new Date().toISOString()
       });
     }
-    this.evaluatorSuiteManifests.push({
+    this.store.evaluatorSuiteManifests.push({
       manifest,
       canonicalBytes,
       idempotencyKey: input.idempotencyKey,
@@ -850,7 +727,7 @@ export class DemoRepository implements CoevalRepository {
     projectId: string,
     suiteId?: string | undefined
   ): Promise<EvaluatorSuiteManifest[]> {
-    return this.evaluatorSuiteManifests
+    return this.store.evaluatorSuiteManifests
       .filter((entry) => entry.manifest.projectId === projectId && (!suiteId || entry.manifest.suiteId === suiteId))
       .sort((left, right) =>
         left.manifest.suiteId.localeCompare(right.manifest.suiteId) ||
@@ -864,14 +741,14 @@ export class DemoRepository implements CoevalRepository {
     projectId: string,
     manifestId: string
   ): Promise<EvaluatorSuiteManifest | null> {
-    const entry = this.evaluatorSuiteManifests.find((candidate) =>
+    const entry = this.store.evaluatorSuiteManifests.find((candidate) =>
       candidate.manifest.projectId === projectId && candidate.manifest.manifestId === manifestId
     );
     return entry ? parseCanonicalEvaluatorSuiteManifestBytes(entry.canonicalBytes) : null;
   }
 
   async getCurrentSkill(projectId = demoProject.id): Promise<Skill> {
-    const criteria = this.criteria.filter((criterion) => criterion.projectId === projectId);
+    const criteria = this.store.criteria.filter((criterion) => criterion.projectId === projectId);
     const criterionCount = criteria.length;
     if (criterionCount > 1) throw new AmbiguousProjectSkillError(projectId, criterionCount);
     const criterionId = criteria[0]?.id;
@@ -899,7 +776,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async getLatestSkill(projectId = demoProject.id): Promise<Skill> {
-    const criteria = this.criteria.filter((criterion) => criterion.projectId === projectId);
+    const criteria = this.store.criteria.filter((criterion) => criterion.projectId === projectId);
     const criterionCount = criteria.length;
     if (criterionCount > 1) throw new AmbiguousProjectSkillError(projectId, criterionCount);
     const criterionId = criteria[0]?.id;
@@ -912,9 +789,9 @@ export class DemoRepository implements CoevalRepository {
     criterionId: string,
     scope: "current" | "latest"
   ): Skill {
-    const base = this.criterionSkills.get(criterionId);
+    const base = this.store.criterionSkills.get(criterionId);
     if (!base || base.projectId !== projectId) throw new NoCurrentSkillError(projectId);
-    const versions = (this.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
+    const versions = (this.store.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
       .filter((version) => version.skillId === base.id);
     const ranked = [...versions].sort((left, right) => {
       if (scope === "current") {
@@ -934,7 +811,7 @@ export class DemoRepository implements CoevalRepository {
 
   async getSkillVersion(projectId: string, skillVersionId: string): Promise<SkillVersion | null> {
     if (projectId !== demoProject.id) return null;
-    return (this.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
+    return (this.store.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
       .find((version) => version.id === skillVersionId) ?? null;
   }
 
@@ -942,9 +819,9 @@ export class DemoRepository implements CoevalRepository {
     projectId: string,
     skillVersionId: string
   ): Promise<CriterionVersion | null> {
-    const criterionVersionId = this.skillVersionCriteria.get(skillVersionId);
+    const criterionVersionId = this.store.skillVersionCriteria.get(skillVersionId);
     if (!criterionVersionId) return null;
-    return this.criterionVersions.find((candidate) =>
+    return this.store.criterionVersions.find((candidate) =>
       candidate.projectId === projectId && candidate.id === criterionVersionId
     ) ?? null;
   }
@@ -955,7 +832,7 @@ export class DemoRepository implements CoevalRepository {
     versionId: string,
     _context: { actorUserId?: string | undefined }
   ): Promise<SkillVersion | null> {
-    const versions = this.skillVersions ?? [demoSkill.currentVersion];
+    const versions = this.store.skillVersions ?? [demoSkill.currentVersion];
     const version = versions.find((candidate) => candidate.id === versionId);
     if (!version) return null;
     if (version.status !== "draft" || version.approvedAt !== null) {
@@ -975,9 +852,9 @@ export class DemoRepository implements CoevalRepository {
       projectId,
       criterionVersionId
     );
-    return [...this.promotedGoldenSet, ...demoGoldenSet].filter((entry) =>
+    return [...this.store.promotedGoldenSet, ...demoGoldenSet].filter((entry) =>
       entry.criterionVersionId === resolvedCriterionVersionId &&
-      !this.retiredGoldenSetEntries.has(entry.id)
+      !this.store.retiredGoldenSetEntries.has(entry.id)
     );
   }
 
@@ -1033,15 +910,15 @@ export class DemoRepository implements CoevalRepository {
     caseId: string,
     skillVersionId?: string | undefined
   ): Promise<ExceptionDetail | null> {
-    const criterionCount = this.criteria.filter((criterion) => criterion.projectId === projectId).length;
+    const criterionCount = this.store.criteria.filter((criterion) => criterion.projectId === projectId).length;
     if (!skillVersionId && criterionCount > 1) {
       throw new AmbiguousProjectSkillError(projectId, criterionCount);
     }
-    const judged = [...this.judgeRuns]
+    const judged = [...this.store.judgeRuns]
       .filter((run) => run.caseId === caseId && (!skillVersionId || run.skillVersionId === skillVersionId))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
     if (judged) {
-      const trace = this.traces.get(caseId);
+      const trace = this.store.traces.get(caseId);
       return this.buildDemoCaseDetail(
         caseId,
         trace?.id ?? caseId,
@@ -1057,7 +934,7 @@ export class DemoRepository implements CoevalRepository {
       return this.buildDemoCaseDetail(exception.id, exception.traceId, exception.verdict, exception.reason, exception.capabilityGap);
     }
     const goldenCriterionVersionId = skillVersionId
-      ? this.skillVersionCriteria.get(skillVersionId)
+      ? this.store.skillVersionCriteria.get(skillVersionId)
       : undefined;
     const golden = (await this.listGoldenSet(projectId, goldenCriterionVersionId)).find((entry) =>
       entry.caseId === caseId && (!skillVersionId || entry.sourceSkillVersionId === skillVersionId)
@@ -1077,12 +954,12 @@ export class DemoRepository implements CoevalRepository {
     recordedRun?: JudgeRun | undefined
   ): ExceptionDetail {
     const skillVersionId = recordedRun?.skillVersionId ?? demoSkill.currentVersion.id;
-    const criterionVersionId = this.skillVersionCriteria.get(skillVersionId);
-    let verdictHistory: VerdictRecord[] = this.verdicts
+    const criterionVersionId = this.store.skillVersionCriteria.get(skillVersionId);
+    let verdictHistory: VerdictRecord[] = this.store.verdicts
       .filter((record) => record.projectId === demoProject.id && record.caseId === caseId)
       .filter((record) => record.source === "llm_judge" || record.source === "human" || record.source === "adjudicated")
       .filter((record) => !criterionVersionId || (
-        record.skillVersionId !== null && this.skillVersionCriteria.get(record.skillVersionId) === criterionVersionId
+        record.skillVersionId !== null && this.store.skillVersionCriteria.get(record.skillVersionId) === criterionVersionId
       ))
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id))
       .map((record) => ({
@@ -1140,15 +1017,15 @@ export class DemoRepository implements CoevalRepository {
       latestHistoricalJudge ? `judge_from_${latestHistoricalJudge.id}` : `judge_${caseId}`
     );
     const exceptionVerdict: ExceptionCase["verdict"] = displayedVerdict;
-    const goldenSetEntry = [...this.promotedGoldenSet, ...demoGoldenSet].find((entry) =>
+    const goldenSetEntry = [...this.store.promotedGoldenSet, ...demoGoldenSet].find((entry) =>
       entry.caseId === caseId &&
       (!criterionVersionId || entry.criterionVersionId === criterionVersionId) &&
-      !this.retiredGoldenSetEntries.has(entry.id)
+      !this.store.retiredGoldenSetEntries.has(entry.id)
     ) ?? null;
     // Imported cases serve their REAL stored payload (already redacted at
     // ingestion — PG parity, and the only way steps reach case detail);
     // the synthetic placeholder remains for built-in fixture cases only.
-    const stored = this.traces.get(caseId);
+    const stored = this.store.traces.get(caseId);
     const trace = stored
       ? { ...stored, id: traceId, metadata: stored.metadata ?? {} }
       : redactTrace({
@@ -1165,7 +1042,7 @@ export class DemoRepository implements CoevalRepository {
         verdict: exceptionVerdict,
         reason: displayedReason,
         skillVersionId: displayedSkillVersionId,
-        criterionVersionId: this.skillVersionCriteria.get(
+        criterionVersionId: this.store.skillVersionCriteria.get(
           displayedSkillVersionId
         ),
         ...(capabilityGap ? { capabilityGap } : {}),
@@ -1180,10 +1057,10 @@ export class DemoRepository implements CoevalRepository {
         ...(trace.steps ? { steps: trace.steps } : {})
       },
       // every dataset's expectation for this case, by name.
-      datasetExpectations: this.datasetItems
+      datasetExpectations: this.store.datasetItems
         .filter((item) => item.caseId === caseId)
         .map((item) => ({
-          datasetName: this.datasets.find((d) => d.id === item.datasetId && !d.archivedAt)?.name ?? null,
+          datasetName: this.store.datasets.find((d) => d.id === item.datasetId && !d.archivedAt)?.name ?? null,
           expectedLabel: item.expectedLabel,
           expectedFailStep: item.expectedFailStep
         }))
@@ -1216,7 +1093,7 @@ export class DemoRepository implements CoevalRepository {
     // PgRepository — see its rationale.
     const detail = await this.getCaseDetail(input.projectId, input.caseId, input.skillVersionId);
     if (!detail) throw new CaseNotFoundError(input.caseId);
-    if (this.traceSources.get(input.caseId)?.source === "release_evidence") {
+    if (this.store.traceSources.get(input.caseId)?.source === "release_evidence") {
       throw new CaseNotFoundError(input.caseId);
     }
     // Mirror PgRepository: a label that contradicts the recorded human
@@ -1232,7 +1109,7 @@ export class DemoRepository implements CoevalRepository {
     // v2 ledger (visible to κ / calibration). Pushed directly rather than via
     // recordVerdict so it does NOT complete pending review-queue items — only
     // an explicit human verdict does that.
-    this.verdicts.push({
+    this.store.verdicts.push({
       id: `verdict_${randomUUID()}`,
       projectId: input.projectId,
       caseId: input.caseId,
@@ -1249,14 +1126,14 @@ export class DemoRepository implements CoevalRepository {
       externalRunId: null,
       createdAt: new Date().toISOString()
     });
-    const criterionVersionId = this.skillVersionCriteria.get(detail.judgeRun.skillVersionId);
+    const criterionVersionId = this.store.skillVersionCriteria.get(detail.judgeRun.skillVersionId);
     if (!criterionVersionId) {
       throw new DatasetRevisionConflictError("Judge evaluator has no immutable criterion version binding");
     }
-    const existing = this.promotedGoldenSet.find((entry) =>
+    const existing = this.store.promotedGoldenSet.find((entry) =>
       entry.caseId === input.caseId &&
-      this.skillVersionCriteria.get(entry.sourceSkillVersionId) === criterionVersionId &&
-      !this.retiredGoldenSetEntries.has(entry.id)
+      this.store.skillVersionCriteria.get(entry.sourceSkillVersionId) === criterionVersionId &&
+      !this.store.retiredGoldenSetEntries.has(entry.id)
     );
     if (existing) {
       existing.agreedLabel = input.agreedLabel;
@@ -1277,23 +1154,23 @@ export class DemoRepository implements CoevalRepository {
       sourceSkillVersionId: detail.judgeRun.skillVersionId,
       criterionVersionId
     };
-    this.promotedGoldenSet.unshift(entry);
+    this.store.promotedGoldenSet.unshift(entry);
     await this.getOrCreateRegressionDatasetRevision(input.projectId, input.actorUserId, criterionVersionId);
     return entry;
   }
 
   async retireGoldenSetEntry(input: RetireGoldenSetEntryInput): Promise<void> {
-    const entry = [...this.promotedGoldenSet, ...demoGoldenSet].find((candidate) => candidate.id === input.entryId);
+    const entry = [...this.store.promotedGoldenSet, ...demoGoldenSet].find((candidate) => candidate.id === input.entryId);
     if (!entry) throw new GoldenSetEntryNotFoundError(input.entryId);
-    const retirement = this.retiredGoldenSetEntries.get(entry.id);
+    const retirement = this.store.retiredGoldenSetEntries.get(entry.id);
     if (retirement) throw new GoldenSetEntryAlreadyRetiredError(input.entryId, retirement);
-    this.retiredGoldenSetEntries.set(entry.id, {
+    this.store.retiredGoldenSetEntries.set(entry.id, {
       retiredAt: new Date().toISOString(),
       retiredByUserId: input.actorUserId ?? null,
       retiredBy: input.actorUserId ?? "Unknown",
       reason: input.reason ?? null
     });
-    const criterionVersionId = this.skillVersionCriteria.get(entry.sourceSkillVersionId);
+    const criterionVersionId = this.store.skillVersionCriteria.get(entry.sourceSkillVersionId);
     if (!criterionVersionId) {
       throw new DatasetRevisionConflictError("Golden evidence has no immutable criterion version binding");
     }
@@ -1311,7 +1188,7 @@ export class DemoRepository implements CoevalRepository {
     // Purpose is immutable origin metadata, not part of trace identity. A
     // later product path that sees the same trace reuses the first case
     // without reclassifying it; Map iteration keeps that choice deterministic.
-    for (const [existingCaseId, traceSource] of this.traceSources.entries()) {
+    for (const [existingCaseId, traceSource] of this.store.traceSources.entries()) {
       if (
         traceSource.source === source
         && traceSource.sourceTraceId === sourceTraceId
@@ -1327,14 +1204,14 @@ export class DemoRepository implements CoevalRepository {
       }
     }
     const normalizedPayload = redactNormalizedTracePayload(normalizeTracePayload(input), context.redactionConfig);
-    this.traces.set(caseId, {
+    this.store.traces.set(caseId, {
       id: sourceTraceId,
       input: normalizedPayload.input,
       output: normalizedPayload.output,
       metadata: normalizedPayload.metadata,
       ...(normalizedPayload.steps ? { steps: normalizedPayload.steps } : {})
     });
-    this.traceSources.set(caseId, {
+    this.store.traceSources.set(caseId, {
       source,
       sourceTraceId,
       sourceTraceVersion: context.sourceTraceVersion,
@@ -1345,23 +1222,19 @@ export class DemoRepository implements CoevalRepository {
       sourceIntegrationId: context.sourceIntegrationId,
       importJobId: context.importJobId
     });
-    this.caseInputIdentities.set(caseId, datasetInputIdentity({ input: input.input }));
+    this.store.caseInputIdentities.set(caseId, datasetInputIdentity({ input: input.input }));
     return { rawTraceId, caseId, sourceTraceId, created: true };
   }
-
-  // plaintext in-memory — encrypt-at-rest is a PG-only property
-  // (locked shape; encryptJson needs BETTER_AUTH_SECRET, which demo may lack).
-  private judgeProviderKeys = new Map<string, { apiKey: string; keyDisplay: string; createdAt: string }>();
 
   async setJudgeProviderKey(projectId: string, provider: JudgeKeyProvider, apiKey: string): Promise<JudgeProviderKey> {
     const createdAt = new Date().toISOString();
     const keyDisplay = judgeKeyDisplay(apiKey);
-    this.judgeProviderKeys.set(`${projectId}:${provider}`, { apiKey, keyDisplay, createdAt });
+    this.store.judgeProviderKeys.set(`${projectId}:${provider}`, { apiKey, keyDisplay, createdAt });
     return { provider, keyDisplay, createdAt };
   }
 
   async listJudgeProviderKeys(projectId: string): Promise<JudgeProviderKey[]> {
-    return [...this.judgeProviderKeys.entries()]
+    return [...this.store.judgeProviderKeys.entries()]
       .filter(([mapKey]) => mapKey.startsWith(`${projectId}:`))
       .map(([mapKey, value]) => ({
         provider: mapKey.split(":")[1] as JudgeKeyProvider,
@@ -1372,11 +1245,11 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async deleteJudgeProviderKey(projectId: string, provider: JudgeKeyProvider): Promise<boolean> {
-    return this.judgeProviderKeys.delete(`${projectId}:${provider}`);
+    return this.store.judgeProviderKeys.delete(`${projectId}:${provider}`);
   }
 
   async getJudgeProviderCredential(projectId: string, provider: string): Promise<string | null> {
-    return this.judgeProviderKeys.get(`${projectId}:${provider}`)?.apiKey ?? null;
+    return this.store.judgeProviderKeys.get(`${projectId}:${provider}`)?.apiKey ?? null;
   }
 
   private async resolveImportSkillVersionId(projectId: string, requested?: string | undefined): Promise<string> {
@@ -1423,7 +1296,7 @@ export class DemoRepository implements CoevalRepository {
       completedAt: null,
       error: null
     };
-    this.importJobs.unshift(job);
+    this.store.importJobs.unshift(job);
     return { ...job };
   }
 
@@ -1442,7 +1315,7 @@ export class DemoRepository implements CoevalRepository {
 
   async markImportJobCompleted(projectId: string, importJobId: string, result: CompleteImportJobInput): Promise<void> {
     const job = this.getImportJob(projectId, importJobId);
-    const totalImportedForJob = [...this.traceSources.values()].filter((traceSource) => traceSource.importJobId === importJobId).length;
+    const totalImportedForJob = [...this.store.traceSources.values()].filter((traceSource) => traceSource.importJobId === importJobId).length;
     job.status = "completed";
     job.importedCount = totalImportedForJob > 0 ? totalImportedForJob : result.importedCount;
     job.queuedJudgeCount = result.queuedJudgeCount;
@@ -1459,7 +1332,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async listImportJobs(input: ListImportJobsInput): Promise<ImportJobRecord[]> {
-    return this.importJobs
+    return this.store.importJobs
       .filter((job) => job.projectId === input.projectId && (!input.status || job.status === input.status))
       .slice(0, input.limit)
       .map((job) => ({ ...job }));
@@ -1473,7 +1346,7 @@ export class DemoRepository implements CoevalRepository {
     now: Date
   ): void {
     const timestamp = now.toISOString();
-    this.importJobs.unshift({
+    this.store.importJobs.unshift({
       id: `import_${randomUUID()}`,
       projectId,
       source,
@@ -1515,7 +1388,7 @@ export class DemoRepository implements CoevalRepository {
       lastTestResult: null,
       createdAt
     };
-    this.langSmithIntegrations.set(id, {
+    this.store.langSmithIntegrations.set(id, {
       ...integration,
       apiKey: input.apiKey,
       limit: pollLimit,
@@ -1527,13 +1400,13 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async listLangSmithIntegrations(projectId: string): Promise<LangSmithIntegration[]> {
-    return [...this.langSmithIntegrations.values()]
+    return [...this.store.langSmithIntegrations.values()]
       .filter((integration) => integration.projectId === projectId)
       .map(toPublicLangSmithIntegration);
   }
 
   async updateLangSmithIntegration(projectId: string, integrationId: string, input: UpdateLangSmithIntegrationInput): Promise<LangSmithIntegration> {
-    const integration = this.langSmithIntegrations.get(integrationId);
+    const integration = this.store.langSmithIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new LangSmithIntegrationNotFoundError(integrationId);
     if (input.pollEnabled !== undefined) integration.pollEnabled = input.pollEnabled;
     if (input.pollIntervalSeconds !== undefined) {
@@ -1551,29 +1424,29 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async recordLangSmithConnectionTest(projectId: string, integrationId: string, result: LangSmithConnectionTestResult): Promise<void> {
-    const integration = this.langSmithIntegrations.get(integrationId);
+    const integration = this.store.langSmithIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new LangSmithIntegrationNotFoundError(integrationId);
     integration.lastTestedAt = result.checkedAt;
     integration.lastTestResult = result;
   }
 
   async deleteLangSmithIntegration(projectId: string, integrationId: string): Promise<void> {
-    const integration = this.langSmithIntegrations.get(integrationId);
+    const integration = this.store.langSmithIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new LangSmithIntegrationNotFoundError(integrationId);
-    this.langSmithIntegrations.delete(integrationId);
-    this.langSmithLastPolledAt.delete(integrationId);
-    for (const [caseId, source] of this.traceSources.entries()) {
+    this.store.langSmithIntegrations.delete(integrationId);
+    this.store.langSmithLastPolledAt.delete(integrationId);
+    for (const [caseId, source] of this.store.traceSources.entries()) {
       if (source.sourceIntegrationId === integrationId) {
-        this.traceSources.set(caseId, { ...source, sourceIntegrationId: undefined });
+        this.store.traceSources.set(caseId, { ...source, sourceIntegrationId: undefined });
       }
     }
   }
 
   async claimDueLangSmithImportTargets(input: ClaimLangSmithImportTargetsInput): Promise<LangSmithImportTarget[]> {
     const targets: LangSmithImportTarget[] = [];
-    for (const integration of this.langSmithIntegrations.values()) {
+    for (const integration of this.store.langSmithIntegrations.values()) {
       if (targets.length >= input.batchSize) break;
-      const lastPolledAt = this.langSmithLastPolledAt.get(integration.id);
+      const lastPolledAt = this.store.langSmithLastPolledAt.get(integration.id);
       if (!integration.pollEnabled) continue;
       if (lastPolledAt !== undefined && input.now.getTime() - lastPolledAt < integration.pollIntervalMs) continue;
       try {
@@ -1592,16 +1465,16 @@ export class DemoRepository implements CoevalRepository {
           Math.max(1, Math.min(integration.limit, 100)),
           input.now
         );
-        this.langSmithLastPolledAt.set(integration.id, input.now.getTime());
+        this.store.langSmithLastPolledAt.set(integration.id, input.now.getTime());
         continue;
       }
-      this.langSmithLastPolledAt.set(integration.id, input.now.getTime());
+      this.store.langSmithLastPolledAt.set(integration.id, input.now.getTime());
     }
     return targets;
   }
 
   async loadLangSmithImportContext(job: LangSmithImportJob): Promise<LangSmithImportContext> {
-    const integration = this.langSmithIntegrations.get(job.integrationId);
+    const integration = this.store.langSmithIntegrations.get(job.integrationId);
     if (!integration || integration.projectId !== job.projectId) throw new LangSmithIntegrationNotFoundError(job.integrationId);
     return { ...integration, limit: job.limit };
   }
@@ -1627,7 +1500,7 @@ export class DemoRepository implements CoevalRepository {
       lastTestResult: null,
       createdAt
     };
-    this.langfuseIntegrations.set(id, {
+    this.store.langfuseIntegrations.set(id, {
       ...integration,
       publicKey: input.publicKey,
       secretKey: input.secretKey,
@@ -1640,13 +1513,13 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async listLangfuseIntegrations(projectId: string): Promise<LangfuseIntegration[]> {
-    return [...this.langfuseIntegrations.values()]
+    return [...this.store.langfuseIntegrations.values()]
       .filter((integration) => integration.projectId === projectId)
       .map(toPublicLangfuseIntegration);
   }
 
   async updateLangfuseIntegration(projectId: string, integrationId: string, input: UpdateLangfuseIntegrationInput): Promise<LangfuseIntegration> {
-    const integration = this.langfuseIntegrations.get(integrationId);
+    const integration = this.store.langfuseIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new LangfuseIntegrationNotFoundError(integrationId);
     if (input.pollEnabled !== undefined) integration.pollEnabled = input.pollEnabled;
     if (input.pollIntervalSeconds !== undefined) {
@@ -1664,29 +1537,29 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async recordLangfuseConnectionTest(projectId: string, integrationId: string, result: LangfuseConnectionTestResult): Promise<void> {
-    const integration = this.langfuseIntegrations.get(integrationId);
+    const integration = this.store.langfuseIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new LangfuseIntegrationNotFoundError(integrationId);
     integration.lastTestedAt = result.checkedAt;
     integration.lastTestResult = result;
   }
 
   async deleteLangfuseIntegration(projectId: string, integrationId: string): Promise<void> {
-    const integration = this.langfuseIntegrations.get(integrationId);
+    const integration = this.store.langfuseIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new LangfuseIntegrationNotFoundError(integrationId);
-    this.langfuseIntegrations.delete(integrationId);
-    this.langfuseLastPolledAt.delete(integrationId);
-    for (const [caseId, source] of this.traceSources.entries()) {
+    this.store.langfuseIntegrations.delete(integrationId);
+    this.store.langfuseLastPolledAt.delete(integrationId);
+    for (const [caseId, source] of this.store.traceSources.entries()) {
       if (source.sourceIntegrationId === integrationId) {
-        this.traceSources.set(caseId, { ...source, sourceIntegrationId: undefined });
+        this.store.traceSources.set(caseId, { ...source, sourceIntegrationId: undefined });
       }
     }
   }
 
   async claimDueLangfuseImportTargets(input: ClaimLangfuseImportTargetsInput): Promise<LangfuseImportTarget[]> {
     const targets: LangfuseImportTarget[] = [];
-    for (const integration of this.langfuseIntegrations.values()) {
+    for (const integration of this.store.langfuseIntegrations.values()) {
       if (targets.length >= input.batchSize) break;
-      const lastPolledAt = this.langfuseLastPolledAt.get(integration.id);
+      const lastPolledAt = this.store.langfuseLastPolledAt.get(integration.id);
       if (!integration.pollEnabled) continue;
       if (lastPolledAt !== undefined && input.now.getTime() - lastPolledAt < integration.pollIntervalMs) continue;
       try {
@@ -1705,22 +1578,22 @@ export class DemoRepository implements CoevalRepository {
           Math.max(1, Math.min(integration.limit, 100)),
           input.now
         );
-        this.langfuseLastPolledAt.set(integration.id, input.now.getTime());
+        this.store.langfuseLastPolledAt.set(integration.id, input.now.getTime());
         continue;
       }
-      this.langfuseLastPolledAt.set(integration.id, input.now.getTime());
+      this.store.langfuseLastPolledAt.set(integration.id, input.now.getTime());
     }
     return targets;
   }
 
   async loadLangfuseImportContext(job: LangfuseImportJob): Promise<LangfuseImportContext> {
-    const integration = this.langfuseIntegrations.get(job.integrationId);
+    const integration = this.store.langfuseIntegrations.get(job.integrationId);
     if (!integration || integration.projectId !== job.projectId) throw new LangfuseIntegrationNotFoundError(job.integrationId);
     return { ...integration, limit: job.limit };
   }
 
   async createIronsideIntegration(projectId: string, input: IronsideIntegrationInput, remote: IronsideEvaluatorContext): Promise<IronsideIntegration> {
-    const existing = [...this.ironsideIntegrations.values()]
+    const existing = [...this.store.ironsideIntegrations.values()]
       .find((integration) => integration.projectId === projectId);
     if (existing) throw new IronsideIntegrationAlreadyExistsError(projectId);
     const id = `int_${randomUUID()}`;
@@ -1749,7 +1622,7 @@ export class DemoRepository implements CoevalRepository {
       lastTestResult: null,
       createdAt
     };
-    this.ironsideIntegrations.set(id, {
+    this.store.ironsideIntegrations.set(id, {
       ...integration,
       apiKey: input.apiKey,
       limit: pollLimit,
@@ -1764,7 +1637,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async listIronsideIntegrations(projectId: string): Promise<IronsideIntegration[]> {
-    return [...this.ironsideIntegrations.values()]
+    return [...this.store.ironsideIntegrations.values()]
       .filter((integration) => integration.projectId === projectId)
       .map(toPublicIronsideIntegration);
   }
@@ -1776,7 +1649,7 @@ export class DemoRepository implements CoevalRepository {
     remote?: IronsideEvaluatorContext,
     expected?: { remoteProjectId: string; revalidationRequired: boolean; connectionRevision: number }
   ): Promise<IronsideIntegration> {
-    const integration = this.ironsideIntegrations.get(integrationId);
+    const integration = this.store.ironsideIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new IronsideIntegrationNotFoundError(integrationId);
     if (
       expected &&
@@ -1814,7 +1687,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async recordIronsideConnectionTest(projectId: string, integrationId: string, result: IronsideConnectionTestResult): Promise<void> {
-    const integration = this.ironsideIntegrations.get(integrationId);
+    const integration = this.store.ironsideIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new IronsideIntegrationNotFoundError(integrationId);
     integration.lastTestedAt = result.checkedAt;
     integration.lastTestResult = result;
@@ -1826,7 +1699,7 @@ export class DemoRepository implements CoevalRepository {
     expected: { remoteProjectId: string; connectionRevision: number },
     result: IronsideConnectionTestResult
   ): Promise<boolean> {
-    const integration = this.ironsideIntegrations.get(integrationId);
+    const integration = this.store.ironsideIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) {
       throw new IronsideIntegrationNotFoundError(integrationId);
     }
@@ -1843,22 +1716,22 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async deleteIronsideIntegration(projectId: string, integrationId: string): Promise<void> {
-    const integration = this.ironsideIntegrations.get(integrationId);
+    const integration = this.store.ironsideIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new IronsideIntegrationNotFoundError(integrationId);
-    this.ironsideIntegrations.delete(integrationId);
-    this.ironsideLastPolledAt.delete(integrationId);
-    for (const [caseId, source] of this.traceSources.entries()) {
+    this.store.ironsideIntegrations.delete(integrationId);
+    this.store.ironsideLastPolledAt.delete(integrationId);
+    for (const [caseId, source] of this.store.traceSources.entries()) {
       if (source.sourceIntegrationId === integrationId) {
-        this.traceSources.set(caseId, { ...source, sourceIntegrationId: undefined });
+        this.store.traceSources.set(caseId, { ...source, sourceIntegrationId: undefined });
       }
     }
   }
 
   async claimDueIronsideImportTargets(input: ClaimIronsideImportTargetsInput): Promise<IronsideImportTarget[]> {
     const targets: IronsideImportTarget[] = [];
-    for (const integration of this.ironsideIntegrations.values()) {
+    for (const integration of this.store.ironsideIntegrations.values()) {
       if (targets.length >= input.batchSize) break;
-      const lastPolledAt = this.ironsideLastPolledAt.get(integration.id);
+      const lastPolledAt = this.store.ironsideLastPolledAt.get(integration.id);
       if (!integration.pollEnabled || integration.revalidationRequired) continue;
       if (lastPolledAt !== undefined && input.now.getTime() - lastPolledAt < integration.pollIntervalMs) continue;
       try {
@@ -1877,16 +1750,16 @@ export class DemoRepository implements CoevalRepository {
           Math.max(1, Math.min(integration.limit, 100)),
           input.now
         );
-        this.ironsideLastPolledAt.set(integration.id, input.now.getTime());
+        this.store.ironsideLastPolledAt.set(integration.id, input.now.getTime());
         continue;
       }
-      this.ironsideLastPolledAt.set(integration.id, input.now.getTime());
+      this.store.ironsideLastPolledAt.set(integration.id, input.now.getTime());
     }
     return targets;
   }
 
   async loadIronsideImportContext(job: IronsideImportJob): Promise<IronsideImportContext> {
-    const integration = this.ironsideIntegrations.get(job.integrationId);
+    const integration = this.store.ironsideIntegrations.get(job.integrationId);
     if (!integration || integration.projectId !== job.projectId) throw new IronsideIntegrationNotFoundError(job.integrationId);
     return { ...integration, syncState: { ...integration.syncState }, limit: job.limit };
   }
@@ -1897,7 +1770,7 @@ export class DemoRepository implements CoevalRepository {
     state: IronsideSyncState,
     expectedCursor?: string | null
   ): Promise<boolean> {
-    const integration = this.ironsideIntegrations.get(integrationId);
+    const integration = this.store.ironsideIntegrations.get(integrationId);
     if (!integration || integration.projectId !== projectId) throw new IronsideIntegrationNotFoundError(integrationId);
     if (expectedCursor !== undefined && integration.syncState.cursor !== expectedCursor) return false;
     integration.syncState = { ...state };
@@ -1905,7 +1778,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   private getImportJob(projectId: string, importJobId: string): ImportJobRecord {
-    const job = this.importJobs.find((candidate) => candidate.id === importJobId && candidate.projectId === projectId);
+    const job = this.store.importJobs.find((candidate) => candidate.id === importJobId && candidate.projectId === projectId);
     if (!job) throw new Error(`Import job not found: ${importJobId}`);
     return job;
   }
@@ -1914,13 +1787,13 @@ export class DemoRepository implements CoevalRepository {
     // Imported traces first; built-in fixture cases (exceptions, golden set)
     // get the same synthesized traces the case-detail and regression surfaces
     // use, so demo eval runs can judge them instead of failing the item.
-    const trace = this.traces.get(job.caseId) ?? this.syntheticTraceForBuiltinCase(job.caseId);
+    const trace = this.store.traces.get(job.caseId) ?? this.syntheticTraceForBuiltinCase(job.caseId);
     if (!trace) throw new Error(`Case not found for judge job: ${job.caseId}`);
     // Honor the pinned version like PgRepository does — an eval run pinned to
     // an older version must record verdicts under THAT version id, or the run
     // claims one judge while the ledger says another (the A2.2c trap).
     const skillVersion = job.skillVersionId
-      ? (this.skillVersions ?? [demoSkill.currentVersion]).find((version) => version.id === job.skillVersionId)
+      ? (this.store.skillVersions ?? [demoSkill.currentVersion]).find((version) => version.id === job.skillVersionId)
       : demoSkill.currentVersion;
     if (!skillVersion) throw new Error(`Skill version not found for judge job: ${job.skillVersionId}`);
     return {
@@ -1949,7 +1822,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async recordJudgeRun(input: RecordJudgeRunInput): Promise<JudgeRun> {
-    const existing = this.judgeRuns.find((candidate) =>
+    const existing = this.store.judgeRuns.find((candidate) =>
       candidate.projectId === input.projectId &&
       candidate.caseId === input.caseId &&
       candidate.skillVersionId === input.skillVersionId
@@ -1973,13 +1846,13 @@ export class DemoRepository implements CoevalRepository {
       },
       createdAt: new Date().toISOString()
     };
-    this.judgeRuns.push(run);
+    this.store.judgeRuns.push(run);
     return run;
   }
 
   async recordVerdict(input: RecordVerdictInput): Promise<VerdictRecord> {
     if (input.externalRunId) {
-      const existing = this.verdicts.find(
+      const existing = this.store.verdicts.find(
         (candidate) =>
           candidate.projectId === input.projectId &&
           candidate.source === "imported_external" &&
@@ -1989,8 +1862,8 @@ export class DemoRepository implements CoevalRepository {
     }
     let skillVersionId = input.skillVersionId;
     if (input.source === "human" || input.source === "adjudicated") {
-      const criterionCount = this.criteria.filter((criterion) => criterion.projectId === input.projectId).length;
-      const definitionCount = this.criterionVersions.filter((version) => version.projectId === input.projectId).length;
+      const criterionCount = this.store.criteria.filter((criterion) => criterion.projectId === input.projectId).length;
+      const definitionCount = this.store.criterionVersions.filter((version) => version.projectId === input.projectId).length;
       if (!skillVersionId && (criterionCount > 1 || definitionCount > 1)) {
         throw new AmbiguousProjectSkillError(input.projectId, Math.max(criterionCount, definitionCount));
       }
@@ -2021,7 +1894,7 @@ export class DemoRepository implements CoevalRepository {
       externalRunId: input.externalRunId ?? null,
       createdAt
     };
-    this.verdicts.push(record);
+    this.store.verdicts.push(record);
     // a human verdict completes pending queue items pointing at
     // this case, scoped to:
     //   - items unassigned (any reviewer covered them); AND
@@ -2030,9 +1903,9 @@ export class DemoRepository implements CoevalRepository {
     // partner row and must wait for that reviewer's own verdict.
     if (input.source === "human") {
       const criterionVersionId = skillVersionId
-        ? this.skillVersionCriteria.get(skillVersionId)
+        ? this.store.skillVersionCriteria.get(skillVersionId)
         : undefined;
-      for (const item of this.reviewQueueItems) {
+      for (const item of this.store.reviewQueueItems) {
         if (item.caseId !== input.caseId || item.status !== "pending") continue;
         if (!criterionVersionId || item.criterionVersionId !== criterionVersionId) continue;
         const isMine = item.assignedToUserId === null || item.assignedToUserId === input.actorUserId;
@@ -2055,19 +1928,19 @@ export class DemoRepository implements CoevalRepository {
       lastUsedAt: null,
       revokedAt: null
     };
-    this.apiKeys.push({ record, keyHash: generated.keyHash });
+    this.store.apiKeys.push({ record, keyHash: generated.keyHash });
     return { ...record, key: generated.key };
   }
 
   async listApiKeys(projectId: string): Promise<ApiKey[]> {
-    return this.apiKeys
+    return this.store.apiKeys
       .filter((entry) => entry.record.projectId === projectId)
       .map((entry) => entry.record)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
   async revokeApiKey(projectId: string, apiKeyId: string): Promise<boolean> {
-    const entry = this.apiKeys.find((candidate) => candidate.record.id === apiKeyId && candidate.record.projectId === projectId);
+    const entry = this.store.apiKeys.find((candidate) => candidate.record.id === apiKeyId && candidate.record.projectId === projectId);
     if (!entry || entry.record.revokedAt) return false;
     entry.record.revokedAt = new Date().toISOString();
     return true;
@@ -2075,7 +1948,7 @@ export class DemoRepository implements CoevalRepository {
 
   async resolveApiKey(rawKey: string): Promise<{ projectId: string; apiKeyId: string } | null> {
     const keyHash = hashApiKey(rawKey);
-    const entry = this.apiKeys.find((candidate) => candidate.keyHash === keyHash && !candidate.record.revokedAt);
+    const entry = this.store.apiKeys.find((candidate) => candidate.keyHash === keyHash && !candidate.record.revokedAt);
     if (!entry) return null;
     entry.record.lastUsedAt = new Date().toISOString();
     return { projectId: entry.record.projectId, apiKeyId: entry.record.id };
@@ -2083,7 +1956,7 @@ export class DemoRepository implements CoevalRepository {
 
   async createTraceTest(input: CreateTraceTestInputDb): Promise<TraceTestDetail> {
     if (input.projectId !== demoProject.id) throw new TraceTestSourceNotFoundError(input.sourceCaseId);
-    const stored = this.traces.get(input.sourceCaseId);
+    const stored = this.store.traces.get(input.sourceCaseId);
     const detail = stored ? null : await this.getCaseDetail(input.projectId, input.sourceCaseId);
     if (!stored && !detail) throw new TraceTestSourceNotFoundError(input.sourceCaseId);
     const source = stored ?? detail!.trace;
@@ -2093,7 +1966,7 @@ export class DemoRepository implements CoevalRepository {
       metadata: source.metadata ?? {},
       ...(source.steps ? { steps: source.steps } : {})
     };
-    const traceSource = this.traceSources.get(input.sourceCaseId);
+    const traceSource = this.store.traceSources.get(input.sourceCaseId);
     const createdAt = new Date().toISOString();
     const record = {
       id: `tt_${randomUUID()}`,
@@ -2109,8 +1982,8 @@ export class DemoRepository implements CoevalRepository {
       createdAt,
       updatedAt: createdAt
     };
-    this.traceTests.push(record);
-    this.traceTestRevisions.push({
+    this.store.traceTests.push(record);
+    this.store.traceTestRevisions.push({
       id: `ttr_${randomUUID()}`,
       traceTestId: record.id,
       revision: 1,
@@ -2135,26 +2008,26 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async listTraceTests(projectId: string, sourceCaseRef?: string): Promise<TraceTestSummary[]> {
-    return this.traceTests
+    return this.store.traceTests
       .filter((test) => test.projectId === projectId && (!sourceCaseRef || test.sourceCaseRef === sourceCaseRef))
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id))
       .map((test) => this.toTraceTestSummary(test));
   }
 
   async getTraceTest(projectId: string, traceTestId: string): Promise<TraceTestDetail | null> {
-    const test = this.traceTests.find((candidate) => candidate.id === traceTestId && candidate.projectId === projectId);
+    const test = this.store.traceTests.find((candidate) => candidate.id === traceTestId && candidate.projectId === projectId);
     return test ? this.toTraceTestDetail(test) : null;
   }
 
   async reviseTraceTest(input: ReviseTraceTestInputDb): Promise<TraceTestDetail> {
-    const test = this.traceTests.find((candidate) => candidate.id === input.traceTestId && candidate.projectId === input.projectId);
+    const test = this.store.traceTests.find((candidate) => candidate.id === input.traceTestId && candidate.projectId === input.projectId);
     if (!test) throw new TraceTestNotFoundError(input.traceTestId);
     if (test.currentRevision !== input.expectedRevision) {
       throw new TraceTestRevisionConflictError(input.expectedRevision, test.currentRevision);
     }
     const createdAt = new Date().toISOString();
     const revision = test.currentRevision + 1;
-    this.traceTestRevisions.push({
+    this.store.traceTestRevisions.push({
       id: `ttr_${randomUUID()}`,
       traceTestId: test.id,
       revision,
@@ -2181,7 +2054,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async recordTraceTestValidation(input: RecordTraceTestValidationInputDb): Promise<TraceTestValidation> {
-    const test = this.traceTests.find((candidate) => candidate.id === input.traceTestId && candidate.projectId === input.projectId);
+    const test = this.store.traceTests.find((candidate) => candidate.id === input.traceTestId && candidate.projectId === input.projectId);
     if (!test) throw new TraceTestNotFoundError(input.traceTestId);
     if (test.currentRevision !== input.revision) {
       throw new TraceTestRevisionConflictError(input.revision, test.currentRevision);
@@ -2214,23 +2087,23 @@ export class DemoRepository implements CoevalRepository {
       recordedByUserId: input.recordedByUserId ?? null,
       createdAt: new Date().toISOString()
     };
-    this.traceTestValidations.push(validation);
+    this.store.traceTestValidations.push(validation);
     return structuredClone(validation);
   }
 
   async enableTraceTest(input: EnableTraceTestInputDb): Promise<TraceTestDetail> {
-    const test = this.traceTests.find((candidate) => candidate.id === input.traceTestId && candidate.projectId === input.projectId);
+    const test = this.store.traceTests.find((candidate) => candidate.id === input.traceTestId && candidate.projectId === input.projectId);
     if (!test) throw new TraceTestNotFoundError(input.traceTestId);
     if (test.currentRevision !== input.expectedRevision) {
       throw new TraceTestRevisionConflictError(input.expectedRevision, test.currentRevision);
     }
-    const validation = this.traceTestValidations.find(
+    const validation = this.store.traceTestValidations.find(
       (candidate) => candidate.id === input.validationId && candidate.traceTestId === test.id && candidate.revision === input.expectedRevision
     );
     if (!validation || !traceTestValidationIsEnableEligible(validation)) {
       throw new TraceTestValidationNotReadyError("A successful validation for the current draft is required before enabling this test");
     }
-    const current = this.traceTestRevisions.find(
+    const current = this.store.traceTestRevisions.find(
       (candidate) => candidate.traceTestId === test.id && candidate.revision === input.expectedRevision
     );
     if (!current) throw new TraceTestRevisionConflictError(input.expectedRevision, test.currentRevision);
@@ -2239,7 +2112,7 @@ export class DemoRepository implements CoevalRepository {
     }
     const reviewedAt = new Date().toISOString();
     const revision = test.currentRevision + 1;
-    this.traceTestRevisions.push({
+    this.store.traceTestRevisions.push({
       ...structuredClone(current),
       id: `ttr_${randomUUID()}`,
       revision,
@@ -2260,10 +2133,10 @@ export class DemoRepository implements CoevalRepository {
   async recordTraceTestFunnelEvent(input: RecordTraceTestFunnelEventInputDb): Promise<void> {
     // Demo mode mirrors production idempotency without retaining source or
     // draft content. The set is intentionally not exposed as a product API.
-    this.traceTestFunnelEvents.add(`${input.projectId}:${input.journeyId}:${input.event}`);
+    this.store.traceTestFunnelEvents.add(`${input.projectId}:${input.journeyId}:${input.event}`);
   }
 
-  private toTraceTestSummary(test: (typeof this.traceTests)[number]): TraceTestSummary {
+  private toTraceTestSummary(test: (typeof this.store.traceTests)[number]): TraceTestSummary {
     return {
       id: test.id,
       projectId: test.projectId,
@@ -2279,17 +2152,17 @@ export class DemoRepository implements CoevalRepository {
     };
   }
 
-  private toTraceTestDetail(test: (typeof this.traceTests)[number]): TraceTestDetail {
+  private toTraceTestDetail(test: (typeof this.store.traceTests)[number]): TraceTestDetail {
     return {
       ...this.toTraceTestSummary(test),
       sourceSnapshot: structuredClone(test.sourceSnapshot),
       sourceScope: structuredClone(test.sourceScope),
       createdByUserId: test.createdByUserId,
-      revisions: this.traceTestRevisions
+      revisions: this.store.traceTestRevisions
         .filter((revision) => revision.traceTestId === test.id)
         .sort((left, right) => left.revision - right.revision)
         .map((revision) => structuredClone(revision)),
-      validations: this.traceTestValidations
+      validations: this.store.traceTestValidations
         .filter((validation) => validation.traceTestId === test.id)
         .sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id))
         .map((validation) => structuredClone(validation))
@@ -2298,7 +2171,7 @@ export class DemoRepository implements CoevalRepository {
 
   async createDataset(input: CreateDatasetInputDb): Promise<Dataset> {
     const name = input.name.trim();
-    const duplicate = this.datasets.find(
+    const duplicate = this.store.datasets.find(
       (candidate) => candidate.projectId === input.projectId && candidate.name === name && !candidate.archivedAt
     );
     if (duplicate) throw new DatasetNameTakenError(name);
@@ -2311,30 +2184,30 @@ export class DemoRepository implements CoevalRepository {
       createdAt: new Date().toISOString(),
       archivedAt: null as string | null
     };
-    this.datasets.push(record);
+    this.store.datasets.push(record);
     return this.toDataset(record);
   }
 
   async listDatasets(projectId: string): Promise<Dataset[]> {
-    return this.datasets
+    return this.store.datasets
       .filter((dataset) => dataset.projectId === projectId && !dataset.archivedAt)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
       .map((dataset) => this.toDataset(dataset));
   }
 
   async getDatasetDetail(projectId: string, datasetId: string): Promise<DatasetDetail | null> {
-    const dataset = this.datasets.find((candidate) => candidate.id === datasetId && candidate.projectId === projectId);
+    const dataset = this.store.datasets.find((candidate) => candidate.id === datasetId && candidate.projectId === projectId);
     if (!dataset) return null;
     return {
       ...this.toDataset(dataset),
-      items: this.datasetItems
+      items: this.store.datasetItems
         .filter((item) => item.datasetId === datasetId)
         .sort((left, right) => left.addedAt.localeCompare(right.addedAt))
     };
   }
 
   async archiveDataset(projectId: string, datasetId: string): Promise<boolean> {
-    const dataset = this.datasets.find(
+    const dataset = this.store.datasets.find(
       (candidate) => candidate.id === datasetId && candidate.projectId === projectId && !candidate.archivedAt
     );
     if (!dataset) return false;
@@ -2343,7 +2216,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async addDatasetItems(input: AddDatasetItemsInputDb): Promise<DatasetItem[]> {
-    const dataset = this.datasets.find(
+    const dataset = this.store.datasets.find(
       (candidate) => candidate.id === input.datasetId && candidate.projectId === input.projectId && !candidate.archivedAt
     );
     if (!dataset) throw new DatasetNotFoundError(input.datasetId);
@@ -2357,7 +2230,7 @@ export class DemoRepository implements CoevalRepository {
     for (const item of input.items) {
       // Idempotent add with label upsert (PG parity): a repeat can update the
       // expected label / note, but a label-less append never nulls a stored one.
-      const existing = this.datasetItems.find(
+      const existing = this.store.datasetItems.find(
         (candidate) => candidate.datasetId === input.datasetId && candidate.caseId === item.caseId
       );
       if (existing) {
@@ -2370,7 +2243,7 @@ export class DemoRepository implements CoevalRepository {
         existing.note = item.note ?? existing.note;
         continue;
       }
-      this.datasetItems.push({
+      this.store.datasetItems.push({
         id: `dsi_${randomUUID()}`,
         datasetId: input.datasetId,
         caseId: item.caseId,
@@ -2381,13 +2254,13 @@ export class DemoRepository implements CoevalRepository {
         addedAt
       });
     }
-    return this.datasetItems
+    return this.store.datasetItems
       .filter((item) => item.datasetId === input.datasetId)
       .sort((left, right) => left.addedAt.localeCompare(right.addedAt));
   }
 
   async importDatasetExamples(input: ImportDatasetExamplesDbInput): Promise<ImportDatasetExamplesDbResult> {
-    const dataset = this.datasets.find(
+    const dataset = this.store.datasets.find(
       (candidate) => candidate.id === input.datasetId && candidate.projectId === input.projectId && !candidate.archivedAt
     );
     if (!dataset) throw new DatasetNotFoundError(input.datasetId);
@@ -2396,10 +2269,10 @@ export class DemoRepository implements CoevalRepository {
     // restore them on any failure, so a mid-flow throw can't strand cases
     // without dataset membership (PG gets the same guarantee from a real
     // transaction).
-    const tracesSnapshot = new Map(this.traces);
-    const traceSourcesSnapshot = new Map(this.traceSources);
-    const inputIdentitiesSnapshot = new Map(this.caseInputIdentities);
-    const datasetItemsSnapshot = [...this.datasetItems];
+    const tracesSnapshot = new Map(this.store.traces);
+    const traceSourcesSnapshot = new Map(this.store.traceSources);
+    const inputIdentitiesSnapshot = new Map(this.store.caseInputIdentities);
+    const datasetItemsSnapshot = [...this.store.datasetItems];
     try {
       const results: ImportDatasetExamplesDbResult["items"] = [];
       for (const item of input.items) {
@@ -2429,14 +2302,14 @@ export class DemoRepository implements CoevalRepository {
       }
       return { items: results };
     } catch (error) {
-      this.traces.clear();
-      for (const [key, value] of tracesSnapshot) this.traces.set(key, value);
-      this.traceSources.clear();
-      for (const [key, value] of traceSourcesSnapshot) this.traceSources.set(key, value);
-      this.caseInputIdentities.clear();
-      for (const [key, value] of inputIdentitiesSnapshot) this.caseInputIdentities.set(key, value);
-      this.datasetItems.length = 0;
-      this.datasetItems.push(...datasetItemsSnapshot);
+      this.store.traces.clear();
+      for (const [key, value] of tracesSnapshot) this.store.traces.set(key, value);
+      this.store.traceSources.clear();
+      for (const [key, value] of traceSourcesSnapshot) this.store.traceSources.set(key, value);
+      this.store.caseInputIdentities.clear();
+      for (const [key, value] of inputIdentitiesSnapshot) this.store.caseInputIdentities.set(key, value);
+      this.store.datasetItems.length = 0;
+      this.store.datasetItems.push(...datasetItemsSnapshot);
       throw error;
     }
   }
@@ -2458,7 +2331,7 @@ export class DemoRepository implements CoevalRepository {
 
     const idempotencyLookup = input.idempotencyKey ? `${input.projectId}:${input.idempotencyKey}` : null;
     if (idempotencyLookup) {
-      const priorId = this.datasetRevisionIdempotency.get(idempotencyLookup);
+      const priorId = this.store.datasetRevisionIdempotency.get(idempotencyLookup);
       if (priorId) {
         const prior = await this.getDatasetRevisionDetail(input.projectId, priorId);
         if (!prior) throw new DatasetRevisionConflictError("Idempotent dataset revision vanished");
@@ -2470,7 +2343,7 @@ export class DemoRepository implements CoevalRepository {
     }
 
     const seriesId = `dataset:${dataset.id}`;
-    const series = this.datasetRevisions
+    const series = this.store.datasetRevisions
       .filter((revision) => revision.projectId === input.projectId && revision.seriesId === seriesId)
       .sort((left, right) => right.revisionNumber - left.revisionNumber);
     const parent = series[0] ?? null;
@@ -2483,7 +2356,7 @@ export class DemoRepository implements CoevalRepository {
     const now = new Date().toISOString();
     const revisionId = `dsr_${randomUUID()}`;
     const items = dataset.items.map((item, position) => {
-      const trace = this.traces.get(item.caseId);
+      const trace = this.store.traces.get(item.caseId);
       if (!trace) throw new DatasetRevisionConflictError(`Case ${item.caseId} has no retained payload to freeze`);
       const payloadSnapshot: DatasetRevisionPayloadSnapshot = {
         input: structuredClone(trace.input),
@@ -2491,14 +2364,14 @@ export class DemoRepository implements CoevalRepository {
         metadata: structuredClone(trace.metadata ?? {}),
         ...(trace.steps ? { steps: structuredClone(trace.steps) } : {})
       };
-      const inputIdentity = this.caseInputIdentities.get(item.caseId);
+      const inputIdentity = this.store.caseInputIdentities.get(item.caseId);
       if (!inputIdentity) {
         throw new DatasetRevisionConflictError(
           `Case ${item.caseId} has no retained pre-redaction input identity and cannot be frozen as exact evidence`
         );
       }
       const matching = item.expectedLabel
-        ? this.verdicts.filter((verdict) =>
+        ? this.store.verdicts.filter((verdict) =>
             verdict.caseId === item.caseId && verdictLabelFromPayload(verdict.payload) === item.expectedLabel
           )
         : [];
@@ -2564,8 +2437,8 @@ export class DemoRepository implements CoevalRepository {
       return detail;
     }
     const sealedInputDigests = new Set(
-      this.datasetRevisionItems
-        .filter((item) => this.datasetRevisions.some((revision) =>
+      this.store.datasetRevisionItems
+        .filter((item) => this.store.datasetRevisions.some((revision) =>
           revision.id === item.revisionId && revision.projectId === input.projectId && revision.role === "sealed_validation"
         ))
         .map((item) => item.inputDigest)
@@ -2603,30 +2476,30 @@ export class DemoRepository implements CoevalRepository {
       actorUserId: input.createdByUserId ?? null,
       idempotencyKey: `revision-created:${revision.id}`
     });
-    this.datasetRevisions.push(revision);
-    this.datasetRevisionItems.push(...items);
-    this.datasetExposureEvents.push(exposure);
-    if (idempotencyLookup) this.datasetRevisionIdempotency.set(idempotencyLookup, revision.id);
+    this.store.datasetRevisions.push(revision);
+    this.store.datasetRevisionItems.push(...items);
+    this.store.datasetExposureEvents.push(exposure);
+    if (idempotencyLookup) this.store.datasetRevisionIdempotency.set(idempotencyLookup, revision.id);
     return { ...structuredClone(revision), items: structuredClone(items), exposures: [structuredClone(exposure)] };
   }
 
   async listDatasetRevisions(projectId: string, sourceDatasetId?: string): Promise<DatasetRevision[]> {
-    return this.datasetRevisions
+    return this.store.datasetRevisions
       .filter((revision) => revision.projectId === projectId && (!sourceDatasetId || revision.sourceDatasetId === sourceDatasetId))
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id))
       .map((revision) => structuredClone(revision));
   }
 
   async getDatasetRevisionDetail(projectId: string, revisionId: string): Promise<DatasetRevisionDetail | null> {
-    const revision = this.datasetRevisions.find((candidate) => candidate.projectId === projectId && candidate.id === revisionId);
+    const revision = this.store.datasetRevisions.find((candidate) => candidate.projectId === projectId && candidate.id === revisionId);
     if (!revision) return null;
     return {
       ...structuredClone(revision),
-      items: this.datasetRevisionItems
+      items: this.store.datasetRevisionItems
         .filter((item) => item.revisionId === revision.id)
         .sort((left, right) => left.position - right.position)
         .map((item) => structuredClone(item)),
-      exposures: this.datasetExposureEvents
+      exposures: this.store.datasetExposureEvents
         .filter((event) => event.revisionId === revision.id)
         .sort((left, right) => left.occurredAt.localeCompare(right.occurredAt) || left.id.localeCompare(right.id))
         .map((event) => structuredClone(event))
@@ -2638,11 +2511,11 @@ export class DemoRepository implements CoevalRepository {
     revisionId: string;
     actorUserId?: string | undefined;
   }): Promise<void> {
-    const revision = this.datasetRevisions.find((candidate) =>
+    const revision = this.store.datasetRevisions.find((candidate) =>
       candidate.projectId === input.projectId && candidate.id === input.revisionId
     );
     if (!revision) throw new DatasetRevisionNotFoundError(input.revisionId);
-    this.datasetExposureEvents.push({
+    this.store.datasetExposureEvents.push({
       id: `dse_${randomUUID()}`,
       projectId: input.projectId,
       revisionId: input.revisionId,
@@ -2666,14 +2539,14 @@ export class DemoRepository implements CoevalRepository {
     actorUserId?: string,
     criterionVersionId?: string
   ): Promise<DatasetRevisionDetail> {
-    const projectCriteria = this.criteria.filter((criterion) => criterion.projectId === projectId);
+    const projectCriteria = this.store.criteria.filter((criterion) => criterion.projectId === projectId);
     const resolvedCriterionVersionId = criterionVersionId ?? (() => {
       if (projectCriteria.length !== 1) {
         throw new DatasetRevisionConflictError(
           `Project ${projectId} requires an explicit criterionVersionId for regression evidence.`
         );
       }
-      const latest = this.criterionVersions
+      const latest = this.store.criterionVersions
         .filter((version) => version.criterionId === projectCriteria[0]!.id)
         .sort((left, right) => right.revision - left.revision)[0];
       if (!latest) throw new DatasetRevisionConflictError("Criterion has no immutable definition.");
@@ -2683,24 +2556,24 @@ export class DemoRepository implements CoevalRepository {
     const now = new Date().toISOString();
     const revisionId = `dsr_${randomUUID()}`;
     const items = golden.map((entry, position) => {
-      const trace = this.traces.get(entry.caseId) ?? demoTraceForGoldenEntry(entry);
+      const trace = this.store.traces.get(entry.caseId) ?? demoTraceForGoldenEntry(entry);
       const payloadSnapshot: DatasetRevisionPayloadSnapshot = {
         input: structuredClone(trace.input),
         output: structuredClone(trace.output),
         metadata: structuredClone(trace.metadata ?? {}),
         ...(trace.steps ? { steps: structuredClone(trace.steps) } : {})
       };
-      const inputIdentity = this.caseInputIdentities.get(entry.caseId);
+      const inputIdentity = this.store.caseInputIdentities.get(entry.caseId);
       if (!inputIdentity) {
         throw new DatasetRevisionConflictError(
           `Case ${entry.caseId} has no retained pre-redaction input identity and cannot be frozen as exact evidence`
         );
       }
-      const matchingHuman = this.verdicts.filter((verdict) =>
+      const matchingHuman = this.store.verdicts.filter((verdict) =>
         verdict.caseId === entry.caseId &&
         (verdict.source === "human" || verdict.source === "adjudicated") &&
         verdict.skillVersionId !== null &&
-        this.skillVersionCriteria.get(verdict.skillVersionId) === resolvedCriterionVersionId &&
+        this.store.skillVersionCriteria.get(verdict.skillVersionId) === resolvedCriterionVersionId &&
         verdictLabelFromPayload(verdict.payload) === entry.agreedLabel
       );
       const referenceProvenance: DatasetReferenceProvenance = {
@@ -2738,17 +2611,17 @@ export class DemoRepository implements CoevalRepository {
     });
     const itemDigests = items.map((item) => item.itemDigest);
     const revisionDigest = datasetRevisionDigest({ role: "regression_golden", itemDigests });
-    const currentRevisionId = this.regressionDatasetRevisionIdsByCriterion.get(resolvedCriterionVersionId)
-      ?? (projectCriteria.length === 1 ? this.regressionDatasetRevisionId : null);
+    const currentRevisionId = this.store.regressionDatasetRevisionIdsByCriterion.get(resolvedCriterionVersionId)
+      ?? (projectCriteria.length === 1 ? this.store.regressionDatasetRevisionId : null);
     const current = currentRevisionId
-      ? this.datasetRevisions.find((revision) => revision.id === currentRevisionId)
+      ? this.store.datasetRevisions.find((revision) => revision.id === currentRevisionId)
       : undefined;
     if (current?.revisionDigest === revisionDigest) {
       const detail = await this.getDatasetRevisionDetail(projectId, current.id);
       if (!detail) throw new DatasetRevisionConflictError("Current regression revision vanished");
       return detail;
     }
-    const series = this.datasetRevisions.filter((revision) =>
+    const series = this.store.datasetRevisions.filter((revision) =>
       revision.projectId === projectId && revision.seriesId === `golden:${projectId}:${resolvedCriterionVersionId}`
     );
     const parent = [...series].sort((left, right) => right.revisionNumber - left.revisionNumber)[0] ?? null;
@@ -2791,11 +2664,11 @@ export class DemoRepository implements CoevalRepository {
       actorUserId: actorUserId ?? null,
       idempotencyKey: `regression-visible:${revision.id}`
     });
-    this.datasetRevisions.push(revision);
-    this.datasetRevisionItems.push(...items);
-    this.datasetExposureEvents.push(created, visible);
-    this.regressionDatasetRevisionIdsByCriterion.set(resolvedCriterionVersionId, revision.id);
-    if (projectCriteria.length === 1) this.regressionDatasetRevisionId = revision.id;
+    this.store.datasetRevisions.push(revision);
+    this.store.datasetRevisionItems.push(...items);
+    this.store.datasetExposureEvents.push(created, visible);
+    this.store.regressionDatasetRevisionIdsByCriterion.set(resolvedCriterionVersionId, revision.id);
+    if (projectCriteria.length === 1) this.store.regressionDatasetRevisionId = revision.id;
     return { ...structuredClone(revision), items: structuredClone(items), exposures: [structuredClone(created), structuredClone(visible)] };
   }
 
@@ -2823,11 +2696,11 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async removeDatasetItem(projectId: string, datasetId: string, itemId: string): Promise<boolean> {
-    const dataset = this.datasets.find((candidate) => candidate.id === datasetId && candidate.projectId === projectId);
+    const dataset = this.store.datasets.find((candidate) => candidate.id === datasetId && candidate.projectId === projectId);
     if (!dataset) return false;
-    const index = this.datasetItems.findIndex((item) => item.datasetId === datasetId && item.id === itemId);
+    const index = this.store.datasetItems.findIndex((item) => item.datasetId === datasetId && item.id === itemId);
     if (index < 0) return false;
-    this.datasetItems.splice(index, 1);
+    this.store.datasetItems.splice(index, 1);
     return true;
   }
 
@@ -2842,7 +2715,7 @@ export class DemoRepository implements CoevalRepository {
   }): Dataset {
     return {
       ...record,
-      itemCount: this.datasetItems.filter((item) => item.datasetId === record.id).length
+      itemCount: this.store.datasetItems.filter((item) => item.datasetId === record.id).length
     };
   }
 
@@ -2888,7 +2761,7 @@ export class DemoRepository implements CoevalRepository {
     run: EvalRun,
     sourceKind: Exclude<AssessmentReceiptArtifactSource, "correction">
   ): Promise<AssessmentReceiptArtifact> {
-    const existing = this.assessmentReceiptArtifacts.find(
+    const existing = this.store.assessmentReceiptArtifacts.find(
       (artifact) => artifact.evalRunId === run.id && artifact.contractVersion === 1 && artifact.artifactRevision === 1
     );
     if (existing) return this.cloneAssessmentReceiptArtifact(existing);
@@ -2908,17 +2781,17 @@ export class DemoRepository implements CoevalRepository {
     const detail = await this.getEvalRunDetail(run.projectId, run.id);
     if (!detail) throw new AssessmentReceiptUnavailableError("missing_source", "Eval run detail not found");
     const prepared = this.materializeDemoRootArtifact(detail, skillVersion, sourceKind);
-    const raced = this.assessmentReceiptArtifacts.find(
+    const raced = this.store.assessmentReceiptArtifacts.find(
       (artifact) => artifact.evalRunId === run.id && artifact.contractVersion === 1 && artifact.artifactRevision === 1
     );
     if (raced) return this.cloneAssessmentReceiptArtifact(raced);
-    this.assessmentReceiptArtifacts.push(prepared);
+    this.store.assessmentReceiptArtifacts.push(prepared);
     return this.cloneAssessmentReceiptArtifact(prepared);
   }
 
   async createEvalRun(input: CreateEvalRunInputDb): Promise<EvalRunDetail> {
     if (input.trigger === "backfill") {
-      const existing = this.evalRuns.find((candidate) =>
+      const existing = this.store.evalRuns.find((candidate) =>
         candidate.projectId === input.projectId &&
         candidate.skillVersionId === input.skillVersionId &&
         candidate.trigger === "backfill"
@@ -2931,12 +2804,12 @@ export class DemoRepository implements CoevalRepository {
     const createdAt = new Date().toISOString();
     const runId = `evr_${randomUUID()}`;
     const revision = input.datasetRevisionId
-      ? this.datasetRevisions.find((candidate) => candidate.id === input.datasetRevisionId && candidate.projectId === input.projectId)
+      ? this.store.datasetRevisions.find((candidate) => candidate.id === input.datasetRevisionId && candidate.projectId === input.projectId)
       : null;
     if (input.datasetRevisionId && !revision) throw new DatasetRevisionNotFoundError(input.datasetRevisionId);
     const revisionItems = revision
       ? new Map(
-          this.datasetRevisionItems
+          this.store.datasetRevisionItems
             .filter((candidate) => candidate.revisionId === revision.id)
             .map((candidate) => [candidate.id, candidate] as const)
         )
@@ -3026,10 +2899,10 @@ export class DemoRepository implements CoevalRepository {
         "terminal_mint"
       );
     }
-    this.evalRuns.push(run);
-    this.evalRunItems.push(...items);
+    this.store.evalRuns.push(run);
+    this.store.evalRunItems.push(...items);
     if (revision && this.isTerminalEvalRun(run)) {
-      this.datasetExposureEvents.push({
+      this.store.datasetExposureEvents.push({
         id: `dse_${randomUUID()}`,
         projectId: revision.projectId,
         revisionId: revision.id,
@@ -3047,7 +2920,7 @@ export class DemoRepository implements CoevalRepository {
         occurredAt: createdAt
       });
     }
-    if (terminalArtifact) this.assessmentReceiptArtifacts.push(terminalArtifact);
+    if (terminalArtifact) this.store.assessmentReceiptArtifacts.push(terminalArtifact);
     return { ...run, items, spend: computeEvalRunSpend(items) };
   }
 
@@ -3056,14 +2929,14 @@ export class DemoRepository implements CoevalRepository {
     created: boolean;
   }> {
     const key = `${input.projectId}:${input.skillVersionId}:${input.caseId}`;
-    const existing = this.convergenceEvalRuns.get(key);
+    const existing = this.store.convergenceEvalRuns.get(key);
     if (existing) {
       const original = await existing;
       const current = await this.getEvalRunDetail(input.projectId, original.id);
       if (current && current.status !== "failed" && current.status !== "canceled") {
         return { run: current, created: false };
       }
-      if (this.convergenceEvalRuns.get(key) === existing) this.convergenceEvalRuns.delete(key);
+      if (this.store.convergenceEvalRuns.get(key) === existing) this.store.convergenceEvalRuns.delete(key);
       return this.createConvergenceEvalRun(input);
     }
     const creation = this.createEvalRun({
@@ -3073,11 +2946,11 @@ export class DemoRepository implements CoevalRepository {
       ...(input.createdByUserId ? { createdByUserId: input.createdByUserId } : {}),
       items: [{ caseId: input.caseId }]
     });
-    this.convergenceEvalRuns.set(key, creation);
+    this.store.convergenceEvalRuns.set(key, creation);
     try {
       return { run: await creation, created: true };
     } catch (error) {
-      if (this.convergenceEvalRuns.get(key) === creation) this.convergenceEvalRuns.delete(key);
+      if (this.store.convergenceEvalRuns.get(key) === creation) this.store.convergenceEvalRuns.delete(key);
       throw error;
     }
   }
@@ -3087,7 +2960,7 @@ export class DemoRepository implements CoevalRepository {
     created: boolean;
   }> {
     const key = `${input.projectId}:${input.skillVersionId}:${input.caseId}`;
-    const existing = this.importedCaseEvalRuns.get(key);
+    const existing = this.store.importedCaseEvalRuns.get(key);
     if (existing) {
       const original = await existing;
       return {
@@ -3101,25 +2974,25 @@ export class DemoRepository implements CoevalRepository {
       trigger: "api_batch",
       items: [{ caseId: input.caseId }]
     });
-    this.importedCaseEvalRuns.set(key, creation);
+    this.store.importedCaseEvalRuns.set(key, creation);
     try {
       return { run: await creation, created: true };
     } catch (error) {
-      if (this.importedCaseEvalRuns.get(key) === creation) this.importedCaseEvalRuns.delete(key);
+      if (this.store.importedCaseEvalRuns.get(key) === creation) this.store.importedCaseEvalRuns.delete(key);
       throw error;
     }
   }
 
   async claimEvalRunDispatch(input: EvalRunDispatchInputDb): Promise<EvalRunDispatchClaim> {
-    const run = this.evalRuns.find((candidate) => candidate.id === input.evalRunId && candidate.projectId === input.projectId);
+    const run = this.store.evalRuns.find((candidate) => candidate.id === input.evalRunId && candidate.projectId === input.projectId);
     if (!run) return { state: "busy", jobId: null };
-    const current = this.evalRunDispatches.get(run.id) ?? {
+    const current = this.store.evalRunDispatches.get(run.id) ?? {
       jobId: randomUUID(),
       dispatchToken: null,
       claimedAt: null,
       dispatched: false
     };
-    this.evalRunDispatches.set(run.id, current);
+    this.store.evalRunDispatches.set(run.id, current);
     if (current.dispatched) return { state: "dispatched", jobId: current.jobId };
     const leaseExpired = current.claimedAt !== null && current.claimedAt <= Date.now() - 5 * 60_000;
     if (current.dispatchToken !== null && !leaseExpired) return { state: "busy", jobId: current.jobId };
@@ -3129,14 +3002,14 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async rotateEvalRunDispatchJob(input: EvalRunDispatchInputDb): Promise<string | null> {
-    const current = this.evalRunDispatches.get(input.evalRunId);
+    const current = this.store.evalRunDispatches.get(input.evalRunId);
     if (!current || current.dispatched || current.dispatchToken !== input.dispatchToken) return null;
     current.jobId = randomUUID();
     return current.jobId;
   }
 
   async markEvalRunDispatched(input: EvalRunDispatchInputDb): Promise<void> {
-    const current = this.evalRunDispatches.get(input.evalRunId);
+    const current = this.store.evalRunDispatches.get(input.evalRunId);
     if (!current || current.dispatchToken !== input.dispatchToken) return;
     current.dispatched = true;
     current.dispatchToken = null;
@@ -3145,25 +3018,25 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async releaseEvalRunDispatch(input: EvalRunDispatchInputDb): Promise<void> {
-    const current = this.evalRunDispatches.get(input.evalRunId);
+    const current = this.store.evalRunDispatches.get(input.evalRunId);
     if (!current || current.dispatched || current.dispatchToken !== input.dispatchToken) return;
     current.dispatchToken = null;
     current.claimedAt = null;
   }
 
   async armEvalRunItemDeliveryDeadline(projectId: string, evalRunId: string): Promise<void> {
-    const run = this.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
+    const run = this.store.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
     if (!run || (run.status !== "pending" && run.status !== "running")) return;
     const deadline = Date.now() + 15 * 60_000;
-    for (const item of this.evalRunItems) {
+    for (const item of this.store.evalRunItems) {
       if (item.evalRunId === evalRunId && item.status === "pending") {
-        this.evalRunItemDeliveryDeadlines.set(item.id, deadline);
+        this.store.evalRunItemDeliveryDeadlines.set(item.id, deadline);
       }
     }
   }
 
   async markEvalRunRunning(projectId: string, evalRunId: string): Promise<void> {
-    const run = this.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
+    const run = this.store.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
     if (!run || (run.status !== "pending" && run.status !== "running")) return;
     const starting = run.status === "pending";
     if (starting) {
@@ -3171,7 +3044,7 @@ export class DemoRepository implements CoevalRepository {
       run.startedAt = new Date().toISOString();
     }
     if (starting && run.datasetRevisionId && run.startedAt) {
-      this.datasetExposureEvents.push({
+      this.store.datasetExposureEvents.push({
         id: `dse_${randomUUID()}`,
         projectId,
         revisionId: run.datasetRevisionId,
@@ -3192,9 +3065,9 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async listPendingEvalRunItems(projectId: string, evalRunId: string): Promise<EvalRunItem[]> {
-    const run = this.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
+    const run = this.store.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
     if (!run || (run.status !== "pending" && run.status !== "running")) return [];
-    return this.evalRunItems.filter((item) => item.evalRunId === evalRunId && item.status === "pending");
+    return this.store.evalRunItems.filter((item) => item.evalRunId === evalRunId && item.status === "pending");
   }
 
   async listPendingEvalRunItemDispatches(projectId: string, evalRunId: string): Promise<Array<{
@@ -3203,20 +3076,20 @@ export class DemoRepository implements CoevalRepository {
   }>> {
     const pending = await this.listPendingEvalRunItems(projectId, evalRunId);
     return pending.map((item) => {
-      const jobId = this.evalRunItemQueueJobs.get(item.id) ?? randomUUID();
-      this.evalRunItemQueueJobs.set(item.id, jobId);
+      const jobId = this.store.evalRunItemQueueJobs.get(item.id) ?? randomUUID();
+      this.store.evalRunItemQueueJobs.set(item.id, jobId);
       return { item, jobId };
     });
   }
 
   async claimEvalRunItemExecution(input: EvalRunItemExecutionInputDb): Promise<EvalRunItemExecutionClaim> {
-    const run = this.evalRuns.find((candidate) => candidate.id === input.evalRunId && candidate.projectId === input.projectId);
+    const run = this.store.evalRuns.find((candidate) => candidate.id === input.evalRunId && candidate.projectId === input.projectId);
     if (!run || (run.status !== "pending" && run.status !== "running")) return { state: "terminal" };
-    const item = this.evalRunItems.find(
+    const item = this.store.evalRunItems.find(
       (candidate) => candidate.id === input.evalRunItemId && candidate.evalRunId === input.evalRunId
     );
     if (!item || item.status !== "pending") return { state: "terminal" };
-    const current = this.evalRunItemExecutions.get(item.id);
+    const current = this.store.evalRunItemExecutions.get(item.id);
     if (current) {
       if (current.providerCallReturned) {
         return { state: "outcome_unknown", executionToken: current.executionToken, providerCallReturned: true };
@@ -3226,7 +3099,7 @@ export class DemoRepository implements CoevalRepository {
         return { state: "outcome_unknown", executionToken: current.executionToken, providerCallReturned: false };
       }
     }
-    this.evalRunItemExecutions.set(item.id, {
+    this.store.evalRunItemExecutions.set(item.id, {
       executionToken: input.executionToken,
       claimedAt: Date.now(),
       providerCallStarted: false,
@@ -3236,17 +3109,17 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async claimEvalRunItemRecovery(input: EvalRunItemExecutionInputDb): Promise<boolean> {
-    const run = this.evalRuns.find((candidate) => candidate.id === input.evalRunId && candidate.projectId === input.projectId);
-    const item = this.evalRunItems.find(
+    const run = this.store.evalRuns.find((candidate) => candidate.id === input.evalRunId && candidate.projectId === input.projectId);
+    const item = this.store.evalRunItems.find(
       (candidate) => candidate.id === input.evalRunItemId && candidate.evalRunId === input.evalRunId
     );
-    const deadline = this.evalRunItemDeliveryDeadlines.get(input.evalRunItemId);
+    const deadline = this.store.evalRunItemDeliveryDeadlines.get(input.evalRunItemId);
     if (
       !run || (run.status !== "pending" && run.status !== "running") ||
-      !item || item.status !== "pending" || this.evalRunItemExecutions.has(item.id) ||
+      !item || item.status !== "pending" || this.store.evalRunItemExecutions.has(item.id) ||
       deadline === undefined || deadline > Date.now()
     ) return false;
-    this.evalRunItemExecutions.set(item.id, {
+    this.store.evalRunItemExecutions.set(item.id, {
       executionToken: input.executionToken,
       claimedAt: Date.now(),
       providerCallStarted: false,
@@ -3260,29 +3133,29 @@ export class DemoRepository implements CoevalRepository {
     evalRunId: string,
     evalRunItemId: string
   ): Promise<boolean> {
-    const run = this.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
-    const item = this.evalRunItems.find(
+    const run = this.store.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
+    const item = this.store.evalRunItems.find(
       (candidate) => candidate.id === evalRunItemId && candidate.evalRunId === evalRunId
     );
-    const deadline = this.evalRunItemDeliveryDeadlines.get(evalRunItemId);
+    const deadline = this.store.evalRunItemDeliveryDeadlines.get(evalRunItemId);
     if (
       !run || (run.status !== "pending" && run.status !== "running") ||
-      !item || item.status !== "pending" || this.evalRunItemExecutions.has(item.id) ||
+      !item || item.status !== "pending" || this.store.evalRunItemExecutions.has(item.id) ||
       deadline === undefined || deadline > Date.now()
     ) return false;
-    this.evalRunItemDeliveryDeadlines.set(evalRunItemId, Date.now() + 15 * 60_000);
+    this.store.evalRunItemDeliveryDeadlines.set(evalRunItemId, Date.now() + 15 * 60_000);
     return true;
   }
 
   async beginEvalRunItemProviderCall(input: EvalRunItemExecutionInputDb): Promise<boolean> {
-    const current = this.evalRunItemExecutions.get(input.evalRunItemId);
+    const current = this.store.evalRunItemExecutions.get(input.evalRunItemId);
     if (!current || current.executionToken !== input.executionToken || current.providerCallStarted) return false;
     current.providerCallStarted = true;
     return true;
   }
 
   async markEvalRunItemProviderCallReturned(input: EvalRunItemExecutionInputDb): Promise<boolean> {
-    const current = this.evalRunItemExecutions.get(input.evalRunItemId);
+    const current = this.store.evalRunItemExecutions.get(input.evalRunItemId);
     if (!current || current.executionToken !== input.executionToken || !current.providerCallStarted) return false;
     current.providerCallReturned = true;
     return true;
@@ -3292,28 +3165,28 @@ export class DemoRepository implements CoevalRepository {
     input: EvalRunItemExecutionInputDb,
     options: EvalRunItemReleaseOptions = {}
   ): Promise<EvalRunItemReleaseDisposition> {
-    const current = this.evalRunItemExecutions.get(input.evalRunItemId);
+    const current = this.store.evalRunItemExecutions.get(input.evalRunItemId);
     if (!current || current.executionToken !== input.executionToken) return { state: "lost" };
     if (current.providerCallStarted) {
       return { state: "provider_started", providerCallReturned: current.providerCallReturned };
     }
     if (options.preservePreCallClaim) return { state: "pre_call_held" };
-    this.evalRunItemExecutions.delete(input.evalRunItemId);
-    this.evalRunItemDeliveryDeadlines.set(input.evalRunItemId, Date.now() + 15 * 60_000);
+    this.store.evalRunItemExecutions.delete(input.evalRunItemId);
+    this.store.evalRunItemDeliveryDeadlines.set(input.evalRunItemId, Date.now() + 15 * 60_000);
     return { state: "released" };
   }
 
   async listStaleEvalRunItemExecutions(): Promise<StaleEvalRunItemExecution[]> {
     const stale: StaleEvalRunItemExecution[] = [];
-    for (const item of this.evalRunItems) {
+    for (const item of this.store.evalRunItems) {
       if (item.status !== "pending") continue;
       const evalRunItemId = item.id;
-      const run = this.evalRuns.find((candidate) => candidate.id === item.evalRunId);
+      const run = this.store.evalRuns.find((candidate) => candidate.id === item.evalRunId);
       if (!run || (run.status !== "pending" && run.status !== "running")) continue;
-      const execution = this.evalRunItemExecutions.get(evalRunItemId);
+      const execution = this.store.evalRunItemExecutions.get(evalRunItemId);
       if (execution) {
         if (execution.claimedAt > Date.now() - 15 * 60_000) continue;
-      } else if ((this.evalRunItemDeliveryDeadlines.get(evalRunItemId) ?? Number.POSITIVE_INFINITY) > Date.now()) {
+      } else if ((this.store.evalRunItemDeliveryDeadlines.get(evalRunItemId) ?? Number.POSITIVE_INFINITY) > Date.now()) {
         continue;
       }
       stale.push({
@@ -3329,26 +3202,26 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async getEvalRunItem(projectId: string, evalRunId: string, evalRunItemId: string): Promise<EvalRunItem | null> {
-    const run = this.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
+    const run = this.store.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
     if (!run) return null;
-    const item = this.evalRunItems.find(
+    const item = this.store.evalRunItems.find(
       (candidate) => candidate.id === evalRunItemId && candidate.evalRunId === evalRunId
     );
     return item ? { ...item } : null;
   }
 
   async completeEvalRunItem(input: CompleteEvalRunItemInputDb): Promise<{ runFinished: boolean }> {
-    const run = this.evalRuns.find((candidate) => candidate.id === input.evalRunId && candidate.projectId === input.projectId);
+    const run = this.store.evalRuns.find((candidate) => candidate.id === input.evalRunId && candidate.projectId === input.projectId);
     if (!run) return { runFinished: false };
     if (run.status !== "pending" && run.status !== "running") return { runFinished: this.isRunFinished(run) };
-    const item = this.evalRunItems.find(
+    const item = this.store.evalRunItems.find(
       (candidate) => candidate.id === input.evalRunItemId && candidate.evalRunId === input.evalRunId
     );
     // Retry replay of an already-terminal item: count nothing.
     if (
       !item ||
       item.status !== "pending" ||
-      (input.executionToken !== undefined && this.evalRunItemExecutions.get(item.id)?.executionToken !== input.executionToken)
+      (input.executionToken !== undefined && this.store.evalRunItemExecutions.get(item.id)?.executionToken !== input.executionToken)
     ) return { runFinished: this.isRunFinished(run) };
     const runBefore = structuredClone(run);
     const itemBefore = structuredClone(item);
@@ -3366,14 +3239,14 @@ export class DemoRepository implements CoevalRepository {
       item.outputTokens = input.outputTokens ?? null;
       item.providerMetadata = input.providerMetadata ?? null;
       item.finishedAt = new Date().toISOString();
-      this.evalRunItemExecutions.delete(item.id);
+      this.store.evalRunItemExecutions.delete(item.id);
       run.completedItems += 1;
       if (item.agreement === true) run.agreedItems += 1;
       const runFinished = this.maybeFinishRun(run);
       if (runFinished && run.trigger === "release_evidence") {
         await this.mintDemoRootArtifact(run, "terminal_mint");
       }
-      this.evalRunItemDeliveryDeadlines.delete(item.id);
+      this.store.evalRunItemDeliveryDeadlines.delete(item.id);
       return { runFinished };
     } catch (error) {
       Object.assign(run, runBefore);
@@ -3383,16 +3256,16 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async failEvalRunItem(input: FailEvalRunItemInputDb): Promise<{ runFinished: boolean }> {
-    const run = this.evalRuns.find((candidate) => candidate.id === input.evalRunId && candidate.projectId === input.projectId);
+    const run = this.store.evalRuns.find((candidate) => candidate.id === input.evalRunId && candidate.projectId === input.projectId);
     if (!run) return { runFinished: false };
     if (run.status !== "pending" && run.status !== "running") return { runFinished: this.isRunFinished(run) };
-    const item = this.evalRunItems.find(
+    const item = this.store.evalRunItems.find(
       (candidate) => candidate.id === input.evalRunItemId && candidate.evalRunId === input.evalRunId
     );
     if (
       !item ||
       item.status !== "pending" ||
-      (input.executionToken !== undefined && this.evalRunItemExecutions.get(item.id)?.executionToken !== input.executionToken)
+      (input.executionToken !== undefined && this.store.evalRunItemExecutions.get(item.id)?.executionToken !== input.executionToken)
     ) return { runFinished: this.isRunFinished(run) };
     const runBefore = structuredClone(run);
     const itemBefore = structuredClone(item);
@@ -3400,7 +3273,7 @@ export class DemoRepository implements CoevalRepository {
       item.status = "failed";
       item.error = input.error;
       item.finishedAt = new Date().toISOString();
-      this.evalRunItemExecutions.delete(item.id);
+      this.store.evalRunItemExecutions.delete(item.id);
       run.failedItems += 1;
       // Surface the FIRST item error at run level — the poll signal clients
       // read (issue #152).
@@ -3409,7 +3282,7 @@ export class DemoRepository implements CoevalRepository {
       if (runFinished && run.trigger === "release_evidence") {
         await this.mintDemoRootArtifact(run, "terminal_mint");
       }
-      this.evalRunItemDeliveryDeadlines.delete(item.id);
+      this.store.evalRunItemDeliveryDeadlines.delete(item.id);
       return { runFinished };
     } catch (error) {
       Object.assign(run, runBefore);
@@ -3419,14 +3292,14 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async getEvalRun(projectId: string, evalRunId: string): Promise<EvalRun | null> {
-    const run = this.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
+    const run = this.store.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
     return run ? { ...run } : null;
   }
 
   async getEvalRunDetail(projectId: string, evalRunId: string): Promise<EvalRunDetail | null> {
     const run = await this.getEvalRun(projectId, evalRunId);
     if (!run) return null;
-    const items = this.evalRunItems
+    const items = this.store.evalRunItems
       .filter((item) => item.evalRunId === evalRunId)
       .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
     return { ...run, items, spend: computeEvalRunSpend(items) };
@@ -3436,7 +3309,7 @@ export class DemoRepository implements CoevalRepository {
     projectId: string,
     opts?: { limit?: number | undefined; skillVersionId?: string | undefined }
   ): Promise<EvalRun[]> {
-    return this.evalRuns
+    return this.store.evalRuns
       .filter((run) => run.projectId === projectId)
       .filter((run) => !opts?.skillVersionId || run.skillVersionId === opts.skillVersionId)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
@@ -3445,7 +3318,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async getOrFreezeAssessmentReceipt(projectId: string, evalRunId: string): Promise<AssessmentReceiptArtifact | null> {
-    const run = this.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
+    const run = this.store.evalRuns.find((candidate) => candidate.id === evalRunId && candidate.projectId === projectId);
     if (!run) return null;
     return this.mintDemoRootArtifact(run, "historical_freeze");
   }
@@ -3454,14 +3327,14 @@ export class DemoRepository implements CoevalRepository {
     projectId: string,
     receiptId: string
   ): Promise<AssessmentReceiptArtifact | null> {
-    const artifact = this.assessmentReceiptArtifacts.find(
+    const artifact = this.store.assessmentReceiptArtifacts.find(
       (candidate) => candidate.projectId === projectId && candidate.receiptId === receiptId
     );
     return artifact ? this.cloneAssessmentReceiptArtifact(artifact) : null;
   }
 
   async listAssessmentReceiptArtifacts(projectId: string, evalRunId: string): Promise<AssessmentReceiptArtifact[]> {
-    return this.assessmentReceiptArtifacts
+    return this.store.assessmentReceiptArtifacts
       .filter((artifact) => artifact.projectId === projectId && artifact.evalRunId === evalRunId)
       .sort((left, right) => left.artifactRevision - right.artifactRevision)
       .map((artifact) => this.cloneAssessmentReceiptArtifact(artifact));
@@ -3485,7 +3358,7 @@ export class DemoRepository implements CoevalRepository {
       throw new AssessmentReceiptIntegrityError("Consumer receipt identity does not match the persisted root assessment");
     }
     const consumerArtifactDigest = receiptArtifactDigest(input.consumerCanonicalBytes);
-    const existing = this.assessmentReceiptComparisons.find(
+    const existing = this.store.assessmentReceiptComparisons.find(
       (comparison) => comparison.artifactId === root.id && comparison.consumerArtifactDigest === consumerArtifactDigest
     );
     if (existing) return this.cloneAssessmentReceiptComparison(existing);
@@ -3500,7 +3373,7 @@ export class DemoRepository implements CoevalRepository {
       comparisonStatus: input.consumerCanonicalBytes.equals(root.canonicalBytes) ? "match" : "diverged",
       createdAt: new Date().toISOString()
     };
-    this.assessmentReceiptComparisons.push(comparison);
+    this.store.assessmentReceiptComparisons.push(comparison);
     return this.cloneAssessmentReceiptComparison(comparison);
   }
 
@@ -3522,7 +3395,7 @@ export class DemoRepository implements CoevalRepository {
     if (receipt.projectId !== input.projectId || receipt.evalRunId !== input.evalRunId) {
       throw new AssessmentReceiptIntegrityError("Correction receipt identity does not match its assessment");
     }
-    const existingReceipt = this.assessmentReceiptArtifacts.find(
+    const existingReceipt = this.store.assessmentReceiptArtifacts.find(
       (artifact) => artifact.projectId === input.projectId && artifact.receiptId === receipt.receiptId
     );
     if (existingReceipt) {
@@ -3543,7 +3416,7 @@ export class DemoRepository implements CoevalRepository {
     ) {
       throw new AssessmentReceiptIntegrityError("Correction cannot change the receipt contract or evaluator identity");
     }
-    const lineage = this.assessmentReceiptArtifacts
+    const lineage = this.store.assessmentReceiptArtifacts
       .filter((artifact) => artifact.projectId === input.projectId && artifact.evalRunId === input.evalRunId)
       .sort((left, right) => left.artifactRevision - right.artifactRevision);
     const predecessor = lineage.at(-1)!;
@@ -3566,31 +3439,31 @@ export class DemoRepository implements CoevalRepository {
       createdByUserId: input.createdByUserId ?? null,
       createdAt: new Date().toISOString()
     };
-    this.assessmentReceiptArtifacts.push(correction);
+    this.store.assessmentReceiptArtifacts.push(correction);
     return this.cloneAssessmentReceiptArtifact(correction);
   }
 
   async deleteUndispatchedEvalRun(projectId: string, evalRunId: string): Promise<void> {
-    const index = this.evalRuns.findIndex((run) => run.id === evalRunId && run.projectId === projectId);
+    const index = this.store.evalRuns.findIndex((run) => run.id === evalRunId && run.projectId === projectId);
     if (index === -1) return;
-    const run = this.evalRuns[index]!;
+    const run = this.store.evalRuns[index]!;
     // Guarded: once anything judged or failed, the run stays (append-only).
     if (run.status !== "pending" || run.completedItems > 0 || run.failedItems > 0) return;
-    this.evalRuns.splice(index, 1);
-    for (let i = this.evalRunItems.length - 1; i >= 0; i--) {
-      if (this.evalRunItems[i]!.evalRunId === evalRunId) this.evalRunItems.splice(i, 1);
+    this.store.evalRuns.splice(index, 1);
+    for (let i = this.store.evalRunItems.length - 1; i >= 0; i--) {
+      if (this.store.evalRunItems[i]!.evalRunId === evalRunId) this.store.evalRunItems.splice(i, 1);
     }
   }
 
   async createRunComparison(input: CreateRunComparisonInputDb): Promise<RunComparison> {
     if (input.datasetRevisionId) {
-      const revision = this.datasetRevisions.find((candidate) =>
+      const revision = this.store.datasetRevisions.find((candidate) =>
         candidate.id === input.datasetRevisionId &&
         candidate.projectId === input.projectId &&
         candidate.sourceDatasetId === input.datasetId
       );
-      const runA = this.evalRuns.find((candidate) => candidate.id === input.runAId && candidate.projectId === input.projectId);
-      const runB = this.evalRuns.find((candidate) => candidate.id === input.runBId && candidate.projectId === input.projectId);
+      const runA = this.store.evalRuns.find((candidate) => candidate.id === input.runAId && candidate.projectId === input.projectId);
+      const runB = this.store.evalRuns.find((candidate) => candidate.id === input.runBId && candidate.projectId === input.projectId);
       if (!revision || runA?.datasetRevisionId !== revision.id || runB?.datasetRevisionId !== revision.id) {
         throw new DatasetRevisionConflictError(
           "Run comparison revision must match its dataset and both eval runs"
@@ -3608,19 +3481,19 @@ export class DemoRepository implements CoevalRepository {
       runBId: input.runBId,
       createdAt: new Date().toISOString()
     };
-    this.runComparisons.push(comparison);
+    this.store.runComparisons.push(comparison);
     return { ...comparison };
   }
 
   async getRunComparison(projectId: string, runComparisonId: string): Promise<RunComparison | null> {
-    const comparison = this.runComparisons.find(
+    const comparison = this.store.runComparisons.find(
       (candidate) => candidate.id === runComparisonId && candidate.projectId === projectId
     );
     return comparison ? { ...comparison } : null;
   }
 
   async listRunComparisons(projectId: string, opts?: { limit?: number | undefined }): Promise<RunComparison[]> {
-    return this.runComparisons
+    return this.store.runComparisons
       .filter((comparison) => comparison.projectId === projectId)
       // id desc tiebreaker mirrors the PG repository: same-millisecond rows
       // still list in a stable order.
@@ -3632,27 +3505,7 @@ export class DemoRepository implements CoevalRepository {
       .map((comparison) => ({ ...comparison }));
   }
 
-  // --- Product deploy gate ---------------------------------------------------
-
-  private readonly gateChecks: Array<{
-    id: string;
-    projectId: string;
-    skillVersionId: string;
-    evalRunId: string;
-    label: string | null;
-    metadata: Record<string, unknown>;
-    maxDisagreements: number;
-    createdAt: string;
-    items: Array<{
-      id: string;
-      goldenEntryId: string;
-      goldenCaseId: string;
-      caseKey: string;
-      candidateCaseId: string;
-      expectedLabel: "pass" | "fail";
-      createdAt: string;
-    }>;
-  }> = [];
+  // --- Historical gate evidence compatibility ------------------------------
 
   async getGoldenSetTraces(
     projectId: string,
@@ -3662,7 +3515,7 @@ export class DemoRepository implements CoevalRepository {
     for (const entry of await this.listGoldenSet(projectId, criterionVersionId)) {
       // Imported (promoted) cases first; built-in fixture golden cases get the
       // same synthesized traces the judge context uses.
-      const trace = this.traces.get(entry.caseId) ?? this.syntheticTraceForBuiltinCase(entry.caseId);
+      const trace = this.store.traces.get(entry.caseId) ?? this.syntheticTraceForBuiltinCase(entry.caseId);
       if (trace) traces.set(entry.caseId, trace);
     }
     return traces;
@@ -3670,7 +3523,7 @@ export class DemoRepository implements CoevalRepository {
 
   async createGateCheck(input: CreateGateCheckInputDb): Promise<GateCheckDetail> {
     const createdAt = new Date().toISOString();
-    this.gateChecks.unshift({
+    this.store.gateChecks.unshift({
       id: `gate_${randomUUID()}`,
       projectId: input.projectId,
       skillVersionId: input.skillVersionId,
@@ -3681,13 +3534,13 @@ export class DemoRepository implements CoevalRepository {
       createdAt,
       items: input.items.map((item) => ({ id: `gati_${randomUUID()}`, ...item, createdAt }))
     });
-    const detail = await this.getGateCheckDetail(input.projectId, this.gateChecks[0]!.id);
-    if (!detail) throw new Error(`Gate check vanished after create: ${this.gateChecks[0]!.id}`);
+    const detail = await this.getGateCheckDetail(input.projectId, this.store.gateChecks[0]!.id);
+    if (!detail) throw new Error(`Gate check vanished after create: ${this.store.gateChecks[0]!.id}`);
     return detail;
   }
 
   async getGateCheckDetail(projectId: string, gateCheckId: string): Promise<GateCheckDetail | null> {
-    const stored = this.gateChecks.find((candidate) => candidate.id === gateCheckId && candidate.projectId === projectId);
+    const stored = this.store.gateChecks.find((candidate) => candidate.id === gateCheckId && candidate.projectId === projectId);
     if (!stored) return null;
     const run = await this.getEvalRunDetail(projectId, stored.evalRunId);
     if (!run) return null;
@@ -3714,7 +3567,7 @@ export class DemoRepository implements CoevalRepository {
 
   async listGateChecks(projectId: string, opts?: { limit?: number | undefined }): Promise<GateCheck[]> {
     const checks: GateCheck[] = [];
-    for (const stored of this.gateChecks) {
+    for (const stored of this.store.gateChecks) {
       if (stored.projectId !== projectId) continue;
       const run = await this.getEvalRun(projectId, stored.evalRunId);
       if (!run) continue;
@@ -3726,7 +3579,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   private projectGateCheck(
-    stored: (typeof this.gateChecks)[number],
+    stored: (typeof this.store.gateChecks)[number],
     run: EvalRun
   ): GateCheck {
     const decision = deriveGateCheckDecision({
@@ -3772,7 +3625,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   private traceIdForCase(caseId: string): string {
-    const imported = this.traces.get(caseId);
+    const imported = this.store.traces.get(caseId);
     if (imported) return imported.id;
     const exception = demoExceptions.find((candidate) => candidate.id === caseId);
     if (exception) return exception.traceId;
@@ -3783,7 +3636,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async listVerdicts(input: ListVerdictsInput): Promise<VerdictRecord[]> {
-    return this.verdicts
+    return this.store.verdicts
       .filter((verdict) => verdict.projectId === input.projectId)
       .filter((verdict) => input.evidenceScope !== "customer" || !this.isEvidenceScaffoldingCase(verdict.caseId))
       .filter((verdict) => !input.caseId || verdict.caseId === input.caseId)
@@ -3792,8 +3645,8 @@ export class DemoRepository implements CoevalRepository {
       .filter((verdict) => {
         if (!input.criterionId) return true;
         if (!verdict.skillVersionId) return false;
-        const criterionVersionId = this.skillVersionCriteria.get(verdict.skillVersionId);
-        return this.criterionVersions.some((version) =>
+        const criterionVersionId = this.store.skillVersionCriteria.get(verdict.skillVersionId);
+        return this.store.criterionVersions.some((version) =>
           version.id === criterionVersionId &&
           version.projectId === input.projectId &&
           version.criterionId === input.criterionId
@@ -3856,21 +3709,21 @@ export class DemoRepository implements CoevalRepository {
   ): Promise<ConvergenceAuditPage> {
     // The predecessor = the version created immediately before this one. The
     // list is newest-first, so it's the next entry after this version's index.
-    const criterionVersionId = this.skillVersionCriteria.get(versionId);
+    const criterionVersionId = this.store.skillVersionCriteria.get(versionId);
     const versions = (await this.listSkillVersions(projectId, skillId, 1000)).filter((version) =>
-      criterionVersionId !== undefined && this.skillVersionCriteria.get(version.id) === criterionVersionId
+      criterionVersionId !== undefined && this.store.skillVersionCriteria.get(version.id) === criterionVersionId
     );
     const idx = versions.findIndex((v) => v.id === versionId);
     const beforeVersionId = idx >= 0 && idx + 1 < versions.length ? versions[idx + 1]!.id : null;
     const scopedVerdicts = criterionVersionId
-      ? this.verdicts.filter((verdict) =>
+      ? this.store.verdicts.filter((verdict) =>
           verdict.projectId === projectId && (
             (verdict.source === "llm_judge" && (
               verdict.skillVersionId === versionId || verdict.skillVersionId === beforeVersionId
             )) || (
               verdict.source === "adjudicated" &&
               verdict.skillVersionId !== null &&
-              this.skillVersionCriteria.get(verdict.skillVersionId) === criterionVersionId
+              this.store.skillVersionCriteria.get(verdict.skillVersionId) === criterionVersionId
             )
           )
         )
@@ -3938,15 +3791,15 @@ export class DemoRepository implements CoevalRepository {
     criterionVersionId?: string | undefined
   ): Promise<VerdictRecord[]> {
     const resolved = await this.resolveGoldenCriterionVersion(projectId, criterionVersionId);
-    return this.verdicts.filter((verdict) =>
+    return this.store.verdicts.filter((verdict) =>
       verdict.projectId === projectId &&
       verdict.skillVersionId !== null &&
-      this.skillVersionCriteria.get(verdict.skillVersionId) === resolved
+      this.store.skillVersionCriteria.get(verdict.skillVersionId) === resolved
     );
   }
 
   async getSelfConsistencyReport(projectId: string, versionId: string): Promise<SelfConsistencyReport> {
-    const verdicts = this.verdicts.filter((verdict) => verdict.projectId === projectId);
+    const verdicts = this.store.verdicts.filter((verdict) => verdict.projectId === projectId);
     return computeSelfConsistency(verdicts, versionId);
   }
 
@@ -3969,7 +3822,7 @@ export class DemoRepository implements CoevalRepository {
     }
     const id = `revq_${randomUUID()}`;
     const createdAt = new Date().toISOString();
-    this.reviewQueues.push({
+    this.store.reviewQueues.push({
       id,
       projectId: input.projectId,
       name: input.name,
@@ -3984,7 +3837,7 @@ export class DemoRepository implements CoevalRepository {
     for (const caseId of input.caseIds) {
       if (seen.has(caseId)) continue; // dedup within a single create call
       seen.add(caseId);
-      this.reviewQueueItems.push({
+      this.store.reviewQueueItems.push({
         id: `revqi_${randomUUID()}`,
         queueId: id,
         caseId,
@@ -3997,11 +3850,11 @@ export class DemoRepository implements CoevalRepository {
       });
       position += 1;
     }
-    return this.toReviewQueue(this.reviewQueues[this.reviewQueues.length - 1]!);
+    return this.toReviewQueue(this.store.reviewQueues[this.store.reviewQueues.length - 1]!);
   }
 
   async addReviewQueueItems(input: AddQueueItemsInputDb): Promise<ReviewQueueItem[]> {
-    const queue = this.reviewQueues.find((q) => q.id === input.queueId && q.projectId === input.projectId);
+    const queue = this.store.reviewQueues.find((q) => q.id === input.queueId && q.projectId === input.projectId);
     if (!queue) throw new Error(`Review queue not found: ${input.queueId}`);
     // Validate every case before any insert — same shape as createReviewQueue.
     for (const item of input.items) {
@@ -4018,7 +3871,7 @@ export class DemoRepository implements CoevalRepository {
     })));
     // Position continues where the existing items end so new rows append in
     // FIFO order.
-    let position = this.reviewQueueItems.filter((existing) => existing.queueId === input.queueId).length;
+    let position = this.store.reviewQueueItems.filter((existing) => existing.queueId === input.queueId).length;
     const createdAt = new Date().toISOString();
     const added: ReviewQueueItem[] = [];
     const seen = new Set<string>();
@@ -4029,7 +3882,7 @@ export class DemoRepository implements CoevalRepository {
       if (seen.has(dedupKey)) continue;
       seen.add(dedupKey);
       // Also dedup against existing items in the queue with the same pair.
-      const alreadyExists = this.reviewQueueItems.some(
+      const alreadyExists = this.store.reviewQueueItems.some(
         (existing) =>
           existing.queueId === input.queueId &&
           existing.caseId === item.caseId &&
@@ -4048,7 +3901,7 @@ export class DemoRepository implements CoevalRepository {
         createdAt,
         completedAt: null
       };
-      this.reviewQueueItems.push(row);
+      this.store.reviewQueueItems.push(row);
       added.push(row);
       position += 1;
     }
@@ -4056,7 +3909,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async listReviewQueues(projectId: string, opts?: { status?: ReviewQueueStatus | undefined }): Promise<ReviewQueue[]> {
-    return this.reviewQueues
+    return this.store.reviewQueues
       .filter((q) => q.projectId === projectId)
       .filter((q) => !opts?.status || q.status === opts.status)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
@@ -4064,11 +3917,11 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async getReviewQueueDetail(projectId: string, queueId: string): Promise<ReviewQueueDetail | null> {
-    const row = this.reviewQueues.find((q) => q.id === queueId && q.projectId === projectId);
+    const row = this.store.reviewQueues.find((q) => q.id === queueId && q.projectId === projectId);
     if (!row) return null;
     return {
       queue: this.toReviewQueue(row),
-      items: this.reviewQueueItems
+      items: this.store.reviewQueueItems
         .filter((item) => item.queueId === queueId)
         .sort((left, right) => left.position - right.position)
     };
@@ -4078,9 +3931,9 @@ export class DemoRepository implements CoevalRepository {
     assignedToUserId?: string | undefined;
     criterionVersionId?: string | undefined;
   }): Promise<ReviewQueueItem | null> {
-    const queue = this.reviewQueues.find((q) => q.id === queueId && q.projectId === projectId);
+    const queue = this.store.reviewQueues.find((q) => q.id === queueId && q.projectId === projectId);
     if (!queue || queue.status !== "open") return null;
-    const pending = this.reviewQueueItems.filter((item) => item.queueId === queueId && item.status === "pending");
+    const pending = this.store.reviewQueueItems.filter((item) => item.queueId === queueId && item.status === "pending");
     const criterionVersions = new Set(pending.map((item) => item.criterionVersionId));
     if (!opts?.criterionVersionId && criterionVersions.size > 1) {
       throw new AmbiguousProjectSkillError(projectId, Math.max(2, criterionVersions.size));
@@ -4105,10 +3958,10 @@ export class DemoRepository implements CoevalRepository {
     requested?: string | undefined
   ): Promise<string> {
     if (requested) {
-      const criterionVersion = this.criterionVersions.find((candidate) =>
+      const criterionVersion = this.store.criterionVersions.find((candidate) =>
         candidate.projectId === projectId && candidate.id === requested
       );
-      const hasEvaluator = [...this.skillVersionCriteria.values()].includes(requested);
+      const hasEvaluator = [...this.store.skillVersionCriteria.values()].includes(requested);
       if (!criterionVersion || !hasEvaluator) {
         throw new DatasetRevisionConflictError(
           `Criterion version is not bound to an evaluator in this project: ${requested}`
@@ -4117,7 +3970,7 @@ export class DemoRepository implements CoevalRepository {
       return requested;
     }
     const current = await this.getCurrentSkill(projectId);
-    const criterionVersionId = this.skillVersionCriteria.get(current.currentVersion.id);
+    const criterionVersionId = this.store.skillVersionCriteria.get(current.currentVersion.id);
     if (!criterionVersionId) {
       throw new DatasetRevisionConflictError("Current evaluator has no immutable criterion version binding");
     }
@@ -4129,7 +3982,7 @@ export class DemoRepository implements CoevalRepository {
     requested?: string | undefined
   ): Promise<string> {
     if (requested) {
-      const exists = this.criterionVersions.some((candidate) =>
+      const exists = this.store.criterionVersions.some((candidate) =>
         candidate.projectId === projectId && candidate.id === requested
       );
       if (!exists) {
@@ -4140,7 +3993,7 @@ export class DemoRepository implements CoevalRepository {
       return requested;
     }
     const current = await this.getCurrentSkill(projectId);
-    const criterionVersionId = this.skillVersionCriteria.get(current.currentVersion.id);
+    const criterionVersionId = this.store.skillVersionCriteria.get(current.currentVersion.id);
     if (!criterionVersionId) {
       throw new DatasetRevisionConflictError("Current evaluator has no immutable criterion version binding");
     }
@@ -4148,7 +4001,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async closeReviewQueue(projectId: string, queueId: string): Promise<ReviewQueue | null> {
-    const queue = this.reviewQueues.find((q) => q.id === queueId && q.projectId === projectId);
+    const queue = this.store.reviewQueues.find((q) => q.id === queueId && q.projectId === projectId);
     if (!queue) return null;
     if (queue.status !== "closed") {
       queue.status = "closed";
@@ -4158,7 +4011,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async reopenReviewQueue(projectId: string, queueId: string): Promise<ReviewQueue | null> {
-    const queue = this.reviewQueues.find((q) => q.id === queueId && q.projectId === projectId);
+    const queue = this.store.reviewQueues.find((q) => q.id === queueId && q.projectId === projectId);
     if (!queue) return null;
     if (queue.status !== "open") {
       queue.status = "open";
@@ -4179,7 +4032,7 @@ export class DemoRepository implements CoevalRepository {
   }): ReviewQueue {
     let pendingCount = 0;
     let completedCount = 0;
-    for (const item of this.reviewQueueItems) {
+    for (const item of this.store.reviewQueueItems) {
       if (item.queueId !== row.id) continue;
       if (item.status === "pending") pendingCount += 1;
       else completedCount += 1;
@@ -4205,9 +4058,9 @@ export class DemoRepository implements CoevalRepository {
     if (projectId !== demoProject.id) return [];
     const limit = opts.limit ?? 500;
     const entries: CaseListEntry[] = [];
-    for (const [caseId, trace] of this.traces.entries()) {
+    for (const [caseId, trace] of this.store.traces.entries()) {
       if (this.isEvidenceScaffoldingCase(caseId)) continue;
-      const source = this.traceSources.get(caseId);
+      const source = this.store.traceSources.get(caseId);
       if (!source) continue;
       if (opts.since !== undefined && source.createdAt <= opts.since) continue;
       entries.push({
@@ -4238,8 +4091,8 @@ export class DemoRepository implements CoevalRepository {
       stepsCount: 0,
       metadataCount: 0
     };
-    for (const [caseId, trace] of this.traces.entries()) {
-      if (this.isEvidenceScaffoldingCase(caseId) || !this.traceSources.has(caseId)) continue;
+    for (const [caseId, trace] of this.store.traces.entries()) {
+      if (this.isEvidenceScaffoldingCase(caseId) || !this.store.traceSources.has(caseId)) continue;
       inventory.runCount += 1;
       if (trace.input !== null && trace.input !== undefined) inventory.inputCount += 1;
       if (trace.output !== null && trace.output !== undefined) inventory.outputCount += 1;
@@ -4256,7 +4109,7 @@ export class DemoRepository implements CoevalRepository {
     // re-judge (and pay for) product-gate scaffolding.
     if (projectId !== demoProject.id) return [];
     const ids = new Set<string>();
-    for (const caseId of this.traces.keys()) {
+    for (const caseId of this.store.traces.keys()) {
       if (!this.isEvidenceScaffoldingCase(caseId)) ids.add(caseId);
     }
     for (const exception of demoExceptions) ids.add(exception.id);
@@ -4270,33 +4123,33 @@ export class DemoRepository implements CoevalRepository {
     // the demo project. So a case exists "for this project" iff it exists in any
     // of these sources AND projectId is the demo project.
     if (projectId !== demoProject.id) return false;
-    if (this.traces.has(caseId)) return true;
+    if (this.store.traces.has(caseId)) return true;
     if (demoExceptions.some((exception) => exception.id === caseId)) return true;
     if (demoGoldenSet.some((entry) => entry.caseId === caseId)) return true;
     return false;
   }
 
   async createFeedbackSyncJob(input: { projectId: string; judgeRunId: string; provider: FeedbackSyncProvider }): Promise<FeedbackSyncJobRecord | null> {
-    const run = this.judgeRuns.find((candidate) => candidate.id === input.judgeRunId && candidate.projectId === input.projectId);
+    const run = this.store.judgeRuns.find((candidate) => candidate.id === input.judgeRunId && candidate.projectId === input.projectId);
     if (!run) return null;
-    const traceSource = this.traceSources.get(run.caseId);
+    const traceSource = this.store.traceSources.get(run.caseId);
     if (!traceSource || traceSource.source !== input.provider || !traceSource.sourceIntegrationId) return null;
     const integration = input.provider === "langfuse"
-      ? this.langfuseIntegrations.get(traceSource.sourceIntegrationId)
+      ? this.store.langfuseIntegrations.get(traceSource.sourceIntegrationId)
       : input.provider === "ironside"
-        ? this.ironsideIntegrations.get(traceSource.sourceIntegrationId)
-        : this.langSmithIntegrations.get(traceSource.sourceIntegrationId);
+        ? this.store.ironsideIntegrations.get(traceSource.sourceIntegrationId)
+        : this.store.langSmithIntegrations.get(traceSource.sourceIntegrationId);
     if (!integration) return null;
     const key = `${input.projectId}:${input.provider}:${input.judgeRunId}`;
-    const existingJobId = this.feedbackJobRunIds.get(key);
+    const existingJobId = this.store.feedbackJobRunIds.get(key);
     if (existingJobId) {
-      const existing = this.feedbackJobs.get(existingJobId);
+      const existing = this.store.feedbackJobs.get(existingJobId);
       return existing && existing.status !== "synced"
         ? { id: existing.id, projectId: input.projectId, judgeRunId: input.judgeRunId, provider: input.provider, status: existing.status }
         : null;
     }
     const id = `fsync_${randomUUID()}`;
-    this.feedbackJobs.set(id, {
+    this.store.feedbackJobs.set(id, {
       id,
       projectId: input.projectId,
       provider: input.provider,
@@ -4307,18 +4160,18 @@ export class DemoRepository implements CoevalRepository {
       integration,
       status: "pending"
     });
-    this.feedbackJobRunIds.set(key, id);
+    this.store.feedbackJobRunIds.set(key, id);
     return { id, projectId: input.projectId, judgeRunId: input.judgeRunId, provider: input.provider, status: "pending" };
   }
 
   async loadFeedbackSyncContext(job: FeedbackSyncJob): Promise<FeedbackSyncContext> {
-    const context = this.feedbackJobs.get(job.feedbackSyncJobId);
+    const context = this.store.feedbackJobs.get(job.feedbackSyncJobId);
     if (!context || context.projectId !== job.projectId) throw new FeedbackSyncJobNotFoundError(job.feedbackSyncJobId);
     return context;
   }
 
   async listFeedbackSyncJobs(input: ListFeedbackSyncJobsInput): Promise<FeedbackSyncJobListItem[]> {
-    return [...this.feedbackJobs.values()]
+    return [...this.store.feedbackJobs.values()]
       .filter((job) => job.projectId === input.projectId && (!input.status || job.status === input.status))
       .slice(0, input.limit)
       .map((job) => ({
@@ -4327,43 +4180,43 @@ export class DemoRepository implements CoevalRepository {
         judgeRunId: job.judgeRun.id,
         provider: job.provider,
         status: job.status,
-        attempts: this.feedbackJobAttempts.get(job.id) ?? 0,
-        lastError: this.feedbackJobLastError.get(job.id) ?? null,
+        attempts: this.store.feedbackJobAttempts.get(job.id) ?? 0,
+        lastError: this.store.feedbackJobLastError.get(job.id) ?? null,
         createdAt: new Date().toISOString()
       }));
   }
 
   async markFeedbackSyncSucceeded(job: FeedbackSyncJob): Promise<void> {
     const context = await this.loadFeedbackSyncContext(job);
-    this.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "synced" });
+    this.store.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "synced" });
   }
 
   async markFeedbackSyncFailed(job: FeedbackSyncJob, error: unknown): Promise<void> {
     const context = await this.loadFeedbackSyncContext(job);
-    this.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "failed" });
+    this.store.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "failed" });
     // PG parity (C7): failures increment attempts and record the error.
-    this.feedbackJobAttempts.set(job.feedbackSyncJobId, (this.feedbackJobAttempts.get(job.feedbackSyncJobId) ?? 0) + 1);
-    this.feedbackJobLastError.set(job.feedbackSyncJobId, error instanceof Error ? error.message : String(error));
+    this.store.feedbackJobAttempts.set(job.feedbackSyncJobId, (this.store.feedbackJobAttempts.get(job.feedbackSyncJobId) ?? 0) + 1);
+    this.store.feedbackJobLastError.set(job.feedbackSyncJobId, error instanceof Error ? error.message : String(error));
   }
 
   async markFeedbackSyncBlocked(job: FeedbackSyncJob, error: unknown): Promise<void> {
     const context = await this.loadFeedbackSyncContext(job);
-    this.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "blocked" });
-    this.feedbackJobLastError.set(job.feedbackSyncJobId, error instanceof Error ? error.message : String(error));
+    this.store.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "blocked" });
+    this.store.feedbackJobLastError.set(job.feedbackSyncJobId, error instanceof Error ? error.message : String(error));
   }
 
   async markFeedbackSyncPending(job: FeedbackSyncJob): Promise<void> {
-    const context = this.feedbackJobs.get(job.feedbackSyncJobId);
+    const context = this.store.feedbackJobs.get(job.feedbackSyncJobId);
     if (!context || context.projectId !== job.projectId) {
       throw new FeedbackSyncJobNotFoundError(job.feedbackSyncJobId);
     }
     if (context.status !== "blocked") return;
-    this.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "pending" });
-    this.feedbackJobLastError.delete(job.feedbackSyncJobId);
+    this.store.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "pending" });
+    this.store.feedbackJobLastError.delete(job.feedbackSyncJobId);
   }
 
   async listBlockedIronsideFeedbackSyncJobs(projectId: string, integrationId: string): Promise<FeedbackSyncJob[]> {
-    return [...this.feedbackJobs.values()]
+    return [...this.store.feedbackJobs.values()]
       .filter((job) =>
         job.projectId === projectId &&
         job.provider === "ironside" &&
@@ -4393,7 +4246,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async createSkillVersionPending(skillId: string, input: CreateSkillVersionInput, context: CreateSkillVersionContext): Promise<SkillVersion> {
-    const evaluatorBinding = [...this.criterionSkills.entries()].find(([, skill]) =>
+    const evaluatorBinding = [...this.store.criterionSkills.entries()].find(([, skill]) =>
       skill.projectId === demoProject.id && skill.id === skillId
     );
     if (!evaluatorBinding) throw new NoCurrentSkillError(demoProject.id);
@@ -4401,7 +4254,7 @@ export class DemoRepository implements CoevalRepository {
     let criterionVersion: CriterionVersion | undefined;
     if (context.onboardingCriterion) {
       const requestKey = `${skillId}:${context.onboardingCriterion.idempotencyKey}`;
-      const priorRequest = this.onboardingCheckRequests.get(requestKey);
+      const priorRequest = this.store.onboardingCheckRequests.get(requestKey);
       if (priorRequest) {
         if (priorRequest.requestDigest !== context.onboardingCriterion.requestDigest) {
           throw new OnboardingCheckConflictError(
@@ -4409,7 +4262,7 @@ export class DemoRepository implements CoevalRepository {
             "This first-Check request key was already used with different proposal content."
           );
         }
-        const priorVersion = (this.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
+        const priorVersion = (this.store.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
           .find((candidate) => candidate.id === priorRequest.versionId);
         if (!priorVersion) throw new Error(`Onboarding Check version not found: ${priorRequest.versionId}`);
         return priorVersion;
@@ -4420,7 +4273,7 @@ export class DemoRepository implements CoevalRepository {
           "This project's starter Check has already been configured."
         );
       }
-      const criterion = this.criteria.find((candidate) =>
+      const criterion = this.store.criteria.find((candidate) =>
         candidate.projectId === demoProject.id && candidate.id === criterionId
       );
       if (!criterion || criterion.sourceKind !== "native") {
@@ -4429,7 +4282,7 @@ export class DemoRepository implements CoevalRepository {
           "Guided onboarding can configure only the project's native starter criterion."
         );
       }
-      const prior = this.criterionVersions.filter((candidate) =>
+      const prior = this.store.criterionVersions.filter((candidate) =>
         candidate.projectId === demoProject.id && candidate.criterionId === criterionId
       );
       const id = `criterionv_${randomUUID()}`;
@@ -4450,9 +4303,9 @@ export class DemoRepository implements CoevalRepository {
         createdByUserId: context.actorUserId ?? null,
         createdAt: new Date().toISOString()
       };
-      this.criterionVersions.push(criterionVersion);
+      this.store.criterionVersions.push(criterionVersion);
     } else {
-      const definitionCount = this.criterionVersions.filter((candidate) =>
+      const definitionCount = this.store.criterionVersions.filter((candidate) =>
         candidate.projectId === demoProject.id && candidate.criterionId === criterionId
       ).length;
       if (!input.criterionVersionId && definitionCount > 1) {
@@ -4461,12 +4314,12 @@ export class DemoRepository implements CoevalRepository {
         );
       }
       criterionVersion = input.criterionVersionId
-        ? this.criterionVersions.find((candidate) =>
+        ? this.store.criterionVersions.find((candidate) =>
             candidate.projectId === demoProject.id &&
             candidate.criterionId === criterionId &&
             candidate.id === input.criterionVersionId
           )
-        : this.criterionVersions
+        : this.store.criterionVersions
             .filter((candidate) => candidate.projectId === demoProject.id && candidate.criterionId === criterionId)
             .sort((left, right) => right.revision - left.revision)[0];
     }
@@ -4481,7 +4334,7 @@ export class DemoRepository implements CoevalRepository {
       context.actorUserId,
       criterionVersion.id
     );
-    const priorVersions = (this.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
+    const priorVersions = (this.store.skillVersions ?? [demoSkillPrevVersion, demoSkill.currentVersion])
       .filter((candidate) => candidate.skillId === skillId)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id));
     const version: SkillVersion = {
@@ -4512,11 +4365,11 @@ export class DemoRepository implements CoevalRepository {
     };
     // persist so listSkillVersions renders the audit trail; the gate
     // step mutates this same object in place (demo is reference-shared).
-    if (this.skillVersions === null) this.skillVersions = [structuredClone(demoSkill.currentVersion)];
-    this.skillVersions.push(version);
-    this.skillVersionCriteria.set(version.id, criterionVersion.id);
+    if (this.store.skillVersions === null) this.store.skillVersions = [structuredClone(demoSkill.currentVersion)];
+    this.store.skillVersions.push(version);
+    this.store.skillVersionCriteria.set(version.id, criterionVersion.id);
     if (context.onboardingCriterion) {
-      this.onboardingCheckRequests.set(`${skillId}:${context.onboardingCriterion.idempotencyKey}`, {
+      this.store.onboardingCheckRequests.set(`${skillId}:${context.onboardingCriterion.idempotencyKey}`, {
         requestDigest: context.onboardingCriterion.requestDigest,
         versionId: version.id
       });
@@ -4536,10 +4389,10 @@ export class DemoRepository implements CoevalRepository {
     version: SkillVersion;
     regressionRun: RegressionRunResult;
   }> {
-    if (this.skillVersions === null) this.skillVersions = [structuredClone(demoSkill.currentVersion)];
-    const version = this.skillVersions.find((candidate) => candidate.id === job.skillVersionId);
+    if (this.store.skillVersions === null) this.store.skillVersions = [structuredClone(demoSkill.currentVersion)];
+    const version = this.store.skillVersions.find((candidate) => candidate.id === job.skillVersionId);
     if (!version) throw new Error(`Skill version not found for gate job: ${job.skillVersionId}`);
-    const criterionVersionId = this.skillVersionCriteria.get(version.id);
+    const criterionVersionId = this.store.skillVersionCriteria.get(version.id);
     if (!criterionVersionId) {
       throw new DatasetRevisionConflictError("Evaluator version has no immutable criterion version binding");
     }
@@ -4558,15 +4411,15 @@ export class DemoRepository implements CoevalRepository {
     }
 
     // Prior-version comparison: the version immediately before the pending one.
-    const priorVersionId = this.skillVersions
+    const priorVersionId = this.store.skillVersions
       .filter((candidate) =>
         candidate.skillId === version.skillId &&
         candidate.id !== version.id &&
-        this.skillVersionCriteria.get(candidate.id) === criterionVersionId
+        this.store.skillVersionCriteria.get(candidate.id) === criterionVersionId
       )
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id))[0]?.id;
     const previousVerdicts = previousVerdictsFromRun(
-      priorVersionId ? this.regressionRuns.get(priorVersionId) ?? null : null
+      priorVersionId ? this.store.regressionRuns.get(priorVersionId) ?? null : null
     );
 
     const goldenSet: GoldenSetEntry[] = revision.items.map((item) => {
@@ -4618,8 +4471,8 @@ export class DemoRepository implements CoevalRepository {
     version.ambiguousCount = directions.ambiguous;
     version.knownLimitations = regression.regressed > 0 ? ["regressed on one or more golden-set cases"] : [];
     version.approvedAt = regression.status === "blocked" ? null : new Date().toISOString();
-    this.regressionRuns.set(version.id, regression);
-    this.datasetExposureEvents.push({
+    this.store.regressionRuns.set(version.id, regression);
+    this.store.datasetExposureEvents.push({
       id: `dse_${randomUUID()}`,
       projectId: job.projectId,
       revisionId: datasetRevisionId,
@@ -4641,8 +4494,8 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async failRegressionGateForVersion(job: GateRunJob, error: unknown): Promise<void> {
-    if (this.skillVersions === null) this.skillVersions = [structuredClone(demoSkill.currentVersion)];
-    const version = this.skillVersions.find((candidate) => candidate.id === job.skillVersionId);
+    if (this.store.skillVersions === null) this.store.skillVersions = [structuredClone(demoSkill.currentVersion)];
+    const version = this.store.skillVersions.find((candidate) => candidate.id === job.skillVersionId);
     if (!version) throw new Error(`Skill version not found for gate job: ${job.skillVersionId}`);
     // A replay after a successful or already-terminal gate must not overwrite
     // the recorded outcome or append another error run.
@@ -4665,7 +4518,7 @@ export class DemoRepository implements CoevalRepository {
     version.ambiguousCount = 0;
     version.knownLimitations = [`regression gate failed: ${message}`];
     version.approvedAt = null;
-    this.regressionRuns.set(version.id, {
+    this.store.regressionRuns.set(version.id, {
       id: `reg_${randomUUID()}`,
       skillVersionId: version.id,
       datasetRevisionId,
@@ -4682,19 +4535,19 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async getRegressionRunForVersion(_projectId: string, skillVersionId: string): Promise<RegressionRunResult | null> {
-    return this.regressionRuns.get(skillVersionId) ?? null;
+    return this.store.regressionRuns.get(skillVersionId) ?? null;
   }
 
   async listRegressionRunsForVersions(_projectId: string, skillVersionIds: string[]): Promise<RegressionRunResult[]> {
     return skillVersionIds.flatMap((versionId) => {
-      const run = this.regressionRuns.get(versionId);
+      const run = this.store.regressionRuns.get(versionId);
       return run ? [run] : [];
     });
   }
 
   async listSkillVersions(_projectId: string, skillId: string, limit = 50): Promise<SkillVersion[]> {
-    if (this.skillVersions === null) this.skillVersions = [structuredClone(demoSkill.currentVersion)];
-    return [...this.skillVersions]
+    if (this.store.skillVersions === null) this.store.skillVersions = [structuredClone(demoSkill.currentVersion)];
+    return [...this.store.skillVersions]
       .filter((version) => version.skillId === skillId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
       .slice(0, limit);

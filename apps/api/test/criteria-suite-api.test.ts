@@ -271,7 +271,7 @@ describe("criterion and evaluator-suite API", () => {
     await expect(repository.claimDueIronsideImportTargets({ now, intervalMs: 1, batchSize: 10, defaultLimit: 25 }))
       .resolves.toMatchObject([{ skillVersionId: native.evaluator.currentVersion.id }]);
 
-    const internal = repository as unknown as {
+    const internal = Reflect.get(repository, "store") as {
       langSmithIntegrations: Map<string, { skillVersionId: string | null }>;
       langfuseIntegrations: Map<string, { skillVersionId: string | null }>;
       ironsideIntegrations: Map<string, { skillVersionId: string | null }>;
