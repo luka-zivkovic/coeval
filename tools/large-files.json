@@ -13,7 +13,7 @@
     },
     "apps/api/src/repository.ts": {
       "classification": "refactor_candidate",
-      "reason": "The compatibility facade still colocates most in-memory demo domains, golden regression and health helpers, and fixtures; mutable state has one named store and the project port has one internal slice.",
+      "reason": "The compatibility facade still colocates most in-memory demo domains, golden regression and health helpers, and fixtures; mutable state has one named store, while the project and criterion/suite ports have internal slices.",
       "revisit": "Extract the remaining demo consistency groups against the shared store while preserving facade identity, cross-domain visibility, and rollback behavior."
     },
     "pnpm-lock.yaml": {

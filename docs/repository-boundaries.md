@@ -80,23 +80,27 @@ dataset-example import must create traces and membership on the same client;
 candidate creation must bind its revision, credential, and version on the same
 client; and terminal evaluation updates must mint receipts on the same client.
 
-## DemoRepository shared store and project slice (CURRENT; further slices remain TARGET)
+## DemoRepository shared store and domain slices (CURRENT; further slices remain TARGET)
 
 `DemoRepositoryStore` owns the demo facade's mutable maps, arrays, sets,
 counters, scalar pointers, and promise-deduplication state. `DemoRepository`
 allocates exactly one store per facade instance; the store is an internal
 composition seam and is not re-exported by the public repository module. The
-first CURRENT domain slice is `DemoProjectRepository`, which implements the
-seven `ProjectRepositoryPort` methods. The facade constructs that slice once
-with its exact store plus narrow callbacks for cross-port reads, then preserves
-the public method path through direct delegation. Remaining domain slices are
-still TARGET work.
+CURRENT domain slices are `DemoProjectRepository`, which implements the seven
+`ProjectRepositoryPort` methods, and `DemoCriterionSuiteRepository`, which
+implements the nine `CriterionSuiteRepositoryPort` methods. The facade
+constructs both once with its exact store, gives the project slice only the
+narrow callbacks needed for cross-port reads, and preserves every public method
+path through direct delegation. Remaining domain slices are still TARGET work.
 
 The `pnpm repository-boundaries` gate remains PostgreSQL-only, while
 `demo-repository-store.test.ts` pins the Demo store inventory and composition
 graph. `demo-project-repository.test.ts` pins the first slice's ownership,
 single construction, stable facade delegates, and immediate visibility of a
 trace imported through another facade domain.
+`demo-criterion-repository.test.ts` pins the criterion/suite slice's ownership,
+single construction, exact facade delegates, cross-domain evaluator visibility,
+and suite binding, retry, and revision behavior.
 
 The shared store has these rules:
 
