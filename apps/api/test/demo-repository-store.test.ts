@@ -532,6 +532,10 @@ describe("DemoRepository shared store", () => {
   it("keeps one facade-owned store and routes every state access through it", () => {
     const repositorySource = sourceFile("../src/repository.ts");
     const repository = classDeclaration(repositorySource, "DemoRepository");
+    const credentialRepository = classDeclaration(
+      sourceFile("../src/repository/demo-credentials.ts"),
+      "DemoCredentialRepository"
+    );
     const criterionSuiteRepository = classDeclaration(
       sourceFile("../src/repository/demo-criteria.ts"),
       "DemoCriterionSuiteRepository"
@@ -557,6 +561,7 @@ describe("DemoRepository shared store", () => {
     expect(properties.map((property) =>
       printer.printNode(ts.EmitHint.Unspecified, property, repositorySource).replace(/\s+/g, " ").trim()
     )).toEqual([
+      "private readonly credentialRepository: DemoCredentialRepository;",
       "private readonly criterionSuiteRepository: DemoCriterionSuiteRepository;",
       "private readonly goldenEvidenceRepository: DemoGoldenEvidenceRepository;",
       "private readonly projectRepository: DemoProjectRepository;",
@@ -576,6 +581,7 @@ describe("DemoRepository shared store", () => {
     expect(demoStoreCreations(repository, repositorySource)).toEqual(["new DemoRepositoryStore()"]);
     expect(storeAccessNames(
       repository,
+      credentialRepository,
       criterionSuiteRepository,
       goldenEvidenceRepository,
       projectRepository,
@@ -590,6 +596,7 @@ describe("DemoRepository shared store", () => {
     expect(analysis.compilerExports).toEqual(["DemoRepositoryStore"]);
     expect(analysis.storeModuleEdges).toEqual([
       'repository.ts:static-import:import { DemoRepositoryStore } from "./repository/demo-store.js";',
+      'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-golden.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-projects.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -598,6 +605,7 @@ describe("DemoRepository shared store", () => {
     ]);
     expect(analysis.storeModuleSpecifierMentions).toEqual([
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
+      'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-golden.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-projects.ts:ImportDeclaration:"./demo-store.js"',
@@ -615,6 +623,8 @@ describe("DemoRepository shared store", () => {
     expect(analysis.productionReferences).toEqual([
       "repository.ts:ImportSpecifier:DemoRepositoryStore",
       "repository.ts:NewExpression:DemoRepositoryStore",
+      "repository/demo-credentials.ts:ImportSpecifier:DemoRepositoryStore",
+      "repository/demo-credentials.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-criteria.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-criteria.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-golden.ts:ImportSpecifier:DemoRepositoryStore",
@@ -631,6 +641,7 @@ describe("DemoRepository shared store", () => {
     expect(analysis.repositoryGraphFiles).toEqual([
       "repository.ts",
       "repository/contracts.ts",
+      "repository/demo-credentials.ts",
       "repository/demo-criteria.ts",
       "repository/demo-golden.ts",
       "repository/demo-projects.ts",
@@ -716,6 +727,7 @@ describe("DemoRepository shared store", () => {
       'repository.ts:dynamic-loader:import("./repository/demo-store.js")',
       'repository.ts:static-import:import * as HiddenDemoStoreNamespace from "./repository/demo-store.js";',
       'repository.ts:static-import:import { DemoRepositoryStore } from "./repository/demo-store.js";',
+      'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-golden.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-projects.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -734,6 +746,7 @@ describe("DemoRepository shared store", () => {
       'repository.ts:CallExpression:"./repository/demo-store.js"',
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
+      'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-golden.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-projects.ts:ImportDeclaration:"./demo-store.js"',

@@ -91,16 +91,21 @@ CURRENT domain slices are `DemoProjectRepository`, which implements the seven
 implements the nine `CriterionSuiteRepositoryPort` methods;
 `DemoSkillLifecycleRepository`, which implements the fifteen
 `SkillLifecycleRepositoryPort` methods; `DemoGoldenEvidenceRepository`,
-which implements the eight `GoldenEvidenceRepositoryPort` methods; and
+which implements the eight `GoldenEvidenceRepositoryPort` methods;
 `DemoTraceImportRepository`, which implements the seven
-`TraceImportRepositoryPort` methods. The facade constructs all five once with
-its exact store and gives the project, skill-lifecycle, golden-evidence, and
+`TraceImportRepositoryPort` methods; and `DemoCredentialRepository`, which
+implements the four `ApiKeyRepositoryPort` methods and four
+`JudgeCredentialRepositoryPort` methods. The facade constructs all six once
+with its exact store and gives the project, skill-lifecycle, golden-evidence, and
 trace-import slices only narrow dependencies. The skill and golden-evidence
 slices receive same-port facade callbacks where their composite operations
 must preserve CURRENT subclass dispatch. The trace-import slice resolves skill
 versions through the facade so existing subclass dispatch remains intact.
-Every public method path remains a direct facade delegation. Remaining domain
-slices are still TARGET work.
+The credential slice receives only the shared store: API keys return plaintext
+exactly once while the store retains only their hashes, judge-provider reads
+remain masked, and raw judge credentials remain available only through the
+worker lookup. Every public method path remains a direct facade delegation.
+Remaining domain slices are still TARGET work.
 
 The `pnpm repository-boundaries` gate remains PostgreSQL-only, while
 `demo-repository-store.test.ts` pins the Demo store inventory and composition
@@ -123,6 +128,11 @@ retirement error identity, frozen revision refresh, and shared visibility.
 single construction, exact store and resolver identity, facade polymorphism,
 trace deduplication and immutable origin metadata, raw-input identity before
 redaction, recursion rejection, and import-job lifecycle/counting behavior.
+`demo-credential-repository.test.ts` pins the credential slice's dual-port
+ownership, single construction, exact store identity, facade delegates,
+one-time API-key plaintext and hash-only persistence, revocation, project
+isolation, masked judge-provider reads, replacement, and worker-only raw-secret
+lookup.
 
 The shared store has these rules:
 

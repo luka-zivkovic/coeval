@@ -95,7 +95,6 @@ import {
   VerdictRecord
 } from "@coeval/shared";
 import { deriveGateCheckDecision, renderJudgePromptContent, verdictLabelFromPayload } from "@coeval/shared";
-import { generateApiKey, hashApiKey } from "./lib/api-keys.js";
 import {
   buildAssessmentReceipt,
   canonicalReceiptBytes,
@@ -227,13 +226,13 @@ import {
   traceTestValidationDiagnostic,
   traceTestValidationIsEnableEligible,
   computeEvalRunSpend,
-  judgeKeyDisplay,
   convergencePageLimit,
   convergenceChangeRank,
   encodeConvergenceCursor,
   decodeConvergenceCursor
 } from "./repository/helpers.js";
 import { DemoRepositoryStore } from "./repository/demo-store.js";
+import { DemoCredentialRepository } from "./repository/demo-credentials.js";
 import { DemoCriterionSuiteRepository } from "./repository/demo-criteria.js";
 import { DemoGoldenEvidenceRepository } from "./repository/demo-golden.js";
 import { DemoProjectRepository } from "./repository/demo-projects.js";
@@ -263,6 +262,7 @@ export interface CoevalRepository extends
   HistoricalGateEvidenceRepositoryPort {}
 
 export class DemoRepository implements CoevalRepository {
+  private readonly credentialRepository: DemoCredentialRepository;
   private readonly criterionSuiteRepository: DemoCriterionSuiteRepository;
   private readonly goldenEvidenceRepository: DemoGoldenEvidenceRepository;
   private readonly projectRepository: DemoProjectRepository;
@@ -324,6 +324,7 @@ export class DemoRepository implements CoevalRepository {
     this.store.skillVersions = options.seedVerdicts
       ? [structuredClone(demoSkillPrevVersion), structuredClone(demoSkill.currentVersion)]
       : null;
+    this.credentialRepository = new DemoCredentialRepository(this.store);
     this.projectRepository = new DemoProjectRepository(this.store, {
       getCurrentSkill: (projectId) => this.getCurrentSkill(projectId),
       getCurrentSkillForCriterion: (projectId, criterionId) =>
@@ -551,29 +552,19 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async setJudgeProviderKey(projectId: string, provider: JudgeKeyProvider, apiKey: string): Promise<JudgeProviderKey> {
-    const createdAt = new Date().toISOString();
-    const keyDisplay = judgeKeyDisplay(apiKey);
-    this.store.judgeProviderKeys.set(`${projectId}:${provider}`, { apiKey, keyDisplay, createdAt });
-    return { provider, keyDisplay, createdAt };
+    return this.credentialRepository.setJudgeProviderKey(projectId, provider, apiKey);
   }
 
   async listJudgeProviderKeys(projectId: string): Promise<JudgeProviderKey[]> {
-    return [...this.store.judgeProviderKeys.entries()]
-      .filter(([mapKey]) => mapKey.startsWith(`${projectId}:`))
-      .map(([mapKey, value]) => ({
-        provider: mapKey.split(":")[1] as JudgeKeyProvider,
-        keyDisplay: value.keyDisplay,
-        createdAt: value.createdAt
-      }))
-      .sort((a, b) => a.provider.localeCompare(b.provider));
+    return this.credentialRepository.listJudgeProviderKeys(projectId);
   }
 
   async deleteJudgeProviderKey(projectId: string, provider: JudgeKeyProvider): Promise<boolean> {
-    return this.store.judgeProviderKeys.delete(`${projectId}:${provider}`);
+    return this.credentialRepository.deleteJudgeProviderKey(projectId, provider);
   }
 
   async getJudgeProviderCredential(projectId: string, provider: string): Promise<string | null> {
-    return this.store.judgeProviderKeys.get(`${projectId}:${provider}`)?.apiKey ?? null;
+    return this.credentialRepository.getJudgeProviderCredential(projectId, provider);
   }
 
   private async resolveImportSkillVersionId(projectId: string, requested?: string | undefined): Promise<string> {
@@ -1196,40 +1187,19 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async createApiKey(input: CreateApiKeyInputDb): Promise<CreatedApiKey> {
-    const generated = generateApiKey();
-    const record: ApiKey = {
-      id: `apikey_${randomUUID()}`,
-      projectId: input.projectId,
-      name: input.name,
-      keyPrefix: generated.keyPrefix,
-      createdAt: new Date().toISOString(),
-      lastUsedAt: null,
-      revokedAt: null
-    };
-    this.store.apiKeys.push({ record, keyHash: generated.keyHash });
-    return { ...record, key: generated.key };
+    return this.credentialRepository.createApiKey(input);
   }
 
   async listApiKeys(projectId: string): Promise<ApiKey[]> {
-    return this.store.apiKeys
-      .filter((entry) => entry.record.projectId === projectId)
-      .map((entry) => entry.record)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return this.credentialRepository.listApiKeys(projectId);
   }
 
   async revokeApiKey(projectId: string, apiKeyId: string): Promise<boolean> {
-    const entry = this.store.apiKeys.find((candidate) => candidate.record.id === apiKeyId && candidate.record.projectId === projectId);
-    if (!entry || entry.record.revokedAt) return false;
-    entry.record.revokedAt = new Date().toISOString();
-    return true;
+    return this.credentialRepository.revokeApiKey(projectId, apiKeyId);
   }
 
   async resolveApiKey(rawKey: string): Promise<{ projectId: string; apiKeyId: string } | null> {
-    const keyHash = hashApiKey(rawKey);
-    const entry = this.store.apiKeys.find((candidate) => candidate.keyHash === keyHash && !candidate.record.revokedAt);
-    if (!entry) return null;
-    entry.record.lastUsedAt = new Date().toISOString();
-    return { projectId: entry.record.projectId, apiKeyId: entry.record.id };
+    return this.credentialRepository.resolveApiKey(rawKey);
   }
 
   async createTraceTest(input: CreateTraceTestInputDb): Promise<TraceTestDetail> {
