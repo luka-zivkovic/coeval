@@ -576,6 +576,10 @@ describe("DemoRepository shared store", () => {
       sourceFile("../src/repository/demo-trace-import.ts"),
       "DemoTraceImportRepository"
     );
+    const traceTestRepository = classDeclaration(
+      sourceFile("../src/repository/demo-trace-tests.ts"),
+      "DemoTraceTestRepository"
+    );
     const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed, removeComments: true });
     const properties = repository.members.filter(ts.isPropertyDeclaration);
     expect(properties.map((property) =>
@@ -592,6 +596,7 @@ describe("DemoRepository shared store", () => {
       "private readonly runComparisonRepository: DemoRunComparisonRepository;",
       "private readonly skillLifecycleRepository: DemoSkillLifecycleRepository;",
       "private readonly traceImportRepository: DemoTraceImportRepository;",
+      "private readonly traceTestRepository: DemoTraceTestRepository;",
       "private readonly store = new DemoRepositoryStore();"
     ]);
 
@@ -616,7 +621,8 @@ describe("DemoRepository shared store", () => {
       reviewQueueRepository,
       runComparisonRepository,
       skillLifecycleRepository,
-      traceImportRepository
+      traceImportRepository,
+      traceTestRepository
     ))
       .toEqual([...EXPECTED_STORE_FIELDS].sort());
   });
@@ -636,7 +642,8 @@ describe("DemoRepository shared store", () => {
       'repository/demo-review-queues.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-run-comparisons.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-skills.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
-      'repository/demo-trace-import.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";'
+      'repository/demo-trace-import.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-trace-tests.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";'
     ]);
     expect(analysis.storeModuleSpecifierMentions).toEqual([
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
@@ -650,7 +657,8 @@ describe("DemoRepository shared store", () => {
       'repository/demo-review-queues.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-run-comparisons.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-skills.ts:ImportDeclaration:"./demo-store.js"',
-      'repository/demo-trace-import.ts:ImportDeclaration:"./demo-store.js"'
+      'repository/demo-trace-import.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-trace-tests.ts:ImportDeclaration:"./demo-store.js"'
     ]);
     expect(analysis.productionLoaderCalls).toEqual([]);
     expect(analysis.productionLoaderFactoryReferences).toEqual([]);
@@ -685,7 +693,9 @@ describe("DemoRepository shared store", () => {
       "repository/demo-skills.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-store.ts:ClassDeclaration:DemoRepositoryStore",
       "repository/demo-trace-import.ts:ImportSpecifier:DemoRepositoryStore",
-      "repository/demo-trace-import.ts:TypeReference:DemoRepositoryStore"
+      "repository/demo-trace-import.ts:TypeReference:DemoRepositoryStore",
+      "repository/demo-trace-tests.ts:ImportSpecifier:DemoRepositoryStore",
+      "repository/demo-trace-tests.ts:TypeReference:DemoRepositoryStore"
     ]);
     expect(analysis.repositoryClasses).toEqual(["DemoRepository"]);
     expect(analysis.repositoryGraphFiles).toEqual([
@@ -703,6 +713,7 @@ describe("DemoRepository shared store", () => {
       "repository/demo-skills.ts",
       "repository/demo-store.ts",
       "repository/demo-trace-import.ts",
+      "repository/demo-trace-tests.ts",
       "repository/errors.ts",
       "repository/helpers.ts",
       "repository/ports.ts"
@@ -789,7 +800,8 @@ describe("DemoRepository shared store", () => {
       'repository/demo-review-queues.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-run-comparisons.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-skills.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
-      'repository/demo-trace-import.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";'
+      'repository/demo-trace-import.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-trace-tests.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";'
     ]);
     expect(erasedModuleAnalysis.productionLoaderCalls).toEqual([
       'repository.ts:import:import("./repository/demo-store.js")'
@@ -813,7 +825,8 @@ describe("DemoRepository shared store", () => {
       'repository/demo-review-queues.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-run-comparisons.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-skills.ts:ImportDeclaration:"./demo-store.js"',
-      'repository/demo-trace-import.ts:ImportDeclaration:"./demo-store.js"'
+      'repository/demo-trace-import.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-trace-tests.ts:ImportDeclaration:"./demo-store.js"'
     ]);
   }, 30_000);
 
@@ -839,7 +852,7 @@ describe("DemoRepository shared store", () => {
         '    const localOwner = runGoldenSetRegression as typeof runGoldenSetRegression & { state?: Map<string, string> };\n' +
         '    localOwner.state ??= new Map<string, string>();\n' +
         '    Object.defineProperty(localOwner, "definedState", { value: new Map<string, string>() });\n' +
-        '    const importedOwner = traceTestValidationStatus as typeof traceTestValidationStatus & { state?: Map<string, string> };\n' +
+        '    const importedOwner = computeEvalRunSpend as typeof computeEvalRunSpend & { state?: Map<string, string> };\n' +
         '    importedOwner.state ??= new Map<string, string>();\n' +
         '    Reflect.deleteProperty(importedOwner, "legacyState");\n' +
         '    DEMO_ACTOR_NAMES.set("hidden", "state");\n' +
