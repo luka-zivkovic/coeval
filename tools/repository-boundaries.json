@@ -1,7 +1,9 @@
 {
   "version": 2,
   "sources": [
-    "apps/api/src/repository.pg.ts"
+    "apps/api/src/repository.pg.ts",
+    "apps/api/src/repository.pg/golden-commands.ts",
+    "apps/api/src/repository.pg/mappers.ts"
   ],
   "externalPoolDelegates": [
     "PgEvaluatorLifecycleRepository"
@@ -27,7 +29,7 @@
         "root :: pool_query",
         "root :: connect",
         "try :: begin",
-        "try>loop>if.then :: repository_call:rowToReviewQueueItem",
+        "try>loop>if.then :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToReviewQueueItem",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -47,7 +49,7 @@
         "root :: connect",
         "try :: begin",
         "try :: client_command:mintAssessmentReceiptWithClient",
-        "try :: repository_call:rowToAssessmentReceiptComparison",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptComparison",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -89,11 +91,11 @@
         "root :: connect",
         "try :: begin",
         "try :: client_command:mintAssessmentReceiptWithClient",
-        "try>if.then :: repository_call:rowToAssessmentReceiptArtifact",
+        "try>if.then :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptArtifact",
         "try>if.then>if.then :: commit",
-        "try :: repository_call:rowToAssessmentReceiptArtifact",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptArtifact",
         "try :: commit",
-        "try :: repository_call:rowToAssessmentReceiptArtifact",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptArtifact",
         "catch :: rollback",
         "finally :: release"
       ],
@@ -113,10 +115,10 @@
         "try :: begin",
         "try :: client_command:insertSkillVersion",
         "try :: commit",
-        "try :: repository_call:rowToCriterion",
-        "try :: repository_call:rowToCriterionVersion",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToCriterion",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToCriterionVersion",
         "catch :: rollback",
-        "catch>if.condition :: repository_call:isUniqueViolation",
+        "catch>if.condition :: repository_call:apps/api/src/repository.pg/mappers.ts#isUniqueViolation",
         "finally :: release"
       ],
       "reachableConnectionOwners": []
@@ -135,7 +137,7 @@
         "try :: begin",
         "try>if.then :: rollback",
         "try :: commit",
-        "try :: repository_call:rowToCriterionVersion",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToCriterionVersion",
         "catch :: rollback",
         "finally :: release"
       ],
@@ -156,13 +158,13 @@
         "try>if.then>if.then :: commit",
         "try>if.then>if.then :: repository_call:getDatasetRevisionDetail",
         "try :: client_command:loadHumanVerdictsForCases",
-        "try>loop :: repository_call:normalizedPayloadSnapshot",
+        "try>loop :: repository_call:apps/api/src/repository.pg/mappers.ts#normalizedPayloadSnapshot",
         "try>loop :: client_command:resolveCaseInputIdentity",
         "try :: client_command:insertDatasetRevisionWithClient",
         "try :: commit",
         "catch :: rollback",
-        "catch>if.condition :: repository_call:isCheckViolation",
-        "catch>if.then :: repository_call:postgresErrorMessage",
+        "catch>if.condition :: repository_call:apps/api/src/repository.pg/mappers.ts#isCheckViolation",
+        "catch>if.then :: repository_call:apps/api/src/repository.pg/mappers.ts#postgresErrorMessage",
         "finally :: release",
         "conditional.true :: repository_call:getDatasetRevisionDetail"
       ],
@@ -201,7 +203,7 @@
         "root :: connect",
         "try :: begin",
         "try>if.then :: commit",
-        "try>loop :: repository_call:rowToSkillVersion",
+        "try>loop :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToSkillVersion",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -285,7 +287,7 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try :: repository_call:parseJson",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#parseJson",
         "try :: commit",
         "catch :: rollback",
         "finally :: release",
@@ -305,7 +307,7 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try :: repository_call:parseJson",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#parseJson",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -324,7 +326,7 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try :: repository_call:parseJson",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#parseJson",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -343,7 +345,7 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try :: repository_call:parseJson",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#parseJson",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -422,7 +424,7 @@
         "root :: connect",
         "try :: begin",
         "try>if.then :: commit",
-        "try :: repository_call:gateFailureMessage",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#gateFailureMessage",
         "try :: client_command:insertRegressionRun",
         "try :: commit",
         "catch :: rollback",
@@ -561,7 +563,7 @@
         "try :: begin",
         "try :: client_command:getOrCreateRegressionDatasetRevisionWithClient",
         "try :: commit",
-        "try :: repository_call:rowToGoldenSetEntry",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToGoldenSetEntry",
         "catch :: rollback",
         "finally :: release"
       ],
@@ -601,7 +603,7 @@
         "root :: connect",
         "try :: begin",
         "try :: commit",
-        "try :: repository_call:rowToTraceTestValidation",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToTraceTestValidation",
         "catch :: rollback",
         "finally :: release"
       ],
@@ -619,7 +621,7 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try>if.then>if.then :: client_command:loadGoldenSetRetirementContext",
+        "try>if.then>if.then :: client_command:apps/api/src/repository.pg/golden-commands.ts#loadGoldenSetRetirementContext",
         "try :: client_command:getOrCreateRegressionDatasetRevisionWithClient",
         "try :: commit",
         "catch :: rollback",
@@ -731,7 +733,7 @@
         "try>if.then :: rollback",
         "try>if.then :: rollback",
         "try :: commit",
-        "try :: repository_call:rowToSkillVersion",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToSkillVersion",
         "catch :: rollback",
         "finally :: release"
       ],
@@ -750,7 +752,7 @@
         "root :: connect",
         "try :: begin",
         "try :: commit",
-        "try :: repository_call:rowToProjectSettings",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToProjectSettings",
         "catch :: rollback",
         "finally :: release"
       ],
@@ -758,6 +760,17 @@
     }
   ],
   "clientScopedCommands": [
+    {
+      "method": "apps/api/src/repository.pg/golden-commands.ts#loadGoldenSetRetirementContext",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "retireGoldenSetEntry"
+      ]
+    },
     {
       "method": "bumpEvalRunCounters",
       "scope": "private_method",
@@ -841,17 +854,6 @@
       "callers": [
         "createCriterion",
         "createSkillVersionPending"
-      ]
-    },
-    {
-      "method": "loadGoldenSetRetirementContext",
-      "scope": "module_function",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "retireGoldenSetEntry"
       ]
     },
     {
