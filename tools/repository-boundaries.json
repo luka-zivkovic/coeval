@@ -6,6 +6,7 @@
     "apps/api/src/repository.pg/dataset-revision-commands.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
     "apps/api/src/repository.pg/mappers.ts",
+    "apps/api/src/repository.pg/skill-version-commands.ts",
     "apps/api/src/repository.pg/trace-import-commands.ts"
   ],
   "externalPoolDelegates": [
@@ -116,7 +117,7 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try :: client_command:insertSkillVersion",
+        "try :: client_command:apps/api/src/repository.pg/skill-version-commands.ts#insertSkillVersion",
         "try :: commit",
         "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToCriterion",
         "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToCriterionVersion",
@@ -269,9 +270,9 @@
         "try>if.then>if.then :: commit",
         "try>if.then>if.then :: repository_call:getSkillVersion",
         "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
-        "try :: client_command:nextVersion",
+        "try :: client_command:apps/api/src/repository.pg/skill-version-commands.ts#nextVersion",
         "try>if.then :: client_command:setJudgeProviderKeyOnClient",
-        "try :: client_command:insertSkillVersion",
+        "try :: client_command:apps/api/src/repository.pg/skill-version-commands.ts#insertSkillVersion",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -864,6 +865,40 @@
       ]
     },
     {
+      "method": "apps/api/src/repository.pg/skill-version-commands.ts#getOrCreateGovernedReviewerSubject",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "apps/api/src/repository.pg/skill-version-commands.ts#insertSkillVersion"
+      ]
+    },
+    {
+      "method": "apps/api/src/repository.pg/skill-version-commands.ts#insertSkillVersion",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "createCriterion",
+        "createSkillVersionPending"
+      ]
+    },
+    {
+      "method": "apps/api/src/repository.pg/skill-version-commands.ts#nextVersion",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "createSkillVersionPending"
+      ]
+    },
+    {
       "method": "apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
       "scope": "internal_module_function",
       "isPrivate": true,
@@ -888,17 +923,6 @@
       ]
     },
     {
-      "method": "getOrCreateGovernedReviewerSubject",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "insertSkillVersion"
-      ]
-    },
-    {
       "method": "insertRegressionRun",
       "scope": "private_method",
       "isPrivate": true,
@@ -908,29 +932,6 @@
       "callers": [
         "failRegressionGateForVersion",
         "runRegressionGateForVersionLocked"
-      ]
-    },
-    {
-      "method": "insertSkillVersion",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "createCriterion",
-        "createSkillVersionPending"
-      ]
-    },
-    {
-      "method": "nextVersion",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "createSkillVersionPending"
       ]
     },
     {
