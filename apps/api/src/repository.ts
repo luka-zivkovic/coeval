@@ -207,7 +207,6 @@ import {
   CaseNotFoundError,
   RegressionGateJudgeError,
   AmbiguousProjectSkillError,
-  FeedbackSyncJobNotFoundError,
   DatasetNotFoundError,
   DatasetNameTakenError,
   TraceTestSourceNotFoundError,
@@ -230,6 +229,7 @@ import { DemoCredentialRepository } from "./repository/demo-credentials.js";
 import { DemoCriterionSuiteRepository } from "./repository/demo-criteria.js";
 import { DemoGoldenEvidenceRepository } from "./repository/demo-golden.js";
 import { DemoIntegrationRepository } from "./repository/demo-integrations.js";
+import { DemoJudgeFeedbackRepository } from "./repository/demo-feedback.js";
 import { DemoProjectRepository } from "./repository/demo-projects.js";
 import { DemoSkillLifecycleRepository } from "./repository/demo-skills.js";
 import { DemoTraceImportRepository } from "./repository/demo-trace-import.js";
@@ -261,6 +261,7 @@ export class DemoRepository implements CoevalRepository {
   private readonly criterionSuiteRepository: DemoCriterionSuiteRepository;
   private readonly goldenEvidenceRepository: DemoGoldenEvidenceRepository;
   private readonly integrationRepository: DemoIntegrationRepository;
+  private readonly judgeFeedbackRepository: DemoJudgeFeedbackRepository;
   private readonly projectRepository: DemoProjectRepository;
   private readonly skillLifecycleRepository: DemoSkillLifecycleRepository;
   private readonly traceImportRepository: DemoTraceImportRepository;
@@ -357,6 +358,10 @@ export class DemoRepository implements CoevalRepository {
     this.integrationRepository = new DemoIntegrationRepository(this.store, {
       resolveImportSkillVersionId: (projectId, requested) =>
         this.resolveImportSkillVersionId(projectId, requested)
+    });
+    this.judgeFeedbackRepository = new DemoJudgeFeedbackRepository(this.store, {
+      loadFeedbackSyncContext: (job) => this.loadFeedbackSyncContext(job),
+      syntheticTraceForBuiltinCase: (caseId) => this.syntheticTraceForBuiltinCase(caseId)
     });
     this.traceImportRepository = new DemoTraceImportRepository(this.store, {
       resolveImportSkillVersionId: (projectId, requested) =>
@@ -709,24 +714,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async loadJudgeRunContext(job: JudgeRunJob): Promise<JudgeRunContext> {
-    // Imported traces first; built-in fixture cases (exceptions, golden set)
-    // get the same synthesized traces the case-detail and regression surfaces
-    // use, so demo eval runs can judge them instead of failing the item.
-    const trace = this.store.traces.get(job.caseId) ?? this.syntheticTraceForBuiltinCase(job.caseId);
-    if (!trace) throw new Error(`Case not found for judge job: ${job.caseId}`);
-    // Honor the pinned version like PgRepository does — an eval run pinned to
-    // an older version must record verdicts under THAT version id, or the run
-    // claims one judge while the ledger says another (the A2.2c trap).
-    const skillVersion = job.skillVersionId
-      ? (this.store.skillVersions ?? [demoSkill.currentVersion]).find((version) => version.id === job.skillVersionId)
-      : demoSkill.currentVersion;
-    if (!skillVersion) throw new Error(`Skill version not found for judge job: ${job.skillVersionId}`);
-    return {
-      projectId: demoProject.id,
-      caseId: job.caseId,
-      skillVersion,
-      trace
-    };
+    return this.judgeFeedbackRepository.loadJudgeRunContext(job);
   }
 
   private syntheticTraceForBuiltinCase(caseId: string): Trace | null {
@@ -747,32 +735,7 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async recordJudgeRun(input: RecordJudgeRunInput): Promise<JudgeRun> {
-    const existing = this.store.judgeRuns.find((candidate) =>
-      candidate.projectId === input.projectId &&
-      candidate.caseId === input.caseId &&
-      candidate.skillVersionId === input.skillVersionId
-    );
-    if (existing) return existing;
-
-    const run: JudgeRun = {
-      id: `judge_${randomUUID()}`,
-      projectId: input.projectId,
-      caseId: input.caseId,
-      skillVersionId: input.skillVersionId,
-      verdict: input.verdict.label,
-      score: input.verdict.score,
-      reasoning: input.verdict.reason,
-      ...(input.latencyMs !== undefined ? { latencyMs: input.latencyMs } : {}),
-      providerMetadata: input.providerMetadata ?? {
-        model: null,
-        requestId: null,
-        responseId: null,
-        systemFingerprint: null
-      },
-      createdAt: new Date().toISOString()
-    };
-    this.store.judgeRuns.push(run);
-    return run;
+    return this.judgeFeedbackRepository.recordJudgeRun(input);
   }
 
   async recordVerdict(input: RecordVerdictInput): Promise<VerdictRecord> {
@@ -3009,100 +2972,35 @@ export class DemoRepository implements CoevalRepository {
   }
 
   async createFeedbackSyncJob(input: { projectId: string; judgeRunId: string; provider: FeedbackSyncProvider }): Promise<FeedbackSyncJobRecord | null> {
-    const run = this.store.judgeRuns.find((candidate) => candidate.id === input.judgeRunId && candidate.projectId === input.projectId);
-    if (!run) return null;
-    const traceSource = this.store.traceSources.get(run.caseId);
-    if (!traceSource || traceSource.source !== input.provider || !traceSource.sourceIntegrationId) return null;
-    const integration = input.provider === "langfuse"
-      ? this.store.langfuseIntegrations.get(traceSource.sourceIntegrationId)
-      : input.provider === "ironside"
-        ? this.store.ironsideIntegrations.get(traceSource.sourceIntegrationId)
-        : this.store.langSmithIntegrations.get(traceSource.sourceIntegrationId);
-    if (!integration) return null;
-    const key = `${input.projectId}:${input.provider}:${input.judgeRunId}`;
-    const existingJobId = this.store.feedbackJobRunIds.get(key);
-    if (existingJobId) {
-      const existing = this.store.feedbackJobs.get(existingJobId);
-      return existing && existing.status !== "synced"
-        ? { id: existing.id, projectId: input.projectId, judgeRunId: input.judgeRunId, provider: input.provider, status: existing.status }
-        : null;
-    }
-    const id = `fsync_${randomUUID()}`;
-    this.store.feedbackJobs.set(id, {
-      id,
-      projectId: input.projectId,
-      provider: input.provider,
-      judgeRun: { ...run, modelBinding: demoSkill.currentVersion.modelBinding },
-      sourceTraceId: traceSource.sourceTraceId,
-      sourceTraceVersion: traceSource.sourceTraceVersion ?? null,
-      criterionStableKey: "response-quality",
-      integration,
-      status: "pending"
-    });
-    this.store.feedbackJobRunIds.set(key, id);
-    return { id, projectId: input.projectId, judgeRunId: input.judgeRunId, provider: input.provider, status: "pending" };
+    return this.judgeFeedbackRepository.createFeedbackSyncJob(input);
   }
 
   async loadFeedbackSyncContext(job: FeedbackSyncJob): Promise<FeedbackSyncContext> {
-    const context = this.store.feedbackJobs.get(job.feedbackSyncJobId);
-    if (!context || context.projectId !== job.projectId) throw new FeedbackSyncJobNotFoundError(job.feedbackSyncJobId);
-    return context;
+    return this.judgeFeedbackRepository.loadFeedbackSyncContext(job);
   }
 
   async listFeedbackSyncJobs(input: ListFeedbackSyncJobsInput): Promise<FeedbackSyncJobListItem[]> {
-    return [...this.store.feedbackJobs.values()]
-      .filter((job) => job.projectId === input.projectId && (!input.status || job.status === input.status))
-      .slice(0, input.limit)
-      .map((job) => ({
-        id: job.id,
-        projectId: job.projectId,
-        judgeRunId: job.judgeRun.id,
-        provider: job.provider,
-        status: job.status,
-        attempts: this.store.feedbackJobAttempts.get(job.id) ?? 0,
-        lastError: this.store.feedbackJobLastError.get(job.id) ?? null,
-        createdAt: new Date().toISOString()
-      }));
+    return this.judgeFeedbackRepository.listFeedbackSyncJobs(input);
   }
 
   async markFeedbackSyncSucceeded(job: FeedbackSyncJob): Promise<void> {
-    const context = await this.loadFeedbackSyncContext(job);
-    this.store.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "synced" });
+    return this.judgeFeedbackRepository.markFeedbackSyncSucceeded(job);
   }
 
   async markFeedbackSyncFailed(job: FeedbackSyncJob, error: unknown): Promise<void> {
-    const context = await this.loadFeedbackSyncContext(job);
-    this.store.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "failed" });
-    // PG parity (C7): failures increment attempts and record the error.
-    this.store.feedbackJobAttempts.set(job.feedbackSyncJobId, (this.store.feedbackJobAttempts.get(job.feedbackSyncJobId) ?? 0) + 1);
-    this.store.feedbackJobLastError.set(job.feedbackSyncJobId, error instanceof Error ? error.message : String(error));
+    return this.judgeFeedbackRepository.markFeedbackSyncFailed(job, error);
   }
 
   async markFeedbackSyncBlocked(job: FeedbackSyncJob, error: unknown): Promise<void> {
-    const context = await this.loadFeedbackSyncContext(job);
-    this.store.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "blocked" });
-    this.store.feedbackJobLastError.set(job.feedbackSyncJobId, error instanceof Error ? error.message : String(error));
+    return this.judgeFeedbackRepository.markFeedbackSyncBlocked(job, error);
   }
 
   async markFeedbackSyncPending(job: FeedbackSyncJob): Promise<void> {
-    const context = this.store.feedbackJobs.get(job.feedbackSyncJobId);
-    if (!context || context.projectId !== job.projectId) {
-      throw new FeedbackSyncJobNotFoundError(job.feedbackSyncJobId);
-    }
-    if (context.status !== "blocked") return;
-    this.store.feedbackJobs.set(job.feedbackSyncJobId, { ...context, status: "pending" });
-    this.store.feedbackJobLastError.delete(job.feedbackSyncJobId);
+    return this.judgeFeedbackRepository.markFeedbackSyncPending(job);
   }
 
   async listBlockedIronsideFeedbackSyncJobs(projectId: string, integrationId: string): Promise<FeedbackSyncJob[]> {
-    return [...this.store.feedbackJobs.values()]
-      .filter((job) =>
-        job.projectId === projectId &&
-        job.provider === "ironside" &&
-        job.integration.id === integrationId &&
-        job.status === "blocked"
-      )
-      .map((job) => ({ projectId: job.projectId, feedbackSyncJobId: job.id }));
+    return this.judgeFeedbackRepository.listBlockedIronsideFeedbackSyncJobs(projectId, integrationId);
   }
 
   async createSkillVersion(skillId: string, input: CreateSkillVersionInput, context: CreateSkillVersionContext): Promise<{
