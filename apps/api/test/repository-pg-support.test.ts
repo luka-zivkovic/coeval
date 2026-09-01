@@ -180,6 +180,8 @@ describe("PostgreSQL repository support modules", () => {
         "resolveCaseInputIdentity",
         "resolveSingletonCriterionVersionForRegression"
       ]);
+    expect(namedImports(repositorySource, "./repository.pg/assessment-receipt-commands.js"))
+      .toEqual(["bumpEvalRunCounters", "mintAssessmentReceiptWithClient"]);
     expect(namedImports(repositorySource, "./repository.pg/trace-import-commands.js"))
       .toEqual(["importTraceOnClient", "lockTraceImportIdentity"]);
     expect(repositorySource.statements.filter((statement) => !ts.isImportDeclaration(statement)).map((statement) =>
@@ -194,8 +196,8 @@ describe("PostgreSQL repository support modules", () => {
     const privateMethods = methods.filter((method) =>
       ts.getModifiers(method)?.some((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword)
     );
-    expect(methods).toHaveLength(185);
-    expect(privateMethods).toHaveLength(24);
+    expect(methods).toHaveLength(183);
+    expect(privateMethods).toHaveLength(22);
     expect(methods.length - privateMethods.length).toBe(161);
   }, 30_000);
 

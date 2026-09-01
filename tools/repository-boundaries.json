@@ -2,6 +2,7 @@
   "version": 2,
   "sources": [
     "apps/api/src/repository.pg.ts",
+    "apps/api/src/repository.pg/assessment-receipt-commands.ts",
     "apps/api/src/repository.pg/dataset-revision-commands.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
     "apps/api/src/repository.pg/mappers.ts",
@@ -50,7 +51,7 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try :: client_command:mintAssessmentReceiptWithClient",
+        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
         "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptComparison",
         "try :: commit",
         "catch :: rollback",
@@ -72,8 +73,8 @@
         "try :: begin",
         "try>if.then :: rollback",
         "try>if.then :: repository_call:getEvalRun",
-        "try :: client_command:bumpEvalRunCounters",
-        "try>if.then>if.then :: client_command:mintAssessmentReceiptWithClient",
+        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#bumpEvalRunCounters",
+        "try>if.then>if.then :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -92,7 +93,7 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try :: client_command:mintAssessmentReceiptWithClient",
+        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
         "try>if.then :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptArtifact",
         "try>if.then>if.then :: commit",
         "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptArtifact",
@@ -184,7 +185,7 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try>if.then :: client_command:mintAssessmentReceiptWithClient",
+        "try>if.then :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release",
@@ -405,8 +406,8 @@
         "try :: begin",
         "try>if.then :: rollback",
         "try>if.then :: repository_call:getEvalRun",
-        "try :: client_command:bumpEvalRunCounters",
-        "try>if.then>if.then :: client_command:mintAssessmentReceiptWithClient",
+        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#bumpEvalRunCounters",
+        "try>if.then>if.then :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -467,7 +468,7 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try :: client_command:mintAssessmentReceiptWithClient",
+        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -763,6 +764,34 @@
   ],
   "clientScopedCommands": [
     {
+      "method": "apps/api/src/repository.pg/assessment-receipt-commands.ts#bumpEvalRunCounters",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "completeEvalRunItem",
+        "failEvalRunItem"
+      ]
+    },
+    {
+      "method": "apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "compareAssessmentReceiptCopy",
+        "completeEvalRunItem",
+        "createAssessmentReceiptCorrection",
+        "createEvalRunOnce",
+        "failEvalRunItem",
+        "getOrFreezeAssessmentReceipt"
+      ]
+    },
+    {
       "method": "apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
       "scope": "internal_module_function",
       "isPrivate": true,
@@ -859,18 +888,6 @@
       ]
     },
     {
-      "method": "bumpEvalRunCounters",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "completeEvalRunItem",
-        "failEvalRunItem"
-      ]
-    },
-    {
       "method": "getOrCreateGovernedReviewerSubject",
       "scope": "private_method",
       "isPrivate": true,
@@ -903,22 +920,6 @@
       "callers": [
         "createCriterion",
         "createSkillVersionPending"
-      ]
-    },
-    {
-      "method": "mintAssessmentReceiptWithClient",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "compareAssessmentReceiptCopy",
-        "completeEvalRunItem",
-        "createAssessmentReceiptCorrection",
-        "createEvalRunOnce",
-        "failEvalRunItem",
-        "getOrFreezeAssessmentReceipt"
       ]
     },
     {
