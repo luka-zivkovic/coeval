@@ -9,7 +9,7 @@
     "apps/api/src/repository.pg.ts": {
       "classification": "refactor_candidate",
       "reason": "One persistence class contains several independently changing transaction and read-model groups.",
-      "revisit": "Split only after transaction ownership and client-scoped command boundaries are mapped."
+      "revisit": "Extract mapped domain seams incrementally while preserving the checked connection-owner and client-command graph."
     },
     "pnpm-lock.yaml": {
       "classification": "generated",

@@ -30,6 +30,15 @@ repositories. The default command is check-only. After an intentional
 boundary change, use `pnpm repository-boundaries -- --write` and review the
 entire fixture diff.
 
+The first CURRENT internal split keeps pure PostgreSQL value/result conversion
+in `repository.pg/mappers.ts`. That module owns no pool, client, mutable state,
+or query execution. The golden-retirement context query lives in
+`repository.pg/golden-commands.ts`; it accepts its caller's `PoolClient`, owns
+no connection or transaction, and is mapped as an internal client-scoped
+command. `repository-pg-support.test.ts` pins both private module surfaces, the
+sole `PgRepository` implementation owner, the complete 161-method public
+facade, and representative retirement-context query behavior.
+
 The fixture also pins the one approved pool handoff from the main repository:
 `authorizeSkillVersionExecution` constructs `PgEvaluatorLifecycleRepository`
 with the same pool. That repository owns a separate accepted-ADR lifecycle and
