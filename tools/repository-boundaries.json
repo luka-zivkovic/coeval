@@ -2,6 +2,7 @@
   "version": 2,
   "sources": [
     "apps/api/src/repository.pg.ts",
+    "apps/api/src/repository.pg/dataset-revision-commands.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
     "apps/api/src/repository.pg/mappers.ts",
     "apps/api/src/repository.pg/trace-import-commands.ts"
@@ -158,10 +159,10 @@
         "try :: begin",
         "try>if.then>if.then :: commit",
         "try>if.then>if.then :: repository_call:getDatasetRevisionDetail",
-        "try :: client_command:loadHumanVerdictsForCases",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#loadHumanVerdictsForCases",
         "try>loop :: repository_call:apps/api/src/repository.pg/mappers.ts#normalizedPayloadSnapshot",
-        "try>loop :: client_command:resolveCaseInputIdentity",
-        "try :: client_command:insertDatasetRevisionWithClient",
+        "try>loop :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#resolveCaseInputIdentity",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#insertDatasetRevisionWithClient",
         "try :: commit",
         "catch :: rollback",
         "catch>if.condition :: repository_call:apps/api/src/repository.pg/mappers.ts#isCheckViolation",
@@ -266,7 +267,7 @@
         "try :: begin",
         "try>if.then>if.then :: commit",
         "try>if.then>if.then :: repository_call:getSkillVersion",
-        "try :: client_command:getOrCreateRegressionDatasetRevisionWithClient",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
         "try :: client_command:nextVersion",
         "try>if.then :: client_command:setJudgeProviderKeyOnClient",
         "try :: client_command:insertSkillVersion",
@@ -445,8 +446,8 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try :: client_command:resolveSingletonCriterionVersionForRegression",
-        "try :: client_command:getOrCreateRegressionDatasetRevisionWithClient",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#resolveSingletonCriterionVersionForRegression",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release",
@@ -562,7 +563,7 @@
         "root :: repository_call:getCaseDetail",
         "root :: connect",
         "try :: begin",
-        "try :: client_command:getOrCreateRegressionDatasetRevisionWithClient",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
         "try :: commit",
         "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToGoldenSetEntry",
         "catch :: rollback",
@@ -623,7 +624,7 @@
         "root :: connect",
         "try :: begin",
         "try>if.then>if.then :: client_command:apps/api/src/repository.pg/golden-commands.ts#loadGoldenSetRetirementContext",
-        "try :: client_command:getOrCreateRegressionDatasetRevisionWithClient",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -762,6 +763,67 @@
   ],
   "clientScopedCommands": [
     {
+      "method": "apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "createSkillVersionPending",
+        "getOrCreateRegressionDatasetRevision",
+        "promoteExceptionToGoldenSet",
+        "retireGoldenSetEntry"
+      ]
+    },
+    {
+      "method": "apps/api/src/repository.pg/dataset-revision-commands.ts#insertDatasetRevisionWithClient",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
+        "createDatasetRevision"
+      ]
+    },
+    {
+      "method": "apps/api/src/repository.pg/dataset-revision-commands.ts#loadHumanVerdictsForCases",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
+        "createDatasetRevision"
+      ]
+    },
+    {
+      "method": "apps/api/src/repository.pg/dataset-revision-commands.ts#resolveCaseInputIdentity",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
+        "createDatasetRevision"
+      ]
+    },
+    {
+      "method": "apps/api/src/repository.pg/dataset-revision-commands.ts#resolveSingletonCriterionVersionForRegression",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "getOrCreateRegressionDatasetRevision"
+      ]
+    },
+    {
       "method": "apps/api/src/repository.pg/golden-commands.ts#loadGoldenSetRetirementContext",
       "scope": "internal_module_function",
       "isPrivate": true,
@@ -820,32 +882,6 @@
       ]
     },
     {
-      "method": "getOrCreateRegressionDatasetRevisionWithClient",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "createSkillVersionPending",
-        "getOrCreateRegressionDatasetRevision",
-        "promoteExceptionToGoldenSet",
-        "retireGoldenSetEntry"
-      ]
-    },
-    {
-      "method": "insertDatasetRevisionWithClient",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "createDatasetRevision",
-        "getOrCreateRegressionDatasetRevisionWithClient"
-      ]
-    },
-    {
       "method": "insertRegressionRun",
       "scope": "private_method",
       "isPrivate": true,
@@ -867,18 +903,6 @@
       "callers": [
         "createCriterion",
         "createSkillVersionPending"
-      ]
-    },
-    {
-      "method": "loadHumanVerdictsForCases",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "createDatasetRevision",
-        "getOrCreateRegressionDatasetRevisionWithClient"
       ]
     },
     {
@@ -917,29 +941,6 @@
       ],
       "callers": [
         "pruneExpiredTraces"
-      ]
-    },
-    {
-      "method": "resolveCaseInputIdentity",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "createDatasetRevision",
-        "getOrCreateRegressionDatasetRevisionWithClient"
-      ]
-    },
-    {
-      "method": "resolveSingletonCriterionVersionForRegression",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "getOrCreateRegressionDatasetRevision"
       ]
     },
     {
