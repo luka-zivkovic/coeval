@@ -67,7 +67,8 @@ const EXPECTED_FACADE_PROPERTIES = [
 
 const API_DIRECTORY = fileURLToPath(new URL("../", import.meta.url));
 const API_SOURCE_DIRECTORY = path.join(API_DIRECTORY, "src");
-const REPOSITORY_PATH = path.join(API_SOURCE_DIRECTORY, "repository.ts");
+const ROOT_REPOSITORY_PATH = path.join(API_SOURCE_DIRECTORY, "repository.ts");
+const REPOSITORY_PATH = path.join(API_SOURCE_DIRECTORY, "repository/demo-repository.ts");
 const COMPOSITION_PATH = path.join(API_SOURCE_DIRECTORY, "repository/demo-composition.ts");
 
 function sourceFile(filePath: string): ts.SourceFile {
@@ -100,6 +101,7 @@ function functionDeclaration(source: ts.SourceFile, name: string): ts.FunctionDe
 describe("DemoRepository composition", () => {
   it("pins the exact type/runtime surface, slice set, construction order, and root handoff", () => {
     const compositionSource = sourceFile(COMPOSITION_PATH);
+    const rootRepositorySource = sourceFile(ROOT_REPOSITORY_PATH);
     const repositorySource = sourceFile(REPOSITORY_PATH);
     const program = createApiProgram();
     const compilerSource = program.getSourceFile(COMPOSITION_PATH);
@@ -163,6 +165,15 @@ describe("DemoRepository composition", () => {
     expect(repositorySource.statements.filter((statement) =>
       ts.isInterfaceDeclaration(statement) && statement.name.text === "DemoRepository"
     )).toHaveLength(0);
+    expect(rootRepositorySource.statements.filter((statement) =>
+      ts.isExportDeclaration(statement) &&
+      statement.moduleSpecifier &&
+      ts.isStringLiteralLike(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === "./repository/demo-repository.js" &&
+      statement.exportClause &&
+      ts.isNamedExports(statement.exportClause) &&
+      statement.exportClause.elements.map((element) => element.name.text).join(",") === "DemoRepository"
+    )).toHaveLength(1);
     const repositoryClass = repositorySource.statements.find(
       (statement): statement is ts.ClassDeclaration =>
         ts.isClassDeclaration(statement) && statement.name?.text === "DemoRepository"
