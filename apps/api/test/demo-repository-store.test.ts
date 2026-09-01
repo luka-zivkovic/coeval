@@ -544,6 +544,10 @@ describe("DemoRepository shared store", () => {
       sourceFile("../src/repository/demo-golden.ts"),
       "DemoGoldenEvidenceRepository"
     );
+    const integrationRepository = classDeclaration(
+      sourceFile("../src/repository/demo-integrations.ts"),
+      "DemoIntegrationRepository"
+    );
     const projectRepository = classDeclaration(
       sourceFile("../src/repository/demo-projects.ts"),
       "DemoProjectRepository"
@@ -564,6 +568,7 @@ describe("DemoRepository shared store", () => {
       "private readonly credentialRepository: DemoCredentialRepository;",
       "private readonly criterionSuiteRepository: DemoCriterionSuiteRepository;",
       "private readonly goldenEvidenceRepository: DemoGoldenEvidenceRepository;",
+      "private readonly integrationRepository: DemoIntegrationRepository;",
       "private readonly projectRepository: DemoProjectRepository;",
       "private readonly skillLifecycleRepository: DemoSkillLifecycleRepository;",
       "private readonly traceImportRepository: DemoTraceImportRepository;",
@@ -584,6 +589,7 @@ describe("DemoRepository shared store", () => {
       credentialRepository,
       criterionSuiteRepository,
       goldenEvidenceRepository,
+      integrationRepository,
       projectRepository,
       skillLifecycleRepository,
       traceImportRepository
@@ -599,6 +605,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-golden.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-integrations.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-projects.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-skills.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-trace-import.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";'
@@ -608,6 +615,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-golden.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-integrations.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-projects.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-skills.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-trace-import.ts:ImportDeclaration:"./demo-store.js"'
@@ -629,6 +637,8 @@ describe("DemoRepository shared store", () => {
       "repository/demo-criteria.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-golden.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-golden.ts:TypeReference:DemoRepositoryStore",
+      "repository/demo-integrations.ts:ImportSpecifier:DemoRepositoryStore",
+      "repository/demo-integrations.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-projects.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-projects.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-skills.ts:ImportSpecifier:DemoRepositoryStore",
@@ -644,6 +654,7 @@ describe("DemoRepository shared store", () => {
       "repository/demo-credentials.ts",
       "repository/demo-criteria.ts",
       "repository/demo-golden.ts",
+      "repository/demo-integrations.ts",
       "repository/demo-projects.ts",
       "repository/demo-skills.ts",
       "repository/demo-store.ts",
@@ -663,9 +674,6 @@ describe("DemoRepository shared store", () => {
       "TypeAliasDeclaration:BinaryJudgeProvider",
       "InterfaceDeclaration:CoevalRepository",
       "ClassDeclaration:DemoRepository",
-      "FunctionDeclaration:toPublicLangSmithIntegration",
-      "FunctionDeclaration:toPublicIronsideIntegration",
-      "FunctionDeclaration:toPublicLangfuseIntegration",
       "FunctionDeclaration:runGoldenSetRegression",
       "FunctionDeclaration:previousVerdictsFromRun",
       "FunctionDeclaration:buildGoldenSetHealthSummary",
@@ -730,6 +738,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-golden.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-integrations.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-projects.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-skills.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-trace-import.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";'
@@ -749,6 +758,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-golden.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-integrations.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-projects.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-skills.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-trace-import.ts:ImportDeclaration:"./demo-store.js"'
@@ -766,15 +776,15 @@ describe("DemoRepository shared store", () => {
           "const HIDDEN_DEMO_STATE = new Map<string, string>();\n" +
             "const DEMO_ACTOR_NAMES = new Map<string, string>(["
         ),
-        "function toPublicLangSmithIntegration(integration: LangSmithImportContext): LangSmithIntegration {",
+        "export async function runGoldenSetRegression(",
         "function hiddenDemoState(): Map<string, string> {\n" +
           "  return (hiddenDemoState as any).state ??= new Map<string, string>();\n" +
           "}\n\n" +
-          "function toPublicLangSmithIntegration(integration: LangSmithImportContext): LangSmithIntegration {"
+          "export async function runGoldenSetRegression("
       ),
       "  async listProjects(): Promise<Project[]> {",
       "  async listProjects(): Promise<Project[]> {\n" +
-        '    const localOwner = toPublicLangSmithIntegration as typeof toPublicLangSmithIntegration & { state?: Map<string, string> };\n' +
+        '    const localOwner = runGoldenSetRegression as typeof runGoldenSetRegression & { state?: Map<string, string> };\n' +
         '    localOwner.state ??= new Map<string, string>();\n' +
         '    Object.defineProperty(localOwner, "definedState", { value: new Map<string, string>() });\n' +
         '    const importedOwner = traceTestValidationStatus as typeof traceTestValidationStatus & { state?: Map<string, string> };\n' +

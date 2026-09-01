@@ -93,14 +93,22 @@ implements the nine `CriterionSuiteRepositoryPort` methods;
 `SkillLifecycleRepositoryPort` methods; `DemoGoldenEvidenceRepository`,
 which implements the eight `GoldenEvidenceRepositoryPort` methods;
 `DemoTraceImportRepository`, which implements the seven
-`TraceImportRepositoryPort` methods; and `DemoCredentialRepository`, which
+`TraceImportRepositoryPort` methods; `DemoCredentialRepository`, which
 implements the four `ApiKeyRepositoryPort` methods and four
-`JudgeCredentialRepositoryPort` methods. The facade constructs all six once
-with its exact store and gives the project, skill-lifecycle, golden-evidence, and
-trace-import slices only narrow dependencies. The skill and golden-evidence
-slices receive same-port facade callbacks where their composite operations
-must preserve CURRENT subclass dispatch. The trace-import slice resolves skill
-versions through the facade so existing subclass dispatch remains intact.
+`JudgeCredentialRepositoryPort` methods; and `DemoIntegrationRepository`,
+which implements all twenty-three `IntegrationRepositoryPort` methods for
+LangSmith, Langfuse, and Ironside. The facade constructs all seven once with
+its exact store and gives the project, skill-lifecycle, golden-evidence,
+trace-import, and integration slices only narrow dependencies. The skill and
+golden-evidence slices receive same-port facade callbacks where their composite
+operations must preserve CURRENT subclass dispatch. The trace-import slice
+resolves skill versions through the facade so existing subclass dispatch
+remains intact. The integration slice uses that same resolver boundary so
+scheduled imports retain exact evaluator-version selection and subclass
+dispatch. It owns each provider's public projection, private worker credential
+context, poll cadence, selection-failure job, project isolation, and Ironside
+connection-revision and opaque-cursor compare-and-set behavior as one cohesive
+consistency group.
 The credential slice receives only the shared store: API keys return plaintext
 exactly once while the store retains only their hashes, judge-provider reads
 remain masked, and raw judge credentials remain available only through the
@@ -133,6 +141,12 @@ ownership, single construction, exact store identity, facade delegates,
 one-time API-key plaintext and hash-only persistence, revocation, project
 isolation, masked judge-provider reads, replacement, and worker-only raw-secret
 lookup.
+`demo-integration-repository.test.ts` pins the integration slice's whole-port
+ownership, single construction, exact shared store and facade resolver,
+credential-private public projections, project-isolated worker contexts,
+polling cadence and bounded claims, failed exact-version selection evidence,
+Ironside quarantine and opaque-cursor compare-and-set behavior, and source
+detachment on deletion.
 
 The shared store has these rules:
 
