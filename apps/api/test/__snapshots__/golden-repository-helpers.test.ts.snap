@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden repository helpers > preserves the exact root surface behind one pure helper module > golden helper signatures 1`] = `
+[
+  {
+    "exported": true,
+    "name": "runGoldenSetRegression",
+    "signature": "export async function runGoldenSetRegression(input: { skillVersion: SkillVersion; goldenSet: GoldenSetEntry[]; traces: Map<string, Trace>; overrideReason?: string | undefined; actorUserId?: string | undefined; judgeProvider?: BinaryJudgeProvider | undefined; previousVerdicts?: Map<string, VerdictLabel> | undefined; }): Promise<Omit<RegressionRunResult, "datasetRevisionId">>;",
+  },
+  {
+    "exported": true,
+    "name": "previousVerdictsFromRun",
+    "signature": "export function previousVerdictsFromRun(run: RegressionRunResult | null | undefined): Map<string, VerdictLabel>;",
+  },
+  {
+    "exported": true,
+    "name": "buildGoldenSetHealthSummary",
+    "signature": "export function buildGoldenSetHealthSummary(projectId: string, entries: GoldenSetEntry[], now: Date = new Date(), staleAfterDays = GOLDEN_SET_STALE_AFTER_DAYS): GoldenSetHealthSummary;",
+  },
+  {
+    "exported": false,
+    "name": "duplicateGoldenSetGroups",
+    "signature": "function duplicateGoldenSetGroups(entries: GoldenSetHealthSummary["staleEntries"]): GoldenSetHealthSummary["duplicateGroups"];",
+  },
+  {
+    "exported": false,
+    "name": "ageInDays",
+    "signature": "function ageInDays(value: string, now: Date): number;",
+  },
+  {
+    "exported": false,
+    "name": "goldenSetHealthRecommendations",
+    "signature": "function goldenSetHealthRecommendations(input: { totalActive: number; staleCount: number; staleAfterDays: number; duplicateCount: number; passCount: number; failCount: number; }): string[];",
+  },
+]
+`;

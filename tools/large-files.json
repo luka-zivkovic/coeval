@@ -13,8 +13,8 @@
     },
     "apps/api/src/repository.ts": {
       "classification": "refactor_candidate",
-      "reason": "The compatibility facade still colocates several in-memory demo domains, golden regression and health helpers, and fixtures; mutable state has one named store, while the project, criterion/suite, skill-lifecycle, golden-evidence, historical-gate-evidence, trace-import, trace-test, dataset, case-evidence, evaluation-run, assessment-receipt, integration, judge-feedback, review-queue, run-comparison, API-key, and judge-credential ports have internal slices.",
-      "revisit": "Extract the remaining demo consistency groups against the shared store while preserving facade identity, cross-domain visibility, and rollback behavior."
+      "reason": "The compatibility facade still colocates composition, fixture seeding, demo trace synthesis, actor names, and port delegates; mutable state has one named store, every domain port has an internal slice, and pure golden regression/health computations have an internal helper module.",
+      "revisit": "Extract the remaining demo fixture and composition seams while preserving facade identity, cross-domain visibility, and rollback behavior."
     },
     "pnpm-lock.yaml": {
       "classification": "generated",

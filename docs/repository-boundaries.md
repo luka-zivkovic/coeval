@@ -125,6 +125,10 @@ The evaluation slice keeps eval-run terminalization and assessment-receipt
 materialization in one shared-store consistency group. Its lazy same-port and
 skill callbacks preserve facade polymorphism while terminal release-evidence
 runs mint the frozen receipt artifact against the same run/item identities.
+Pure golden regression, prior-verdict projection, and health-summary
+computations live in `repository/golden-helpers.ts`. The root repository keeps
+the same three public exports and exact function identities while the helper
+module owns no repository state or release-policy decision.
 The integration slice also uses the resolver boundary so scheduled imports
 retain exact evaluator-version selection and subclass dispatch. It owns each
 provider's public projection, private worker credential context, poll cadence,
@@ -254,6 +258,9 @@ lazy facade callbacks, facade polymorphism across convergence, run-detail,
 skill-version, and receipt reads, and defensive frozen-artifact copies on the
 same store-owned evidence identities. It directly pins complete and incomplete
 terminal receipt minting plus in-place run/item rollback when minting fails.
+`golden-repository-helpers.test.ts` pins the three root helper identities, the
+complete helper-module export boundary, all six public/private function
+signatures, and the absence of classes or module-level mutable variables.
 
 The shared store has these rules:
 
