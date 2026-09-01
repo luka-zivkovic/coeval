@@ -98,20 +98,23 @@ implements the four `ApiKeyRepositoryPort` methods and four
 `JudgeCredentialRepositoryPort` methods; `DemoIntegrationRepository`,
 which implements all twenty-three `IntegrationRepositoryPort` methods for
 LangSmith, Langfuse, and Ironside; `DemoJudgeFeedbackRepository`, which
-implements all ten `JudgeFeedbackRepositoryPort` methods; and
+implements all ten `JudgeFeedbackRepositoryPort` methods;
 `DemoReviewQueueRepository`, which implements all seven
-`ReviewQueueRepositoryPort` methods. The facade constructs all nine once with
-its exact store and gives the project, skill-lifecycle, golden-evidence,
-trace-import, integration, judge-feedback, and review-queue slices only narrow
-dependencies. The skill and golden-evidence slices receive same-port
-facade callbacks where their composite operations must preserve CURRENT
-subclass dispatch. The trace-import slice resolves skill versions through the
-facade so existing subclass dispatch remains intact. The integration slice uses
-that same resolver boundary so scheduled imports retain exact evaluator-version
-selection and subclass dispatch. It owns each provider's public projection,
-private worker credential context, poll cadence, selection-failure job, project
-isolation, and Ironside connection-revision and opaque-cursor compare-and-set
-behavior as one cohesive consistency group.
+`ReviewQueueRepositoryPort` methods; and `DemoRunComparisonRepository`, which
+implements all three `RunComparisonRepositoryPort` methods. The facade
+constructs all ten once with its exact store and gives the project,
+skill-lifecycle, golden-evidence, trace-import, integration, judge-feedback,
+and review-queue slices only narrow dependencies. The criterion/suite,
+run-comparison, and credential slices receive only that shared store. The skill
+and golden-evidence slices receive same-port facade callbacks where their
+composite operations must preserve CURRENT subclass dispatch. The trace-import
+slice resolves skill versions through the facade so existing subclass dispatch
+remains intact. The integration slice uses that same resolver boundary so
+scheduled imports retain exact evaluator-version selection and subclass
+dispatch. It owns each provider's public projection, private worker credential
+context, poll cadence, selection-failure job, project isolation, and Ironside
+connection-revision and opaque-cursor compare-and-set behavior as one cohesive
+consistency group.
 The judge-feedback slice receives only the exact shared store plus the facade's
 built-in trace synthesizer and same-port worker-context callback. It keeps
 pinned evaluator-version context, idempotent judge-run recording,
@@ -127,6 +130,11 @@ idempotency, and multi-criterion ambiguity. Human verdicts continue to mutate
 the exact queue-item identities held by that store, so unassigned and
 actor-bound completion remains immediately visible without a serialized
 handoff.
+The run-comparison slice keeps the dataset revision and both eval-run
+participants on the exact shared store. It preserves the immutable-revision
+consistency check, project isolation, deterministic newest-first ordering,
+bounded reads, and defensive copy boundary without creating another eval-run
+or dataset owner.
 The credential slice receives only the shared store: API keys return plaintext
 exactly once while the store retains only their hashes, judge-provider reads
 remain masked, and raw judge credentials remain available only through the
@@ -175,6 +183,10 @@ ownership, single construction, exact shared store and both facade callbacks,
 all-before-insert validation, criterion binding and ambiguity, tuple dedupe,
 FIFO assignment, lifecycle and project isolation, and cross-domain verdict
 completion on the same item identities.
+`demo-run-comparison-repository.test.ts` pins the run-comparison slice's
+whole-port ownership, single construction, exact shared store, facade
+delegates, immutable revision/run validation, project isolation, ordering,
+limits, legacy nullable-revision behavior, and defensive copies.
 
 The shared store has these rules:
 
