@@ -97,11 +97,13 @@ which implements the eight `GoldenEvidenceRepositoryPort` methods;
 implements the four `ApiKeyRepositoryPort` methods and four
 `JudgeCredentialRepositoryPort` methods; `DemoIntegrationRepository`,
 which implements all twenty-three `IntegrationRepositoryPort` methods for
-LangSmith, Langfuse, and Ironside; and `DemoJudgeFeedbackRepository`, which
-implements all ten `JudgeFeedbackRepositoryPort` methods. The facade constructs
-all eight once with its exact store and gives the project, skill-lifecycle,
-golden-evidence, trace-import, integration, and judge-feedback slices only
-narrow dependencies. The skill and golden-evidence slices receive same-port
+LangSmith, Langfuse, and Ironside; `DemoJudgeFeedbackRepository`, which
+implements all ten `JudgeFeedbackRepositoryPort` methods; and
+`DemoReviewQueueRepository`, which implements all seven
+`ReviewQueueRepositoryPort` methods. The facade constructs all nine once with
+its exact store and gives the project, skill-lifecycle, golden-evidence,
+trace-import, integration, judge-feedback, and review-queue slices only narrow
+dependencies. The skill and golden-evidence slices receive same-port
 facade callbacks where their composite operations must preserve CURRENT
 subclass dispatch. The trace-import slice resolves skill versions through the
 facade so existing subclass dispatch remains intact. The integration slice uses
@@ -117,6 +119,14 @@ provider/source matching, feedback-job deduplication and state transitions, and
 Ironside requeue discovery together. Raw provider credentials remain confined
 to worker-only feedback contexts; public job lists never expose the
 credential-bearing integration objects.
+The review-queue slice receives only the exact shared store plus facade
+callbacks for project-scoped case existence and current-evaluator selection.
+It preserves all-before-insert case validation, immutable criterion-version
+binding, tuple deduplication, FIFO assignment, project isolation, lifecycle
+idempotency, and multi-criterion ambiguity. Human verdicts continue to mutate
+the exact queue-item identities held by that store, so unassigned and
+actor-bound completion remains immediately visible without a serialized
+handoff.
 The credential slice receives only the shared store: API keys return plaintext
 exactly once while the store retains only their hashes, judge-provider reads
 remain masked, and raw judge credentials remain available only through the
@@ -160,6 +170,11 @@ ownership, single construction, exact shared store and both facade callbacks,
 pinned-version context, idempotent run recording, source/provider/project
 matching, worker-only credential context, sync deduplication, attempts/errors,
 and blocked/pending/succeeded transitions.
+`demo-review-queue-repository.test.ts` pins the review-queue slice's whole-port
+ownership, single construction, exact shared store and both facade callbacks,
+all-before-insert validation, criterion binding and ambiguity, tuple dedupe,
+FIFO assignment, lifecycle and project isolation, and cross-domain verdict
+completion on the same item identities.
 
 The shared store has these rules:
 
