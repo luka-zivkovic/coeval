@@ -548,6 +548,10 @@ describe("DemoRepository shared store", () => {
       sourceFile("../src/repository/demo-datasets.ts"),
       "DemoDatasetRepository"
     );
+    const evaluationRepository = classDeclaration(
+      sourceFile("../src/repository/demo-evaluation.ts"),
+      "DemoEvaluationRepository"
+    );
     const goldenEvidenceRepository = classDeclaration(
       sourceFile("../src/repository/demo-golden.ts"),
       "DemoGoldenEvidenceRepository"
@@ -597,6 +601,7 @@ describe("DemoRepository shared store", () => {
       "private readonly credentialRepository: DemoCredentialRepository;",
       "private readonly criterionSuiteRepository: DemoCriterionSuiteRepository;",
       "private readonly datasetRepository: DemoDatasetRepository;",
+      "private readonly evaluationRepository: DemoEvaluationRepository;",
       "private readonly goldenEvidenceRepository: DemoGoldenEvidenceRepository;",
       "private readonly historicalGateEvidenceRepository: DemoHistoricalGateEvidenceRepository;",
       "private readonly integrationRepository: DemoIntegrationRepository;",
@@ -625,6 +630,7 @@ describe("DemoRepository shared store", () => {
       credentialRepository,
       criterionSuiteRepository,
       datasetRepository,
+      evaluationRepository,
       goldenEvidenceRepository,
       historicalGateEvidenceRepository,
       integrationRepository,
@@ -648,6 +654,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-datasets.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-evaluation.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-feedback.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-golden.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-historical-gates.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -665,6 +672,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-datasets.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-evaluation.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-feedback.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-golden.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-historical-gates.ts:ImportDeclaration:"./demo-store.js"',
@@ -695,6 +703,8 @@ describe("DemoRepository shared store", () => {
       "repository/demo-criteria.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-datasets.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-datasets.ts:TypeReference:DemoRepositoryStore",
+      "repository/demo-evaluation.ts:ImportSpecifier:DemoRepositoryStore",
+      "repository/demo-evaluation.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-feedback.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-feedback.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-golden.ts:ImportSpecifier:DemoRepositoryStore",
@@ -725,6 +735,7 @@ describe("DemoRepository shared store", () => {
       "repository/demo-credentials.ts",
       "repository/demo-criteria.ts",
       "repository/demo-datasets.ts",
+      "repository/demo-evaluation.ts",
       "repository/demo-feedback.ts",
       "repository/demo-golden.ts",
       "repository/demo-historical-gates.ts",
@@ -815,6 +826,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-datasets.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-evaluation.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-feedback.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-golden.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-historical-gates.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -842,6 +854,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-datasets.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-evaluation.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-feedback.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-golden.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-historical-gates.ts:ImportDeclaration:"./demo-store.js"',
@@ -877,7 +890,7 @@ describe("DemoRepository shared store", () => {
         '    const localOwner = runGoldenSetRegression as typeof runGoldenSetRegression & { state?: Map<string, string> };\n' +
         '    localOwner.state ??= new Map<string, string>();\n' +
         '    Object.defineProperty(localOwner, "definedState", { value: new Map<string, string>() });\n' +
-        '    const importedOwner = computeEvalRunSpend as typeof computeEvalRunSpend & { state?: Map<string, string> };\n' +
+        '    const importedOwner = datasetInputIdentity as typeof datasetInputIdentity & { state?: Map<string, string> };\n' +
         '    importedOwner.state ??= new Map<string, string>();\n' +
         '    Reflect.deleteProperty(importedOwner, "legacyState");\n' +
         '    DEMO_ACTOR_NAMES.set("hidden", "state");\n' +
