@@ -247,6 +247,7 @@ exports[`DemoRepository shared store > pins store ownership across production an
   "import { DemoIntegrationRepository } from "./repository/demo-integrations.js";",
   "import { DemoJudgeFeedbackRepository } from "./repository/demo-feedback.js";",
   "import { DemoProjectRepository } from "./repository/demo-projects.js";",
+  "import { DemoReviewQueueRepository } from "./repository/demo-review-queues.js";",
   "import { DemoSkillLifecycleRepository } from "./repository/demo-skills.js";",
   "import { DemoTraceImportRepository } from "./repository/demo-trace-import.js";",
 ]
