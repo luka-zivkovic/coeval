@@ -748,6 +748,7 @@ describe("DemoRepository shared store", () => {
       "repository/demo-trace-import.ts",
       "repository/demo-trace-tests.ts",
       "repository/errors.ts",
+      "repository/golden-helpers.ts",
       "repository/helpers.ts",
       "repository/ports.ts"
     ]);
@@ -759,15 +760,8 @@ describe("DemoRepository shared store", () => {
       'DEMO_ACTOR_NAMES = new Map<string, string>([ ["user_maya", "Maya"], ["user_jules", "Jules"], ["user_priya", "Priya"] ])'
     ]);
     expect(analysis.repositoryTopLevelDeclarations).toEqual([
-      "TypeAliasDeclaration:BinaryJudgeProvider",
       "InterfaceDeclaration:CoevalRepository",
       "ClassDeclaration:DemoRepository",
-      "FunctionDeclaration:runGoldenSetRegression",
-      "FunctionDeclaration:previousVerdictsFromRun",
-      "FunctionDeclaration:buildGoldenSetHealthSummary",
-      "FunctionDeclaration:duplicateGoldenSetGroups",
-      "FunctionDeclaration:ageInDays",
-      "FunctionDeclaration:goldenSetHealthRecommendations",
       "FunctionDeclaration:demoTraceForGoldenEntry",
       "VariableStatement:DEMO_ACTOR_NAMES"
     ]);
@@ -879,11 +873,11 @@ describe("DemoRepository shared store", () => {
           "const HIDDEN_DEMO_STATE = new Map<string, string>();\n" +
             "const DEMO_ACTOR_NAMES = new Map<string, string>(["
         ),
-        "export async function runGoldenSetRegression(",
+        "function demoTraceForGoldenEntry(",
         "function hiddenDemoState(): Map<string, string> {\n" +
           "  return (hiddenDemoState as any).state ??= new Map<string, string>();\n" +
           "}\n\n" +
-          "export async function runGoldenSetRegression("
+          "function demoTraceForGoldenEntry("
       ),
       "  async listProjects(): Promise<Project[]> {",
       "  async listProjects(): Promise<Project[]> {\n" +
