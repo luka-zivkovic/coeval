@@ -33,6 +33,10 @@ const TRACE_IMPORT_REPOSITORY_PATH = path.join(
   API_SOURCE_DIRECTORY,
   "repository/demo-trace-import.ts"
 );
+const DATASET_REPOSITORY_PATH = path.join(
+  API_SOURCE_DIRECTORY,
+  "repository/demo-datasets.ts"
+);
 
 function sourceFile(filePath: string): ts.SourceFile {
   return ts.createSourceFile(
@@ -241,10 +245,12 @@ describe("Demo trace-import repository slice", () => {
       expect(printer.printNode(ts.EmitHint.Unspecified, method.body!, repositorySource).replace(/\s+/g, " ").trim())
         .toBe(expectedDelegates.get(method.name.getText(repositorySource)));
     }
-    const datasetImport = repository.members.find((member): member is ts.MethodDeclaration =>
-      ts.isMethodDeclaration(member) && member.name.getText(repositorySource) === "importDatasetExamples"
+    const datasetSource = sourceFile(DATASET_REPOSITORY_PATH);
+    const datasetRepository = classDeclaration(datasetSource, "DemoDatasetRepository");
+    const datasetImport = datasetRepository.members.find((member): member is ts.MethodDeclaration =>
+      ts.isMethodDeclaration(member) && member.name.getText(datasetSource) === "importDatasetExamples"
     );
-    expect(datasetImport?.body?.getText(repositorySource)).toContain("await this.importTrace(");
+    expect(datasetImport?.body?.getText(datasetSource)).toContain("await this.dependencies.importTrace(");
   });
 
   it("constructs one slice with the exact shared store and version callback", () => {

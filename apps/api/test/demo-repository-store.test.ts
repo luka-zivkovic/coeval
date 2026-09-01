@@ -540,6 +540,10 @@ describe("DemoRepository shared store", () => {
       sourceFile("../src/repository/demo-criteria.ts"),
       "DemoCriterionSuiteRepository"
     );
+    const datasetRepository = classDeclaration(
+      sourceFile("../src/repository/demo-datasets.ts"),
+      "DemoDatasetRepository"
+    );
     const goldenEvidenceRepository = classDeclaration(
       sourceFile("../src/repository/demo-golden.ts"),
       "DemoGoldenEvidenceRepository"
@@ -587,6 +591,7 @@ describe("DemoRepository shared store", () => {
     )).toEqual([
       "private readonly credentialRepository: DemoCredentialRepository;",
       "private readonly criterionSuiteRepository: DemoCriterionSuiteRepository;",
+      "private readonly datasetRepository: DemoDatasetRepository;",
       "private readonly goldenEvidenceRepository: DemoGoldenEvidenceRepository;",
       "private readonly historicalGateEvidenceRepository: DemoHistoricalGateEvidenceRepository;",
       "private readonly integrationRepository: DemoIntegrationRepository;",
@@ -613,6 +618,7 @@ describe("DemoRepository shared store", () => {
       repository,
       credentialRepository,
       criterionSuiteRepository,
+      datasetRepository,
       goldenEvidenceRepository,
       historicalGateEvidenceRepository,
       integrationRepository,
@@ -634,6 +640,7 @@ describe("DemoRepository shared store", () => {
       'repository.ts:static-import:import { DemoRepositoryStore } from "./repository/demo-store.js";',
       'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-datasets.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-feedback.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-golden.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-historical-gates.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -649,6 +656,7 @@ describe("DemoRepository shared store", () => {
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
       'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-datasets.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-feedback.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-golden.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-historical-gates.ts:ImportDeclaration:"./demo-store.js"',
@@ -675,6 +683,8 @@ describe("DemoRepository shared store", () => {
       "repository/demo-credentials.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-criteria.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-criteria.ts:TypeReference:DemoRepositoryStore",
+      "repository/demo-datasets.ts:ImportSpecifier:DemoRepositoryStore",
+      "repository/demo-datasets.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-feedback.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-feedback.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-golden.ts:ImportSpecifier:DemoRepositoryStore",
@@ -703,6 +713,7 @@ describe("DemoRepository shared store", () => {
       "repository/contracts.ts",
       "repository/demo-credentials.ts",
       "repository/demo-criteria.ts",
+      "repository/demo-datasets.ts",
       "repository/demo-feedback.ts",
       "repository/demo-golden.ts",
       "repository/demo-historical-gates.ts",
@@ -792,6 +803,7 @@ describe("DemoRepository shared store", () => {
       'repository.ts:static-import:import { DemoRepositoryStore } from "./repository/demo-store.js";',
       'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-datasets.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-feedback.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-golden.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-historical-gates.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -817,6 +829,7 @@ describe("DemoRepository shared store", () => {
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
       'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-datasets.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-feedback.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-golden.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-historical-gates.ts:ImportDeclaration:"./demo-store.js"',
@@ -946,73 +959,4 @@ describe("DemoRepository shared store", () => {
     expect(fields).toMatchSnapshot("demo repository store fields");
   });
 
-  it("rolls back all four cross-domain collections in place after a mid-import failure", async () => {
-    class FailingDemoRepository extends DemoRepository {
-      private addDatasetItemsCalls = 0;
-
-      override async addDatasetItems(input: Parameters<DemoRepository["addDatasetItems"]>[0]) {
-        this.addDatasetItemsCalls += 1;
-        if (this.addDatasetItemsCalls === 2) throw new Error("injected dataset item failure");
-        return super.addDatasetItems(input);
-      }
-    }
-
-    const repository = new FailingDemoRepository();
-    const project = (await repository.listProjects())[0]!;
-    const dataset = await repository.createDataset({
-      projectId: project.id,
-      name: "Atomic import rollback"
-    });
-    const store = Reflect.get(repository, "store") as DemoRepositoryStore;
-    const collectionReferences = {
-      traces: store.traces,
-      traceSources: store.traceSources,
-      caseInputIdentities: store.caseInputIdentities,
-      datasetItems: store.datasetItems
-    };
-    const before = {
-      traces: [...store.traces.entries()],
-      traceSources: [...store.traceSources.entries()],
-      caseInputIdentities: [...store.caseInputIdentities.entries()],
-      datasetItems: [...store.datasetItems]
-    };
-    const input: Parameters<DemoRepository["importDatasetExamples"]>[0] = {
-      projectId: project.id,
-      datasetId: dataset.id,
-      ingestionPurpose: "dataset_example",
-      items: [
-        { sourceTraceId: "atomic_rollback_1", input: "q1", output: "a1", metadata: {}, expectedLabel: "pass" },
-        { sourceTraceId: "atomic_rollback_2", input: "q2", output: "a2", metadata: {}, expectedLabel: "fail" }
-      ]
-    };
-
-    await expect(repository.importDatasetExamples(input)).rejects.toThrow("injected dataset item failure");
-    expect(store.traces).toBe(collectionReferences.traces);
-    expect(store.traceSources).toBe(collectionReferences.traceSources);
-    expect(store.caseInputIdentities).toBe(collectionReferences.caseInputIdentities);
-    expect(store.datasetItems).toBe(collectionReferences.datasetItems);
-    expect([...store.traces.entries()]).toEqual(before.traces);
-    expect([...store.traceSources.entries()]).toEqual(before.traceSources);
-    expect([...store.caseInputIdentities.entries()]).toEqual(before.caseInputIdentities);
-    expect(store.datasetItems).toEqual(before.datasetItems);
-
-    const imported = await repository.importDatasetExamples(input);
-    expect(imported.items).toHaveLength(2);
-    expect(imported.items.every((item) => item.created)).toBe(true);
-    for (const item of imported.items) {
-      expect(store.traces.has(item.caseId)).toBe(true);
-      expect(store.traceSources.has(item.caseId)).toBe(true);
-      expect(store.caseInputIdentities.has(item.caseId)).toBe(true);
-      expect(store.datasetItems.some((candidate) => candidate.caseId === item.caseId)).toBe(true);
-    }
-    expect(store.traces.size).toBe(before.traces.length + 2);
-    expect(store.traceSources.size).toBe(before.traceSources.length + 2);
-    expect(store.caseInputIdentities.size).toBe(before.caseInputIdentities.length + 2);
-    expect(store.datasetItems).toHaveLength(before.datasetItems.length + 2);
-    expect((await repository.getDatasetDetail(project.id, dataset.id))?.items).toHaveLength(2);
-    expect(store.traces).toBe(collectionReferences.traces);
-    expect(store.traceSources).toBe(collectionReferences.traceSources);
-    expect(store.caseInputIdentities).toBe(collectionReferences.caseInputIdentities);
-    expect(store.datasetItems).toBe(collectionReferences.datasetItems);
-  });
 });

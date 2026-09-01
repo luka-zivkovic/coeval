@@ -103,20 +103,21 @@ implements all ten `JudgeFeedbackRepositoryPort` methods;
 `ReviewQueueRepositoryPort` methods; `DemoRunComparisonRepository`, which
 implements all three `RunComparisonRepositoryPort` methods;
 `DemoHistoricalGateEvidenceRepository`, which implements all three deprecated
-`HistoricalGateEvidenceRepositoryPort` methods; and
+`HistoricalGateEvidenceRepositoryPort` methods;
 `DemoTraceTestRepository`, which implements all seven
-`TraceTestRepositoryPort` methods. The facade constructs all twelve once with
-its exact store and gives the project, skill-lifecycle, golden-evidence,
-historical-gate-evidence, trace-import, trace-test, integration, judge-feedback,
-and review-queue slices only narrow dependencies. The criterion/suite,
-run-comparison, and credential slices receive only that shared store. The
-skill, golden-evidence, and historical-gate-evidence slices receive same-port
-facade callbacks where their composite operations must preserve CURRENT
-subclass dispatch. The trace-test slice resolves a source case through a lazy
-facade callback so existing subclass dispatch remains intact. The trace-import
-slice resolves skill versions through that same facade boundary. The
-integration slice also uses the resolver boundary so scheduled imports retain
-exact evaluator-version selection and subclass dispatch. It owns each
+`TraceTestRepositoryPort` methods; and `DemoDatasetRepository`, which
+implements all twelve `DatasetRepositoryPort` methods. The facade constructs
+all thirteen once with its exact store and gives the project, skill-lifecycle,
+golden-evidence, historical-gate-evidence, trace-import, trace-test, dataset,
+integration, judge-feedback, and review-queue slices only narrow dependencies.
+The criterion/suite, run-comparison, and credential slices receive only that
+shared store. The skill, golden-evidence, and historical-gate-evidence slices
+receive same-port facade callbacks where their composite operations must
+preserve CURRENT subclass dispatch. The trace-test slice resolves a source case
+through a lazy facade callback so existing subclass dispatch remains intact.
+The trace-import slice resolves skill versions through the facade boundary.
+The integration slice also uses the resolver boundary so scheduled imports
+retain exact evaluator-version selection and subclass dispatch. It owns each
 provider's public projection, private worker credential context, poll cadence,
 selection-failure job, project isolation, and Ironside connection-revision and
 opaque-cursor compare-and-set behavior as one cohesive consistency group.
@@ -152,6 +153,13 @@ the exact shared store. It preserves source-case fallback through the facade,
 revision conflicts, validation eligibility, project isolation, defensive
 copies, and deterministic reads without changing the current trace-test wire
 or lifecycle semantics.
+The dataset slice keeps mutable working collections, immutable revision items,
+exposure events, idempotency pointers, and regression revision pointers on the
+exact shared store. Lazy facade callbacks preserve polymorphic case checks,
+trace import, item insertion, same-port reads, and golden-set selection. In
+particular, `importDatasetExamples` still snapshots and restores `traces`,
+`traceSources`, `caseInputIdentities`, and `datasetItems` in place and still
+calls the facade's overridable `importTrace` and `addDatasetItems` methods.
 The credential slice receives only the shared store: API keys return plaintext
 exactly once while the store retains only their hashes, judge-provider reads
 remain masked, and raw judge credentials remain available only through the
@@ -214,6 +222,11 @@ ownership, single construction, exact shared store and source-case callback,
 facade polymorphism, source snapshots, imported-trace visibility, revisions,
 validation defaults and eligibility, enablement, project isolation, ordering,
 filtering, defensive copies, and content-free funnel idempotency.
+`demo-dataset-repository.test.ts` pins the dataset slice's whole-port ownership,
+single construction, exact shared store, six lazy facade callbacks, and the
+golden-trace helper identity. It also pins project isolation, immutable
+revision defensive copies, and the in-place four-collection rollback plus
+successful cross-domain visibility.
 
 The shared store has these rules:
 
@@ -249,10 +262,11 @@ CURRENT Demo behavior already has one important compensating transaction:
 `importDatasetExamples` snapshots `traces`, `traceSources`,
 `caseInputIdentities`, and `datasetItems`, then restores all four after any
 mid-flow failure. A shared-store extraction must preserve that whole rollback
-boundary. The orchestration remains on the facade and continues to call its
-public `importTrace` method, so trace-import extraction does not split the
-rollback or bypass subclass dispatch. A later dataset slice must not turn that
-four-collection recovery into partial recovery.
+boundary. The orchestration now belongs to the dataset slice but continues to
+call the facade's public `importTrace` and `addDatasetItems` methods through
+lazy dependencies, so extraction does not split the rollback or bypass
+subclass dispatch. Later slices must not turn that four-collection recovery
+into partial recovery.
 
 ## Extraction order
 
