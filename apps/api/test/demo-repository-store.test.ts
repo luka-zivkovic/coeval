@@ -532,6 +532,10 @@ describe("DemoRepository shared store", () => {
   it("keeps one facade-owned store and routes every state access through it", () => {
     const repositorySource = sourceFile("../src/repository.ts");
     const repository = classDeclaration(repositorySource, "DemoRepository");
+    const caseEvidenceRepository = classDeclaration(
+      sourceFile("../src/repository/demo-case-evidence.ts"),
+      "DemoCaseEvidenceRepository"
+    );
     const credentialRepository = classDeclaration(
       sourceFile("../src/repository/demo-credentials.ts"),
       "DemoCredentialRepository"
@@ -589,6 +593,7 @@ describe("DemoRepository shared store", () => {
     expect(properties.map((property) =>
       printer.printNode(ts.EmitHint.Unspecified, property, repositorySource).replace(/\s+/g, " ").trim()
     )).toEqual([
+      "private readonly caseEvidenceRepository: DemoCaseEvidenceRepository;",
       "private readonly credentialRepository: DemoCredentialRepository;",
       "private readonly criterionSuiteRepository: DemoCriterionSuiteRepository;",
       "private readonly datasetRepository: DemoDatasetRepository;",
@@ -616,6 +621,7 @@ describe("DemoRepository shared store", () => {
     expect(demoStoreCreations(repository, repositorySource)).toEqual(["new DemoRepositoryStore()"]);
     expect(storeAccessNames(
       repository,
+      caseEvidenceRepository,
       credentialRepository,
       criterionSuiteRepository,
       datasetRepository,
@@ -638,6 +644,7 @@ describe("DemoRepository shared store", () => {
     expect(analysis.compilerExports).toEqual(["DemoRepositoryStore"]);
     expect(analysis.storeModuleEdges).toEqual([
       'repository.ts:static-import:import { DemoRepositoryStore } from "./repository/demo-store.js";',
+      'repository/demo-case-evidence.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-datasets.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -654,6 +661,7 @@ describe("DemoRepository shared store", () => {
     ]);
     expect(analysis.storeModuleSpecifierMentions).toEqual([
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
+      'repository/demo-case-evidence.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-datasets.ts:ImportDeclaration:"./demo-store.js"',
@@ -679,6 +687,8 @@ describe("DemoRepository shared store", () => {
     expect(analysis.productionReferences).toEqual([
       "repository.ts:ImportSpecifier:DemoRepositoryStore",
       "repository.ts:NewExpression:DemoRepositoryStore",
+      "repository/demo-case-evidence.ts:ImportSpecifier:DemoRepositoryStore",
+      "repository/demo-case-evidence.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-credentials.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-credentials.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-criteria.ts:ImportSpecifier:DemoRepositoryStore",
@@ -711,6 +721,7 @@ describe("DemoRepository shared store", () => {
     expect(analysis.repositoryGraphFiles).toEqual([
       "repository.ts",
       "repository/contracts.ts",
+      "repository/demo-case-evidence.ts",
       "repository/demo-credentials.ts",
       "repository/demo-criteria.ts",
       "repository/demo-datasets.ts",
@@ -747,8 +758,7 @@ describe("DemoRepository shared store", () => {
       "FunctionDeclaration:ageInDays",
       "FunctionDeclaration:goldenSetHealthRecommendations",
       "FunctionDeclaration:demoTraceForGoldenEntry",
-      "VariableStatement:DEMO_ACTOR_NAMES",
-      "FunctionDeclaration:attachDemoActorNames"
+      "VariableStatement:DEMO_ACTOR_NAMES"
     ]);
     expect(analysis.repositoryUnexpectedStatements).toEqual([]);
     expect(analysis.storeTopLevelDeclarations).toEqual(["ClassDeclaration:DemoRepositoryStore"]);
@@ -801,6 +811,7 @@ describe("DemoRepository shared store", () => {
       'repository.ts:dynamic-loader:import("./repository/demo-store.js")',
       'repository.ts:static-import:import * as HiddenDemoStoreNamespace from "./repository/demo-store.js";',
       'repository.ts:static-import:import { DemoRepositoryStore } from "./repository/demo-store.js";',
+      'repository/demo-case-evidence.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-criteria.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-datasets.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -827,6 +838,7 @@ describe("DemoRepository shared store", () => {
       'repository.ts:CallExpression:"./repository/demo-store.js"',
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
       'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
+      'repository/demo-case-evidence.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-criteria.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-datasets.ts:ImportDeclaration:"./demo-store.js"',
