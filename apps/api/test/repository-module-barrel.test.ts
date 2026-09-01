@@ -4,6 +4,7 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import * as repository from "../src/repository.js";
 import * as contracts from "../src/repository/contracts.js";
+import { DemoRepository as DeepDemoRepository } from "../src/repository/demo-repository.js";
 import * as errors from "../src/repository/errors.js";
 import * as helpers from "../src/repository/helpers.js";
 
@@ -168,6 +169,7 @@ describe("repository module barrel", () => {
   it("preserves the exact runtime API and sibling binding identity", () => {
     expect(Object.keys(repository).sort()).toEqual(EXPECTED_RUNTIME_EXPORTS);
     expect(Object.keys(contracts)).toEqual([]);
+    expect(repository.DemoRepository).toBe(DeepDemoRepository);
 
     for (const [name, value] of Object.entries({ ...errors, ...helpers })) {
       expect(repository, `missing root export ${name}`).toHaveProperty(name);

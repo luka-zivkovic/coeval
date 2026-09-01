@@ -28,7 +28,7 @@ const EXPECTED_PUBLIC_METHODS = [
 
 const API_DIRECTORY = fileURLToPath(new URL("../", import.meta.url));
 const API_SOURCE_DIRECTORY = path.join(API_DIRECTORY, "src");
-const REPOSITORY_PATH = path.join(API_SOURCE_DIRECTORY, "repository.ts");
+const REPOSITORY_PATH = path.join(API_SOURCE_DIRECTORY, "repository/demo-repository.ts");
 const TRACE_IMPORT_REPOSITORY_PATH = path.join(
   API_SOURCE_DIRECTORY,
   "repository/demo-trace-import.ts"

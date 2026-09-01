@@ -86,6 +86,10 @@ client; and terminal evaluation updates must mint receipts on the same client.
 counters, scalar pointers, and promise-deduplication state. `DemoRepository`
 allocates exactly one store per facade instance; the store is an internal
 composition seam and is not re-exported by the public repository module. The
+facade implementation lives in `repository/demo-repository.ts`, while
+`repository.ts` remains the stable compatibility barrel for `DemoRepository`,
+`CoevalRepository`, public errors, contracts, and pure helpers. The root
+re-export preserves the exact class binding and public import path. The
 CURRENT domain slices are `DemoProjectRepository`, which implements the seven
 `ProjectRepositoryPort` methods; `DemoCriterionSuiteRepository`, which
 implements the nine `CriterionSuiteRepositoryPort` methods;
@@ -192,7 +196,9 @@ intentional module-level fixture map.
 
 The `pnpm repository-boundaries` gate remains PostgreSQL-only, while
 `demo-repository-store.test.ts` pins the Demo store inventory and composition
-graph. `demo-repository-composition.test.ts` pins the composition module's
+graph. `demo-repository-facade.test.ts` pins the root re-export, deep-module
+surface, type-only facade edge, and complete 161-method implementation owner.
+`demo-repository-composition.test.ts` pins the composition module's
 exact export and declaration surface, fifteen-property order, construction and
 return order, one root handoff, lazy facade access, and shared store/provider
 identities. `demo-project-repository.test.ts` pins the first slice's ownership,

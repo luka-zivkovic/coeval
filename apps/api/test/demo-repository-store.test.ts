@@ -86,7 +86,7 @@ const EXPECTED_COMPOSITION_FIELDS = [
 
 const API_DIRECTORY = fileURLToPath(new URL("../", import.meta.url));
 const API_SOURCE_DIRECTORY = path.join(API_DIRECTORY, "src");
-const REPOSITORY_PATH = path.join(API_SOURCE_DIRECTORY, "repository.ts");
+const REPOSITORY_PATH = path.join(API_SOURCE_DIRECTORY, "repository/demo-repository.ts");
 const COMPOSITION_PATH = path.join(API_SOURCE_DIRECTORY, "repository/demo-composition.ts");
 const STORE_PATH = path.join(API_SOURCE_DIRECTORY, "repository/demo-store.ts");
 const REPOSITORY_HELPERS_PATH = path.join(API_SOURCE_DIRECTORY, "repository/helpers.ts");
@@ -549,7 +549,7 @@ describe("DemoRepository shared store", () => {
   });
 
   it("keeps one facade-owned store and routes every state access through it", () => {
-    const repositorySource = sourceFile("../src/repository.ts");
+    const repositorySource = sourceFile("../src/repository/demo-repository.ts");
     const repository = classDeclaration(repositorySource, "DemoRepository");
     const caseEvidenceRepository = classDeclaration(
       sourceFile("../src/repository/demo-case-evidence.ts"),
@@ -656,7 +656,6 @@ describe("DemoRepository shared store", () => {
     const analysis = storeBoundaryAnalysis(createApiProgram());
     expect(analysis.compilerExports).toEqual(["DemoRepositoryStore"]);
     expect(analysis.storeModuleEdges).toEqual([
-      'repository.ts:static-import:import { DemoRepositoryStore } from "./repository/demo-store.js";',
       'repository/demo-case-evidence.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-composition.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -668,6 +667,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-historical-gates.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-integrations.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-projects.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-repository.ts:static-import:import { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-review-queues.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-run-comparisons.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-skills.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -675,7 +675,6 @@ describe("DemoRepository shared store", () => {
       'repository/demo-trace-tests.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";'
     ]);
     expect(analysis.storeModuleSpecifierMentions).toEqual([
-      'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
       'repository/demo-case-evidence.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-composition.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
@@ -687,6 +686,7 @@ describe("DemoRepository shared store", () => {
       'repository/demo-historical-gates.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-integrations.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-projects.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-repository.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-review-queues.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-run-comparisons.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-skills.ts:ImportDeclaration:"./demo-store.js"',
@@ -699,11 +699,9 @@ describe("DemoRepository shared store", () => {
       "repository/demo-skills.ts:demoSkill.isStarter:="
     ]);
     expect(analysis.productionAllocations).toEqual([
-      "repository.ts:new DemoRepositoryStore()"
+      "repository/demo-repository.ts:new DemoRepositoryStore()"
     ]);
     expect(analysis.productionReferences).toEqual([
-      "repository.ts:ImportSpecifier:DemoRepositoryStore",
-      "repository.ts:NewExpression:DemoRepositoryStore",
       "repository/demo-case-evidence.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-case-evidence.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-composition.ts:ImportSpecifier:DemoRepositoryStore",
@@ -729,6 +727,8 @@ describe("DemoRepository shared store", () => {
       "repository/demo-integrations.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-projects.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-projects.ts:TypeReference:DemoRepositoryStore",
+      "repository/demo-repository.ts:ImportSpecifier:DemoRepositoryStore",
+      "repository/demo-repository.ts:NewExpression:DemoRepositoryStore",
       "repository/demo-review-queues.ts:ImportSpecifier:DemoRepositoryStore",
       "repository/demo-review-queues.ts:TypeReference:DemoRepositoryStore",
       "repository/demo-run-comparisons.ts:ImportSpecifier:DemoRepositoryStore",
@@ -743,7 +743,6 @@ describe("DemoRepository shared store", () => {
     ]);
     expect(analysis.repositoryClasses).toEqual(["DemoRepository"]);
     expect(analysis.repositoryGraphFiles).toEqual([
-      "repository.ts",
       "repository/contracts.ts",
       "repository/demo-case-evidence.ts",
       "repository/demo-composition.ts",
@@ -756,6 +755,7 @@ describe("DemoRepository shared store", () => {
       "repository/demo-historical-gates.ts",
       "repository/demo-integrations.ts",
       "repository/demo-projects.ts",
+      "repository/demo-repository.ts",
       "repository/demo-review-queues.ts",
       "repository/demo-run-comparisons.ts",
       "repository/demo-skills.ts",
@@ -773,7 +773,6 @@ describe("DemoRepository shared store", () => {
     expect(analysis.repositoryUnexpectedMemberKinds).toEqual([]);
     expect(analysis.repositoryModuleVariables).toEqual([]);
     expect(analysis.repositoryTopLevelDeclarations).toEqual([
-      "InterfaceDeclaration:CoevalRepository",
       "ClassDeclaration:DemoRepository"
     ]);
     expect(analysis.repositoryUnexpectedStatements).toEqual([]);
@@ -797,36 +796,33 @@ describe("DemoRepository shared store", () => {
       [REPOSITORY_PATH, allocationMutation]
     ])));
     expect(allocationAnalysis.productionAllocations).toEqual([
-      "repository.ts:new DemoRepositoryStore()",
-      "repository.ts:new DetachedDemoRepositoryStore()"
+      "repository/demo-repository.ts:new DemoRepositoryStore()",
+      "repository/demo-repository.ts:new DetachedDemoRepositoryStore()"
     ]);
     expect(allocationAnalysis.productionReferences).toContain(
-      "repository.ts:CallExpression:DemoRepositoryStore"
+      "repository/demo-repository.ts:CallExpression:DemoRepositoryStore"
     );
 
     const erasedModuleMutation = replaceOnce(
       repositorySource,
-      'import { DemoRepositoryStore } from "./repository/demo-store.js";',
-      'import { DemoRepositoryStore } from "./repository/demo-store.js";\n' +
-        'import * as HiddenDemoStoreNamespace from "./repository/demo-store.js";'
+      'import { DemoRepositoryStore } from "./demo-store.js";',
+      'import { DemoRepositoryStore } from "./demo-store.js";\n' +
+        'import * as HiddenDemoStoreNamespace from "./demo-store.js";'
     );
     const erasedAllocationAndLoaderMutation = replaceOnce(
       erasedModuleMutation,
       "  async listProjects(): Promise<Project[]> {",
       "  async listProjects(): Promise<Project[]> {\n" +
         '    void new (HiddenDemoStoreNamespace as any)["DemoRepositoryStore"]();\n' +
-        '    void import("./repository/demo-store.js").then((module: any) => new module["DemoRepositoryStore"]());\n' +
+        '    void import("./demo-store.js").then((module: any) => new module["DemoRepositoryStore"]());\n' +
         '    const hiddenRequire = process.getBuiltinModule("node:module").createRequire(import.meta.url);\n' +
-        '    const hiddenStoreModule = hiddenRequire("./repository/demo-store.js") as any;\n' +
+        '    const hiddenStoreModule = hiddenRequire("./demo-store.js") as any;\n' +
         '    void new hiddenStoreModule["DemoRepositoryStore"]();'
     );
     const erasedModuleAnalysis = storeBoundaryAnalysis(createApiProgram(new Map([
       [REPOSITORY_PATH, erasedAllocationAndLoaderMutation]
     ])));
     expect(erasedModuleAnalysis.storeModuleEdges).toEqual([
-      'repository.ts:dynamic-loader:import("./repository/demo-store.js")',
-      'repository.ts:static-import:import * as HiddenDemoStoreNamespace from "./repository/demo-store.js";',
-      'repository.ts:static-import:import { DemoRepositoryStore } from "./repository/demo-store.js";',
       'repository/demo-case-evidence.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-composition.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-credentials.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -838,6 +834,9 @@ describe("DemoRepository shared store", () => {
       'repository/demo-historical-gates.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-integrations.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-projects.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
+      'repository/demo-repository.ts:dynamic-loader:import("./demo-store.js")',
+      'repository/demo-repository.ts:static-import:import * as HiddenDemoStoreNamespace from "./demo-store.js";',
+      'repository/demo-repository.ts:static-import:import { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-review-queues.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-run-comparisons.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
       'repository/demo-skills.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";',
@@ -845,17 +844,13 @@ describe("DemoRepository shared store", () => {
       'repository/demo-trace-tests.ts:static-import:import type { DemoRepositoryStore } from "./demo-store.js";'
     ]);
     expect(erasedModuleAnalysis.productionLoaderCalls).toEqual([
-      'repository.ts:import:import("./repository/demo-store.js")'
+      'repository/demo-repository.ts:import:import("./demo-store.js")'
     ]);
     expect(erasedModuleAnalysis.productionLoaderFactoryReferences).toEqual([
-      'repository.ts:process.getBuiltinModule',
-      'repository.ts:process.getBuiltinModule("node:module").createRequire'
+      'repository/demo-repository.ts:process.getBuiltinModule',
+      'repository/demo-repository.ts:process.getBuiltinModule("node:module").createRequire'
     ]);
     expect(erasedModuleAnalysis.storeModuleSpecifierMentions).toEqual([
-      'repository.ts:CallExpression:"./repository/demo-store.js"',
-      'repository.ts:CallExpression:"./repository/demo-store.js"',
-      'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
-      'repository.ts:ImportDeclaration:"./repository/demo-store.js"',
       'repository/demo-case-evidence.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-composition.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-credentials.ts:ImportDeclaration:"./demo-store.js"',
@@ -867,6 +862,10 @@ describe("DemoRepository shared store", () => {
       'repository/demo-historical-gates.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-integrations.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-projects.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-repository.ts:CallExpression:"./demo-store.js"',
+      'repository/demo-repository.ts:CallExpression:"./demo-store.js"',
+      'repository/demo-repository.ts:ImportDeclaration:"./demo-store.js"',
+      'repository/demo-repository.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-review-queues.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-run-comparisons.ts:ImportDeclaration:"./demo-store.js"',
       'repository/demo-skills.ts:ImportDeclaration:"./demo-store.js"',
@@ -932,12 +931,12 @@ describe("DemoRepository shared store", () => {
     ])));
     expect(shapeAnalysis.repositoryModuleVariables).toEqual([]);
     expect(shapeAnalysis.productionModuleObjectMutations).toEqual([
-      'repository.ts:Object.defineProperty(localOwner, "definedState", { value: new Map<string, string>() })',
-      'repository.ts:Reflect.deleteProperty(importedOwner, "legacyState")',
-      "repository.ts:importedOwner.state:??=",
-      "repository.ts:localOwner.state:??=",
       "repository/demo-composition.ts:(hiddenDemoState as any).state:??=",
       'repository/demo-composition.ts:DEMO_ACTOR_NAMES.set("hidden", "state")',
+      'repository/demo-repository.ts:Object.defineProperty(localOwner, "definedState", { value: new Map<string, string>() })',
+      'repository/demo-repository.ts:Reflect.deleteProperty(importedOwner, "legacyState")',
+      "repository/demo-repository.ts:importedOwner.state:??=",
+      "repository/demo-repository.ts:localOwner.state:??=",
       "repository/demo-skills.ts:demoSkill.isStarter:=",
       "repository/helpers.ts:owner.state:??="
     ]);
@@ -957,8 +956,8 @@ describe("DemoRepository shared store", () => {
     const bracketAllocationMutation = replaceOnce(
       replaceOnce(
         repositorySource,
-        'import { DemoRepositoryStore } from "./repository/demo-store.js";',
-        'import * as DemoStoreNamespace from "./repository/demo-store.js";'
+        'import { DemoRepositoryStore } from "./demo-store.js";',
+        'import * as DemoStoreNamespace from "./demo-store.js";'
       ),
       "private readonly store = new DemoRepositoryStore();",
       'private readonly store = new DemoStoreNamespace["DemoRepositoryStore"]();'
@@ -967,11 +966,11 @@ describe("DemoRepository shared store", () => {
       [REPOSITORY_PATH, bracketAllocationMutation]
     ])));
     expect(bracketAllocationAnalysis.productionAllocations).toEqual([
-      'repository.ts:new DemoStoreNamespace["DemoRepositoryStore"]()'
+      'repository/demo-repository.ts:new DemoStoreNamespace["DemoRepositoryStore"]()'
     ]);
     expect(bracketAllocationAnalysis.productionReferences).not.toEqual([
-      "repository.ts:ImportSpecifier:DemoRepositoryStore",
-      "repository.ts:NewExpression:DemoRepositoryStore",
+      "repository/demo-repository.ts:ImportSpecifier:DemoRepositoryStore",
+      "repository/demo-repository.ts:NewExpression:DemoRepositoryStore",
       "repository/demo-store.ts:ClassDeclaration:DemoRepositoryStore"
     ]);
   }, 30_000);
