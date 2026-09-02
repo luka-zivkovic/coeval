@@ -7,6 +7,7 @@
     "apps/api/src/repository.pg/dataset-revision-commands.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
     "apps/api/src/repository.pg/mappers.ts",
+    "apps/api/src/repository.pg/project-counter-commands.ts",
     "apps/api/src/repository.pg/regression-run-commands.ts",
     "apps/api/src/repository.pg/skill-version-commands.ts",
     "apps/api/src/repository.pg/trace-import-commands.ts"
@@ -589,7 +590,7 @@
         "try :: begin",
         "try>if.then :: commit",
         "try>if.then :: commit",
-        "try :: client_command:refreshProjectCounters",
+        "try :: client_command:apps/api/src/repository.pg/project-counter-commands.ts#refreshProjectCounters",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -879,6 +880,17 @@
       ]
     },
     {
+      "method": "apps/api/src/repository.pg/project-counter-commands.ts#refreshProjectCounters",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "pruneExpiredTraces"
+      ]
+    },
+    {
       "method": "apps/api/src/repository.pg/regression-run-commands.ts#insertRegressionRun",
       "scope": "internal_module_function",
       "isPrivate": true,
@@ -946,17 +958,6 @@
       "callers": [
         "apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
         "importDatasetExamples"
-      ]
-    },
-    {
-      "method": "refreshProjectCounters",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "pruneExpiredTraces"
       ]
     }
   ]

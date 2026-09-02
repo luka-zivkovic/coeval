@@ -66,6 +66,12 @@ Immutable regression-run insertion lives in
 caller-owned client, so successful and failed evaluator-gate finalization keep
 version status, run evidence, exposure records, and any override audit in their
 existing transactions.
+Imported-trace, auto-judged-case, and sync-back counter recomputation lives in
+`repository.pg/project-counter-commands.ts`. The command accepts the
+caller-owned client, so retention pruning refreshes project coverage before its
+audit and commit without opening another transaction. All mapped client-scoped
+commands are now internal module functions; no `PgRepository` private method is
+a mapped client command.
 `repository-pg-support.test.ts` pins the support module surfaces, the sole
 `PgRepository` implementation owner, the complete 161-method public facade,
 and representative retirement-context query behavior;
@@ -85,6 +91,9 @@ the absence of connection or transaction ownership.
 `repository-pg-regression-run-commands.test.ts` pins the regression-run insert,
 criterion-version binding, optional actor/override/error handling, complete
 case evidence, and the absence of connection or transaction ownership.
+`repository-pg-project-counter-commands.test.ts` pins all three counter
+expressions, product-gate exclusions, distinct-case counting, sync provider
+scope, and the absence of connection or transaction ownership.
 
 The fixture also pins the one approved pool handoff from the main repository:
 `authorizeSkillVersionExecution` constructs `PgEvaluatorLifecycleRepository`
