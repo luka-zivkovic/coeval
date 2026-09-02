@@ -71,20 +71,10 @@
       "reason": "Dataset orchestration, import modal, cards, run comparison, and run details change independently.",
       "revisit": "Harden accessibility coverage, then extract panels without changing API behavior."
     },
-    "apps/api/src/lib/governed-review.ts": {
-      "classification": "cohesion_review",
-      "reason": "Digest, task, batch, blind-view, imported-truth, and agreement verification share governed invariants but may contain separable pipelines.",
-      "revisit": "Review executable dependency order and canonical artifact boundaries before deciding."
-    },
     "apps/api/src/lib/binary-calibration.ts": {
-      "classification": "cohesion_review",
-      "reason": "The module is a closed calibration builder, parser, and verifier pipeline with exact artifacts.",
-      "revisit": "Accept as an exception only after navigation and canonical-order invariants are documented."
-    },
-    "apps/api/test/eval-service.test.ts": {
-      "classification": "refactor_candidate",
-      "reason": "Worker, API-key, synchronous v1, project check, batch, provider-key, and spend behavior share one test file.",
-      "revisit": "Shard by behavior after preserving titles and shared request fixtures."
+      "classification": "structural_exception",
+      "reason": "One exact canonical artifact pipeline keeps constants and binary64 primitives, private-ledger verification, artifact construction/parsing/verification, and ordered metric, lineage, and bound checks reviewable in execution order.",
+      "revisit": "Revisit if a second contract version or independent artifact family enters the file; do not split canonical v1 stages unless exact byte, operation-order, behavior, and root-binding invariants remain reviewable."
     },
     "apps/api/test/governed-review-pg.test.ts": {
       "classification": "structural_exception",
