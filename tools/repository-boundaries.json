@@ -4,6 +4,7 @@
     "apps/api/src/repository.pg.ts",
     "apps/api/src/repository.pg/assessment-receipt-commands.ts",
     "apps/api/src/repository.pg/credential-commands.ts",
+    "apps/api/src/repository.pg/criterion-suite-repository.ts",
     "apps/api/src/repository.pg/dataset-revision-commands.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
     "apps/api/src/repository.pg/mappers.ts",
@@ -37,6 +38,68 @@
         "root :: connect",
         "try :: begin",
         "try>loop>if.then :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToReviewQueueItem",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/criterion-suite-repository.ts#PgCriterionSuiteRepository.createCriterion",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:apps/api/src/repository.pg/skill-version-commands.ts#insertSkillVersion",
+        "try :: commit",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToCriterion",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToCriterionVersion",
+        "catch :: rollback",
+        "catch>if.condition :: repository_call:apps/api/src/repository.pg/mappers.ts#isUniqueViolation",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/criterion-suite-repository.ts#PgCriterionSuiteRepository.createCriterionVersion",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 2
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: rollback",
+        "try :: commit",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToCriterionVersion",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/criterion-suite-repository.ts#PgCriterionSuiteRepository.createEvaluatorSuiteManifest",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 2,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: commit",
+        "try>loop :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToSkillVersion",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -109,48 +172,6 @@
       "reachableConnectionOwners": []
     },
     {
-      "method": "createCriterion",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: client_command:apps/api/src/repository.pg/skill-version-commands.ts#insertSkillVersion",
-        "try :: commit",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToCriterion",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToCriterionVersion",
-        "catch :: rollback",
-        "catch>if.condition :: repository_call:apps/api/src/repository.pg/mappers.ts#isUniqueViolation",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "createCriterionVersion",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 2
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try>if.then :: rollback",
-        "try :: commit",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToCriterionVersion",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
       "method": "createDatasetRevision",
       "kind": "transaction",
       "commandCounts": {
@@ -194,26 +215,6 @@
         "catch :: rollback",
         "finally :: release",
         "root :: repository_call:getEvalRunDetail"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "createEvaluatorSuiteManifest",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 2,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try>if.then :: commit",
-        "try>loop :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToSkillVersion",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
       ],
       "reachableConnectionOwners": []
     },
@@ -921,7 +922,7 @@
         0
       ],
       "callers": [
-        "createCriterion",
+        "apps/api/src/repository.pg/criterion-suite-repository.ts#PgCriterionSuiteRepository.createCriterion",
         "createSkillVersionPending"
       ]
     },

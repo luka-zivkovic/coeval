@@ -20,10 +20,10 @@ pnpm repository-boundaries
 
 The checked fixture at
 [`tools/repository-boundaries.json`](../tools/repository-boundaries.json)
-records every connection owner in the CURRENT main `PgRepository`, its ordered
-boundary events and control-flow placement, the one session-lock delegation,
-and every internal command that accepts a `PoolClient`. It checks
-`apps/api/src/repository.pg.ts` plus future internal command modules under
+records every connection owner in the CURRENT main PostgreSQL repository graph,
+its ordered boundary events and control-flow placement, the one session-lock
+delegation, and every internal command that accepts a `PoolClient`. It checks
+`apps/api/src/repository.pg.ts` plus checked internal modules under
 `apps/api/src/repository.pg/`; it does not claim to map the independently
 implemented analysis, calibration, governed-review, auth, or migration
 repositories. The default command is check-only. After an intentional
@@ -72,6 +72,13 @@ caller-owned client, so retention pruning refreshes project coverage before its
 audit and commit without opening another transaction. All mapped client-scoped
 commands are now internal module functions; no `PgRepository` private method is
 a mapped client command.
+The complete nine-method criterion and policy-free evaluator-suite port lives
+in `repository.pg/criterion-suite-repository.ts`. `PgRepository` constructs the
+slice once with its exact application pool and retains all nine public facade
+methods as direct delegates. Criterion creation, versioning, and immutable
+suite-manifest publication therefore keep their existing transaction owners,
+client commands, canonical artifacts, errors, and return values while moving
+as one consistency group.
 `repository-pg-support.test.ts` pins the support module surfaces, the sole
 `PgRepository` implementation owner, the complete 161-method public facade,
 and representative retirement-context query behavior;
@@ -94,11 +101,18 @@ case evidence, and the absence of connection or transaction ownership.
 `repository-pg-project-counter-commands.test.ts` pins all three counter
 expressions, product-gate exclusions, distinct-case counting, sync provider
 scope, and the absence of connection or transaction ownership.
+`repository-pg-criterion-suite-repository.test.ts` pins the complete port,
+single allocation, exact pool identity, facade delegates, module surface, and
+project-scoped read queries. The existing database-backed criterion/suite suite
+continues to pin transaction behavior and immutable manifest evidence.
 
-The fixture also pins the one approved pool handoff from the main repository:
+The fixture also pins the one approved external pool handoff from the main
+repository:
 `authorizeSkillVersionExecution` constructs `PgEvaluatorLifecycleRepository`
 with the same pool. That repository owns a separate accepted-ADR lifecycle and
-is outside this map; passing the pool to any other constructor fails the guard.
+is outside this map; passing `this.pool` to any other external constructor
+fails the guard. The internal criterion/suite composition receives the
+constructor's exact pool once and is separately pinned by its structural test.
 
 ## PostgreSQL ownership rule
 
@@ -122,7 +136,7 @@ The 35 transaction owners are grouped by the consistency they protect:
 | Consistency group | Connection owners |
 | --- | --- |
 | Project lifecycle and retention | `updateProjectSettings`, `pruneExpiredTraces`, `deleteProject` |
-| Criterion and suite definitions | `createCriterion`, `createCriterionVersion`, `createEvaluatorSuiteManifest` |
+| Criterion and suite definitions | `PgCriterionSuiteRepository.createCriterion`, `PgCriterionSuiteRepository.createCriterionVersion`, `PgCriterionSuiteRepository.createEvaluatorSuiteManifest` |
 | Golden evidence and frozen datasets | `promoteExceptionToGoldenSet`, `retireGoldenSetEntry`, `createDatasetRevision`, `getOrCreateRegressionDatasetRevision` |
 | Trace and dataset-example ingestion | `importTrace`, `importDatasetExamples` |
 | Credentials and integrations | `setJudgeProviderKey`, `deleteLangSmithIntegration`, `deleteLangfuseIntegration`, `deleteIronsideIntegration` |
@@ -135,7 +149,9 @@ The 35 transaction owners are grouped by the consistency they protect:
 This table is a maintained navigation aid, while the JSON fixture is the
 executable inventory. Whenever `--write` changes an owner name or count,
 compare all 35 transaction names plus the session-lock owner against this
-table and update both in the same reviewed change.
+table and update both in the same reviewed change. For module-owned class
+methods the table uses the `Class.method` suffix; the JSON fixture also records
+the checked source path.
 
 Client-scoped commands are the internal seam for future domain modules. They
 remain private to the PostgreSQL repository command layer even when their
