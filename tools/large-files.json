@@ -21,20 +21,10 @@
       "reason": "Route, domain, import-worker, poller, and feedback-worker suites share one test file.",
       "revisit": "Characterize titles and auth coverage, then shard by behavior with shared support."
     },
-    "apps/api/src/governed-review/repository.pg.ts": {
-      "classification": "refactor_candidate",
-      "reason": "Instructions, intake, batches, tasks, alignment, adjudication, imported truth, and materialization have distinct lifecycles.",
-      "revisit": "Map transaction and state-machine boundaries before extracting pure queries or commands."
-    },
     "apps/api/test/pg-smoke.test.ts": {
       "classification": "refactor_candidate",
       "reason": "Independent Postgres smoke scenarios span projects, datasets, evals, integrations, feedback, and retention.",
       "revisit": "Shard after preserving the title inventory and shared disposable-database support."
-    },
-    "apps/api/src/binary-calibration/repository.pg.ts": {
-      "classification": "cohesion_review",
-      "reason": "A single calibration lifecycle may justify colocation, but commands, claims, completion, and reads need an explicit boundary review.",
-      "revisit": "Review after the main repository consistency groups establish the preferred transaction pattern."
     },
     "apps/web/src/screens/skill-edit.tsx": {
       "classification": "refactor_candidate",
@@ -97,9 +87,9 @@
       "revisit": "Shard by behavior after preserving titles and shared request fixtures."
     },
     "apps/api/test/governed-review-pg.test.ts": {
-      "classification": "cohesion_review",
-      "reason": "The suite proves one governed-review evidence lifecycle with database-backed invariants.",
-      "revisit": "Reassess alongside any governed-review repository split."
+      "classification": "structural_exception",
+      "reason": "This cohesive database-backed suite proves one governed-review evidence graph from sealed intake and blind assignment through alignment, adjudication, frozen truth, and imported-truth separation; its scenarios share one expensive governed setup while preserving isolated transactions.",
+      "revisit": "Revisit if an independent lifecycle enters the suite or its setup can be extracted without obscuring the append-only stream, separation-of-duty, and frozen-truth assertions."
     }
   }
 }
