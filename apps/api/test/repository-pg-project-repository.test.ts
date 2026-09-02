@@ -261,8 +261,10 @@ describe("PostgreSQL project repository slice", () => {
     expect(constructor!.body!.statements.map((statement) => normalized(statement, repositorySource))).toEqual([
       "this.apiKeyRepository = new PgApiKeyRepository(pool);",
       "this.assessmentReceiptRepository = new PgAssessmentReceiptRepository(pool);",
+      "this.caseEvidenceRepository = new PgCaseEvidenceRepository(pool, { assertSingletonCriterion: (projectId) => this.assertSingletonCriterion(projectId), getCurrentSkill: (projectId) => this.getCurrentSkill(projectId), resolveGoldenCriterionVersion: (projectId, requested) => this.resolveGoldenCriterionVersion(projectId, requested) });",
       "this.criterionSuiteRepository = new PgCriterionSuiteRepository(pool);",
       "this.datasetRepository = new PgDatasetRepository(pool);",
+      "this.goldenEvidenceRepository = new PgGoldenEvidenceRepository(pool, { assertSingletonCriterion: (projectId) => this.assertSingletonCriterion(projectId), resolveGoldenCriterionVersion: (projectId, requested) => this.resolveGoldenCriterionVersion(projectId, requested) });",
       "this.historicalGateEvidenceRepository = new PgHistoricalGateEvidenceRepository(pool);",
       "this.integrationRepository = new PgIntegrationRepository(pool, (projectId, requested, requiredContext) => this.resolveImportSkillVersionId(projectId, requested, requiredContext), (input) => this.authorizeSkillVersionExecution(input));",
       "this.judgeCredentialRepository = new PgJudgeCredentialRepository(pool);",

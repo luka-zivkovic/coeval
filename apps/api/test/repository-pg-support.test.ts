@@ -174,6 +174,7 @@ describe("PostgreSQL repository support modules", () => {
         name !== "isCheckViolation" &&
         name !== "isUniqueViolation" &&
         name !== "normalizedPayloadSnapshot" &&
+        name !== "parseJson" &&
         name !== "postgresErrorMessage" &&
         name !== "rowToApiKey" &&
         name !== "rowToAssessmentReceiptArtifact" &&
@@ -185,11 +186,14 @@ describe("PostgreSQL repository support modules", () => {
         name !== "rowToDatasetRevision" &&
         name !== "rowToDatasetRevisionItem" &&
         name !== "rowToEvaluatorSuite" &&
+        name !== "rowToExceptionCase" &&
         name !== "rowToFeedbackSyncJobRecord" &&
         name !== "rowToGateCheck" &&
         name !== "rowToGateCheckItem" &&
+        name !== "rowToGoldenSetEntry" &&
         name !== "rowToImportJobRecord" &&
         name !== "rowToIronsideIntegration" &&
+        name !== "rowToJudgeRun" &&
         name !== "rowToLangfuseIntegration" &&
         name !== "rowToLangSmithIntegration" &&
         name !== "rowToProject" &&
@@ -200,11 +204,10 @@ describe("PostgreSQL repository support modules", () => {
         name !== "rowToTraceTestRevision" &&
         name !== "rowToTraceTestSummary" &&
         name !== "rowToTraceTestValidation" &&
+        name !== "rowToVerdictRecord" &&
         name !== "toFeedbackSyncProvider" &&
         name !== "toFeedbackSyncStatus"
       ));
-    expect(namedImports(repositorySource, "./repository.pg/golden-commands.js"))
-      .toEqual(["loadGoldenSetRetirementContext"]);
     expect(namedImports(repositorySource, "./repository.pg/dataset-revision-commands.js"))
       .toEqual(["getOrCreateRegressionDatasetRevisionWithClient"]);
     expect(namedImports(repositorySource, "./repository.pg/assessment-receipt-commands.js"))
@@ -213,12 +216,16 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(["PgAssessmentReceiptRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/api-key-repository.js"))
       .toEqual(["PgApiKeyRepository"]);
+    expect(namedImports(repositorySource, "./repository.pg/case-evidence-repository.js"))
+      .toEqual(["PgCaseEvidenceRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/credential-commands.js"))
       .toEqual(["setJudgeProviderKeyOnClient"]);
     expect(namedImports(repositorySource, "./repository.pg/criterion-suite-repository.js"))
       .toEqual(["PgCriterionSuiteRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/dataset-repository.js"))
       .toEqual(["PgDatasetRepository"]);
+    expect(namedImports(repositorySource, "./repository.pg/golden-evidence-repository.js"))
+      .toEqual(["PgGoldenEvidenceRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/historical-gate-evidence-repository.js"))
       .toEqual(["PgHistoricalGateEvidenceRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/integration-repository.js"))
@@ -253,8 +260,8 @@ describe("PostgreSQL repository support modules", () => {
     const privateMethods = methods.filter((method) =>
       ts.getModifiers(method)?.some((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword)
     );
-    expect(methods).toHaveLength(172);
-    expect(privateMethods).toHaveLength(11);
+    expect(methods).toHaveLength(169);
+    expect(privateMethods).toHaveLength(8);
     expect(methods.length - privateMethods.length).toBe(161);
   }, 30_000);
 
