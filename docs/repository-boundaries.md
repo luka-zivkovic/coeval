@@ -309,6 +309,30 @@ because each proves one atomic evidence-graph shape through an expensive
 parameterized seeding helper while keeping scenarios isolated; their inventory
 entries document the conditions for revisiting that decision.
 
+The governed-review specialist keeps `PgGovernedReviewRepository` as the exact
+sixteen-method public facade. It constructs one administration slice for
+instructions, sealed intake, batch creation, and batch transitions, and one
+evidence slice for reviewer tasks, blind views, alignment, adjudication, and
+imported truth. Both slices receive the facade's exact pool once. They retain
+their own unchanged transaction wrapper; frame preparation, append-only stream
+projection, and low-level row/digest helpers live in separate acyclic internal
+support modules that never acquire a connection. The facade delegates every
+method directly and owns no second state or authorization path.
+
+The binary-calibration specialist keeps `PgBinaryCalibrationRepository` as
+the exact combined control/execution implementation and sole connection owner.
+Authorization, exposure, and sealed-reuse evaluation live in one internal
+module; row mapping, validation, canonical binding, and error helpers live in
+another. Neither support module opens a connection or transaction. Run launch,
+claiming, provider-call accounting, terminalization, private-ledger minting,
+artifact persistence, and revision-lease release therefore remain on the
+original caller-owned transaction client and in their original order.
+`specialist-repository-module-boundaries.test.ts` pins both public method and
+port surfaces, the governed facade composition, exact internal export and
+module-edge inventories, shared pool identity, and the three retained
+transaction owners. Existing governed-review and binary-calibration suites
+continue to pin the complete database-backed evidence behavior.
+
 The fixture also pins the one approved external pool handoff from the main
 repository:
 `authorizeSkillVersionExecution` constructs `PgEvaluatorLifecycleRepository`
