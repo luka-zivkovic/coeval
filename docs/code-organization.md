@@ -120,12 +120,14 @@ Re-run the report and revisit a classification when:
   or
 - an accepted ADR changes the reason for a structural exception.
 
-The PostgreSQL repository is additionally guarded by the executable
+The main PostgreSQL repository is additionally guarded by the executable
 connection-owner map described in
 [`repository-boundaries.md`](repository-boundaries.md). Split repository code
-only along those mapped consistency groups, place extracted PostgreSQL command
-modules under the checked `apps/api/src/repository.pg/` inventory, and keep
-caller-owned transaction work on the supplied client.
+only along those mapped consistency groups, place its extracted command modules
+under the checked `apps/api/src/repository.pg/` inventory, and keep caller-owned
+transaction work on the supplied client. Independently implemented specialist
+repositories may use domain-local support modules when their own structural
+tests preserve connection ownership and module edges.
 
 Do not update a classification merely to silence the report. The explanation
 is a review aid and should describe the current code honestly.

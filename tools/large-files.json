@@ -36,25 +36,20 @@
       "reason": "A single calibration lifecycle may justify colocation, but commands, claims, completion, and reads need an explicit boundary review.",
       "revisit": "Review after the main repository consistency groups establish the preferred transaction pattern."
     },
-    "apps/api/src/analysis-study/repository.pg.ts": {
-      "classification": "cohesion_review",
-      "reason": "The analysis-study state machine is cohesive but includes study, item, taxonomy, assignment, and closure operations.",
-      "revisit": "Reassess when transaction ownership and state-machine navigation are documented."
-    },
     "apps/web/src/screens/skill-edit.tsx": {
       "classification": "refactor_candidate",
       "reason": "Screen orchestration, editing, onboarding boundaries, and regression result rendering change independently.",
       "revisit": "Harden behavior and source-contract tests before moving panels or hooks."
     },
     "apps/api/test/analysis-criterion-promotion-pg.test.ts": {
-      "classification": "cohesion_review",
-      "reason": "The suite proves one promotion and candidate evidence graph with substantial shared setup.",
-      "revisit": "Split only if success, rejection, and concurrency scenarios can share explicit support without hiding the evidence graph."
+      "classification": "structural_exception",
+      "reason": "This cohesive database-backed suite proves one promotion and candidate evidence-graph shape; success, rejection, replay, and concurrency cases intentionally reuse one expensive parameterized seeding helper.",
+      "revisit": "Revisit if a second lifecycle enters the suite or its setup can be extracted without hiding the evidence graph and transaction assertions."
     },
     "apps/api/test/analysis-study-pg.test.ts": {
-      "classification": "cohesion_review",
-      "reason": "The suite covers one append-only analysis-study lifecycle and its closure invariants.",
-      "revisit": "Reassess alongside any analysis-study repository split."
+      "classification": "structural_exception",
+      "reason": "This cohesive database-backed suite proves one append-only study, coding, taxonomy, assignment, and closure evidence lifecycle; isolated scenarios reuse one expensive parameterized seeding helper.",
+      "revisit": "Revisit if an independent lifecycle enters the suite or common setup can be extracted without obscuring ordering, concurrency, and closure invariants."
     },
     "apps/web/src/lib/api.ts": {
       "classification": "refactor_candidate",
@@ -66,20 +61,15 @@
       "reason": "Journey orchestration and multiple independent stage panels share one screen module.",
       "revisit": "Preserve unsaved-state and accessibility coverage while extracting stages."
     },
-    "apps/api/src/analysis-population/repository.pg.ts": {
-      "classification": "cohesion_review",
-      "reason": "Population freezing, scanning, materialization, and listing may form one transactional evidence pipeline.",
-      "revisit": "Review pure query boundaries without splitting the freeze transaction."
-    },
     "contracts/fixtures/binary-calibration-v1.conformance.json": {
       "classification": "structural_exception",
       "reason": "This is an exact-byte, digest-pinned interoperability corpus.",
       "revisit": "Change only through the versioned contract process; never split for source-file size."
     },
     "apps/api/test/analysis-population-pg.test.ts": {
-      "classification": "cohesion_review",
-      "reason": "The suite proves one population freeze and deterministic draw evidence pipeline.",
-      "revisit": "Reassess alongside any analysis-population repository split."
+      "classification": "structural_exception",
+      "reason": "This cohesive database-backed suite proves one population freeze, exclusion, immutable revision, and deterministic draw evidence pipeline; isolated scenarios reuse one expensive parameterized seeding helper.",
+      "revisit": "Revisit if an independent lifecycle enters the suite or common setup can be extracted without obscuring snapshot, exclusion, and draw invariants."
     },
     "apps/web/src/screens/analysis-study-workspace.tsx": {
       "classification": "refactor_candidate",

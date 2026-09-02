@@ -287,6 +287,28 @@ revision reads before their transaction connections are acquired. Existing
 evaluation, skill-version, regression, receipt, and database-backed suites
 continue to pin the complete transaction and lifecycle behavior.
 
+The specialist analysis repositories keep their existing public classes and
+ports while moving only internal SQL, row mapping, cursor, and transaction
+support into one sibling module per domain. `PgAnalysisPopulationRepository`
+continues to own the complete repeatable-read population freeze, including its
+session advisory lock, snapshot scans, immutable revision materialization,
+exclusions, draw, exposure, commit, rollback, and unlock order. Its support
+module never opens a connection, and every support call made inside the freeze
+receives the caller-owned `PoolClient`; reusable read helpers may also accept a
+`Pool` outside that transaction.
+`PgAnalysisStudyRepository` continues to own the public append-only study,
+coding, taxonomy, assignment, governed content-view, and deadline-closure
+lifecycle. Its support module owns the unchanged transaction wrapper and
+private lifecycle helpers, always receiving the repository's exact `Pool`.
+`analysis-repository-module-boundaries.test.ts` pins both complete public
+method sets and port symbols, the exact internal support export surfaces, the
+sole canonical module edge per support module, constructor shape, exact pool
+or client propagation at the transaction boundaries, and the only public
+default parameter. Existing database-backed analysis suites remain cohesive
+because each proves one atomic evidence-graph shape through an expensive
+parameterized seeding helper while keeping scenarios isolated; their inventory
+entries document the conditions for revisiting that decision.
+
 The fixture also pins the one approved external pool handoff from the main
 repository:
 `authorizeSkillVersionExecution` constructs `PgEvaluatorLifecycleRepository`
