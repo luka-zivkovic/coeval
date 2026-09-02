@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Pool, PoolClient } from "pg";
+import type { Pool } from "pg";
 import type {
   Criterion,
   CriterionDetail,
@@ -16,10 +16,8 @@ import type {
   Dataset,
   DatasetDetail,
   DatasetItem,
-  DatasetReferenceProvenance,
   DatasetRevision,
   DatasetRevisionDetail,
-  DatasetRevisionPayloadSnapshot,
   EvalRun,
   EvalRunDetail,
   EvalRunItem,
@@ -89,21 +87,18 @@ import type {
 import {
   MinimumVerdictOutputSchema,
   effectiveHumanLabel,
-  regressionDirectionCounts,
-  verdictLabelFromPayload
+  regressionDirectionCounts
 } from "@coeval/shared";
 import type { Trace } from "@coeval/audit/runtime";
 import { createJudgeProvider, type JudgeProviderFactory } from "./lib/judge-provider.js";
 import { PgEvaluatorLifecycleRepository } from "./evaluator-lifecycle/repository.pg.js";
-import { redactNormalizedTracePayload, type NormalizedTracePayload, type NormalizedTraceStep } from "./lib/redaction.js";
+import { redactNormalizedTracePayload, type NormalizedTraceStep } from "./lib/redaction.js";
 import { evaluatorSuiteCriterionDigest } from "./lib/evaluator-suite.js";
 import {
   computeEvalRunSpend,
   convergencePageLimit,
   decodeConvergenceCursor,
   encodeConvergenceCursor,
-  traceTestValidationDiagnostic,
-  traceTestValidationStatus,
   type ConvergenceAuditPageInput,
   type RecordTraceTestFunnelEventInputDb
 } from "./repository.js";
@@ -113,34 +108,16 @@ import {
   AgentSetupEligibilityError,
   AmbiguousProjectSkillError,
   CaseNotFoundError,
-  DatasetNameTakenError,
   DatasetRevisionConflictError,
-  DatasetRevisionNotFoundError,
   GoldenSetLabelConflictError,
   RegressionGateUnavailableError,
-  DatasetNotFoundError,
-  SealedValidationUnavailableError,
-  FeedbackSyncCredentialsMissingError,
-  FeedbackSyncJobNotFoundError,
   GateRunBindingMismatchError,
   GoldenSetEntryAlreadyRetiredError,
   GoldenSetEntryNotFoundError,
   InvalidConvergenceCursorError,
-  IronsideCredentialsMissingError,
-  IronsideIntegrationAlreadyExistsError,
-  IronsideIntegrationChangedError,
-  IronsideIntegrationNotFoundError,
-  LangfuseCredentialsMissingError,
-  LangfuseIntegrationNotFoundError,
-  LangSmithCredentialsMissingError,
-  LangSmithIntegrationNotFoundError,
   NoCurrentSkillError,
   OnboardingCheckConflictError,
   SkillVersionNotSignableError,
-  TraceTestNotFoundError,
-  TraceTestRevisionConflictError,
-  TraceTestSourceNotFoundError,
-  TraceTestValidationNotReadyError,
   buildGoldenSetHealthSummary,
   previousVerdictsFromRun,
   runGoldenSetRegression,
@@ -201,10 +178,6 @@ import {
   type TraceImportContext,
   type TraceImportResult
 } from "./repository.js";
-import {
-  datasetRevisionItemDigest,
-  decidePublicDatasetRevisionCreation
-} from "./lib/dataset-revision.js";
 import { PgApiKeyRepository } from "./repository.pg/api-key-repository.js";
 import {
   bumpEvalRunCounters,
@@ -213,13 +186,8 @@ import {
 import { PgAssessmentReceiptRepository } from "./repository.pg/assessment-receipt-repository.js";
 import { setJudgeProviderKeyOnClient } from "./repository.pg/credential-commands.js";
 import { PgCriterionSuiteRepository } from "./repository.pg/criterion-suite-repository.js";
-import {
-  getOrCreateRegressionDatasetRevisionWithClient,
-  insertDatasetRevisionWithClient,
-  loadHumanVerdictsForCases,
-  resolveCaseInputIdentity,
-  resolveSingletonCriterionVersionForRegression
-} from "./repository.pg/dataset-revision-commands.js";
+import { PgDatasetRepository } from "./repository.pg/dataset-repository.js";
+import { getOrCreateRegressionDatasetRevisionWithClient } from "./repository.pg/dataset-revision-commands.js";
 import { loadGoldenSetRetirementContext } from "./repository.pg/golden-commands.js";
 import { PgHistoricalGateEvidenceRepository } from "./repository.pg/historical-gate-evidence-repository.js";
 import { PgIntegrationRepository } from "./repository.pg/integration-repository.js";
@@ -233,21 +201,12 @@ import {
   insertSkillVersion,
   nextVersion
 } from "./repository.pg/skill-version-commands.js";
-import { importTraceOnClient, lockTraceImportIdentity } from "./repository.pg/trace-import-commands.js";
 import { PgTraceImportRepository } from "./repository.pg/trace-import-repository.js";
+import { PgTraceTestRepository } from "./repository.pg/trace-test-repository.js";
 import {
   gateFailureMessage,
-  isCheckViolation,
-  isUniqueViolation,
-  normalizedPayloadSnapshot,
   parseJson,
-  postgresErrorMessage,
   rowToCriterionVersion,
-  rowToDataset,
-  rowToDatasetExposureEvent,
-  rowToDatasetItem,
-  rowToDatasetRevision,
-  rowToDatasetRevisionItem,
   rowToEvalRun,
   rowToEvalRunItem,
   rowToExceptionCase,
@@ -256,9 +215,6 @@ import {
   rowToRegressionRun,
   rowToSkill,
   rowToSkillVersion,
-  rowToTraceTestRevision,
-  rowToTraceTestSummary,
-  rowToTraceTestValidation,
   rowToVerdictRecord,
   toIso
 } from "./repository.pg/mappers.js";
@@ -267,6 +223,7 @@ export class PgRepository implements CoevalRepository {
   private readonly apiKeyRepository: PgApiKeyRepository;
   private readonly assessmentReceiptRepository: PgAssessmentReceiptRepository;
   private readonly criterionSuiteRepository: PgCriterionSuiteRepository;
+  private readonly datasetRepository: PgDatasetRepository;
   private readonly historicalGateEvidenceRepository: PgHistoricalGateEvidenceRepository;
   private readonly integrationRepository: PgIntegrationRepository;
   private readonly judgeCredentialRepository: PgJudgeCredentialRepository;
@@ -275,6 +232,7 @@ export class PgRepository implements CoevalRepository {
   private readonly reviewQueueRepository: PgReviewQueueRepository;
   private readonly runComparisonRepository: PgRunComparisonRepository;
   private readonly traceImportRepository: PgTraceImportRepository;
+  private readonly traceTestRepository: PgTraceTestRepository;
 
   constructor(
     private readonly pool: Pool,
@@ -283,6 +241,7 @@ export class PgRepository implements CoevalRepository {
     this.apiKeyRepository = new PgApiKeyRepository(pool);
     this.assessmentReceiptRepository = new PgAssessmentReceiptRepository(pool);
     this.criterionSuiteRepository = new PgCriterionSuiteRepository(pool);
+    this.datasetRepository = new PgDatasetRepository(pool);
     this.historicalGateEvidenceRepository = new PgHistoricalGateEvidenceRepository(pool);
     this.integrationRepository = new PgIntegrationRepository(
       pool,
@@ -315,6 +274,7 @@ export class PgRepository implements CoevalRepository {
       (projectId, requested) => this.resolveImportSkillVersionId(projectId, requested),
       (input) => this.authorizeSkillVersionExecution(input)
     );
+    this.traceTestRepository = new PgTraceTestRepository(pool);
   }
 
   async listProjects(userId?: string | undefined): Promise<Project[]> {
@@ -944,85 +904,8 @@ export class PgRepository implements CoevalRepository {
     return this.traceImportRepository.importTrace(projectId, source, input, context);
   }
 
-  // Skill Bench bulk ingestion (M0 C2): mint/dedup every example case AND its
-  // dataset membership in one transaction — all-or-nothing, no orphaned cases
-  // on a mid-flow failure. Items must be pre-deduped by sourceTraceId (the
-  // route coalesces within-batch duplicates before calling).
   async importDatasetExamples(input: ImportDatasetExamplesDbInput): Promise<ImportDatasetExamplesDbResult> {
-    const client = await this.pool.connect();
-    try {
-      await client.query("begin");
-      // Re-check the dataset INSIDE the transaction — the route's pre-check
-      // can race a concurrent archive.
-      const dataset = await client.query(
-        `select id from datasets where id = $1 and project_id = $2 and archived_at is null for update`,
-        [input.datasetId, input.projectId]
-      );
-      if (!dataset.rows[0]) throw new DatasetNotFoundError(input.datasetId);
-
-      // A batch holds every import-identity lock until commit. Acquire its
-      // unique identities in one canonical order so concurrent batches with
-      // reversed item order cannot deadlock. importTraceOnClient reacquires
-      // the same transaction lock per item, which is safe and immediate.
-      const sourceTraceIds = [...new Set(input.items
-        .map((item) => item.sourceTraceId.trim())
-        .filter((sourceTraceId) => sourceTraceId.length > 0))]
-        .sort();
-      for (const sourceTraceId of sourceTraceIds) {
-        await lockTraceImportIdentity(client, input.projectId, "manual", sourceTraceId);
-      }
-
-      const results: ImportDatasetExamplesDbResult["items"] = [];
-      for (const item of input.items) {
-        const imported = await importTraceOnClient(client, input.projectId, "manual", {
-          sourceTraceId: item.sourceTraceId,
-          input: item.input,
-          output: item.output,
-          metadata: item.metadata,
-          ...(item.steps ? { steps: item.steps } : {})
-        }, { ingestionPurpose: input.ingestionPurpose });
-        // Same coalescing upsert as addDatasetItems (kept in sync): labels
-        // update on re-import, label-less appends never null a stored label.
-        const datasetItem = await client.query(
-          `insert into dataset_items (id, dataset_id, project_id, case_id, trace_id, expected_label, expected_fail_step, note)
-           select $1, $2, $3, c.id, coalesce(rt.source_trace_id, c.id), $5, $6, $7
-           from cases c
-           left join raw_traces rt on rt.id = c.raw_trace_id
-           where c.id = $4 and c.project_id = $3
-           on conflict (dataset_id, case_id) do update set
-             expected_label = coalesce(excluded.expected_label, dataset_items.expected_label),
-             expected_fail_step = case
-             when excluded.expected_label = 'pass' then null
-             when excluded.expected_fail_step is not null then excluded.expected_fail_step
-             else dataset_items.expected_fail_step
-           end,
-             note = coalesce(excluded.note, dataset_items.note)
-           returning id`,
-          [
-            `dsi_${randomUUID()}`,
-            input.datasetId,
-            input.projectId,
-            imported.caseId,
-            item.expectedLabel ?? null,
-            item.expectedFailStep ?? null,
-            item.note ?? null
-          ]
-        );
-        results.push({
-          sourceTraceId: imported.sourceTraceId,
-          caseId: imported.caseId,
-          created: imported.created,
-          datasetItemId: datasetItem.rows[0] ? String(datasetItem.rows[0].id) : null
-        });
-      }
-      await client.query("commit");
-      return { items: results };
-    } catch (error) {
-      await client.query("rollback");
-      throw error;
-    } finally {
-      client.release();
-    }
+    return this.datasetRepository.importDatasetExamples(input);
   }
 
   async setJudgeProviderKey(
@@ -1388,671 +1271,67 @@ export class PgRepository implements CoevalRepository {
   }
 
   async createTraceTest(input: CreateTraceTestInputDb): Promise<TraceTestDetail> {
-    const client = await this.pool.connect();
-    const traceTestId = `tt_${randomUUID()}`;
-    try {
-      await client.query("begin");
-      const source = await client.query(
-        `select c.id, c.normalized_payload, coalesce(rt.source_trace_id, c.id) as source_trace_ref
-         from cases c
-         left join raw_traces rt on rt.id = c.raw_trace_id
-         where c.id = $1 and c.project_id = $2`,
-        [input.sourceCaseId, input.projectId]
-      );
-      const sourceRow = source.rows[0];
-      if (!sourceRow) throw new TraceTestSourceNotFoundError(input.sourceCaseId);
-      await client.query(
-        `insert into trace_tests
-         (id, project_id, source_case_id, source_case_ref, source_trace_ref, source_snapshot,
-          source_scope, current_revision, enabled_revision, created_by_user_id)
-         values ($1,$2,$3,$3,$4,$5,$6,1,null,$7)`,
-        [
-          traceTestId,
-          input.projectId,
-          input.sourceCaseId,
-          String(sourceRow.source_trace_ref),
-          JSON.stringify(redactNormalizedTracePayload(parseJson(sourceRow.normalized_payload) as NormalizedTracePayload)),
-          JSON.stringify(input.sourceScope),
-          input.createdByUserId ?? null
-        ]
-      );
-      await client.query(
-        `insert into trace_test_revisions
-         (id, trace_test_id, project_id, revision, lifecycle, desired_behavior, scenario,
-          expected_behavior, must_do, must_avoid, good_example, bad_example, checker,
-          draft_provenance, created_by_user_id)
-         values ($1,$2,$3,1,'draft',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-        [
-          `ttr_${randomUUID()}`,
-          traceTestId,
-          input.projectId,
-          input.desiredBehavior,
-          input.scenario,
-          input.expectedBehavior,
-          JSON.stringify(input.mustDo),
-          JSON.stringify(input.mustAvoid),
-          JSON.stringify(input.goodExample),
-          JSON.stringify(input.badExample),
-          JSON.stringify(input.checker),
-          JSON.stringify(input.draftProvenance),
-          input.createdByUserId ?? null
-        ]
-      );
-      await client.query("commit");
-    } catch (error) {
-      await client.query("rollback");
-      throw error;
-    } finally {
-      client.release();
-    }
-    const created = await this.getTraceTest(input.projectId, traceTestId);
-    if (!created) throw new TraceTestNotFoundError(traceTestId);
-    return created;
+    return this.traceTestRepository.createTraceTest(input);
   }
 
   async listTraceTests(projectId: string, sourceCaseRef?: string): Promise<TraceTestSummary[]> {
-    const result = await this.pool.query(
-      `select * from trace_tests
-       where project_id = $1 and ($2::text is null or source_case_ref = $2)
-       order by updated_at desc, id desc`,
-      [projectId, sourceCaseRef ?? null]
-    );
-    return result.rows.map(rowToTraceTestSummary);
+    return this.traceTestRepository.listTraceTests(projectId, sourceCaseRef);
   }
 
   async getTraceTest(projectId: string, traceTestId: string): Promise<TraceTestDetail | null> {
-    const testResult = await this.pool.query(
-      `select * from trace_tests where id = $1 and project_id = $2`,
-      [traceTestId, projectId]
-    );
-    const testRow = testResult.rows[0];
-    if (!testRow) return null;
-    const [revisionResult, validationResult] = await Promise.all([
-      this.pool.query(
-        `select * from trace_test_revisions
-         where trace_test_id = $1 and project_id = $2
-         order by revision asc`,
-        [traceTestId, projectId]
-      ),
-      this.pool.query(
-        `select * from trace_test_validations
-         where trace_test_id = $1 and project_id = $2
-         order by created_at asc, id asc`,
-        [traceTestId, projectId]
-      )
-    ]);
-    return {
-      ...rowToTraceTestSummary(testRow),
-      sourceSnapshot: parseJson(testRow.source_snapshot),
-      sourceScope: parseJson(testRow.source_scope) as TraceTestDetail["sourceScope"],
-      createdByUserId: testRow.created_by_user_id ? String(testRow.created_by_user_id) : null,
-      revisions: revisionResult.rows.map(rowToTraceTestRevision),
-      validations: validationResult.rows.map(rowToTraceTestValidation)
-    };
+    return this.traceTestRepository.getTraceTest(projectId, traceTestId);
   }
 
   async reviseTraceTest(input: ReviseTraceTestInputDb): Promise<TraceTestDetail> {
-    const client = await this.pool.connect();
-    try {
-      await client.query("begin");
-      const locked = await client.query(
-        `select current_revision from trace_tests where id = $1 and project_id = $2 for update`,
-        [input.traceTestId, input.projectId]
-      );
-      if (!locked.rows[0]) throw new TraceTestNotFoundError(input.traceTestId);
-      const currentRevision = Number(locked.rows[0].current_revision);
-      if (currentRevision !== input.expectedRevision) {
-        throw new TraceTestRevisionConflictError(input.expectedRevision, currentRevision);
-      }
-      const revision = currentRevision + 1;
-      await client.query(
-        `insert into trace_test_revisions
-         (id, trace_test_id, project_id, revision, lifecycle, desired_behavior, scenario,
-          expected_behavior, must_do, must_avoid, good_example, bad_example, checker,
-          draft_provenance, created_by_user_id)
-         values ($1,$2,$3,$4,'draft',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
-        [
-          `ttr_${randomUUID()}`,
-          input.traceTestId,
-          input.projectId,
-          revision,
-          input.desiredBehavior,
-          input.scenario,
-          input.expectedBehavior,
-          JSON.stringify(input.mustDo),
-          JSON.stringify(input.mustAvoid),
-          JSON.stringify(input.goodExample),
-          JSON.stringify(input.badExample),
-          JSON.stringify(input.checker),
-          JSON.stringify(input.draftProvenance),
-          input.createdByUserId ?? null
-        ]
-      );
-      await client.query(
-        `update trace_tests set current_revision = $3, updated_at = now()
-         where id = $1 and project_id = $2`,
-        [input.traceTestId, input.projectId, revision]
-      );
-      await client.query("commit");
-    } catch (error) {
-      await client.query("rollback");
-      throw error;
-    } finally {
-      client.release();
-    }
-    const revised = await this.getTraceTest(input.projectId, input.traceTestId);
-    if (!revised) throw new TraceTestNotFoundError(input.traceTestId);
-    return revised;
+    return this.traceTestRepository.reviseTraceTest(input);
   }
 
   async recordTraceTestValidation(input: RecordTraceTestValidationInputDb): Promise<TraceTestValidation> {
-    const client = await this.pool.connect();
-    const validationId = `ttv_${randomUUID()}`;
-    try {
-      await client.query("begin");
-      const locked = await client.query(
-        `select tt.current_revision, ttr.lifecycle
-         from trace_tests tt
-         join trace_test_revisions ttr
-           on ttr.trace_test_id = tt.id and ttr.revision = tt.current_revision
-         where tt.id = $1 and tt.project_id = $2
-         for update of tt`,
-        [input.traceTestId, input.projectId]
-      );
-      if (!locked.rows[0]) throw new TraceTestNotFoundError(input.traceTestId);
-      const currentRevision = Number(locked.rows[0].current_revision);
-      if (currentRevision !== input.revision) {
-        throw new TraceTestRevisionConflictError(input.revision, currentRevision);
-      }
-      const status = traceTestValidationStatus(input.badEvidence.result, input.goodEvidence.result);
-      const diagnostic = input.diagnostic ?? traceTestValidationDiagnostic(input.badEvidence.result, input.goodEvidence.result);
-      const inserted = await client.query(
-        `insert into trace_test_validations
-         (id, trace_test_id, project_id, revision, status, bad_evidence, good_evidence,
-          method, diagnostic, evaluator, override_reason, recorded_by_user_id)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-         returning *`,
-        [
-          validationId,
-          input.traceTestId,
-          input.projectId,
-          input.revision,
-          status,
-          JSON.stringify({ ...input.badEvidence, expectedResult: "fail", attempts: input.badAttempts ?? 0, usage: input.badUsage ?? null }),
-          JSON.stringify({ ...input.goodEvidence, expectedResult: "pass", attempts: input.goodAttempts ?? 0, usage: input.goodUsage ?? null }),
-          input.method ?? "automated",
-          diagnostic,
-          input.evaluator ? JSON.stringify(input.evaluator) : null,
-          input.overrideReason ?? null,
-          input.recordedByUserId ?? null
-        ]
-      );
-      await client.query("commit");
-      return rowToTraceTestValidation(inserted.rows[0]);
-    } catch (error) {
-      await client.query("rollback");
-      throw error;
-    } finally {
-      client.release();
-    }
+    return this.traceTestRepository.recordTraceTestValidation(input);
   }
 
   async enableTraceTest(input: EnableTraceTestInputDb): Promise<TraceTestDetail> {
-    const client = await this.pool.connect();
-    try {
-      await client.query("begin");
-      const locked = await client.query(
-        `select tt.current_revision, ttr.lifecycle
-         from trace_tests tt
-         join trace_test_revisions ttr
-           on ttr.trace_test_id = tt.id and ttr.revision = tt.current_revision
-         where tt.id = $1 and tt.project_id = $2
-         for update of tt`,
-        [input.traceTestId, input.projectId]
-      );
-      if (!locked.rows[0]) throw new TraceTestNotFoundError(input.traceTestId);
-      const currentRevision = Number(locked.rows[0].current_revision);
-      if (currentRevision !== input.expectedRevision) {
-        throw new TraceTestRevisionConflictError(input.expectedRevision, currentRevision);
-      }
-      if (locked.rows[0].lifecycle !== "draft") {
-        throw new TraceTestValidationNotReadyError("Create a new draft revision before enabling this test again");
-      }
-      const validation = await client.query(
-        `select id from trace_test_validations
-         where id = $1 and trace_test_id = $2 and project_id = $3
-           and revision = $4 and status = 'passed'
-           and (
-             (method = 'automated' and evaluator is not null)
-             or
-             (method = 'manual_override' and length(trim(override_reason)) >= 10)
-           )`,
-        [input.validationId, input.traceTestId, input.projectId, input.expectedRevision]
-      );
-      if (!validation.rows[0]) {
-        throw new TraceTestValidationNotReadyError("A successful validation for the current draft is required before enabling this test");
-      }
-      const revision = currentRevision + 1;
-      const inserted = await client.query(
-        `insert into trace_test_revisions
-         (id, trace_test_id, project_id, revision, lifecycle, desired_behavior, scenario,
-          expected_behavior, must_do, must_avoid, good_example, bad_example, checker,
-          draft_provenance, validation_id, validated_revision, created_by_user_id,
-          reviewed_by_user_id, reviewed_at)
-         select $1, trace_test_id, project_id, $2, 'enabled', desired_behavior, scenario,
-                expected_behavior, must_do, must_avoid, good_example, bad_example, checker,
-                draft_provenance, $3, $4, created_by_user_id, $5, now()
-         from trace_test_revisions
-         where trace_test_id = $6 and project_id = $7 and revision = $4`,
-        [
-          `ttr_${randomUUID()}`,
-          revision,
-          input.validationId,
-          input.expectedRevision,
-          input.reviewedByUserId,
-          input.traceTestId,
-          input.projectId
-        ]
-      );
-      if ((inserted.rowCount ?? 0) !== 1) {
-        throw new TraceTestRevisionConflictError(input.expectedRevision, currentRevision);
-      }
-      await client.query(
-        `update trace_tests
-         set current_revision = $3, enabled_revision = $3, updated_at = now()
-         where id = $1 and project_id = $2`,
-        [input.traceTestId, input.projectId, revision]
-      );
-      await client.query("commit");
-    } catch (error) {
-      await client.query("rollback");
-      throw error;
-    } finally {
-      client.release();
-    }
-    const enabled = await this.getTraceTest(input.projectId, input.traceTestId);
-    if (!enabled) throw new TraceTestNotFoundError(input.traceTestId);
-    return enabled;
+    return this.traceTestRepository.enableTraceTest(input);
   }
 
   async recordTraceTestFunnelEvent(input: RecordTraceTestFunnelEventInputDb): Promise<void> {
-    await this.pool.query(
-      `insert into audit_logs
-       (id, project_id, actor_user_id, action, target_type, target_id, metadata)
-       values ($1,$2,$3,$4,'trace_test_funnel',$5,$6)
-       on conflict (project_id, target_id, action)
-         where target_type = 'trace_test_funnel'
-       do nothing`,
-      [
-        `audit_${randomUUID()}`,
-        input.projectId,
-        input.actorUserId ?? null,
-        `trace_test.funnel.${input.event}`,
-        input.journeyId,
-        JSON.stringify({
-          event: input.event,
-          elapsedMs: input.elapsedMs,
-          intent: input.intent
-        })
-      ]
-    );
+    return this.traceTestRepository.recordTraceTestFunnelEvent(input);
   }
 
   async createDataset(input: CreateDatasetInputDb): Promise<Dataset> {
-    try {
-      const result = await this.pool.query(
-        `insert into datasets (id, project_id, name, description, kind, created_by_user_id)
-         values ($1,$2,$3,$4,$5,$6)
-         returning *`,
-        [
-          `ds_${randomUUID()}`,
-          input.projectId,
-          input.name.trim(),
-          input.description ?? null,
-          input.kind ?? "custom",
-          input.createdByUserId ?? null
-        ]
-      );
-      return rowToDataset(result.rows[0], 0);
-    } catch (error) {
-      // The partial unique index on (project_id, name) where archived_at is
-      // null is the real guard — translate its violation to the domain error.
-      if (isUniqueViolation(error)) throw new DatasetNameTakenError(input.name.trim());
-      throw error;
-    }
+    return this.datasetRepository.createDataset(input);
   }
 
   async listDatasets(projectId: string): Promise<Dataset[]> {
-    const result = await this.pool.query(
-      `select d.*, count(di.id)::int as item_count
-       from datasets d
-       left join dataset_items di on di.dataset_id = d.id
-       where d.project_id = $1 and d.archived_at is null
-       group by d.id
-       order by d.created_at desc`,
-      [projectId]
-    );
-    return result.rows.map((row) => rowToDataset(row, Number(row.item_count)));
+    return this.datasetRepository.listDatasets(projectId);
   }
 
   async getDatasetDetail(projectId: string, datasetId: string): Promise<DatasetDetail | null> {
-    const datasetResult = await this.pool.query(
-      `select * from datasets where id = $1 and project_id = $2`,
-      [datasetId, projectId]
-    );
-    const datasetRow = datasetResult.rows[0];
-    if (!datasetRow) return null;
-    const itemsResult = await this.pool.query(
-      `select * from dataset_items where dataset_id = $1 order by added_at asc, id asc`,
-      [datasetId]
-    );
-    const items = itemsResult.rows.map(rowToDatasetItem);
-    return { ...rowToDataset(datasetRow, items.length), items };
+    return this.datasetRepository.getDatasetDetail(projectId, datasetId);
   }
 
   async archiveDataset(projectId: string, datasetId: string): Promise<boolean> {
-    const result = await this.pool.query(
-      `update datasets set archived_at = now()
-       where id = $1 and project_id = $2 and archived_at is null`,
-      [datasetId, projectId]
-    );
-    return (result.rowCount ?? 0) > 0;
+    return this.datasetRepository.archiveDataset(projectId, datasetId);
   }
 
   async addDatasetItems(input: AddDatasetItemsInputDb): Promise<DatasetItem[]> {
-    const datasetResult = await this.pool.query(
-      `select id from datasets where id = $1 and project_id = $2 and archived_at is null`,
-      [input.datasetId, input.projectId]
-    );
-    if (!datasetResult.rows[0]) throw new DatasetNotFoundError(input.datasetId);
-
-    // Validate every case belongs to the project before inserting any — the
-    // caller gets all-or-nothing semantics on bad input.
-    const caseIds = [...new Set(input.items.map((item) => item.caseId))];
-    const known = await this.pool.query(
-      `select id from cases where project_id = $1 and id = any($2::text[])`,
-      [input.projectId, caseIds]
-    );
-    const knownIds = new Set(known.rows.map((row) => String(row.id)));
-    const missing = caseIds.find((caseId) => !knownIds.has(caseId));
-    if (missing) throw new CaseNotFoundError(missing);
-
-    for (const item of input.items) {
-      // Idempotent add with label upsert: re-adding a case can update its
-      // expected label / note, but a label-less append (e.g. the batch judge
-      // route) never nulls an existing label — coalesce keeps the old value.
-      // Eval-run history is safe either way: expected_label is snapshotted
-      // onto eval_run_items at run creation. trace_id mirrors the user-facing
-      // id convention elsewhere (source_trace_id when imported, case id
-      // otherwise).
-      await this.pool.query(
-        `insert into dataset_items (id, dataset_id, project_id, case_id, trace_id, expected_label, expected_fail_step, note)
-         select $1, $2, $3, c.id, coalesce(rt.source_trace_id, c.id), $5, $6, $7
-         from cases c
-         left join raw_traces rt on rt.id = c.raw_trace_id
-         where c.id = $4 and c.project_id = $3
-         on conflict (dataset_id, case_id) do update set
-           expected_label = coalesce(excluded.expected_label, dataset_items.expected_label),
-           -- Locked M2 invariant: an explicit re-label to pass CLEARS the
-           -- stored step; a fail (or label-less) upsert without a step keeps it.
-           expected_fail_step = case
-             when excluded.expected_label = 'pass' then null
-             when excluded.expected_fail_step is not null then excluded.expected_fail_step
-             else dataset_items.expected_fail_step
-           end,
-           note = coalesce(excluded.note, dataset_items.note)`,
-        [
-          `dsi_${randomUUID()}`,
-          input.datasetId,
-          input.projectId,
-          item.caseId,
-          item.expectedLabel ?? null,
-          item.expectedFailStep ?? null,
-          item.note ?? null
-        ]
-      );
-    }
-    const itemsResult = await this.pool.query(
-      `select * from dataset_items where dataset_id = $1 order by added_at asc, id asc`,
-      [input.datasetId]
-    );
-    return itemsResult.rows.map(rowToDatasetItem);
+    return this.datasetRepository.addDatasetItems(input);
   }
 
   async removeDatasetItem(projectId: string, datasetId: string, itemId: string): Promise<boolean> {
-    const result = await this.pool.query(
-      `delete from dataset_items where id = $1 and dataset_id = $2 and project_id = $3`,
-      [itemId, datasetId, projectId]
-    );
-    return (result.rowCount ?? 0) > 0;
+    return this.datasetRepository.removeDatasetItem(projectId, datasetId, itemId);
   }
 
   async createDatasetRevision(input: CreateDatasetRevisionDbInput): Promise<DatasetRevisionDetail> {
-    const creation = decidePublicDatasetRevisionCreation(input.role);
-    if (!creation.allowed) {
-      if (creation.code === "rejected_public_sealed_creation_unavailable") throw new SealedValidationUnavailableError();
-      if (creation.code === "rejected_public_regression_creation_unavailable") {
-        throw new DatasetRevisionConflictError(
-          "Regression/golden revisions are created only by promotion and retirement governance"
-        );
-      }
-      throw new DatasetRevisionConflictError("Unknown dataset revision role");
-    }
-    const client = await this.pool.connect();
-    let revisionId: string | null = null;
-    try {
-      await client.query("begin");
-      const project = await client.query(`select id from projects where id = $1 for update`, [input.projectId]);
-      if (!project.rows[0]) throw new Error(`Project not found: ${input.projectId}`);
-      const datasetResult = await client.query(
-        `select * from datasets
-         where id = $1 and project_id = $2 and archived_at is null
-         for update`,
-        [input.datasetId, input.projectId]
-      );
-      if (!datasetResult.rows[0]) throw new DatasetNotFoundError(input.datasetId);
-
-      if (input.idempotencyKey) {
-        const existing = await client.query(
-          `select id, source_dataset_id, role
-           from dataset_revisions where project_id = $1 and idempotency_key = $2`,
-          [input.projectId, input.idempotencyKey]
-        );
-        if (existing.rows[0]) {
-          if (
-            String(existing.rows[0].source_dataset_id) !== input.datasetId ||
-            String(existing.rows[0].role) !== input.role
-          ) {
-            throw new DatasetRevisionConflictError("Idempotency key was already used for a different dataset revision request");
-          }
-          revisionId = String(existing.rows[0].id);
-          await client.query("commit");
-          const detail = await this.getDatasetRevisionDetail(input.projectId, revisionId);
-          if (!detail) throw new DatasetRevisionConflictError("Idempotent dataset revision vanished");
-          return detail;
-        }
-      }
-
-      const rows = await client.query(
-        `select di.*, c.normalized_payload, rt.raw_payload
-         from dataset_items di
-         join cases c on c.id = di.case_id and c.project_id = di.project_id
-         left join raw_traces rt on rt.id = c.raw_trace_id
-         where di.dataset_id = $1 and di.project_id = $2
-         order by di.added_at asc, di.id asc`,
-        [input.datasetId, input.projectId]
-      );
-      if (rows.rows.length === 0) throw new DatasetRevisionConflictError("Cannot freeze an empty working collection");
-
-      const verdicts = await loadHumanVerdictsForCases(client, input.projectId, rows.rows.map((row) => String(row.case_id)));
-      const prepared = [] as Array<{
-        sourceCaseId: string;
-        sourceTraceId: string;
-        sourceDatasetItemId: string;
-        sourceGoldenEntryId: null;
-        payloadSnapshot: DatasetRevisionPayloadSnapshot;
-        inputDigest: string;
-        itemDigest: string;
-        referenceLabel: "pass" | "fail" | null;
-        referenceFailStep: number | null;
-        referenceProvenance: DatasetReferenceProvenance;
-        note: string | null;
-      }>;
-      for (const row of rows.rows) {
-        const caseId = String(row.case_id);
-        const payloadSnapshot = normalizedPayloadSnapshot(row.normalized_payload);
-        const identity = await resolveCaseInputIdentity(client, input.projectId, caseId, row.raw_payload);
-        const referenceLabel = row.expected_label === "pass" || row.expected_label === "fail"
-          ? row.expected_label as "pass" | "fail"
-          : null;
-        const matching = referenceLabel
-          ? (verdicts.get(caseId) ?? []).filter((verdict) => verdictLabelFromPayload(verdict.payload) === referenceLabel)
-          : [];
-        const adjudicated = matching.filter((verdict) => verdict.source === "adjudicated");
-        const human = matching.filter((verdict) => verdict.source === "human");
-        const supporting = adjudicated.length > 0 ? adjudicated : human;
-        const referenceProvenance: DatasetReferenceProvenance = referenceLabel === null
-          ? {
-              kind: "unlabeled",
-              sourceId: String(row.id),
-              verdictIds: [],
-              actorUserIds: [],
-              basis: "No reference label was present when the collection was frozen."
-            }
-          : supporting.length > 0
-            ? {
-                kind: adjudicated.length > 0 ? "adjudication" : "human_verdict",
-                sourceId: String(row.id),
-                verdictIds: supporting.map((verdict) => verdict.id),
-                actorUserIds: supporting.flatMap((verdict) => verdict.actorUserId ? [verdict.actorUserId] : []),
-                basis: adjudicated.length > 0
-                  ? "Dataset expectation matched retained adjudicated truth."
-                  : "Dataset expectation matched retained human verdict history."
-              }
-            : {
-                kind: "dataset_claim",
-                sourceId: String(row.id),
-                verdictIds: [],
-                actorUserIds: [],
-                basis: "Mutable collection expectation; not adjudicated human truth."
-              };
-        const referenceFailStep = row.expected_fail_step === null || row.expected_fail_step === undefined
-          ? null
-          : Number(row.expected_fail_step);
-        const itemDigest = datasetRevisionItemDigest({
-          inputIdentity: identity,
-          redactedPayload: payloadSnapshot,
-          referenceLabel,
-          expectedFailStep: referenceFailStep,
-          reviewProvenance: referenceProvenance,
-          note: row.note === null || row.note === undefined ? null : String(row.note)
-        });
-        prepared.push({
-          sourceCaseId: caseId,
-          sourceTraceId: String(row.trace_id),
-          sourceDatasetItemId: String(row.id),
-          sourceGoldenEntryId: null,
-          payloadSnapshot,
-          inputDigest: identity.digest,
-          itemDigest,
-          referenceLabel,
-          referenceFailStep,
-          referenceProvenance,
-          note: row.note === null || row.note === undefined ? null : String(row.note)
-        });
-      }
-
-      const sealedOverlap = await client.query(
-        `select distinct revision.id
-         from dataset_revision_items item
-         join dataset_revisions revision on revision.id = item.revision_id
-         where revision.project_id = $1
-           and revision.role = 'sealed_validation'
-           and item.input_digest = any($2::text[])
-         limit 1`,
-        [input.projectId, prepared.map((item) => item.inputDigest)]
-      );
-      if (sealedOverlap.rows[0]) {
-        throw new DatasetRevisionConflictError(
-          "Working collection overlaps sealed validation input; explicit governed declassification is required before nonsealed use"
-        );
-      }
-
-      revisionId = await insertDatasetRevisionWithClient(client, {
-        projectId: input.projectId,
-        seriesId: `dataset:${input.datasetId}`,
-        sourceDatasetId: input.datasetId,
-        role: input.role,
-        sourceKind: "collection_snapshot",
-        provenanceLevel: "unverified",
-        expectedParentRevisionId: input.expectedParentRevisionId,
-        idempotencyKey: input.idempotencyKey,
-        reuseLatestContent: input.reuseLatestContent,
-        createdByUserId: input.createdByUserId,
-        items: prepared
-      });
-      await client.query("commit");
-    } catch (error) {
-      await client.query("rollback").catch(() => undefined);
-      if (isCheckViolation(error)) {
-        throw new DatasetRevisionConflictError(postgresErrorMessage(error));
-      }
-      throw error;
-    } finally {
-      client.release();
-    }
-    const detail = revisionId ? await this.getDatasetRevisionDetail(input.projectId, revisionId) : null;
-    if (!detail) throw new DatasetRevisionConflictError("Dataset revision vanished after creation");
-    return detail;
+    return this.datasetRepository.createDatasetRevision(input);
   }
 
   async listDatasetRevisions(projectId: string, sourceDatasetId?: string): Promise<DatasetRevision[]> {
-    const result = await this.pool.query(
-      `select revision.*,
-              exists (
-                select 1 from dataset_exposure_events exposure
-                where exposure.revision_id = revision.id and exposure.exposure_class = 'development'
-              ) as has_development_exposure
-       from dataset_revisions revision
-       where revision.project_id = $1
-         and ($2::text is null or revision.source_dataset_id = $2)
-       order by revision.created_at desc, revision.id desc`,
-      [projectId, sourceDatasetId ?? null]
-    );
-    return result.rows.map(rowToDatasetRevision);
+    return this.datasetRepository.listDatasetRevisions(projectId, sourceDatasetId);
   }
 
   async getDatasetRevisionDetail(projectId: string, revisionId: string): Promise<DatasetRevisionDetail | null> {
-    const [revisionResult, itemResult, exposureResult] = await Promise.all([
-      this.pool.query(
-        `select revision.*,
-                exists (
-                  select 1 from dataset_exposure_events exposure
-                  where exposure.revision_id = revision.id and exposure.exposure_class = 'development'
-                ) as has_development_exposure
-         from dataset_revisions revision
-         where revision.id = $1 and revision.project_id = $2`,
-        [revisionId, projectId]
-      ),
-      this.pool.query(
-        `select * from dataset_revision_items
-         where revision_id = $1 and project_id = $2
-         order by position asc`,
-        [revisionId, projectId]
-      ),
-      this.pool.query(
-        `select * from dataset_exposure_events
-         where revision_id = $1 and project_id = $2
-         order by occurred_at asc, id asc`,
-        [revisionId, projectId]
-      )
-    ]);
-    if (!revisionResult.rows[0]) return null;
-    return {
-      ...rowToDatasetRevision(revisionResult.rows[0]),
-      items: itemResult.rows.map(rowToDatasetRevisionItem),
-      exposures: exposureResult.rows.map(rowToDatasetExposureEvent)
-    };
+    return this.datasetRepository.getDatasetRevisionDetail(projectId, revisionId);
   }
 
   async recordDatasetRevisionContentView(input: {
@@ -2060,25 +1339,7 @@ export class PgRepository implements CoevalRepository {
     revisionId: string;
     actorUserId?: string | undefined;
   }): Promise<void> {
-    const inserted = await this.pool.query(
-      `insert into dataset_exposure_events
-       (id, project_id, revision_id, kind, exposure_class, activity, subject_kind,
-        subject_id, actor_user_id, evidence_ref_kind, evidence_ref_id, reason, details, idempotency_key)
-       select $1, revision.project_id, revision.id, 'human_access', 'development', 'content_view',
-              $4, $5, $5, 'dataset_revision', revision.id, null, '{}'::jsonb, $6
-       from dataset_revisions revision
-       where revision.id = $2 and revision.project_id = $3
-       returning id`,
-      [
-        `dse_${randomUUID()}`,
-        input.revisionId,
-        input.projectId,
-        input.actorUserId ? "person" : "system",
-        input.actorUserId ?? null,
-        `content-view:${input.revisionId}:${randomUUID()}`
-      ]
-    );
-    if (!inserted.rows[0]) throw new DatasetRevisionNotFoundError(input.revisionId);
+    return this.datasetRepository.recordDatasetRevisionContentView(input);
   }
 
   async getOrCreateRegressionDatasetRevision(
@@ -2086,28 +1347,7 @@ export class PgRepository implements CoevalRepository {
     actorUserId?: string,
     criterionVersionId?: string
   ): Promise<DatasetRevisionDetail> {
-    const client = await this.pool.connect();
-    let revisionId: string;
-    try {
-      await client.query("begin");
-      const resolvedCriterionVersionId = criterionVersionId
-        ?? await resolveSingletonCriterionVersionForRegression(client, projectId);
-      revisionId = await getOrCreateRegressionDatasetRevisionWithClient(
-        client,
-        projectId,
-        resolvedCriterionVersionId,
-        actorUserId
-      );
-      await client.query("commit");
-    } catch (error) {
-      await client.query("rollback").catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
-    const detail = await this.getDatasetRevisionDetail(projectId, revisionId);
-    if (!detail) throw new DatasetRevisionConflictError("Regression dataset revision vanished after creation");
-    return detail;
+    return this.datasetRepository.getOrCreateRegressionDatasetRevision(projectId, actorUserId, criterionVersionId);
   }
 
   async createEvalRun(input: CreateEvalRunInputDb): Promise<EvalRunDetail> {

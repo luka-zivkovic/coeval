@@ -262,6 +262,7 @@ describe("PostgreSQL project repository slice", () => {
       "this.apiKeyRepository = new PgApiKeyRepository(pool);",
       "this.assessmentReceiptRepository = new PgAssessmentReceiptRepository(pool);",
       "this.criterionSuiteRepository = new PgCriterionSuiteRepository(pool);",
+      "this.datasetRepository = new PgDatasetRepository(pool);",
       "this.historicalGateEvidenceRepository = new PgHistoricalGateEvidenceRepository(pool);",
       "this.integrationRepository = new PgIntegrationRepository(pool, (projectId, requested, requiredContext) => this.resolveImportSkillVersionId(projectId, requested, requiredContext), (input) => this.authorizeSkillVersionExecution(input));",
       "this.judgeCredentialRepository = new PgJudgeCredentialRepository(pool);",
@@ -269,7 +270,8 @@ describe("PostgreSQL project repository slice", () => {
       "this.projectRepository = new PgProjectRepository(pool, { getCurrentSkill: (projectId) => this.getCurrentSkill(projectId), getCurrentSkillForCriterion: (projectId, criterionId) => this.getCurrentSkillForCriterion(projectId, criterionId), listGoldenSet: (projectId, criterionVersionId) => this.listGoldenSet(projectId, criterionVersionId), listExceptionCases: (projectId, criterionVersionId) => this.listExceptionCases(projectId, criterionVersionId) });",
       "this.reviewQueueRepository = new PgReviewQueueRepository(pool, (projectId) => this.getCurrentSkill(projectId));",
       "this.runComparisonRepository = new PgRunComparisonRepository(pool);",
-      "this.traceImportRepository = new PgTraceImportRepository(pool, (projectId, requested) => this.resolveImportSkillVersionId(projectId, requested), (input) => this.authorizeSkillVersionExecution(input));"
+      "this.traceImportRepository = new PgTraceImportRepository(pool, (projectId, requested) => this.resolveImportSkillVersionId(projectId, requested), (input) => this.authorizeSkillVersionExecution(input));",
+      "this.traceTestRepository = new PgTraceTestRepository(pool);"
     ]);
   }, 30_000);
 

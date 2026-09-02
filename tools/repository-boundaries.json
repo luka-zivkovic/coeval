@@ -7,6 +7,7 @@
     "apps/api/src/repository.pg/assessment-receipt-repository.ts",
     "apps/api/src/repository.pg/credential-commands.ts",
     "apps/api/src/repository.pg/criterion-suite-repository.ts",
+    "apps/api/src/repository.pg/dataset-repository.ts",
     "apps/api/src/repository.pg/dataset-revision-commands.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
     "apps/api/src/repository.pg/historical-gate-evidence-repository.ts",
@@ -21,7 +22,8 @@
     "apps/api/src/repository.pg/run-comparison-repository.ts",
     "apps/api/src/repository.pg/skill-version-commands.ts",
     "apps/api/src/repository.pg/trace-import-commands.ts",
-    "apps/api/src/repository.pg/trace-import-repository.ts"
+    "apps/api/src/repository.pg/trace-import-repository.ts",
+    "apps/api/src/repository.pg/trace-test-repository.ts"
   ],
   "externalPoolDelegates": [
     "PgEvaluatorLifecycleRepository"
@@ -149,6 +151,74 @@
         "try :: begin",
         "try>if.then :: commit",
         "try>loop :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToSkillVersion",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.createDatasetRevision",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 2,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then>if.then :: commit",
+        "try>if.then>if.then :: repository_call:apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.getDatasetRevisionDetail",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#loadHumanVerdictsForCases",
+        "try>loop :: repository_call:apps/api/src/repository.pg/mappers.ts#normalizedPayloadSnapshot",
+        "try>loop :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#resolveCaseInputIdentity",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#insertDatasetRevisionWithClient",
+        "try :: commit",
+        "catch :: rollback",
+        "catch>if.condition :: repository_call:apps/api/src/repository.pg/mappers.ts#isCheckViolation",
+        "catch>if.then :: repository_call:apps/api/src/repository.pg/mappers.ts#postgresErrorMessage",
+        "finally :: release",
+        "conditional.true :: repository_call:apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.getDatasetRevisionDetail"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.getOrCreateRegressionDatasetRevision",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#resolveSingletonCriterionVersionForRegression",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.getDatasetRevisionDetail"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.importDatasetExamples",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>loop :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#lockTraceImportIdentity",
+        "try>loop :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -372,6 +442,83 @@
       "reachableConnectionOwners": []
     },
     {
+      "method": "apps/api/src/repository.pg/trace-test-repository.ts#PgTraceTestRepository.createTraceTest",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#parseJson",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:apps/api/src/repository.pg/trace-test-repository.ts#PgTraceTestRepository.getTraceTest"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/trace-test-repository.ts#PgTraceTestRepository.enableTraceTest",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:apps/api/src/repository.pg/trace-test-repository.ts#PgTraceTestRepository.getTraceTest"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/trace-test-repository.ts#PgTraceTestRepository.recordTraceTestValidation",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToTraceTestValidation",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/trace-test-repository.ts#PgTraceTestRepository.reviseTraceTest",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:apps/api/src/repository.pg/trace-test-repository.ts#PgTraceTestRepository.getTraceTest"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
       "method": "completeEvalRunItem",
       "kind": "transaction",
       "commandCounts": {
@@ -390,33 +537,6 @@
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "createDatasetRevision",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 2,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try>if.then>if.then :: commit",
-        "try>if.then>if.then :: repository_call:getDatasetRevisionDetail",
-        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#loadHumanVerdictsForCases",
-        "try>loop :: repository_call:apps/api/src/repository.pg/mappers.ts#normalizedPayloadSnapshot",
-        "try>loop :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#resolveCaseInputIdentity",
-        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#insertDatasetRevisionWithClient",
-        "try :: commit",
-        "catch :: rollback",
-        "catch>if.condition :: repository_call:apps/api/src/repository.pg/mappers.ts#isCheckViolation",
-        "catch>if.then :: repository_call:apps/api/src/repository.pg/mappers.ts#postgresErrorMessage",
-        "finally :: release",
-        "conditional.true :: repository_call:getDatasetRevisionDetail"
       ],
       "reachableConnectionOwners": []
     },
@@ -466,45 +586,6 @@
       "reachableConnectionOwners": []
     },
     {
-      "method": "createTraceTest",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#parseJson",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release",
-        "root :: repository_call:getTraceTest"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "enableTraceTest",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release",
-        "root :: repository_call:getTraceTest"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
       "method": "failEvalRunItem",
       "kind": "transaction",
       "commandCounts": {
@@ -541,47 +622,6 @@
         "try>if.then :: commit",
         "try :: repository_call:apps/api/src/repository.pg/mappers.ts#gateFailureMessage",
         "try :: client_command:apps/api/src/repository.pg/regression-run-commands.ts#insertRegressionRun",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "getOrCreateRegressionDatasetRevision",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#resolveSingletonCriterionVersionForRegression",
-        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release",
-        "root :: repository_call:getDatasetRevisionDetail"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "importDatasetExamples",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try>loop :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#lockTraceImportIdentity",
-        "try>loop :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -647,25 +687,6 @@
       "reachableConnectionOwners": []
     },
     {
-      "method": "recordTraceTestValidation",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: commit",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToTraceTestValidation",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
       "method": "retireGoldenSetEntry",
       "kind": "transaction",
       "commandCounts": {
@@ -682,25 +703,6 @@
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "reviseTraceTest",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release",
-        "root :: repository_call:getTraceTest"
       ],
       "reachableConnectionOwners": []
     },
@@ -826,8 +828,8 @@
         0
       ],
       "callers": [
+        "apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.getOrCreateRegressionDatasetRevision",
         "createSkillVersionPending",
-        "getOrCreateRegressionDatasetRevision",
         "promoteExceptionToGoldenSet",
         "retireGoldenSetEntry"
       ]
@@ -840,8 +842,8 @@
         0
       ],
       "callers": [
-        "apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
-        "createDatasetRevision"
+        "apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.createDatasetRevision",
+        "apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient"
       ]
     },
     {
@@ -852,8 +854,8 @@
         0
       ],
       "callers": [
-        "apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
-        "createDatasetRevision"
+        "apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.createDatasetRevision",
+        "apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient"
       ]
     },
     {
@@ -864,8 +866,8 @@
         0
       ],
       "callers": [
-        "apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
-        "createDatasetRevision"
+        "apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.createDatasetRevision",
+        "apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient"
       ]
     },
     {
@@ -876,7 +878,7 @@
         0
       ],
       "callers": [
-        "getOrCreateRegressionDatasetRevision"
+        "apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.getOrCreateRegressionDatasetRevision"
       ]
     },
     {
@@ -955,8 +957,8 @@
         0
       ],
       "callers": [
-        "apps/api/src/repository.pg/trace-import-repository.ts#PgTraceImportRepository.importTrace",
-        "importDatasetExamples"
+        "apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.importDatasetExamples",
+        "apps/api/src/repository.pg/trace-import-repository.ts#PgTraceImportRepository.importTrace"
       ]
     },
     {
@@ -967,8 +969,8 @@
         0
       ],
       "callers": [
-        "apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
-        "importDatasetExamples"
+        "apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.importDatasetExamples",
+        "apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient"
       ]
     }
   ]

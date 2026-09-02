@@ -171,10 +171,19 @@ describe("PostgreSQL repository support modules", () => {
     expect(namedImports(repositorySource, "./repository.pg/mappers.js").sort())
       .toEqual(EXPECTED_MAPPER_EXPORTS.filter((name) =>
         name !== "GATE_CHECK_RUN_COLUMNS" &&
+        name !== "isCheckViolation" &&
+        name !== "isUniqueViolation" &&
+        name !== "normalizedPayloadSnapshot" &&
+        name !== "postgresErrorMessage" &&
         name !== "rowToApiKey" &&
         name !== "rowToAssessmentReceiptArtifact" &&
         name !== "rowToAssessmentReceiptComparison" &&
         name !== "rowToCriterion" &&
+        name !== "rowToDataset" &&
+        name !== "rowToDatasetExposureEvent" &&
+        name !== "rowToDatasetItem" &&
+        name !== "rowToDatasetRevision" &&
+        name !== "rowToDatasetRevisionItem" &&
         name !== "rowToEvaluatorSuite" &&
         name !== "rowToFeedbackSyncJobRecord" &&
         name !== "rowToGateCheck" &&
@@ -188,19 +197,16 @@ describe("PostgreSQL repository support modules", () => {
         name !== "rowToReviewQueue" &&
         name !== "rowToReviewQueueItem" &&
         name !== "rowToRunComparison" &&
+        name !== "rowToTraceTestRevision" &&
+        name !== "rowToTraceTestSummary" &&
+        name !== "rowToTraceTestValidation" &&
         name !== "toFeedbackSyncProvider" &&
         name !== "toFeedbackSyncStatus"
       ));
     expect(namedImports(repositorySource, "./repository.pg/golden-commands.js"))
       .toEqual(["loadGoldenSetRetirementContext"]);
     expect(namedImports(repositorySource, "./repository.pg/dataset-revision-commands.js"))
-      .toEqual([
-        "getOrCreateRegressionDatasetRevisionWithClient",
-        "insertDatasetRevisionWithClient",
-        "loadHumanVerdictsForCases",
-        "resolveCaseInputIdentity",
-        "resolveSingletonCriterionVersionForRegression"
-      ]);
+      .toEqual(["getOrCreateRegressionDatasetRevisionWithClient"]);
     expect(namedImports(repositorySource, "./repository.pg/assessment-receipt-commands.js"))
       .toEqual(["bumpEvalRunCounters", "mintAssessmentReceiptWithClient"]);
     expect(namedImports(repositorySource, "./repository.pg/assessment-receipt-repository.js"))
@@ -211,6 +217,8 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(["setJudgeProviderKeyOnClient"]);
     expect(namedImports(repositorySource, "./repository.pg/criterion-suite-repository.js"))
       .toEqual(["PgCriterionSuiteRepository"]);
+    expect(namedImports(repositorySource, "./repository.pg/dataset-repository.js"))
+      .toEqual(["PgDatasetRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/historical-gate-evidence-repository.js"))
       .toEqual(["PgHistoricalGateEvidenceRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/integration-repository.js"))
@@ -229,10 +237,10 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(["PgRunComparisonRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/skill-version-commands.js"))
       .toEqual(["insertSkillVersion", "nextVersion"]);
-    expect(namedImports(repositorySource, "./repository.pg/trace-import-commands.js"))
-      .toEqual(["importTraceOnClient", "lockTraceImportIdentity"]);
     expect(namedImports(repositorySource, "./repository.pg/trace-import-repository.js"))
       .toEqual(["PgTraceImportRepository"]);
+    expect(namedImports(repositorySource, "./repository.pg/trace-test-repository.js"))
+      .toEqual(["PgTraceTestRepository"]);
     expect(repositorySource.statements.filter((statement) => !ts.isImportDeclaration(statement)).map((statement) =>
       `${ts.SyntaxKind[statement.kind]}:${ts.isClassDeclaration(statement) ? statement.name?.text : "<anonymous>"}`
     )).toEqual(["ClassDeclaration:PgRepository"]);
