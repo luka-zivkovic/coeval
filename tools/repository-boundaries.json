@@ -10,6 +10,7 @@
     "apps/api/src/repository.pg/criterion-suite-repository.ts",
     "apps/api/src/repository.pg/dataset-repository.ts",
     "apps/api/src/repository.pg/dataset-revision-commands.ts",
+    "apps/api/src/repository.pg/eval-run-repository.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
     "apps/api/src/repository.pg/golden-evidence-repository.ts",
     "apps/api/src/repository.pg/historical-gate-evidence-repository.ts",
@@ -22,6 +23,7 @@
     "apps/api/src/repository.pg/regression-run-commands.ts",
     "apps/api/src/repository.pg/review-queue-repository.ts",
     "apps/api/src/repository.pg/run-comparison-repository.ts",
+    "apps/api/src/repository.pg/skill-lifecycle-repository.ts",
     "apps/api/src/repository.pg/skill-version-commands.ts",
     "apps/api/src/repository.pg/trace-import-commands.ts",
     "apps/api/src/repository.pg/trace-import-repository.ts",
@@ -221,6 +223,106 @@
         "try :: begin",
         "try>loop :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#lockTraceImportIdentity",
         "try>loop :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/eval-run-repository.ts#PgEvalRunRepository.completeEvalRunItem",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 2
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: rollback",
+        "try>if.then :: repository_call:apps/api/src/repository.pg/eval-run-repository.ts#PgEvalRunRepository.getEvalRun",
+        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#bumpEvalRunCounters",
+        "try>if.then>if.then :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/eval-run-repository.ts#PgEvalRunRepository.createEvalRunOnce",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:apps/api/src/repository.pg/eval-run-repository.ts#PgEvalRunRepository.getEvalRunDetail"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/eval-run-repository.ts#PgEvalRunRepository.failEvalRunItem",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 2
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: rollback",
+        "try>if.then :: repository_call:apps/api/src/repository.pg/eval-run-repository.ts#PgEvalRunRepository.getEvalRun",
+        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#bumpEvalRunCounters",
+        "try>if.then>if.then :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/eval-run-repository.ts#PgEvalRunRepository.markEvalRunDispatched",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/eval-run-repository.ts#PgEvalRunRepository.markEvalRunRunning",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -467,6 +569,121 @@
       "reachableConnectionOwners": []
     },
     {
+      "method": "apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.createSkillVersionPending",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 2,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then>if.then :: commit",
+        "try>if.then>if.then :: repository_call:apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.getSkillVersion",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
+        "try :: client_command:apps/api/src/repository.pg/skill-version-commands.ts#nextVersion",
+        "try>if.then :: client_command:apps/api/src/repository.pg/credential-commands.ts#setJudgeProviderKeyOnClient",
+        "try :: client_command:apps/api/src/repository.pg/skill-version-commands.ts#insertSkillVersion",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.failRegressionGateForVersion",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 2,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: commit",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#gateFailureMessage",
+        "try :: client_command:apps/api/src/repository.pg/regression-run-commands.ts#insertRegressionRun",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.runRegressionGateForVersion",
+      "kind": "session_advisory_lock",
+      "commandCounts": {
+        "begin": 0,
+        "commit": 0,
+        "rollback": 0
+      },
+      "sessionLockCounts": {
+        "lock": 1,
+        "unlock": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: session_lock",
+        "try :: repository_call:apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.runRegressionGateForVersionLocked",
+        "finally :: session_unlock",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": [
+        "apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.runRegressionGateForVersionLocked"
+      ]
+    },
+    {
+      "method": "apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.runRegressionGateForVersionLocked",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: repository_call:apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.getSkillVersion",
+        "root :: pool_query",
+        "root :: repository_call:apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.getRegressionRunForVersion",
+        "root :: repository_call:apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.authorizeSkillVersionExecution",
+        "root :: repository_call:apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.latestVersionId",
+        "conditional.true :: repository_call:apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.getRegressionRunForVersion",
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:apps/api/src/repository.pg/regression-run-commands.ts#insertRegressionRun",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.signOffSkillVersion",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 3
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: rollback",
+        "try>if.then :: rollback",
+        "try :: commit",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToSkillVersion",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
       "method": "apps/api/src/repository.pg/trace-import-repository.ts#PgTraceImportRepository.importTrace",
       "kind": "transaction",
       "commandCounts": {
@@ -561,224 +778,6 @@
         "root :: repository_call:apps/api/src/repository.pg/trace-test-repository.ts#PgTraceTestRepository.getTraceTest"
       ],
       "reachableConnectionOwners": []
-    },
-    {
-      "method": "completeEvalRunItem",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 2
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try>if.then :: rollback",
-        "try>if.then :: repository_call:getEvalRun",
-        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#bumpEvalRunCounters",
-        "try>if.then>if.then :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "createEvalRunOnce",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try>if.then :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release",
-        "root :: repository_call:getEvalRunDetail"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "createSkillVersionPending",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 2,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "conditional.false>conditional.true :: repository_call:getJudgeProviderCredential",
-        "root :: connect",
-        "try :: begin",
-        "try>if.then>if.then :: commit",
-        "try>if.then>if.then :: repository_call:getSkillVersion",
-        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
-        "try :: client_command:apps/api/src/repository.pg/skill-version-commands.ts#nextVersion",
-        "try>if.then :: client_command:apps/api/src/repository.pg/credential-commands.ts#setJudgeProviderKeyOnClient",
-        "try :: client_command:apps/api/src/repository.pg/skill-version-commands.ts#insertSkillVersion",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "failEvalRunItem",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 2
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try>if.then :: rollback",
-        "try>if.then :: repository_call:getEvalRun",
-        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#bumpEvalRunCounters",
-        "try>if.then>if.then :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "failRegressionGateForVersion",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 2,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try>if.then :: commit",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#gateFailureMessage",
-        "try :: client_command:apps/api/src/repository.pg/regression-run-commands.ts#insertRegressionRun",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "markEvalRunDispatched",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "markEvalRunRunning",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "runRegressionGateForVersion",
-      "kind": "session_advisory_lock",
-      "commandCounts": {
-        "begin": 0,
-        "commit": 0,
-        "rollback": 0
-      },
-      "sessionLockCounts": {
-        "lock": 1,
-        "unlock": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: session_lock",
-        "try :: repository_call:runRegressionGateForVersionLocked",
-        "finally :: session_unlock",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": [
-        "runRegressionGateForVersionLocked"
-      ]
-    },
-    {
-      "method": "runRegressionGateForVersionLocked",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: repository_call:getSkillVersion",
-        "root :: pool_query",
-        "root :: repository_call:getRegressionRunForVersion",
-        "root :: repository_call:authorizeSkillVersionExecution",
-        "root :: repository_call:getDatasetRevisionDetail",
-        "root :: repository_call:latestVersionId",
-        "conditional.true :: repository_call:getRegressionRunForVersion",
-        "conditional.true :: repository_call:getJudgeProviderCredential",
-        "root :: connect",
-        "try :: begin",
-        "try :: client_command:apps/api/src/repository.pg/regression-run-commands.ts#insertRegressionRun",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "signOffSkillVersion",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 3
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try>if.then :: rollback",
-        "try>if.then :: rollback",
-        "try :: commit",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToSkillVersion",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
     }
   ],
   "clientScopedCommands": [
@@ -790,8 +789,8 @@
         0
       ],
       "callers": [
-        "completeEvalRunItem",
-        "failEvalRunItem"
+        "apps/api/src/repository.pg/eval-run-repository.ts#PgEvalRunRepository.completeEvalRunItem",
+        "apps/api/src/repository.pg/eval-run-repository.ts#PgEvalRunRepository.failEvalRunItem"
       ]
     },
     {
@@ -805,9 +804,9 @@
         "apps/api/src/repository.pg/assessment-receipt-repository.ts#PgAssessmentReceiptRepository.compareAssessmentReceiptCopy",
         "apps/api/src/repository.pg/assessment-receipt-repository.ts#PgAssessmentReceiptRepository.createAssessmentReceiptCorrection",
         "apps/api/src/repository.pg/assessment-receipt-repository.ts#PgAssessmentReceiptRepository.getOrFreezeAssessmentReceipt",
-        "completeEvalRunItem",
-        "createEvalRunOnce",
-        "failEvalRunItem"
+        "apps/api/src/repository.pg/eval-run-repository.ts#PgEvalRunRepository.completeEvalRunItem",
+        "apps/api/src/repository.pg/eval-run-repository.ts#PgEvalRunRepository.createEvalRunOnce",
+        "apps/api/src/repository.pg/eval-run-repository.ts#PgEvalRunRepository.failEvalRunItem"
       ]
     },
     {
@@ -819,7 +818,7 @@
       ],
       "callers": [
         "apps/api/src/repository.pg/judge-credential-repository.ts#PgJudgeCredentialRepository.setJudgeProviderKey",
-        "createSkillVersionPending"
+        "apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.createSkillVersionPending"
       ]
     },
     {
@@ -833,7 +832,7 @@
         "apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.getOrCreateRegressionDatasetRevision",
         "apps/api/src/repository.pg/golden-evidence-repository.ts#PgGoldenEvidenceRepository.promoteExceptionToGoldenSet",
         "apps/api/src/repository.pg/golden-evidence-repository.ts#PgGoldenEvidenceRepository.retireGoldenSetEntry",
-        "createSkillVersionPending"
+        "apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.createSkillVersionPending"
       ]
     },
     {
@@ -913,8 +912,8 @@
         0
       ],
       "callers": [
-        "failRegressionGateForVersion",
-        "runRegressionGateForVersionLocked"
+        "apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.failRegressionGateForVersion",
+        "apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.runRegressionGateForVersionLocked"
       ]
     },
     {
@@ -937,7 +936,7 @@
       ],
       "callers": [
         "apps/api/src/repository.pg/criterion-suite-repository.ts#PgCriterionSuiteRepository.createCriterion",
-        "createSkillVersionPending"
+        "apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.createSkillVersionPending"
       ]
     },
     {
@@ -948,7 +947,7 @@
         0
       ],
       "callers": [
-        "createSkillVersionPending"
+        "apps/api/src/repository.pg/skill-lifecycle-repository.ts#PgSkillLifecycleRepository.createSkillVersionPending"
       ]
     },
     {

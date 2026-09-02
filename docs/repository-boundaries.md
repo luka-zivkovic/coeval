@@ -165,6 +165,21 @@ disagreement summaries, convergence/self-consistency reports, audit reads,
 and the project dashboard's exception feed retain their existing scope,
 ordering, redaction, and exact evaluator binding. These read models neither
 adjudicate truth nor create release policy.
+The complete twenty-five-method eval-run port lives in
+`repository.pg/eval-run-repository.ts`. The facade constructs it once with the
+same pool. Run creation, durable dispatch claims, item execution leases,
+terminal counters, receipt minting, and project-scoped reads preserve their
+existing transaction owners, idempotency, recovery ordering, and immutable
+evidence boundaries. Evaluation results remain measured evidence and do not
+make release decisions.
+The complete fifteen-method skill-lifecycle port lives in
+`repository.pg/skill-lifecycle-repository.ts`. The facade constructs it once
+with the same pool, the exact judge-provider factory, and lazy callbacks for
+singleton-criterion validation, immutable dataset revision reads, and judge
+credentials. Current/latest selection, sign-off, version authoring, regression
+execution, terminal failure, and history reads retain their existing locks,
+transactions, exact evaluator and dataset bindings, and policy-free status
+semantics.
 The complete 23-method provider-integration port lives in
 `repository.pg/integration-repository.ts`. The facade constructs it once with
 the same pool plus lazy callbacks to the exact-version resolver and execution
@@ -262,6 +277,15 @@ allocations and module edges, exact pool identity, lazy facade dependencies,
 direct facade delegates, project-scoped ordering, and fail-closed ambiguous
 human-verdict binding. Existing golden, findings, convergence, calibration,
 and database-backed suites continue to pin the evidence behavior.
+`repository-pg-eval-skill-repositories.test.ts` pins the complete eval-run and
+skill-lifecycle ports, internal transaction helpers, sole canonical
+allocations and module edges, exact pool and judge-provider-factory identity,
+lazy facade dependencies, direct facade delegates with exact signature and
+default parity, and fail-closed rejection of analysis-population revisions
+before ordinary eval-run insertion. It also pins credential and immutable
+revision reads before their transaction connections are acquired. Existing
+evaluation, skill-version, regression, receipt, and database-backed suites
+continue to pin the complete transaction and lifecycle behavior.
 
 The fixture also pins the one approved external pool handoff from the main
 repository:
@@ -269,10 +293,10 @@ repository:
 with the same pool. That repository owns a separate accepted-ADR lifecycle and
 is outside this map; passing `this.pool` to any other external constructor
 fails the guard. The internal API-key, assessment-receipt, case-evidence,
-criterion/suite, dataset, golden-evidence, historical-gate, integration,
+criterion/suite, dataset, eval-run, golden-evidence, historical-gate, integration,
 judge-credential, judge-feedback, project, review-queue, run-comparison,
-trace/import, and trace-test compositions each receive the constructor's exact
-pool once and are separately pinned by structural tests.
+skill-lifecycle, trace/import, and trace-test compositions each receive the
+constructor's exact pool once and are separately pinned by structural tests.
 The project composition also pins its four facade callbacks so later
 implementation slices cannot bypass facade dispatch.
 
@@ -303,10 +327,10 @@ The 35 transaction owners are grouped by the consistency they protect:
 | Trace and dataset-example ingestion | `PgTraceImportRepository.importTrace`, `PgDatasetRepository.importDatasetExamples` |
 | Credentials and integrations | `PgJudgeCredentialRepository.setJudgeProviderKey`, `PgIntegrationRepository.deleteLangSmithIntegration`, `PgIntegrationRepository.deleteLangfuseIntegration`, `PgIntegrationRepository.deleteIronsideIntegration` |
 | Trace-test lifecycle | `PgTraceTestRepository.createTraceTest`, `PgTraceTestRepository.reviseTraceTest`, `PgTraceTestRepository.recordTraceTestValidation`, `PgTraceTestRepository.enableTraceTest` |
-| Evaluation runs and assessment receipts | `createEvalRunOnce`, `markEvalRunDispatched`, `markEvalRunRunning`, `completeEvalRunItem`, `failEvalRunItem`, `PgAssessmentReceiptRepository.getOrFreezeAssessmentReceipt`, `PgAssessmentReceiptRepository.compareAssessmentReceiptCopy`, `PgAssessmentReceiptRepository.createAssessmentReceiptCorrection` |
+| Evaluation runs and assessment receipts | `PgEvalRunRepository.createEvalRunOnce`, `PgEvalRunRepository.markEvalRunDispatched`, `PgEvalRunRepository.markEvalRunRunning`, `PgEvalRunRepository.completeEvalRunItem`, `PgEvalRunRepository.failEvalRunItem`, `PgAssessmentReceiptRepository.getOrFreezeAssessmentReceipt`, `PgAssessmentReceiptRepository.compareAssessmentReceiptCopy`, `PgAssessmentReceiptRepository.createAssessmentReceiptCorrection` |
 | Historical gate evidence | `PgHistoricalGateEvidenceRepository.createGateCheck` |
 | Governed review queues | `PgReviewQueueRepository.createReviewQueue`, `PgReviewQueueRepository.addReviewQueueItems` |
-| Evaluator version and regression lifecycle | `signOffSkillVersion`, `createSkillVersionPending`, `runRegressionGateForVersionLocked`, `failRegressionGateForVersion` |
+| Evaluator version and regression lifecycle | `PgSkillLifecycleRepository.signOffSkillVersion`, `PgSkillLifecycleRepository.createSkillVersionPending`, `PgSkillLifecycleRepository.runRegressionGateForVersionLocked`, `PgSkillLifecycleRepository.failRegressionGateForVersion` |
 
 This table is a maintained navigation aid, while the JSON fixture is the
 executable inventory. Whenever `--write` changes an owner name or count,

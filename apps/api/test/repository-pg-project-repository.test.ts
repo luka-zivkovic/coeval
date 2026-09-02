@@ -264,6 +264,7 @@ describe("PostgreSQL project repository slice", () => {
       "this.caseEvidenceRepository = new PgCaseEvidenceRepository(pool, { assertSingletonCriterion: (projectId) => this.assertSingletonCriterion(projectId), getCurrentSkill: (projectId) => this.getCurrentSkill(projectId), resolveGoldenCriterionVersion: (projectId, requested) => this.resolveGoldenCriterionVersion(projectId, requested) });",
       "this.criterionSuiteRepository = new PgCriterionSuiteRepository(pool);",
       "this.datasetRepository = new PgDatasetRepository(pool);",
+      "this.evalRunRepository = new PgEvalRunRepository(pool);",
       "this.goldenEvidenceRepository = new PgGoldenEvidenceRepository(pool, { assertSingletonCriterion: (projectId) => this.assertSingletonCriterion(projectId), resolveGoldenCriterionVersion: (projectId, requested) => this.resolveGoldenCriterionVersion(projectId, requested) });",
       "this.historicalGateEvidenceRepository = new PgHistoricalGateEvidenceRepository(pool);",
       "this.integrationRepository = new PgIntegrationRepository(pool, (projectId, requested, requiredContext) => this.resolveImportSkillVersionId(projectId, requested, requiredContext), (input) => this.authorizeSkillVersionExecution(input));",
@@ -272,6 +273,7 @@ describe("PostgreSQL project repository slice", () => {
       "this.projectRepository = new PgProjectRepository(pool, { getCurrentSkill: (projectId) => this.getCurrentSkill(projectId), getCurrentSkillForCriterion: (projectId, criterionId) => this.getCurrentSkillForCriterion(projectId, criterionId), listGoldenSet: (projectId, criterionVersionId) => this.listGoldenSet(projectId, criterionVersionId), listExceptionCases: (projectId, criterionVersionId) => this.listExceptionCases(projectId, criterionVersionId) });",
       "this.reviewQueueRepository = new PgReviewQueueRepository(pool, (projectId) => this.getCurrentSkill(projectId));",
       "this.runComparisonRepository = new PgRunComparisonRepository(pool);",
+      "this.skillLifecycleRepository = new PgSkillLifecycleRepository(pool, judgeProviderFactory, { assertSingletonCriterion: (projectId) => this.assertSingletonCriterion(projectId), getDatasetRevisionDetail: (projectId, revisionId) => this.getDatasetRevisionDetail(projectId, revisionId), getJudgeProviderCredential: (projectId, provider) => this.getJudgeProviderCredential(projectId, provider) });",
       "this.traceImportRepository = new PgTraceImportRepository(pool, (projectId, requested) => this.resolveImportSkillVersionId(projectId, requested), (input) => this.authorizeSkillVersionExecution(input));",
       "this.traceTestRepository = new PgTraceTestRepository(pool);"
     ]);
