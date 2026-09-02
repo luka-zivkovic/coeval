@@ -120,6 +120,14 @@ it once with the same pool. Gate and item rows retain their existing atomic
 write, and project-scoped reads continue deriving status from recorded eval-run
 evidence. This slice preserves deprecated artifacts only; it owns no release
 decision, threshold, rollout, or deployment override.
+The complete seven-method governed review-queue port lives in
+`repository.pg/review-queue-repository.ts`. The facade constructs it once with
+the same pool and a lazy current-skill callback. Queue creation and item
+addition retain their existing transaction owners, pre-transaction project
+validation, immutable criterion-version binding, tuple deduplication, and
+position ordering. Project-scoped reads and idempotent close/reopen behavior
+remain unchanged. This slice schedules explicit human attention; it owns no
+release decision or policy threshold.
 `repository-pg-support.test.ts` pins the support module surfaces, the sole
 `PgRepository` implementation owner, the complete 161-method public facade,
 and representative retirement-context query behavior;
@@ -169,6 +177,11 @@ and row mapping.
 historical compatibility port, one allocation, exact pool identity and
 transaction wrapper, gate/item bindings, post-commit projection, rollback,
 project scoping, derived states, ordering, and limits.
+`repository-pg-review-queue-repository.test.ts` pins the complete review-queue
+port, one allocation, exact pool identity and lazy facade callback, direct
+facade delegates, transaction rollback, immutable criterion selection,
+project-scoped reads, ambiguity rejection, tuple deduplication, successful
+position ordering, and idempotent close/reopen behavior.
 
 The fixture also pins the one approved external pool handoff from the main
 repository:
@@ -176,9 +189,9 @@ repository:
 with the same pool. That repository owns a separate accepted-ADR lifecycle and
 is outside this map; passing `this.pool` to any other external constructor
 fails the guard. The internal API-key, assessment-receipt, criterion/suite,
-historical-gate, judge-credential, project, and run-comparison compositions
-each receive the constructor's exact pool once and are separately pinned by
-structural tests.
+historical-gate, judge-credential, project, review-queue, and run-comparison
+compositions each receive the constructor's exact pool once and are separately
+pinned by structural tests.
 The project composition also pins its four facade callbacks so later
 implementation slices cannot bypass facade dispatch.
 
@@ -211,7 +224,7 @@ The 35 transaction owners are grouped by the consistency they protect:
 | Trace-test lifecycle | `createTraceTest`, `reviseTraceTest`, `recordTraceTestValidation`, `enableTraceTest` |
 | Evaluation runs and assessment receipts | `createEvalRunOnce`, `markEvalRunDispatched`, `markEvalRunRunning`, `completeEvalRunItem`, `failEvalRunItem`, `PgAssessmentReceiptRepository.getOrFreezeAssessmentReceipt`, `PgAssessmentReceiptRepository.compareAssessmentReceiptCopy`, `PgAssessmentReceiptRepository.createAssessmentReceiptCorrection` |
 | Historical gate evidence | `PgHistoricalGateEvidenceRepository.createGateCheck` |
-| Governed review queues | `createReviewQueue`, `addReviewQueueItems` |
+| Governed review queues | `PgReviewQueueRepository.createReviewQueue`, `PgReviewQueueRepository.addReviewQueueItems` |
 | Evaluator version and regression lifecycle | `signOffSkillVersion`, `createSkillVersionPending`, `runRegressionGateForVersionLocked`, `failRegressionGateForVersion` |
 
 This table is a maintained navigation aid, while the JSON fixture is the
