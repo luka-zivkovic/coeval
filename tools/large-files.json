@@ -8,7 +8,7 @@
     },
     "apps/api/src/repository.pg.ts": {
       "classification": "refactor_candidate",
-      "reason": "The facade still contains several independently changing transaction and read-model groups after command, API-key, assessment-receipt, criterion/suite, dataset, historical-gate, integration, judge-credential, judge-feedback, project, review-queue, run-comparison, trace/import, and trace-test extraction.",
+      "reason": "The facade still contains several independently changing transaction and read-model groups after command, API-key, assessment-receipt, case-evidence, criterion/suite, dataset, golden-evidence, historical-gate, integration, judge-credential, judge-feedback, project, review-queue, run-comparison, trace/import, and trace-test extraction.",
       "revisit": "Continue extracting complete port consistency groups while preserving the checked connection-owner graph and the stable 161-method facade."
     },
     "pnpm-lock.yaml": {

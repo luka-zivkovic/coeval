@@ -5,11 +5,13 @@
     "apps/api/src/repository.pg/api-key-repository.ts",
     "apps/api/src/repository.pg/assessment-receipt-commands.ts",
     "apps/api/src/repository.pg/assessment-receipt-repository.ts",
+    "apps/api/src/repository.pg/case-evidence-repository.ts",
     "apps/api/src/repository.pg/credential-commands.ts",
     "apps/api/src/repository.pg/criterion-suite-repository.ts",
     "apps/api/src/repository.pg/dataset-repository.ts",
     "apps/api/src/repository.pg/dataset-revision-commands.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
+    "apps/api/src/repository.pg/golden-evidence-repository.ts",
     "apps/api/src/repository.pg/historical-gate-evidence-repository.ts",
     "apps/api/src/repository.pg/integration-repository.ts",
     "apps/api/src/repository.pg/judge-credential-repository.ts",
@@ -219,6 +221,48 @@
         "try :: begin",
         "try>loop :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#lockTraceImportIdentity",
         "try>loop :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/golden-evidence-repository.ts#PgGoldenEvidenceRepository.promoteExceptionToGoldenSet",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: pool_query",
+        "root :: repository_call:apps/api/src/repository.pg/golden-evidence-repository.ts#PgGoldenEvidenceRepository.getCaseDetail",
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
+        "try :: commit",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToGoldenSetEntry",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/golden-evidence-repository.ts#PgGoldenEvidenceRepository.retireGoldenSetEntry",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then>if.then :: client_command:apps/api/src/repository.pg/golden-commands.ts#loadGoldenSetRetirementContext",
+        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -665,48 +709,6 @@
       "reachableConnectionOwners": []
     },
     {
-      "method": "promoteExceptionToGoldenSet",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: pool_query",
-        "root :: repository_call:getCaseDetail",
-        "root :: connect",
-        "try :: begin",
-        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
-        "try :: commit",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToGoldenSetEntry",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "retireGoldenSetEntry",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try>if.then>if.then :: client_command:apps/api/src/repository.pg/golden-commands.ts#loadGoldenSetRetirementContext",
-        "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
       "method": "runRegressionGateForVersion",
       "kind": "session_advisory_lock",
       "commandCounts": {
@@ -829,9 +831,9 @@
       ],
       "callers": [
         "apps/api/src/repository.pg/dataset-repository.ts#PgDatasetRepository.getOrCreateRegressionDatasetRevision",
-        "createSkillVersionPending",
-        "promoteExceptionToGoldenSet",
-        "retireGoldenSetEntry"
+        "apps/api/src/repository.pg/golden-evidence-repository.ts#PgGoldenEvidenceRepository.promoteExceptionToGoldenSet",
+        "apps/api/src/repository.pg/golden-evidence-repository.ts#PgGoldenEvidenceRepository.retireGoldenSetEntry",
+        "createSkillVersionPending"
       ]
     },
     {
@@ -889,7 +891,7 @@
         0
       ],
       "callers": [
-        "retireGoldenSetEntry"
+        "apps/api/src/repository.pg/golden-evidence-repository.ts#PgGoldenEvidenceRepository.retireGoldenSetEntry"
       ]
     },
     {

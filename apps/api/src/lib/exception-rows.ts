@@ -1,7 +1,7 @@
-// Shared cap for the exceptions list. PgRepository.listExceptionCases reduces
-// in SQL (mirroring pinExceptionJudgeRunRows below — the unit-tested spec) and
-// must apply the SAME limit, or the dashboard and this lib disagree about what
-// "the queue" is.
+// Shared cap for the exceptions list. PgCaseEvidenceRepository.listExceptionCases
+// reduces in SQL (mirroring pinExceptionJudgeRunRows below — the unit-tested
+// spec) and must apply the SAME limit, or the dashboard and this lib disagree
+// about what "the queue" is.
 export const EXCEPTION_LIST_LIMIT = 50;
 
 export interface ExceptionJudgeRunRow {
