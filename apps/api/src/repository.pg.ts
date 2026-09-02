@@ -102,7 +102,6 @@ import type { Trace } from "@coeval/audit/runtime";
 import { createJudgeProvider, type JudgeProviderFactory } from "./lib/judge-provider.js";
 import { PgEvaluatorLifecycleRepository } from "./evaluator-lifecycle/repository.pg.js";
 import { decryptJson, encryptJson } from "./lib/encryption.js";
-import { generateApiKey, hashApiKey } from "./lib/api-keys.js";
 import { redactNormalizedTracePayload, type NormalizedTracePayload, type NormalizedTraceStep } from "./lib/redaction.js";
 import {
   canonicalReceiptBytes,
@@ -220,6 +219,7 @@ import {
   datasetRevisionItemDigest,
   decidePublicDatasetRevisionCreation
 } from "./lib/dataset-revision.js";
+import { PgApiKeyRepository } from "./repository.pg/api-key-repository.js";
 import {
   bumpEvalRunCounters,
   mintAssessmentReceiptWithClient
@@ -249,7 +249,6 @@ import {
   normalizedPayloadSnapshot,
   parseJson,
   postgresErrorMessage,
-  rowToApiKey,
   rowToAssessmentReceiptArtifact,
   rowToAssessmentReceiptComparison,
   rowToCriterionVersion,
@@ -286,6 +285,7 @@ import {
 } from "./repository.pg/mappers.js";
 
 export class PgRepository implements CoevalRepository {
+  private readonly apiKeyRepository: PgApiKeyRepository;
   private readonly criterionSuiteRepository: PgCriterionSuiteRepository;
   private readonly projectRepository: PgProjectRepository;
 
@@ -293,6 +293,7 @@ export class PgRepository implements CoevalRepository {
     private readonly pool: Pool,
     private readonly judgeProviderFactory: JudgeProviderFactory = createJudgeProvider
   ) {
+    this.apiKeyRepository = new PgApiKeyRepository(pool);
     this.criterionSuiteRepository = new PgCriterionSuiteRepository(pool);
     this.projectRepository = new PgProjectRepository(pool, {
       getCurrentSkill: (projectId) => this.getCurrentSkill(projectId),
@@ -2422,44 +2423,19 @@ export class PgRepository implements CoevalRepository {
   }
 
   async createApiKey(input: CreateApiKeyInputDb): Promise<CreatedApiKey> {
-    const generated = generateApiKey();
-    const result = await this.pool.query(
-      `insert into api_keys (id, project_id, name, key_hash, key_prefix, created_by_user_id)
-       values ($1,$2,$3,$4,$5,$6)
-       returning *`,
-      [`apikey_${randomUUID()}`, input.projectId, input.name, generated.keyHash, generated.keyPrefix, input.createdByUserId ?? null]
-    );
-    return { ...rowToApiKey(result.rows[0]), key: generated.key };
+    return this.apiKeyRepository.createApiKey(input);
   }
 
   async listApiKeys(projectId: string): Promise<ApiKey[]> {
-    const result = await this.pool.query(
-      `select * from api_keys where project_id = $1 order by created_at desc`,
-      [projectId]
-    );
-    return result.rows.map(rowToApiKey);
+    return this.apiKeyRepository.listApiKeys(projectId);
   }
 
   async revokeApiKey(projectId: string, apiKeyId: string): Promise<boolean> {
-    const result = await this.pool.query(
-      `update api_keys set revoked_at = now()
-       where id = $1 and project_id = $2 and revoked_at is null`,
-      [apiKeyId, projectId]
-    );
-    return (result.rowCount ?? 0) > 0;
+    return this.apiKeyRepository.revokeApiKey(projectId, apiKeyId);
   }
 
   async resolveApiKey(rawKey: string): Promise<{ projectId: string; apiKeyId: string } | null> {
-    const keyHash = hashApiKey(rawKey);
-    const result = await this.pool.query(
-      `update api_keys set last_used_at = now()
-       where key_hash = $1 and revoked_at is null
-       returning id, project_id`,
-      [keyHash]
-    );
-    const row = result.rows[0];
-    if (!row) return null;
-    return { projectId: String(row.project_id), apiKeyId: String(row.id) };
+    return this.apiKeyRepository.resolveApiKey(rawKey);
   }
 
   async createTraceTest(input: CreateTraceTestInputDb): Promise<TraceTestDetail> {

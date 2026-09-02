@@ -2,6 +2,7 @@
   "version": 2,
   "sources": [
     "apps/api/src/repository.pg.ts",
+    "apps/api/src/repository.pg/api-key-repository.ts",
     "apps/api/src/repository.pg/assessment-receipt-commands.ts",
     "apps/api/src/repository.pg/credential-commands.ts",
     "apps/api/src/repository.pg/criterion-suite-repository.ts",
