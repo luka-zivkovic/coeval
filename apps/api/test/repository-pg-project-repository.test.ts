@@ -266,7 +266,8 @@ describe("PostgreSQL project repository slice", () => {
       "this.judgeCredentialRepository = new PgJudgeCredentialRepository(pool);",
       "this.projectRepository = new PgProjectRepository(pool, { getCurrentSkill: (projectId) => this.getCurrentSkill(projectId), getCurrentSkillForCriterion: (projectId, criterionId) => this.getCurrentSkillForCriterion(projectId, criterionId), listGoldenSet: (projectId, criterionVersionId) => this.listGoldenSet(projectId, criterionVersionId), listExceptionCases: (projectId, criterionVersionId) => this.listExceptionCases(projectId, criterionVersionId) });",
       "this.reviewQueueRepository = new PgReviewQueueRepository(pool, (projectId) => this.getCurrentSkill(projectId));",
-      "this.runComparisonRepository = new PgRunComparisonRepository(pool);"
+      "this.runComparisonRepository = new PgRunComparisonRepository(pool);",
+      "this.traceImportRepository = new PgTraceImportRepository(pool, (projectId, requested) => this.resolveImportSkillVersionId(projectId, requested), (input) => this.authorizeSkillVersionExecution(input));"
     ]);
   }, 30_000);
 

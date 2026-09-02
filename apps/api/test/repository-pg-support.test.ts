@@ -178,6 +178,7 @@ describe("PostgreSQL repository support modules", () => {
         name !== "rowToEvaluatorSuite" &&
         name !== "rowToGateCheck" &&
         name !== "rowToGateCheckItem" &&
+        name !== "rowToImportJobRecord" &&
         name !== "rowToProject" &&
         name !== "rowToProjectSettings" &&
         name !== "rowToReviewQueue" &&
@@ -220,6 +221,8 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(["insertSkillVersion", "nextVersion"]);
     expect(namedImports(repositorySource, "./repository.pg/trace-import-commands.js"))
       .toEqual(["importTraceOnClient", "lockTraceImportIdentity"]);
+    expect(namedImports(repositorySource, "./repository.pg/trace-import-repository.js"))
+      .toEqual(["PgTraceImportRepository"]);
     expect(repositorySource.statements.filter((statement) => !ts.isImportDeclaration(statement)).map((statement) =>
       `${ts.SyntaxKind[statement.kind]}:${ts.isClassDeclaration(statement) ? statement.name?.text : "<anonymous>"}`
     )).toEqual(["ClassDeclaration:PgRepository"]);
@@ -232,8 +235,8 @@ describe("PostgreSQL repository support modules", () => {
     const privateMethods = methods.filter((method) =>
       ts.getModifiers(method)?.some((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword)
     );
-    expect(methods).toHaveLength(176);
-    expect(privateMethods).toHaveLength(15);
+    expect(methods).toHaveLength(175);
+    expect(privateMethods).toHaveLength(14);
     expect(methods.length - privateMethods.length).toBe(161);
   }, 30_000);
 

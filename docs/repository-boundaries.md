@@ -128,6 +128,14 @@ validation, immutable criterion-version binding, tuple deduplication, and
 position ordering. Project-scoped reads and idempotent close/reopen behavior
 remain unchanged. This slice schedules explicit human attention; it owns no
 release decision or policy threshold.
+The complete seven-method trace/import-job port lives in
+`repository.pg/trace-import-repository.ts`. The facade constructs it once with
+the same pool plus lazy callbacks to the existing exact-version resolver and
+execution authorizer. Single-trace ingestion retains one transaction and its
+caller-owned trace command. Import jobs bind the exact authorized evaluator
+version before insertion, and every lifecycle read or write remains
+project-scoped. Integration selection still resolves through the stable
+facade; this slice owns no release decision or policy threshold.
 `repository-pg-support.test.ts` pins the support module surfaces, the sole
 `PgRepository` implementation owner, the complete 161-method public facade,
 and representative retirement-context query behavior;
@@ -182,6 +190,12 @@ port, one allocation, exact pool identity and lazy facade callback, direct
 facade delegates, transaction rollback, immutable criterion selection,
 project-scoped reads, ambiguity rejection, tuple deduplication, successful
 position ordering, and idempotent close/reopen behavior.
+`repository-pg-trace-import-repository.test.ts` pins the complete trace/import
+port, one allocation, exact pool identity and lazy facade callbacks, direct
+facade delegates, transaction ordering and rollback, exact-version
+authorization before insertion, project-scoped lifecycle writes and reads,
+database-derived completion counts, row mapping, ordering, limits, and
+missing-job failures.
 
 The fixture also pins the one approved external pool handoff from the main
 repository:
@@ -189,9 +203,9 @@ repository:
 with the same pool. That repository owns a separate accepted-ADR lifecycle and
 is outside this map; passing `this.pool` to any other external constructor
 fails the guard. The internal API-key, assessment-receipt, criterion/suite,
-historical-gate, judge-credential, project, review-queue, and run-comparison
-compositions each receive the constructor's exact pool once and are separately
-pinned by structural tests.
+historical-gate, judge-credential, project, review-queue, run-comparison, and
+trace/import compositions each receive the constructor's exact pool once and
+are separately pinned by structural tests.
 The project composition also pins its four facade callbacks so later
 implementation slices cannot bypass facade dispatch.
 
@@ -219,7 +233,7 @@ The 35 transaction owners are grouped by the consistency they protect:
 | Project lifecycle and retention | `PgProjectRepository.updateProjectSettings`, `PgProjectRepository.pruneExpiredTraces`, `PgProjectRepository.deleteProject` |
 | Criterion and suite definitions | `PgCriterionSuiteRepository.createCriterion`, `PgCriterionSuiteRepository.createCriterionVersion`, `PgCriterionSuiteRepository.createEvaluatorSuiteManifest` |
 | Golden evidence and frozen datasets | `promoteExceptionToGoldenSet`, `retireGoldenSetEntry`, `createDatasetRevision`, `getOrCreateRegressionDatasetRevision` |
-| Trace and dataset-example ingestion | `importTrace`, `importDatasetExamples` |
+| Trace and dataset-example ingestion | `PgTraceImportRepository.importTrace`, `importDatasetExamples` |
 | Credentials and integrations | `PgJudgeCredentialRepository.setJudgeProviderKey`, `deleteLangSmithIntegration`, `deleteLangfuseIntegration`, `deleteIronsideIntegration` |
 | Trace-test lifecycle | `createTraceTest`, `reviseTraceTest`, `recordTraceTestValidation`, `enableTraceTest` |
 | Evaluation runs and assessment receipts | `createEvalRunOnce`, `markEvalRunDispatched`, `markEvalRunRunning`, `completeEvalRunItem`, `failEvalRunItem`, `PgAssessmentReceiptRepository.getOrFreezeAssessmentReceipt`, `PgAssessmentReceiptRepository.compareAssessmentReceiptCopy`, `PgAssessmentReceiptRepository.createAssessmentReceiptCorrection` |

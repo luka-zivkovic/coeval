@@ -18,7 +18,8 @@
     "apps/api/src/repository.pg/review-queue-repository.ts",
     "apps/api/src/repository.pg/run-comparison-repository.ts",
     "apps/api/src/repository.pg/skill-version-commands.ts",
-    "apps/api/src/repository.pg/trace-import-commands.ts"
+    "apps/api/src/repository.pg/trace-import-commands.ts",
+    "apps/api/src/repository.pg/trace-import-repository.ts"
   ],
   "externalPoolDelegates": [
     "PgEvaluatorLifecycleRepository"
@@ -293,6 +294,25 @@
       "reachableConnectionOwners": []
     },
     {
+      "method": "apps/api/src/repository.pg/trace-import-repository.ts#PgTraceImportRepository.importTrace",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
       "method": "completeEvalRunItem",
       "kind": "transaction",
       "commandCounts": {
@@ -560,25 +580,6 @@
         "try :: begin",
         "try>loop :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#lockTraceImportIdentity",
         "try>loop :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "importTrace",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: client_command:apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -952,8 +953,8 @@
         0
       ],
       "callers": [
-        "importDatasetExamples",
-        "importTrace"
+        "apps/api/src/repository.pg/trace-import-repository.ts#PgTraceImportRepository.importTrace",
+        "importDatasetExamples"
       ]
     },
     {
