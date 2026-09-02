@@ -166,6 +166,10 @@ import { PgSkillLifecycleRepository } from "./repository.pg/skill-lifecycle-repo
 import { PgTraceImportRepository } from "./repository.pg/trace-import-repository.js";
 import { PgTraceTestRepository } from "./repository.pg/trace-test-repository.js";
 
+// Explicit PostgreSQL compatibility facade over the 17 cohesive port
+// implementations below. Direct methods intentionally stay visible and in
+// CoevalRepository port order; only the three named cross-port resolvers own
+// coordination logic in this file.
 export class PgRepository implements CoevalRepository {
   private readonly apiKeyRepository: PgApiKeyRepository;
   private readonly assessmentReceiptRepository: PgAssessmentReceiptRepository;
@@ -251,6 +255,8 @@ export class PgRepository implements CoevalRepository {
     this.traceTestRepository = new PgTraceTestRepository(pool);
   }
 
+  // Direct port delegates. Their explicit signatures and argument forwarding
+  // are part of the reviewed facade surface, not boilerplate to hide dynamically.
   async listProjects(userId?: string | undefined): Promise<Project[]> {
     return this.projectRepository.listProjects(userId);
   }
@@ -370,6 +376,7 @@ export class PgRepository implements CoevalRepository {
     return this.skillLifecycleRepository.getCriterionVersionForSkillVersion(projectId, skillVersionId);
   }
 
+  // Cross-port resolver 1/3: preserve the project-level singleton criterion invariant.
   private async assertSingletonCriterion(projectId: string): Promise<void> {
     const result = await this.pool.query(
       `select count(*)::int as criterion_count from criteria where project_id = $1`,
@@ -486,6 +493,7 @@ export class PgRepository implements CoevalRepository {
     return this.traceImportRepository.createImportJob(input);
   }
 
+  // Cross-port resolver 2/3: bind imports to a project-owned, context-eligible version.
   private async resolveImportSkillVersionId(
     projectId: string,
     requested?: string | undefined,
@@ -1040,6 +1048,7 @@ export class PgRepository implements CoevalRepository {
     return this.reviewQueueRepository.reopenReviewQueue(projectId, queueId);
   }
 
+  // Cross-port resolver 3/3: bind golden evidence to an immutable project criterion.
   private async resolveGoldenCriterionVersion(
     projectId: string,
     requested?: string | undefined

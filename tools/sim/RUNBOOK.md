@@ -22,9 +22,9 @@ review-fix pass), in order:
    `DemoRepository`) — assert the *invariant*, not the implementation (e.g.
    "re-pasting edited content mints a fresh case", "a credential-less eval item
    FAILS and writes nothing to the verdict ledger"). PG-side coverage lives in
-   `pg-smoke.test.ts` (real schema + real migrations per test). Run it with:
+   the `pg-smoke-*.test.ts` shards (real schema + real migrations per test). Run them with:
    `set -a; source .env; set +a; PG_SMOKE_DATABASE_URL="$DATABASE_URL" npx
-   vitest run apps/api/test/pg-smoke.test.ts --testTimeout=120000`
+   vitest run apps/api/test/pg-smoke-*.test.ts --testTimeout=120000`
    — the committed PG_SMOKE url points at a localhost PG that usually isn't
    running, remote databases may need the raised timeout, and vitest never
    autoloads `.env`. Confirm the suite RAN (not `describe.skip`'d); a failing
