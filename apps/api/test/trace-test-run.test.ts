@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   traceTestRunOutcome,
   type CreateTraceTestInput,
@@ -9,6 +9,17 @@ import {
 } from "@coeval/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
+
+// The mock judge scans metadata for failure terms, so a random UUID containing
+// "bad" can make this route contract nondeterministic without changing input.
+vi.mock("node:crypto", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:crypto")>();
+  let sequence = 0;
+  return {
+    ...actual,
+    randomUUID: () => `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}`
+  };
+});
 
 const PROJECT = "proj_langsmith_support";
 
