@@ -136,5 +136,12 @@ transaction work on the supplied client. Independently implemented specialist
 repositories may use domain-local support modules when their own structural
 tests preserve connection ownership and module edges.
 
+`apps/api/src/repository.pg.ts` is the reviewed endpoint of that extraction: an
+explicit compatibility facade over 17 cohesive repository ports. Its 161
+methods remain written out so TypeScript and the port/facade guards can audit
+the complete implementation surface, argument forwarding, constructor wiring,
+and three cross-port resolvers. Revisit the exception if those conditions stop
+describing the file; do not hide the surface behind untyped dynamic delegation.
+
 Do not update a classification merely to silence the report. The explanation
 is a review aid and should describe the current code honestly.

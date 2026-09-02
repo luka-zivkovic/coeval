@@ -7,24 +7,14 @@
       "revisit": "Revisit only when an accepted database-lifecycle decision ends the single-baseline policy."
     },
     "apps/api/src/repository.pg.ts": {
-      "classification": "refactor_candidate",
-      "reason": "The facade still contains a small set of cross-port resolvers and the stable 161-method delegation surface after command, API-key, assessment-receipt, case-evidence, criterion/suite, dataset, eval-run, golden-evidence, historical-gate, integration, judge-credential, judge-feedback, project, review-queue, run-comparison, skill-lifecycle, trace/import, and trace-test extraction.",
-      "revisit": "Continue extracting complete port consistency groups while preserving the checked connection-owner graph and the stable 161-method facade."
+      "classification": "structural_exception",
+      "reason": "This is the explicit 161-method PostgreSQL compatibility facade over 17 cohesive repository ports; keeping its direct delegations and three cross-port resolvers together makes the full implementation surface and dependency wiring reviewable.",
+      "revisit": "Revisit if the public repository contract can change, the facade becomes generated, or behavior beyond direct delegation and the three checked cross-port resolvers enters this file."
     },
     "pnpm-lock.yaml": {
       "classification": "generated",
       "reason": "pnpm owns this dependency lockfile.",
       "revisit": "Never hand-split; regenerate with the pinned package manager."
-    },
-    "apps/api/test/app.test.ts": {
-      "classification": "refactor_candidate",
-      "reason": "Route, domain, import-worker, poller, and feedback-worker suites share one test file.",
-      "revisit": "Characterize titles and auth coverage, then shard by behavior with shared support."
-    },
-    "apps/api/test/pg-smoke.test.ts": {
-      "classification": "refactor_candidate",
-      "reason": "Independent Postgres smoke scenarios span projects, datasets, evals, integrations, feedback, and retention.",
-      "revisit": "Shard after preserving the title inventory and shared disposable-database support."
     },
     "apps/web/src/screens/skill-edit.tsx": {
       "classification": "refactor_candidate",
