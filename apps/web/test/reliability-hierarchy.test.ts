@@ -142,9 +142,14 @@ describe("reliability hierarchy", () => {
     const sharedSourcePaths = (await readdir(sharedSourceDirectory, { recursive: true }))
       .filter((path) => path.endsWith(".ts"))
       .sort();
+    const webApiSourceDirectory = new URL("../src/lib/api/", import.meta.url);
+    const webApiSourcePaths = (await readdir(webApiSourceDirectory, { recursive: true }))
+      .filter((path) => path.endsWith(".ts"))
+      .sort();
     const sources = await Promise.all([
       readFile(new URL("../src/lib/resolved.ts", import.meta.url), "utf8"),
       readFile(new URL("../src/lib/api.ts", import.meta.url), "utf8"),
+      ...webApiSourcePaths.map((path) => readFile(new URL(path, webApiSourceDirectory), "utf8")),
       readFile(new URL("../../api/src/lib/kappa.ts", import.meta.url), "utf8"),
       ...sharedSourcePaths.map((path) => readFile(new URL(path, sharedSourceDirectory), "utf8"))
     ]);

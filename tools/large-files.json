@@ -31,16 +31,6 @@
       "reason": "This cohesive database-backed suite proves one append-only study, coding, taxonomy, assignment, and closure evidence lifecycle; isolated scenarios reuse one expensive parameterized seeding helper.",
       "revisit": "Revisit if an independent lifecycle enters the suite or common setup can be extracted without obscuring ordering, concurrency, and closure invariants."
     },
-    "apps/web/src/lib/api.ts": {
-      "classification": "refactor_candidate",
-      "reason": "Shared transport and many unrelated resource clients share one module.",
-      "revisit": "Extract transport and resource modules behind the existing compatibility barrel."
-    },
-    "apps/web/src/screens/trace-test-builder.tsx": {
-      "classification": "refactor_candidate",
-      "reason": "Journey orchestration and multiple independent stage panels share one screen module.",
-      "revisit": "Preserve unsaved-state and accessibility coverage while extracting stages."
-    },
     "contracts/fixtures/binary-calibration-v1.conformance.json": {
       "classification": "structural_exception",
       "reason": "This is an exact-byte, digest-pinned interoperability corpus.",
@@ -55,11 +45,6 @@
       "classification": "refactor_candidate",
       "reason": "Workspace orchestration and numerous study, coding, taxonomy, findings, and coverage panels share one file.",
       "revisit": "Harden path-sensitive tests, then extract panels while keeping state orchestration centralized."
-    },
-    "apps/web/src/screens/datasets.tsx": {
-      "classification": "refactor_candidate",
-      "reason": "Dataset orchestration, import modal, cards, run comparison, and run details change independently.",
-      "revisit": "Harden accessibility coverage, then extract panels without changing API behavior."
     },
     "apps/api/src/lib/binary-calibration.ts": {
       "classification": "structural_exception",

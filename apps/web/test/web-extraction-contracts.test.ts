@@ -13,6 +13,21 @@ const durableFeatures = [
   "trace-test-builder"
 ] as const;
 
+const srcRoot = new URL("../src/", import.meta.url);
+
+async function extractedFeatureSources(root: string): Promise<string[]> {
+  const directory = root.replace(/\.tsx?$/u, "/");
+  try {
+    return (await readdir(new URL(directory, srcRoot), { recursive: true }))
+      .filter((path) => /\.tsx?$/u.test(path))
+      .map((path) => `${directory}${path.replaceAll("\\", "/")}`)
+      .sort();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+}
+
 async function testFiles(directory: URL, prefix = ""): Promise<Array<{ name: string; url: URL }>> {
   const entries = await readdir(directory, { withFileTypes: true });
   const files: Array<{ name: string; url: URL }> = [];
@@ -46,6 +61,11 @@ describe("web extraction source contracts", () => {
     for (const [feature, contract] of Object.entries(webExtractionContracts)) {
       expect(contract.sources[0], feature).toBe(contract.root);
       expect(new Set(contract.sources).size, feature).toBe(contract.sources.length);
+      const featureDirectory = contract.root.replace(/\.tsx?$/u, "/");
+      expect(
+        contract.sources.filter((path) => path.startsWith(featureDirectory)).sort(),
+        `${feature} extracted directory inventory must be complete`
+      ).toEqual(await extractedFeatureSources(contract.root));
       const contents = new Map<string, string>();
       for (const path of contract.sources) {
         expect(path, feature).toMatch(/^(?:components|hooks|lib|screens)\//u);
