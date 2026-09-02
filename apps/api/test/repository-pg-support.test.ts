@@ -170,9 +170,12 @@ describe("PostgreSQL repository support modules", () => {
 
     expect(namedImports(repositorySource, "./repository.pg/mappers.js").sort())
       .toEqual(EXPECTED_MAPPER_EXPORTS.filter((name) =>
+        name !== "GATE_CHECK_RUN_COLUMNS" &&
         name !== "rowToApiKey" &&
         name !== "rowToCriterion" &&
         name !== "rowToEvaluatorSuite" &&
+        name !== "rowToGateCheck" &&
+        name !== "rowToGateCheckItem" &&
         name !== "rowToProject" &&
         name !== "rowToProjectSettings" &&
         name !== "rowToRunComparison"
@@ -195,6 +198,8 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(["setJudgeProviderKeyOnClient"]);
     expect(namedImports(repositorySource, "./repository.pg/criterion-suite-repository.js"))
       .toEqual(["PgCriterionSuiteRepository"]);
+    expect(namedImports(repositorySource, "./repository.pg/historical-gate-evidence-repository.js"))
+      .toEqual(["PgHistoricalGateEvidenceRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/judge-credential-repository.js"))
       .toEqual(["PgJudgeCredentialRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/project-repository.js"))

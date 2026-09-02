@@ -8,6 +8,7 @@
     "apps/api/src/repository.pg/criterion-suite-repository.ts",
     "apps/api/src/repository.pg/dataset-revision-commands.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
+    "apps/api/src/repository.pg/historical-gate-evidence-repository.ts",
     "apps/api/src/repository.pg/judge-credential-repository.ts",
     "apps/api/src/repository.pg/mappers.ts",
     "apps/api/src/repository.pg/project-counter-commands.ts",
@@ -107,6 +108,25 @@
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/historical-gate-evidence-repository.ts#PgHistoricalGateEvidenceRepository.createGateCheck",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:apps/api/src/repository.pg/historical-gate-evidence-repository.ts#PgHistoricalGateEvidenceRepository.getGateCheckDetail"
       ],
       "reachableConnectionOwners": []
     },
@@ -296,25 +316,6 @@
         "catch :: rollback",
         "finally :: release",
         "root :: repository_call:getEvalRunDetail"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "createGateCheck",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release",
-        "root :: repository_call:getGateCheckDetail"
       ],
       "reachableConnectionOwners": []
     },
