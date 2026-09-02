@@ -16,11 +16,6 @@
       "reason": "pnpm owns this dependency lockfile.",
       "revisit": "Never hand-split; regenerate with the pinned package manager."
     },
-    "apps/web/src/screens/skill-edit.tsx": {
-      "classification": "refactor_candidate",
-      "reason": "Screen orchestration, editing, onboarding boundaries, and regression result rendering change independently.",
-      "revisit": "Harden behavior and source-contract tests before moving panels or hooks."
-    },
     "apps/api/test/analysis-criterion-promotion-pg.test.ts": {
       "classification": "structural_exception",
       "reason": "This cohesive database-backed suite proves one promotion and candidate evidence-graph shape; success, rejection, replay, and concurrency cases intentionally reuse one expensive parameterized seeding helper.",
@@ -40,11 +35,6 @@
       "classification": "structural_exception",
       "reason": "This cohesive database-backed suite proves one population freeze, exclusion, immutable revision, and deterministic draw evidence pipeline; isolated scenarios reuse one expensive parameterized seeding helper.",
       "revisit": "Revisit if an independent lifecycle enters the suite or common setup can be extracted without obscuring snapshot, exclusion, and draw invariants."
-    },
-    "apps/web/src/screens/analysis-study-workspace.tsx": {
-      "classification": "refactor_candidate",
-      "reason": "Workspace orchestration and numerous study, coding, taxonomy, findings, and coverage panels share one file.",
-      "revisit": "Harden path-sensitive tests, then extract panels while keeping state orchestration centralized."
     },
     "apps/api/src/lib/binary-calibration.ts": {
       "classification": "structural_exception",

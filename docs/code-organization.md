@@ -122,6 +122,16 @@ dialogs, panels, parsing, and result cards in same-named feature directories.
 Their extraction contract closes those directories and carries accessibility
 and row-action checks with each owned source.
 
+The skill editor keeps criterion-scoped loading, version creation, polling, and
+onboarding state in `screens/skill-edit.tsx`; its ordinary editor, governed
+lifecycle boundary, and immutable regression-result views live under
+`screens/skill-edit/`. The analysis-study workspace likewise keeps
+selected-study/item coordination and stale-response
+protection in its root while study administration, coding, findings/taxonomy,
+promotion progress, and shared mutation support live under the same-named
+feature directory. The durable web extraction contract inventories both roots
+and every owned feature source after they fall below the large-file threshold.
+
 ## Revisit conditions
 
 Re-run the report and revisit a classification when:
