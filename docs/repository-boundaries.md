@@ -57,6 +57,10 @@ commands accept the caller-owned client, so native criterion setup and pending
 evaluator-version creation keep author identity, revision binding, optional
 onboarding idempotency, optional credential creation, and version insertion in
 their existing transactions.
+Judge-provider credential encryption, masked display storage, and the paired
+audit record live in `repository.pg/credential-commands.ts`. The command
+accepts the caller-owned client, so direct key replacement and agent setup keep
+the credential write and audit append inside their existing transactions.
 `repository-pg-support.test.ts` pins the support module surfaces, the sole
 `PgRepository` implementation owner, the complete 161-method public facade,
 and representative retirement-context query behavior;
@@ -70,6 +74,9 @@ idempotent replay, and the absence of connection or transaction ownership.
 commands, deterministic version numbering, verified durable author subjects,
 unknown-legacy handling, complete immutable insert bindings, and the absence
 of connection or transaction ownership.
+`repository-pg-credential-commands.test.ts` pins the credential upsert,
+encrypted payload, masked display, actor-aware audit append, write order, and
+the absence of connection or transaction ownership.
 
 The fixture also pins the one approved pool handoff from the main repository:
 `authorizeSkillVersionExecution` constructs `PgEvaluatorLifecycleRepository`

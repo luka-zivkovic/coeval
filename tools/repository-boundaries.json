@@ -3,6 +3,7 @@
   "sources": [
     "apps/api/src/repository.pg.ts",
     "apps/api/src/repository.pg/assessment-receipt-commands.ts",
+    "apps/api/src/repository.pg/credential-commands.ts",
     "apps/api/src/repository.pg/dataset-revision-commands.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
     "apps/api/src/repository.pg/mappers.ts",
@@ -271,7 +272,7 @@
         "try>if.then>if.then :: repository_call:getSkillVersion",
         "try :: client_command:apps/api/src/repository.pg/dataset-revision-commands.ts#getOrCreateRegressionDatasetRevisionWithClient",
         "try :: client_command:apps/api/src/repository.pg/skill-version-commands.ts#nextVersion",
-        "try>if.then :: client_command:setJudgeProviderKeyOnClient",
+        "try>if.then :: client_command:apps/api/src/repository.pg/credential-commands.ts#setJudgeProviderKeyOnClient",
         "try :: client_command:apps/api/src/repository.pg/skill-version-commands.ts#insertSkillVersion",
         "try :: commit",
         "catch :: rollback",
@@ -715,7 +716,7 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
-        "try :: client_command:setJudgeProviderKeyOnClient",
+        "try :: client_command:apps/api/src/repository.pg/credential-commands.ts#setJudgeProviderKeyOnClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -790,6 +791,18 @@
         "createEvalRunOnce",
         "failEvalRunItem",
         "getOrFreezeAssessmentReceipt"
+      ]
+    },
+    {
+      "method": "apps/api/src/repository.pg/credential-commands.ts#setJudgeProviderKeyOnClient",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "createSkillVersionPending",
+        "setJudgeProviderKey"
       ]
     },
     {
@@ -943,18 +956,6 @@
       ],
       "callers": [
         "pruneExpiredTraces"
-      ]
-    },
-    {
-      "method": "setJudgeProviderKeyOnClient",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "createSkillVersionPending",
-        "setJudgeProviderKey"
       ]
     }
   ]

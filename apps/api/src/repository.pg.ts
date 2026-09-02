@@ -123,7 +123,6 @@ import {
   convergencePageLimit,
   decodeConvergenceCursor,
   encodeConvergenceCursor,
-  judgeKeyDisplay,
   traceTestValidationDiagnostic,
   traceTestValidationStatus,
   type ConvergenceAuditPageInput,
@@ -236,6 +235,7 @@ import {
   bumpEvalRunCounters,
   mintAssessmentReceiptWithClient
 } from "./repository.pg/assessment-receipt-commands.js";
+import { setJudgeProviderKeyOnClient } from "./repository.pg/credential-commands.js";
 import {
   getOrCreateRegressionDatasetRevisionWithClient,
   insertDatasetRevisionWithClient,
@@ -1645,7 +1645,7 @@ export class PgRepository implements CoevalRepository {
     const client = await this.pool.connect();
     try {
       await client.query("begin");
-      const key = await this.setJudgeProviderKeyOnClient(client, projectId, provider, apiKey, actorUserId);
+      const key = await setJudgeProviderKeyOnClient(client, projectId, provider, apiKey, actorUserId);
       await client.query("commit");
       return key;
     } catch (error) {
@@ -1654,36 +1654,6 @@ export class PgRepository implements CoevalRepository {
     } finally {
       client.release();
     }
-  }
-
-  private async setJudgeProviderKeyOnClient(
-    client: PoolClient,
-    projectId: string,
-    provider: JudgeKeyProvider,
-    apiKey: string,
-    actorUserId?: string
-  ): Promise<JudgeProviderKey> {
-    const result = await client.query(
-      `insert into judge_provider_keys (id, project_id, provider, encrypted_credentials, key_display)
-       values ($1, $2, $3, $4, $5)
-       on conflict (project_id, provider) do update set
-         encrypted_credentials = excluded.encrypted_credentials,
-         key_display = excluded.key_display,
-         created_at = now()
-       returning provider, key_display, created_at`,
-      [`jpk_${randomUUID()}`, projectId, provider, encryptJson({ apiKey }), judgeKeyDisplay(apiKey)]
-    );
-    await client.query(
-      `insert into audit_logs (id, project_id, actor_user_id, action, target_type, target_id, metadata)
-       values ($1,$2,$3,$4,$5,$6,$7)`,
-      [`audit_${randomUUID()}`, projectId, actorUserId ?? null, "project.judge_key.set", "judge_provider_key", provider, JSON.stringify({ provider })]
-    );
-    const row = result.rows[0];
-    return {
-      provider: String(row.provider) as JudgeKeyProvider,
-      keyDisplay: String(row.key_display),
-      createdAt: toIso(row.created_at)
-    };
   }
 
   async listJudgeProviderKeys(projectId: string): Promise<JudgeProviderKey[]> {
@@ -6171,7 +6141,7 @@ export class PgRepository implements CoevalRepository {
 
       if (context.agentSetup?.providerCredential) {
         const credential = context.agentSetup.providerCredential;
-        await this.setJudgeProviderKeyOnClient(
+        await setJudgeProviderKeyOnClient(
           client,
           context.projectId,
           credential.provider,
