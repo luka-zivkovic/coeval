@@ -15,6 +15,7 @@
     "apps/api/src/repository.pg/project-counter-commands.ts",
     "apps/api/src/repository.pg/project-repository.ts",
     "apps/api/src/repository.pg/regression-run-commands.ts",
+    "apps/api/src/repository.pg/review-queue-repository.ts",
     "apps/api/src/repository.pg/run-comparison-repository.ts",
     "apps/api/src/repository.pg/skill-version-commands.ts",
     "apps/api/src/repository.pg/trace-import-commands.ts"
@@ -27,29 +28,6 @@
     "clientScopedCommands": 16
   },
   "connectionOwners": [
-    {
-      "method": "addReviewQueueItems",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: pool_query",
-        "root :: pool_query",
-        "nested_function :: repository_call:resolveReviewCriterionVersion",
-        "root :: pool_query",
-        "root :: connect",
-        "try :: begin",
-        "try>loop>if.then :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToReviewQueueItem",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
     {
       "method": "apps/api/src/repository.pg/assessment-receipt-repository.ts#PgAssessmentReceiptRepository.compareAssessmentReceiptCopy",
       "kind": "transaction",
@@ -271,6 +249,50 @@
       "reachableConnectionOwners": []
     },
     {
+      "method": "apps/api/src/repository.pg/review-queue-repository.ts#PgReviewQueueRepository.addReviewQueueItems",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: pool_query",
+        "root :: pool_query",
+        "nested_function :: repository_call:apps/api/src/repository.pg/review-queue-repository.ts#PgReviewQueueRepository.resolveReviewCriterionVersion",
+        "root :: pool_query",
+        "root :: connect",
+        "try :: begin",
+        "try>loop>if.then :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToReviewQueueItem",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/review-queue-repository.ts#PgReviewQueueRepository.createReviewQueue",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: repository_call:apps/api/src/repository.pg/review-queue-repository.ts#PgReviewQueueRepository.resolveReviewCriterionVersion",
+        "root :: pool_query",
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release",
+        "root :: repository_call:apps/api/src/repository.pg/review-queue-repository.ts#PgReviewQueueRepository.getReviewQueueDetail"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
       "method": "completeEvalRunItem",
       "kind": "transaction",
       "commandCounts": {
@@ -336,27 +358,6 @@
         "catch :: rollback",
         "finally :: release",
         "root :: repository_call:getEvalRunDetail"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "createReviewQueue",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: repository_call:resolveReviewCriterionVersion",
-        "root :: pool_query",
-        "root :: connect",
-        "try :: begin",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release",
-        "root :: repository_call:getReviewQueueDetail"
       ],
       "reachableConnectionOwners": []
     },

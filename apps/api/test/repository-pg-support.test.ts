@@ -180,6 +180,8 @@ describe("PostgreSQL repository support modules", () => {
         name !== "rowToGateCheckItem" &&
         name !== "rowToProject" &&
         name !== "rowToProjectSettings" &&
+        name !== "rowToReviewQueue" &&
+        name !== "rowToReviewQueueItem" &&
         name !== "rowToRunComparison"
       ));
     expect(namedImports(repositorySource, "./repository.pg/golden-commands.js"))
@@ -210,6 +212,8 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(["PgProjectRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/regression-run-commands.js"))
       .toEqual(["insertRegressionRun"]);
+    expect(namedImports(repositorySource, "./repository.pg/review-queue-repository.js"))
+      .toEqual(["PgReviewQueueRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/run-comparison-repository.js"))
       .toEqual(["PgRunComparisonRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/skill-version-commands.js"))
@@ -228,8 +232,8 @@ describe("PostgreSQL repository support modules", () => {
     const privateMethods = methods.filter((method) =>
       ts.getModifiers(method)?.some((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword)
     );
-    expect(methods).toHaveLength(177);
-    expect(privateMethods).toHaveLength(16);
+    expect(methods).toHaveLength(176);
+    expect(privateMethods).toHaveLength(15);
     expect(methods.length - privateMethods.length).toBe(161);
   }, 30_000);
 
