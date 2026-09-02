@@ -174,7 +174,8 @@ describe("PostgreSQL repository support modules", () => {
         name !== "rowToCriterion" &&
         name !== "rowToEvaluatorSuite" &&
         name !== "rowToProject" &&
-        name !== "rowToProjectSettings"
+        name !== "rowToProjectSettings" &&
+        name !== "rowToRunComparison"
       ));
     expect(namedImports(repositorySource, "./repository.pg/golden-commands.js"))
       .toEqual(["loadGoldenSetRetirementContext"]);
@@ -200,6 +201,8 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(["PgProjectRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/regression-run-commands.js"))
       .toEqual(["insertRegressionRun"]);
+    expect(namedImports(repositorySource, "./repository.pg/run-comparison-repository.js"))
+      .toEqual(["PgRunComparisonRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/skill-version-commands.js"))
       .toEqual(["insertSkillVersion", "nextVersion"]);
     expect(namedImports(repositorySource, "./repository.pg/trace-import-commands.js"))

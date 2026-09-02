@@ -13,6 +13,7 @@
     "apps/api/src/repository.pg/project-counter-commands.ts",
     "apps/api/src/repository.pg/project-repository.ts",
     "apps/api/src/repository.pg/regression-run-commands.ts",
+    "apps/api/src/repository.pg/run-comparison-repository.ts",
     "apps/api/src/repository.pg/skill-version-commands.ts",
     "apps/api/src/repository.pg/trace-import-commands.ts"
   ],

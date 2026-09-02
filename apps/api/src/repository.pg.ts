@@ -237,6 +237,7 @@ import { loadGoldenSetRetirementContext } from "./repository.pg/golden-commands.
 import { PgJudgeCredentialRepository } from "./repository.pg/judge-credential-repository.js";
 import { PgProjectRepository } from "./repository.pg/project-repository.js";
 import { insertRegressionRun } from "./repository.pg/regression-run-commands.js";
+import { PgRunComparisonRepository } from "./repository.pg/run-comparison-repository.js";
 import {
   insertSkillVersion,
   nextVersion
@@ -273,7 +274,6 @@ import {
   rowToRegressionRun,
   rowToReviewQueue,
   rowToReviewQueueItem,
-  rowToRunComparison,
   rowToSkill,
   rowToSkillVersion,
   rowToTraceTestRevision,
@@ -290,6 +290,7 @@ export class PgRepository implements CoevalRepository {
   private readonly criterionSuiteRepository: PgCriterionSuiteRepository;
   private readonly judgeCredentialRepository: PgJudgeCredentialRepository;
   private readonly projectRepository: PgProjectRepository;
+  private readonly runComparisonRepository: PgRunComparisonRepository;
 
   constructor(
     private readonly pool: Pool,
@@ -307,6 +308,7 @@ export class PgRepository implements CoevalRepository {
       listExceptionCases: (projectId, criterionVersionId) =>
         this.listExceptionCases(projectId, criterionVersionId)
     });
+    this.runComparisonRepository = new PgRunComparisonRepository(pool);
   }
 
   async listProjects(userId?: string | undefined): Promise<Project[]> {
@@ -4061,40 +4063,15 @@ export class PgRepository implements CoevalRepository {
   }
 
   async createRunComparison(input: CreateRunComparisonInputDb): Promise<RunComparison> {
-    const result = await this.pool.query(
-      `insert into run_comparisons
-       (id, project_id, dataset_id, dataset_revision_id, version_a_id, version_b_id, run_a_id, run_b_id)
-       values ($1,$2,$3,$4,$5,$6,$7,$8)
-       returning *`,
-      [
-        `rcmp_${randomUUID()}`,
-        input.projectId,
-        input.datasetId,
-        input.datasetRevisionId ?? null,
-        input.versionAId,
-        input.versionBId,
-        input.runAId,
-        input.runBId
-      ]
-    );
-    return rowToRunComparison(result.rows[0]);
+    return this.runComparisonRepository.createRunComparison(input);
   }
 
   async getRunComparison(projectId: string, runComparisonId: string): Promise<RunComparison | null> {
-    const result = await this.pool.query(
-      `select * from run_comparisons where id = $1 and project_id = $2`,
-      [runComparisonId, projectId]
-    );
-    const row = result.rows[0];
-    return row ? rowToRunComparison(row) : null;
+    return this.runComparisonRepository.getRunComparison(projectId, runComparisonId);
   }
 
   async listRunComparisons(projectId: string, opts?: { limit?: number | undefined }): Promise<RunComparison[]> {
-    const result = await this.pool.query(
-      `select * from run_comparisons where project_id = $1 order by created_at desc, id desc limit $2`,
-      [projectId, opts?.limit ?? 50]
-    );
-    return result.rows.map(rowToRunComparison);
+    return this.runComparisonRepository.listRunComparisons(projectId, opts);
   }
 
   // --- Product deploy gate ---------------------------------------------------
