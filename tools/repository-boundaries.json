@@ -8,6 +8,7 @@
     "apps/api/src/repository.pg/criterion-suite-repository.ts",
     "apps/api/src/repository.pg/dataset-revision-commands.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
+    "apps/api/src/repository.pg/judge-credential-repository.ts",
     "apps/api/src/repository.pg/mappers.ts",
     "apps/api/src/repository.pg/project-counter-commands.ts",
     "apps/api/src/repository.pg/project-repository.ts",
@@ -102,6 +103,25 @@
         "try :: begin",
         "try>if.then :: commit",
         "try>loop :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToSkillVersion",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/judge-credential-repository.ts#PgJudgeCredentialRepository.setJudgeProviderKey",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:apps/api/src/repository.pg/credential-commands.ts#setJudgeProviderKeyOnClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -729,25 +749,6 @@
       "reachableConnectionOwners": []
     },
     {
-      "method": "setJudgeProviderKey",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: client_command:apps/api/src/repository.pg/credential-commands.ts#setJudgeProviderKeyOnClient",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
       "method": "signOffSkillVersion",
       "kind": "transaction",
       "commandCounts": {
@@ -806,8 +807,8 @@
         0
       ],
       "callers": [
-        "createSkillVersionPending",
-        "setJudgeProviderKey"
+        "apps/api/src/repository.pg/judge-credential-repository.ts#PgJudgeCredentialRepository.setJudgeProviderKey",
+        "createSkillVersionPending"
       ]
     },
     {

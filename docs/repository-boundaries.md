@@ -94,6 +94,12 @@ Plaintext generation and one-time return, digest-only persistence,
 project-scoped listing and revocation, and revoked-key rejection therefore
 remain one cohesive credential-lookup boundary without acquiring a connection
 or transaction.
+The complete four-method judge-provider credential port lives in
+`repository.pg/judge-credential-repository.ts`. The facade constructs it once
+with the same pool. Masked owner reads never select encrypted credentials,
+worker lookup is the sole decrypting path, deletion appends its audit only
+after a project-scoped removal, and key replacement retains one mapped
+transaction around the existing caller-owned credential command.
 `repository-pg-support.test.ts` pins the support module surfaces, the sole
 `PgRepository` implementation owner, the complete 161-method public facade,
 and representative retirement-context query behavior;
@@ -128,16 +134,20 @@ tests continue to pin settings, retention, deletion, and membership behavior.
 `repository-pg-api-key-repository.test.ts` pins the complete API-key port,
 single allocation, exact pool identity, direct facade delegates, digest-only
 persistence, project scoping, revocation outcomes, and raw-key resolution.
+`repository-pg-judge-credential-repository.test.ts` pins the complete
+judge-credential port, one allocation, exact pool identity and transaction
+wrapper, masked owner reads, audited deletion, and worker-only decryption.
 
 The fixture also pins the one approved external pool handoff from the main
 repository:
 `authorizeSkillVersionExecution` constructs `PgEvaluatorLifecycleRepository`
 with the same pool. That repository owns a separate accepted-ADR lifecycle and
 is outside this map; passing `this.pool` to any other external constructor
-fails the guard. The internal API-key, criterion/suite, and project
-compositions each receive the constructor's exact pool once and are separately
-pinned by structural tests. The project composition also pins its four facade
-callbacks so later implementation slices cannot bypass facade dispatch.
+fails the guard. The internal API-key, criterion/suite, judge-credential, and
+project compositions each receive the constructor's exact pool once and are
+separately pinned by structural tests. The project composition also pins its
+four facade callbacks so later implementation slices cannot bypass facade
+dispatch.
 
 ## PostgreSQL ownership rule
 
@@ -164,7 +174,7 @@ The 35 transaction owners are grouped by the consistency they protect:
 | Criterion and suite definitions | `PgCriterionSuiteRepository.createCriterion`, `PgCriterionSuiteRepository.createCriterionVersion`, `PgCriterionSuiteRepository.createEvaluatorSuiteManifest` |
 | Golden evidence and frozen datasets | `promoteExceptionToGoldenSet`, `retireGoldenSetEntry`, `createDatasetRevision`, `getOrCreateRegressionDatasetRevision` |
 | Trace and dataset-example ingestion | `importTrace`, `importDatasetExamples` |
-| Credentials and integrations | `setJudgeProviderKey`, `deleteLangSmithIntegration`, `deleteLangfuseIntegration`, `deleteIronsideIntegration` |
+| Credentials and integrations | `PgJudgeCredentialRepository.setJudgeProviderKey`, `deleteLangSmithIntegration`, `deleteLangfuseIntegration`, `deleteIronsideIntegration` |
 | Trace-test lifecycle | `createTraceTest`, `reviseTraceTest`, `recordTraceTestValidation`, `enableTraceTest` |
 | Evaluation runs and assessment receipts | `createEvalRunOnce`, `markEvalRunDispatched`, `markEvalRunRunning`, `completeEvalRunItem`, `failEvalRunItem`, `getOrFreezeAssessmentReceipt`, `compareAssessmentReceiptCopy`, `createAssessmentReceiptCorrection` |
 | Historical gate evidence | `createGateCheck` |
