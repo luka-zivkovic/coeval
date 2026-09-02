@@ -168,62 +168,23 @@ describe("PostgreSQL repository support modules", () => {
     )).toEqual([]);
     expect(mapperSource.text).not.toMatch(/\bPool(?:Client)?\b|\.query\s*\(|\.connect\s*\(/);
 
-    expect(namedImports(repositorySource, "./repository.pg/mappers.js").sort())
-      .toEqual(EXPECTED_MAPPER_EXPORTS.filter((name) =>
-        name !== "GATE_CHECK_RUN_COLUMNS" &&
-        name !== "isCheckViolation" &&
-        name !== "isUniqueViolation" &&
-        name !== "normalizedPayloadSnapshot" &&
-        name !== "parseJson" &&
-        name !== "postgresErrorMessage" &&
-        name !== "rowToApiKey" &&
-        name !== "rowToAssessmentReceiptArtifact" &&
-        name !== "rowToAssessmentReceiptComparison" &&
-        name !== "rowToCriterion" &&
-        name !== "rowToDataset" &&
-        name !== "rowToDatasetExposureEvent" &&
-        name !== "rowToDatasetItem" &&
-        name !== "rowToDatasetRevision" &&
-        name !== "rowToDatasetRevisionItem" &&
-        name !== "rowToEvaluatorSuite" &&
-        name !== "rowToExceptionCase" &&
-        name !== "rowToFeedbackSyncJobRecord" &&
-        name !== "rowToGateCheck" &&
-        name !== "rowToGateCheckItem" &&
-        name !== "rowToGoldenSetEntry" &&
-        name !== "rowToImportJobRecord" &&
-        name !== "rowToIronsideIntegration" &&
-        name !== "rowToJudgeRun" &&
-        name !== "rowToLangfuseIntegration" &&
-        name !== "rowToLangSmithIntegration" &&
-        name !== "rowToProject" &&
-        name !== "rowToProjectSettings" &&
-        name !== "rowToReviewQueue" &&
-        name !== "rowToReviewQueueItem" &&
-        name !== "rowToRunComparison" &&
-        name !== "rowToTraceTestRevision" &&
-        name !== "rowToTraceTestSummary" &&
-        name !== "rowToTraceTestValidation" &&
-        name !== "rowToVerdictRecord" &&
-        name !== "toFeedbackSyncProvider" &&
-        name !== "toFeedbackSyncStatus"
-      ));
-    expect(namedImports(repositorySource, "./repository.pg/dataset-revision-commands.js"))
-      .toEqual(["getOrCreateRegressionDatasetRevisionWithClient"]);
-    expect(namedImports(repositorySource, "./repository.pg/assessment-receipt-commands.js"))
-      .toEqual(["bumpEvalRunCounters", "mintAssessmentReceiptWithClient"]);
+    expect(repositorySource.statements.filter((statement) =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteralLike(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === "./repository.pg/mappers.js"
+    )).toEqual([]);
     expect(namedImports(repositorySource, "./repository.pg/assessment-receipt-repository.js"))
       .toEqual(["PgAssessmentReceiptRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/api-key-repository.js"))
       .toEqual(["PgApiKeyRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/case-evidence-repository.js"))
       .toEqual(["PgCaseEvidenceRepository"]);
-    expect(namedImports(repositorySource, "./repository.pg/credential-commands.js"))
-      .toEqual(["setJudgeProviderKeyOnClient"]);
     expect(namedImports(repositorySource, "./repository.pg/criterion-suite-repository.js"))
       .toEqual(["PgCriterionSuiteRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/dataset-repository.js"))
       .toEqual(["PgDatasetRepository"]);
+    expect(namedImports(repositorySource, "./repository.pg/eval-run-repository.js"))
+      .toEqual(["PgEvalRunRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/golden-evidence-repository.js"))
       .toEqual(["PgGoldenEvidenceRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/historical-gate-evidence-repository.js"))
@@ -236,14 +197,12 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(["PgJudgeFeedbackRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/project-repository.js"))
       .toEqual(["PgProjectRepository"]);
-    expect(namedImports(repositorySource, "./repository.pg/regression-run-commands.js"))
-      .toEqual(["insertRegressionRun"]);
     expect(namedImports(repositorySource, "./repository.pg/review-queue-repository.js"))
       .toEqual(["PgReviewQueueRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/run-comparison-repository.js"))
       .toEqual(["PgRunComparisonRepository"]);
-    expect(namedImports(repositorySource, "./repository.pg/skill-version-commands.js"))
-      .toEqual(["insertSkillVersion", "nextVersion"]);
+    expect(namedImports(repositorySource, "./repository.pg/skill-lifecycle-repository.js"))
+      .toEqual(["PgSkillLifecycleRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/trace-import-repository.js"))
       .toEqual(["PgTraceImportRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/trace-test-repository.js"))
@@ -260,8 +219,8 @@ describe("PostgreSQL repository support modules", () => {
     const privateMethods = methods.filter((method) =>
       ts.getModifiers(method)?.some((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword)
     );
-    expect(methods).toHaveLength(169);
-    expect(privateMethods).toHaveLength(8);
+    expect(methods).toHaveLength(165);
+    expect(privateMethods).toHaveLength(4);
     expect(methods.length - privateMethods.length).toBe(161);
   }, 30_000);
 
