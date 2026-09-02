@@ -136,6 +136,24 @@ caller-owned trace command. Import jobs bind the exact authorized evaluator
 version before insertion, and every lifecycle read or write remains
 project-scoped. Integration selection still resolves through the stable
 facade; this slice owns no release decision or policy threshold.
+The complete 23-method provider-integration port lives in
+`repository.pg/integration-repository.ts`. The facade constructs it once with
+the same pool plus lazy callbacks to the exact-version resolver and execution
+authorizer. LangSmith, Langfuse, and Ironside configuration, credential tests,
+poll claims, import context, remote quarantine, and opaque cursor
+compare-and-set therefore remain project-scoped and bind the same authorized
+evaluator version. The three provider deletions retain their existing
+transaction owners, cleanup ordering, and rollback paths. Failed poll
+selection still records fail-closed import evidence; this operational slice
+owns no release decision or policy threshold.
+The complete ten-method judge-feedback port lives in
+`repository.pg/judge-feedback-repository.ts`. The facade constructs it once
+with the same pool plus lazy callbacks for the current evaluator version and
+execution authorization. Judge-run reads and idempotent writes, feedback-sync
+job claims and lifecycle updates, blocked Ironside retry reads, and sync-back
+coverage refreshes preserve their existing project scope, ordering, provider
+set, and exact-version authorization. Feedback delivery remains assessment
+evidence and does not create a release decision.
 `repository-pg-support.test.ts` pins the support module surfaces, the sole
 `PgRepository` implementation owner, the complete 161-method public facade,
 and representative retirement-context query behavior;
@@ -196,6 +214,11 @@ facade delegates, transaction ordering and rollback, exact-version
 authorization before insertion, project-scoped lifecycle writes and reads,
 database-derived completion counts, row mapping, ordering, limits, and
 missing-job failures.
+`repository-pg-provider-operations.test.ts` pins the complete integration and
+judge-feedback ports, their sole canonical allocations and module edges, exact
+pool identity and lazy facade callbacks, direct facade delegates, provider
+selection failure evidence, project-scoped provider reads, Ironside cursor
+compare-and-set, judge-run idempotency, and ordered sync-back coverage updates.
 
 The fixture also pins the one approved external pool handoff from the main
 repository:
@@ -203,9 +226,9 @@ repository:
 with the same pool. That repository owns a separate accepted-ADR lifecycle and
 is outside this map; passing `this.pool` to any other external constructor
 fails the guard. The internal API-key, assessment-receipt, criterion/suite,
-historical-gate, judge-credential, project, review-queue, run-comparison, and
-trace/import compositions each receive the constructor's exact pool once and
-are separately pinned by structural tests.
+historical-gate, integration, judge-credential, judge-feedback, project,
+review-queue, run-comparison, and trace/import compositions each receive the
+constructor's exact pool once and are separately pinned by structural tests.
 The project composition also pins its four facade callbacks so later
 implementation slices cannot bypass facade dispatch.
 
@@ -234,7 +257,7 @@ The 35 transaction owners are grouped by the consistency they protect:
 | Criterion and suite definitions | `PgCriterionSuiteRepository.createCriterion`, `PgCriterionSuiteRepository.createCriterionVersion`, `PgCriterionSuiteRepository.createEvaluatorSuiteManifest` |
 | Golden evidence and frozen datasets | `promoteExceptionToGoldenSet`, `retireGoldenSetEntry`, `createDatasetRevision`, `getOrCreateRegressionDatasetRevision` |
 | Trace and dataset-example ingestion | `PgTraceImportRepository.importTrace`, `importDatasetExamples` |
-| Credentials and integrations | `PgJudgeCredentialRepository.setJudgeProviderKey`, `deleteLangSmithIntegration`, `deleteLangfuseIntegration`, `deleteIronsideIntegration` |
+| Credentials and integrations | `PgJudgeCredentialRepository.setJudgeProviderKey`, `PgIntegrationRepository.deleteLangSmithIntegration`, `PgIntegrationRepository.deleteLangfuseIntegration`, `PgIntegrationRepository.deleteIronsideIntegration` |
 | Trace-test lifecycle | `createTraceTest`, `reviseTraceTest`, `recordTraceTestValidation`, `enableTraceTest` |
 | Evaluation runs and assessment receipts | `createEvalRunOnce`, `markEvalRunDispatched`, `markEvalRunRunning`, `completeEvalRunItem`, `failEvalRunItem`, `PgAssessmentReceiptRepository.getOrFreezeAssessmentReceipt`, `PgAssessmentReceiptRepository.compareAssessmentReceiptCopy`, `PgAssessmentReceiptRepository.createAssessmentReceiptCorrection` |
 | Historical gate evidence | `PgHistoricalGateEvidenceRepository.createGateCheck` |

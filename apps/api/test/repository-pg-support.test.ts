@@ -176,14 +176,20 @@ describe("PostgreSQL repository support modules", () => {
         name !== "rowToAssessmentReceiptComparison" &&
         name !== "rowToCriterion" &&
         name !== "rowToEvaluatorSuite" &&
+        name !== "rowToFeedbackSyncJobRecord" &&
         name !== "rowToGateCheck" &&
         name !== "rowToGateCheckItem" &&
         name !== "rowToImportJobRecord" &&
+        name !== "rowToIronsideIntegration" &&
+        name !== "rowToLangfuseIntegration" &&
+        name !== "rowToLangSmithIntegration" &&
         name !== "rowToProject" &&
         name !== "rowToProjectSettings" &&
         name !== "rowToReviewQueue" &&
         name !== "rowToReviewQueueItem" &&
-        name !== "rowToRunComparison"
+        name !== "rowToRunComparison" &&
+        name !== "toFeedbackSyncProvider" &&
+        name !== "toFeedbackSyncStatus"
       ));
     expect(namedImports(repositorySource, "./repository.pg/golden-commands.js"))
       .toEqual(["loadGoldenSetRetirementContext"]);
@@ -207,8 +213,12 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(["PgCriterionSuiteRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/historical-gate-evidence-repository.js"))
       .toEqual(["PgHistoricalGateEvidenceRepository"]);
+    expect(namedImports(repositorySource, "./repository.pg/integration-repository.js"))
+      .toEqual(["PgIntegrationRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/judge-credential-repository.js"))
       .toEqual(["PgJudgeCredentialRepository"]);
+    expect(namedImports(repositorySource, "./repository.pg/judge-feedback-repository.js"))
+      .toEqual(["PgJudgeFeedbackRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/project-repository.js"))
       .toEqual(["PgProjectRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/regression-run-commands.js"))
@@ -235,8 +245,8 @@ describe("PostgreSQL repository support modules", () => {
     const privateMethods = methods.filter((method) =>
       ts.getModifiers(method)?.some((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword)
     );
-    expect(methods).toHaveLength(175);
-    expect(privateMethods).toHaveLength(14);
+    expect(methods).toHaveLength(172);
+    expect(privateMethods).toHaveLength(11);
     expect(methods.length - privateMethods.length).toBe(161);
   }, 30_000);
 

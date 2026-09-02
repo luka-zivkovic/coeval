@@ -10,7 +10,9 @@
     "apps/api/src/repository.pg/dataset-revision-commands.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
     "apps/api/src/repository.pg/historical-gate-evidence-repository.ts",
+    "apps/api/src/repository.pg/integration-repository.ts",
     "apps/api/src/repository.pg/judge-credential-repository.ts",
+    "apps/api/src/repository.pg/judge-feedback-repository.ts",
     "apps/api/src/repository.pg/mappers.ts",
     "apps/api/src/repository.pg/project-counter-commands.ts",
     "apps/api/src/repository.pg/project-repository.ts",
@@ -169,6 +171,63 @@
         "catch :: rollback",
         "finally :: release",
         "root :: repository_call:apps/api/src/repository.pg/historical-gate-evidence-repository.ts#PgHistoricalGateEvidenceRepository.getGateCheckDetail"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/integration-repository.ts#PgIntegrationRepository.deleteIronsideIntegration",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#parseJson",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/integration-repository.ts#PgIntegrationRepository.deleteLangSmithIntegration",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#parseJson",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/integration-repository.ts#PgIntegrationRepository.deleteLangfuseIntegration",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#parseJson",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
       ],
       "reachableConnectionOwners": []
     },
@@ -423,63 +482,6 @@
         "catch :: rollback",
         "finally :: release",
         "root :: repository_call:getTraceTest"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "deleteIronsideIntegration",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#parseJson",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "deleteLangSmithIntegration",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#parseJson",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "deleteLangfuseIntegration",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#parseJson",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
       ],
       "reachableConnectionOwners": []
     },
