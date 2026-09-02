@@ -260,6 +260,7 @@ describe("PostgreSQL project repository slice", () => {
     expect(constructor).toBeDefined();
     expect(constructor!.body!.statements.map((statement) => normalized(statement, repositorySource))).toEqual([
       "this.apiKeyRepository = new PgApiKeyRepository(pool);",
+      "this.assessmentReceiptRepository = new PgAssessmentReceiptRepository(pool);",
       "this.criterionSuiteRepository = new PgCriterionSuiteRepository(pool);",
       "this.historicalGateEvidenceRepository = new PgHistoricalGateEvidenceRepository(pool);",
       "this.judgeCredentialRepository = new PgJudgeCredentialRepository(pool);",

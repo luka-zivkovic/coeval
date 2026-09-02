@@ -94,6 +94,13 @@ Plaintext generation and one-time return, digest-only persistence,
 project-scoped listing and revocation, and revoked-key rejection therefore
 remain one cohesive credential-lookup boundary without acquiring a connection
 or transaction.
+The complete five-method assessment-receipt port lives in
+`repository.pg/assessment-receipt-repository.ts`. The facade constructs it
+once with the same pool. Historical freeze, exact-byte consumer comparison,
+and append-only correction each retain their existing transaction owner and
+caller-owned mint command; project-scoped reads keep returning persisted bytes
+and deterministic revision order. Receipt v1, canonicalization, terminal mint
+atomicity, and correction lineage remain unchanged.
 The complete four-method judge-provider credential port lives in
 `repository.pg/judge-credential-repository.ts`. The facade constructs it once
 with the same pool. Masked owner reads never select encrypted credentials,
@@ -122,6 +129,10 @@ pins the dataset-revision command surface and representative behavior.
 `repository-pg-assessment-receipt-commands.test.ts` pins the two receipt/run
 commands, fail-closed gate order, counter transitions, canonical minting,
 idempotent replay, and the absence of connection or transaction ownership.
+`repository-pg-assessment-receipt-repository.test.ts` pins the complete
+receipt port, one allocation, exact pool identity and facade delegates,
+transaction wrappers, exact-byte comparison, project-scoped artifact reads,
+revision ordering, and append-only correction bindings.
 `repository-pg-skill-version-commands.test.ts` pins the three skill-version
 commands, deterministic version numbering, verified durable author subjects,
 unknown-legacy handling, complete immutable insert bindings, and the absence
@@ -164,9 +175,10 @@ repository:
 `authorizeSkillVersionExecution` constructs `PgEvaluatorLifecycleRepository`
 with the same pool. That repository owns a separate accepted-ADR lifecycle and
 is outside this map; passing `this.pool` to any other external constructor
-fails the guard. The internal API-key, criterion/suite, historical-gate,
-judge-credential, project, and run-comparison compositions each receive the
-constructor's exact pool once and are separately pinned by structural tests.
+fails the guard. The internal API-key, assessment-receipt, criterion/suite,
+historical-gate, judge-credential, project, and run-comparison compositions
+each receive the constructor's exact pool once and are separately pinned by
+structural tests.
 The project composition also pins its four facade callbacks so later
 implementation slices cannot bypass facade dispatch.
 
@@ -197,7 +209,7 @@ The 35 transaction owners are grouped by the consistency they protect:
 | Trace and dataset-example ingestion | `importTrace`, `importDatasetExamples` |
 | Credentials and integrations | `PgJudgeCredentialRepository.setJudgeProviderKey`, `deleteLangSmithIntegration`, `deleteLangfuseIntegration`, `deleteIronsideIntegration` |
 | Trace-test lifecycle | `createTraceTest`, `reviseTraceTest`, `recordTraceTestValidation`, `enableTraceTest` |
-| Evaluation runs and assessment receipts | `createEvalRunOnce`, `markEvalRunDispatched`, `markEvalRunRunning`, `completeEvalRunItem`, `failEvalRunItem`, `getOrFreezeAssessmentReceipt`, `compareAssessmentReceiptCopy`, `createAssessmentReceiptCorrection` |
+| Evaluation runs and assessment receipts | `createEvalRunOnce`, `markEvalRunDispatched`, `markEvalRunRunning`, `completeEvalRunItem`, `failEvalRunItem`, `PgAssessmentReceiptRepository.getOrFreezeAssessmentReceipt`, `PgAssessmentReceiptRepository.compareAssessmentReceiptCopy`, `PgAssessmentReceiptRepository.createAssessmentReceiptCorrection` |
 | Historical gate evidence | `PgHistoricalGateEvidenceRepository.createGateCheck` |
 | Governed review queues | `createReviewQueue`, `addReviewQueueItems` |
 | Evaluator version and regression lifecycle | `signOffSkillVersion`, `createSkillVersionPending`, `runRegressionGateForVersionLocked`, `failRegressionGateForVersion` |
