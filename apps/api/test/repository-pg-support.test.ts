@@ -172,6 +172,8 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(EXPECTED_MAPPER_EXPORTS.filter((name) =>
         name !== "GATE_CHECK_RUN_COLUMNS" &&
         name !== "rowToApiKey" &&
+        name !== "rowToAssessmentReceiptArtifact" &&
+        name !== "rowToAssessmentReceiptComparison" &&
         name !== "rowToCriterion" &&
         name !== "rowToEvaluatorSuite" &&
         name !== "rowToGateCheck" &&
@@ -192,6 +194,8 @@ describe("PostgreSQL repository support modules", () => {
       ]);
     expect(namedImports(repositorySource, "./repository.pg/assessment-receipt-commands.js"))
       .toEqual(["bumpEvalRunCounters", "mintAssessmentReceiptWithClient"]);
+    expect(namedImports(repositorySource, "./repository.pg/assessment-receipt-repository.js"))
+      .toEqual(["PgAssessmentReceiptRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/api-key-repository.js"))
       .toEqual(["PgApiKeyRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/credential-commands.js"))

@@ -4,6 +4,7 @@
     "apps/api/src/repository.pg.ts",
     "apps/api/src/repository.pg/api-key-repository.ts",
     "apps/api/src/repository.pg/assessment-receipt-commands.ts",
+    "apps/api/src/repository.pg/assessment-receipt-repository.ts",
     "apps/api/src/repository.pg/credential-commands.ts",
     "apps/api/src/repository.pg/criterion-suite-repository.ts",
     "apps/api/src/repository.pg/dataset-revision-commands.ts",
@@ -43,6 +44,68 @@
         "root :: connect",
         "try :: begin",
         "try>loop>if.then :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToReviewQueueItem",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/assessment-receipt-repository.ts#PgAssessmentReceiptRepository.compareAssessmentReceiptCopy",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptComparison",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/assessment-receipt-repository.ts#PgAssessmentReceiptRepository.createAssessmentReceiptCorrection",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 2,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
+        "try>if.then :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptArtifact",
+        "try>if.then>if.then :: commit",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptArtifact",
+        "try :: commit",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptArtifact",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/assessment-receipt-repository.ts#PgAssessmentReceiptRepository.getOrFreezeAssessmentReceipt",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -208,26 +271,6 @@
       "reachableConnectionOwners": []
     },
     {
-      "method": "compareAssessmentReceiptCopy",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptComparison",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
       "method": "completeEvalRunItem",
       "kind": "transaction",
       "commandCounts": {
@@ -244,29 +287,6 @@
         "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#bumpEvalRunCounters",
         "try>if.then>if.then :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
         "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
-      "method": "createAssessmentReceiptCorrection",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 2,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
-        "try>if.then :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptArtifact",
-        "try>if.then>if.then :: commit",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptArtifact",
-        "try :: commit",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToAssessmentReceiptArtifact",
         "catch :: rollback",
         "finally :: release"
       ],
@@ -526,25 +546,6 @@
       "reachableConnectionOwners": []
     },
     {
-      "method": "getOrFreezeAssessmentReceipt",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
       "method": "importDatasetExamples",
       "kind": "transaction",
       "commandCounts": {
@@ -793,12 +794,12 @@
         0
       ],
       "callers": [
-        "compareAssessmentReceiptCopy",
+        "apps/api/src/repository.pg/assessment-receipt-repository.ts#PgAssessmentReceiptRepository.compareAssessmentReceiptCopy",
+        "apps/api/src/repository.pg/assessment-receipt-repository.ts#PgAssessmentReceiptRepository.createAssessmentReceiptCorrection",
+        "apps/api/src/repository.pg/assessment-receipt-repository.ts#PgAssessmentReceiptRepository.getOrFreezeAssessmentReceipt",
         "completeEvalRunItem",
-        "createAssessmentReceiptCorrection",
         "createEvalRunOnce",
-        "failEvalRunItem",
-        "getOrFreezeAssessmentReceipt"
+        "failEvalRunItem"
       ]
     },
     {
