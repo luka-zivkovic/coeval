@@ -194,6 +194,8 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(["setJudgeProviderKeyOnClient"]);
     expect(namedImports(repositorySource, "./repository.pg/criterion-suite-repository.js"))
       .toEqual(["PgCriterionSuiteRepository"]);
+    expect(namedImports(repositorySource, "./repository.pg/judge-credential-repository.js"))
+      .toEqual(["PgJudgeCredentialRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/project-repository.js"))
       .toEqual(["PgProjectRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/regression-run-commands.js"))

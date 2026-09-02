@@ -234,6 +234,7 @@ import {
   resolveSingletonCriterionVersionForRegression
 } from "./repository.pg/dataset-revision-commands.js";
 import { loadGoldenSetRetirementContext } from "./repository.pg/golden-commands.js";
+import { PgJudgeCredentialRepository } from "./repository.pg/judge-credential-repository.js";
 import { PgProjectRepository } from "./repository.pg/project-repository.js";
 import { insertRegressionRun } from "./repository.pg/regression-run-commands.js";
 import {
@@ -287,6 +288,7 @@ import {
 export class PgRepository implements CoevalRepository {
   private readonly apiKeyRepository: PgApiKeyRepository;
   private readonly criterionSuiteRepository: PgCriterionSuiteRepository;
+  private readonly judgeCredentialRepository: PgJudgeCredentialRepository;
   private readonly projectRepository: PgProjectRepository;
 
   constructor(
@@ -295,6 +297,7 @@ export class PgRepository implements CoevalRepository {
   ) {
     this.apiKeyRepository = new PgApiKeyRepository(pool);
     this.criterionSuiteRepository = new PgCriterionSuiteRepository(pool);
+    this.judgeCredentialRepository = new PgJudgeCredentialRepository(pool);
     this.projectRepository = new PgProjectRepository(pool, {
       getCurrentSkill: (projectId) => this.getCurrentSkill(projectId),
       getCurrentSkillForCriterion: (projectId, criterionId) =>
@@ -1025,62 +1028,38 @@ export class PgRepository implements CoevalRepository {
     }
   }
 
-  // BYO judge keys — integrations masking split: the encrypted column
-  // never appears in a client-facing SELECT; decryption happens only in the
-  // worker-facing getJudgeProviderCredential.
-  async setJudgeProviderKey(projectId: string, provider: JudgeKeyProvider, apiKey: string, actorUserId?: string): Promise<JudgeProviderKey> {
-    const client = await this.pool.connect();
-    try {
-      await client.query("begin");
-      const key = await setJudgeProviderKeyOnClient(client, projectId, provider, apiKey, actorUserId);
-      await client.query("commit");
-      return key;
-    } catch (error) {
-      await client.query("rollback").catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
+  async setJudgeProviderKey(
+    projectId: string,
+    provider: JudgeKeyProvider,
+    apiKey: string,
+    actorUserId?: string
+  ): Promise<JudgeProviderKey> {
+    return this.judgeCredentialRepository.setJudgeProviderKey(
+      projectId,
+      provider,
+      apiKey,
+      actorUserId
+    );
   }
 
   async listJudgeProviderKeys(projectId: string): Promise<JudgeProviderKey[]> {
-    const result = await this.pool.query(
-      `select provider, key_display, created_at from judge_provider_keys
-       where project_id = $1 order by provider asc`,
-      [projectId]
-    );
-    return result.rows.map((row) => ({
-      provider: String(row.provider) as JudgeKeyProvider,
-      keyDisplay: String(row.key_display),
-      createdAt: toIso(row.created_at)
-    }));
+    return this.judgeCredentialRepository.listJudgeProviderKeys(projectId);
   }
 
-  async deleteJudgeProviderKey(projectId: string, provider: JudgeKeyProvider, actorUserId?: string): Promise<boolean> {
-    const result = await this.pool.query(
-      `delete from judge_provider_keys where project_id = $1 and provider = $2`,
-      [projectId, provider]
+  async deleteJudgeProviderKey(
+    projectId: string,
+    provider: JudgeKeyProvider,
+    actorUserId?: string
+  ): Promise<boolean> {
+    return this.judgeCredentialRepository.deleteJudgeProviderKey(
+      projectId,
+      provider,
+      actorUserId
     );
-    const removed = (result.rowCount ?? 0) > 0;
-    if (removed) {
-      await this.pool.query(
-        `insert into audit_logs (id, project_id, actor_user_id, action, target_type, target_id, metadata)
-         values ($1,$2,$3,$4,$5,$6,$7)`,
-        [`audit_${randomUUID()}`, projectId, actorUserId ?? null, "project.judge_key.removed", "judge_provider_key", provider, JSON.stringify({ provider })]
-      );
-    }
-    return removed;
   }
 
   async getJudgeProviderCredential(projectId: string, provider: string): Promise<string | null> {
-    const result = await this.pool.query(
-      `select encrypted_credentials from judge_provider_keys
-       where project_id = $1 and provider = $2`,
-      [projectId, provider]
-    );
-    const row = result.rows[0];
-    if (!row) return null;
-    return decryptJson<{ apiKey?: string }>(String(row.encrypted_credentials)).apiKey ?? null;
+    return this.judgeCredentialRepository.getJudgeProviderCredential(projectId, provider);
   }
 
   async createImportJob(input: CreateImportJobInput): Promise<ImportJobRecord> {
