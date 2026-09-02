@@ -136,6 +136,20 @@ caller-owned trace command. Import jobs bind the exact authorized evaluator
 version before insertion, and every lifecycle read or write remains
 project-scoped. Integration selection still resolves through the stable
 facade; this slice owns no release decision or policy threshold.
+The complete seven-method trace-test port lives in
+`repository.pg/trace-test-repository.ts`. The facade constructs it once with
+the same pool. Trace-derived source snapshots, append-only draft revisions,
+validation attempts, reviewed enablement, and idempotent funnel evidence keep
+their existing project scope and transaction owners. A new draft may coexist
+with the last enabled revision; this test lifecycle owns no release decision
+or policy threshold.
+The complete twelve-method dataset port lives in
+`repository.pg/dataset-repository.ts`. The facade constructs it once with the
+same pool. Mutable collection authoring, atomic bulk example ingestion,
+immutable revision creation and reads, content-view exposure evidence, and
+governed regression-revision materialization retain their existing project
+scope, caller-owned commands, transaction owners, and overlap protections.
+Dataset evidence remains input to evaluation rather than a release decision.
 The complete 23-method provider-integration port lives in
 `repository.pg/integration-repository.ts`. The facade constructs it once with
 the same pool plus lazy callbacks to the exact-version resolver and execution
@@ -219,6 +233,14 @@ judge-feedback ports, their sole canonical allocations and module edges, exact
 pool identity and lazy facade callbacks, direct facade delegates, provider
 selection failure evidence, project-scoped provider reads, Ironside cursor
 compare-and-set, judge-run idempotency, and ordered sync-back coverage updates.
+`repository-pg-trace-dataset-repositories.test.ts` pins the complete trace-test
+and dataset ports, their sole canonical allocations and module edges, exact
+pool identity, direct facade delegates, project-scoped ordering, idempotent
+funnel evidence, dataset content-view exposure, and active-name conflict
+translation. It also pins fail-closed sealed/regression role rejection before
+a transaction client is acquired. Existing database-backed trace-test and
+dataset-revision suites continue to pin the complete transaction and
+immutable-evidence behavior.
 
 The fixture also pins the one approved external pool handoff from the main
 repository:
@@ -226,9 +248,10 @@ repository:
 with the same pool. That repository owns a separate accepted-ADR lifecycle and
 is outside this map; passing `this.pool` to any other external constructor
 fails the guard. The internal API-key, assessment-receipt, criterion/suite,
-historical-gate, integration, judge-credential, judge-feedback, project,
-review-queue, run-comparison, and trace/import compositions each receive the
-constructor's exact pool once and are separately pinned by structural tests.
+dataset, historical-gate, integration, judge-credential, judge-feedback,
+project, review-queue, run-comparison, trace/import, and trace-test
+compositions each receive the constructor's exact pool once and are separately
+pinned by structural tests.
 The project composition also pins its four facade callbacks so later
 implementation slices cannot bypass facade dispatch.
 
@@ -255,10 +278,10 @@ The 35 transaction owners are grouped by the consistency they protect:
 | --- | --- |
 | Project lifecycle and retention | `PgProjectRepository.updateProjectSettings`, `PgProjectRepository.pruneExpiredTraces`, `PgProjectRepository.deleteProject` |
 | Criterion and suite definitions | `PgCriterionSuiteRepository.createCriterion`, `PgCriterionSuiteRepository.createCriterionVersion`, `PgCriterionSuiteRepository.createEvaluatorSuiteManifest` |
-| Golden evidence and frozen datasets | `promoteExceptionToGoldenSet`, `retireGoldenSetEntry`, `createDatasetRevision`, `getOrCreateRegressionDatasetRevision` |
-| Trace and dataset-example ingestion | `PgTraceImportRepository.importTrace`, `importDatasetExamples` |
+| Golden evidence and frozen datasets | `promoteExceptionToGoldenSet`, `retireGoldenSetEntry`, `PgDatasetRepository.createDatasetRevision`, `PgDatasetRepository.getOrCreateRegressionDatasetRevision` |
+| Trace and dataset-example ingestion | `PgTraceImportRepository.importTrace`, `PgDatasetRepository.importDatasetExamples` |
 | Credentials and integrations | `PgJudgeCredentialRepository.setJudgeProviderKey`, `PgIntegrationRepository.deleteLangSmithIntegration`, `PgIntegrationRepository.deleteLangfuseIntegration`, `PgIntegrationRepository.deleteIronsideIntegration` |
-| Trace-test lifecycle | `createTraceTest`, `reviseTraceTest`, `recordTraceTestValidation`, `enableTraceTest` |
+| Trace-test lifecycle | `PgTraceTestRepository.createTraceTest`, `PgTraceTestRepository.reviseTraceTest`, `PgTraceTestRepository.recordTraceTestValidation`, `PgTraceTestRepository.enableTraceTest` |
 | Evaluation runs and assessment receipts | `createEvalRunOnce`, `markEvalRunDispatched`, `markEvalRunRunning`, `completeEvalRunItem`, `failEvalRunItem`, `PgAssessmentReceiptRepository.getOrFreezeAssessmentReceipt`, `PgAssessmentReceiptRepository.compareAssessmentReceiptCopy`, `PgAssessmentReceiptRepository.createAssessmentReceiptCorrection` |
 | Historical gate evidence | `PgHistoricalGateEvidenceRepository.createGateCheck` |
 | Governed review queues | `PgReviewQueueRepository.createReviewQueue`, `PgReviewQueueRepository.addReviewQueueItems` |
