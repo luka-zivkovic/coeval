@@ -170,7 +170,10 @@ describe("PostgreSQL repository support modules", () => {
 
     expect(namedImports(repositorySource, "./repository.pg/mappers.js").sort())
       .toEqual(EXPECTED_MAPPER_EXPORTS.filter((name) =>
-        name !== "rowToCriterion" && name !== "rowToEvaluatorSuite"
+        name !== "rowToCriterion" &&
+        name !== "rowToEvaluatorSuite" &&
+        name !== "rowToProject" &&
+        name !== "rowToProjectSettings"
       ));
     expect(namedImports(repositorySource, "./repository.pg/golden-commands.js"))
       .toEqual(["loadGoldenSetRetirementContext"]);
@@ -188,8 +191,8 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(["setJudgeProviderKeyOnClient"]);
     expect(namedImports(repositorySource, "./repository.pg/criterion-suite-repository.js"))
       .toEqual(["PgCriterionSuiteRepository"]);
-    expect(namedImports(repositorySource, "./repository.pg/project-counter-commands.js"))
-      .toEqual(["refreshProjectCounters"]);
+    expect(namedImports(repositorySource, "./repository.pg/project-repository.js"))
+      .toEqual(["PgProjectRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/regression-run-commands.js"))
       .toEqual(["insertRegressionRun"]);
     expect(namedImports(repositorySource, "./repository.pg/skill-version-commands.js"))

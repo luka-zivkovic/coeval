@@ -79,6 +79,14 @@ methods as direct delegates. Criterion creation, versioning, and immutable
 suite-manifest publication therefore keep their existing transaction owners,
 client commands, canonical artifacts, errors, and return values while moving
 as one consistency group.
+The complete seven-method project port lives in
+`repository.pg/project-repository.ts`. `PgRepository` constructs the slice
+once with the same application pool and lazy callbacks for current evaluator,
+golden-set, and exception reads. Project settings, retention, deletion,
+dashboard projection, membership-scoped listing, and onboarding evidence
+therefore keep their existing transaction boundaries and resolve cross-port
+reads through the stable facade rather than binding to future implementation
+slices.
 `repository-pg-support.test.ts` pins the support module surfaces, the sole
 `PgRepository` implementation owner, the complete 161-method public facade,
 and representative retirement-context query behavior;
@@ -105,14 +113,21 @@ scope, and the absence of connection or transaction ownership.
 single allocation, exact pool identity, facade delegates, module surface, and
 project-scoped read queries. The existing database-backed criterion/suite suite
 continues to pin transaction behavior and immutable manifest evidence.
+`repository-pg-project-repository.test.ts` pins the complete project port,
+the exact two-slice facade constructor, one project-slice allocation, exact
+pool identity, lazy cross-port callbacks, direct facade delegates, and
+project-scoped dashboard and onboarding reads. Existing database-backed project
+tests continue to pin settings, retention, deletion, and membership behavior.
 
 The fixture also pins the one approved external pool handoff from the main
 repository:
 `authorizeSkillVersionExecution` constructs `PgEvaluatorLifecycleRepository`
 with the same pool. That repository owns a separate accepted-ADR lifecycle and
 is outside this map; passing `this.pool` to any other external constructor
-fails the guard. The internal criterion/suite composition receives the
-constructor's exact pool once and is separately pinned by its structural test.
+fails the guard. The internal criterion/suite and project compositions each
+receive the constructor's exact pool once and are separately pinned by
+structural tests. The project composition also pins its four facade callbacks
+so later implementation slices cannot bypass facade dispatch.
 
 ## PostgreSQL ownership rule
 
@@ -135,7 +150,7 @@ The 35 transaction owners are grouped by the consistency they protect:
 
 | Consistency group | Connection owners |
 | --- | --- |
-| Project lifecycle and retention | `updateProjectSettings`, `pruneExpiredTraces`, `deleteProject` |
+| Project lifecycle and retention | `PgProjectRepository.updateProjectSettings`, `PgProjectRepository.pruneExpiredTraces`, `PgProjectRepository.deleteProject` |
 | Criterion and suite definitions | `PgCriterionSuiteRepository.createCriterion`, `PgCriterionSuiteRepository.createCriterionVersion`, `PgCriterionSuiteRepository.createEvaluatorSuiteManifest` |
 | Golden evidence and frozen datasets | `promoteExceptionToGoldenSet`, `retireGoldenSetEntry`, `createDatasetRevision`, `getOrCreateRegressionDatasetRevision` |
 | Trace and dataset-example ingestion | `importTrace`, `importDatasetExamples` |
