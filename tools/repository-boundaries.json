@@ -9,6 +9,7 @@
     "apps/api/src/repository.pg/golden-commands.ts",
     "apps/api/src/repository.pg/mappers.ts",
     "apps/api/src/repository.pg/project-counter-commands.ts",
+    "apps/api/src/repository.pg/project-repository.ts",
     "apps/api/src/repository.pg/regression-run-commands.ts",
     "apps/api/src/repository.pg/skill-version-commands.ts",
     "apps/api/src/repository.pg/trace-import-commands.ts"
@@ -101,6 +102,64 @@
         "try>if.then :: commit",
         "try>loop :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToSkillVersion",
         "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/project-repository.ts#PgProjectRepository.deleteProject",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/project-repository.ts#PgProjectRepository.pruneExpiredTraces",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 3,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try>if.then :: commit",
+        "try>if.then :: commit",
+        "try :: client_command:apps/api/src/repository.pg/project-counter-commands.ts#refreshProjectCounters",
+        "try :: commit",
+        "catch :: rollback",
+        "finally :: release"
+      ],
+      "reachableConnectionOwners": []
+    },
+    {
+      "method": "apps/api/src/repository.pg/project-repository.ts#PgProjectRepository.updateProjectSettings",
+      "kind": "transaction",
+      "commandCounts": {
+        "begin": 1,
+        "commit": 1,
+        "rollback": 1
+      },
+      "releaseCount": 1,
+      "boundaryEvents": [
+        "root :: connect",
+        "try :: begin",
+        "try :: commit",
+        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToProjectSettings",
         "catch :: rollback",
         "finally :: release"
       ],
@@ -361,24 +420,6 @@
       "reachableConnectionOwners": []
     },
     {
-      "method": "deleteProject",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
       "method": "enableTraceTest",
       "kind": "transaction",
       "commandCounts": {
@@ -578,27 +619,6 @@
       "reachableConnectionOwners": []
     },
     {
-      "method": "pruneExpiredTraces",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 3,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try>if.then :: commit",
-        "try>if.then :: commit",
-        "try :: client_command:apps/api/src/repository.pg/project-counter-commands.ts#refreshProjectCounters",
-        "try :: commit",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
-    },
-    {
       "method": "recordTraceTestValidation",
       "kind": "transaction",
       "commandCounts": {
@@ -746,25 +766,6 @@
         "finally :: release"
       ],
       "reachableConnectionOwners": []
-    },
-    {
-      "method": "updateProjectSettings",
-      "kind": "transaction",
-      "commandCounts": {
-        "begin": 1,
-        "commit": 1,
-        "rollback": 1
-      },
-      "releaseCount": 1,
-      "boundaryEvents": [
-        "root :: connect",
-        "try :: begin",
-        "try :: commit",
-        "try :: repository_call:apps/api/src/repository.pg/mappers.ts#rowToProjectSettings",
-        "catch :: rollback",
-        "finally :: release"
-      ],
-      "reachableConnectionOwners": []
     }
   ],
   "clientScopedCommands": [
@@ -888,7 +889,7 @@
         0
       ],
       "callers": [
-        "pruneExpiredTraces"
+        "apps/api/src/repository.pg/project-repository.ts#PgProjectRepository.pruneExpiredTraces"
       ]
     },
     {
