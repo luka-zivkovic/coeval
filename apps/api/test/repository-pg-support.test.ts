@@ -184,6 +184,8 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(["bumpEvalRunCounters", "mintAssessmentReceiptWithClient"]);
     expect(namedImports(repositorySource, "./repository.pg/credential-commands.js"))
       .toEqual(["setJudgeProviderKeyOnClient"]);
+    expect(namedImports(repositorySource, "./repository.pg/regression-run-commands.js"))
+      .toEqual(["insertRegressionRun"]);
     expect(namedImports(repositorySource, "./repository.pg/skill-version-commands.js"))
       .toEqual(["insertSkillVersion", "nextVersion"]);
     expect(namedImports(repositorySource, "./repository.pg/trace-import-commands.js"))
@@ -200,8 +202,8 @@ describe("PostgreSQL repository support modules", () => {
     const privateMethods = methods.filter((method) =>
       ts.getModifiers(method)?.some((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword)
     );
-    expect(methods).toHaveLength(179);
-    expect(privateMethods).toHaveLength(18);
+    expect(methods).toHaveLength(178);
+    expect(privateMethods).toHaveLength(17);
     expect(methods.length - privateMethods.length).toBe(161);
   }, 30_000);
 

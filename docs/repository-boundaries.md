@@ -61,6 +61,11 @@ Judge-provider credential encryption, masked display storage, and the paired
 audit record live in `repository.pg/credential-commands.ts`. The command
 accepts the caller-owned client, so direct key replacement and agent setup keep
 the credential write and audit append inside their existing transactions.
+Immutable regression-run insertion lives in
+`repository.pg/regression-run-commands.ts`. The command accepts the
+caller-owned client, so successful and failed evaluator-gate finalization keep
+version status, run evidence, exposure records, and any override audit in their
+existing transactions.
 `repository-pg-support.test.ts` pins the support module surfaces, the sole
 `PgRepository` implementation owner, the complete 161-method public facade,
 and representative retirement-context query behavior;
@@ -77,6 +82,9 @@ of connection or transaction ownership.
 `repository-pg-credential-commands.test.ts` pins the credential upsert,
 encrypted payload, masked display, actor-aware audit append, write order, and
 the absence of connection or transaction ownership.
+`repository-pg-regression-run-commands.test.ts` pins the regression-run insert,
+criterion-version binding, optional actor/override/error handling, complete
+case evidence, and the absence of connection or transaction ownership.
 
 The fixture also pins the one approved pool handoff from the main repository:
 `authorizeSkillVersionExecution` constructs `PgEvaluatorLifecycleRepository`

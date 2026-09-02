@@ -244,6 +244,7 @@ import {
   resolveSingletonCriterionVersionForRegression
 } from "./repository.pg/dataset-revision-commands.js";
 import { loadGoldenSetRetirementContext } from "./repository.pg/golden-commands.js";
+import { insertRegressionRun } from "./repository.pg/regression-run-commands.js";
 import {
   insertSkillVersion,
   nextVersion
@@ -6366,7 +6367,7 @@ export class PgRepository implements CoevalRepository {
           version.approvedAt
         ]
       );
-      await this.insertRegressionRun(client, regressionRun, { projectId: job.projectId, actorUserId: job.actorUserId });
+      await insertRegressionRun(client, regressionRun, { projectId: job.projectId, actorUserId: job.actorUserId });
       await client.query(
         `insert into dataset_exposure_events
          (id, project_id, revision_id, kind, exposure_class, activity, subject_kind,
@@ -6450,7 +6451,7 @@ export class PgRepository implements CoevalRepository {
          where id = $1 and project_id = $2`,
         [job.skillVersionId, job.projectId, [`regression gate failed: ${message}`]]
       );
-      await this.insertRegressionRun(client, {
+      await insertRegressionRun(client, {
         id: regressionRunId,
         skillVersionId: job.skillVersionId,
         datasetRevisionId,
@@ -6658,34 +6659,6 @@ export class PgRepository implements CoevalRepository {
       [projectId, criterionVersionId ?? null, EXCEPTION_LIST_LIMIT]
     );
     return result.rows.map(rowToExceptionCase);
-  }
-
-  private async insertRegressionRun(client: PoolClient, regressionRun: RegressionRunResult, context: CreateSkillVersionContext): Promise<void> {
-    await client.query(
-      `insert into regression_runs
-       (id, project_id, skill_version_id, dataset_revision_id, status, compared, regressed, improved, flipped,
-        override_reason, override_actor_user_id, golden_set_missing, cases, error_message, created_at,
-        criterion_version_id)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-               (select criterion_version_id from skill_versions where id=$3 and project_id=$2))`,
-      [
-        regressionRun.id,
-        context.projectId,
-        regressionRun.skillVersionId,
-        regressionRun.datasetRevisionId,
-        regressionRun.status,
-        regressionRun.compared,
-        regressionRun.regressed,
-        regressionRun.improved,
-        regressionRun.flipped,
-        regressionRun.overrideReason ?? null,
-        context.actorUserId ?? null,
-        regressionRun.goldenSetMissing,
-        JSON.stringify(regressionRun.cases),
-        regressionRun.error ?? null,
-        regressionRun.createdAt
-      ]
-    );
   }
 
   // the most recent existing version's id (before the new insert), for
