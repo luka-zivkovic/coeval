@@ -169,7 +169,9 @@ describe("PostgreSQL repository support modules", () => {
     expect(mapperSource.text).not.toMatch(/\bPool(?:Client)?\b|\.query\s*\(|\.connect\s*\(/);
 
     expect(namedImports(repositorySource, "./repository.pg/mappers.js").sort())
-      .toEqual(EXPECTED_MAPPER_EXPORTS);
+      .toEqual(EXPECTED_MAPPER_EXPORTS.filter((name) =>
+        name !== "rowToCriterion" && name !== "rowToEvaluatorSuite"
+      ));
     expect(namedImports(repositorySource, "./repository.pg/golden-commands.js"))
       .toEqual(["loadGoldenSetRetirementContext"]);
     expect(namedImports(repositorySource, "./repository.pg/dataset-revision-commands.js"))
@@ -184,6 +186,8 @@ describe("PostgreSQL repository support modules", () => {
       .toEqual(["bumpEvalRunCounters", "mintAssessmentReceiptWithClient"]);
     expect(namedImports(repositorySource, "./repository.pg/credential-commands.js"))
       .toEqual(["setJudgeProviderKeyOnClient"]);
+    expect(namedImports(repositorySource, "./repository.pg/criterion-suite-repository.js"))
+      .toEqual(["PgCriterionSuiteRepository"]);
     expect(namedImports(repositorySource, "./repository.pg/project-counter-commands.js"))
       .toEqual(["refreshProjectCounters"]);
     expect(namedImports(repositorySource, "./repository.pg/regression-run-commands.js"))

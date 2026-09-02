@@ -8,8 +8,8 @@
     },
     "apps/api/src/repository.pg.ts": {
       "classification": "refactor_candidate",
-      "reason": "One persistence class contains several independently changing transaction and read-model groups.",
-      "revisit": "Continue extracting mapped client-scoped command groups while preserving the checked connection-owner graph and the stable 161-method facade."
+      "reason": "The facade still contains several independently changing transaction and read-model groups after command and criterion/suite extraction.",
+      "revisit": "Continue extracting complete port consistency groups while preserving the checked connection-owner graph and the stable 161-method facade."
     },
     "pnpm-lock.yaml": {
       "classification": "generated",
