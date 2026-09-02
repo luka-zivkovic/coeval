@@ -7,6 +7,7 @@
     "apps/api/src/repository.pg/dataset-revision-commands.ts",
     "apps/api/src/repository.pg/golden-commands.ts",
     "apps/api/src/repository.pg/mappers.ts",
+    "apps/api/src/repository.pg/regression-run-commands.ts",
     "apps/api/src/repository.pg/skill-version-commands.ts",
     "apps/api/src/repository.pg/trace-import-commands.ts"
   ],
@@ -430,7 +431,7 @@
         "try :: begin",
         "try>if.then :: commit",
         "try :: repository_call:apps/api/src/repository.pg/mappers.ts#gateFailureMessage",
-        "try :: client_command:insertRegressionRun",
+        "try :: client_command:apps/api/src/repository.pg/regression-run-commands.ts#insertRegressionRun",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -697,7 +698,7 @@
         "conditional.true :: repository_call:getJudgeProviderCredential",
         "root :: connect",
         "try :: begin",
-        "try :: client_command:insertRegressionRun",
+        "try :: client_command:apps/api/src/repository.pg/regression-run-commands.ts#insertRegressionRun",
         "try :: commit",
         "catch :: rollback",
         "finally :: release"
@@ -878,6 +879,18 @@
       ]
     },
     {
+      "method": "apps/api/src/repository.pg/regression-run-commands.ts#insertRegressionRun",
+      "scope": "internal_module_function",
+      "isPrivate": true,
+      "clientParameterIndexes": [
+        0
+      ],
+      "callers": [
+        "failRegressionGateForVersion",
+        "runRegressionGateForVersionLocked"
+      ]
+    },
+    {
       "method": "apps/api/src/repository.pg/skill-version-commands.ts#getOrCreateGovernedReviewerSubject",
       "scope": "internal_module_function",
       "isPrivate": true,
@@ -933,18 +946,6 @@
       "callers": [
         "apps/api/src/repository.pg/trace-import-commands.ts#importTraceOnClient",
         "importDatasetExamples"
-      ]
-    },
-    {
-      "method": "insertRegressionRun",
-      "scope": "private_method",
-      "isPrivate": true,
-      "clientParameterIndexes": [
-        0
-      ],
-      "callers": [
-        "failRegressionGateForVersion",
-        "runRegressionGateForVersionLocked"
       ]
     },
     {
