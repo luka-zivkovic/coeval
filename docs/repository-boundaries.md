@@ -100,6 +100,13 @@ with the same pool. Masked owner reads never select encrypted credentials,
 worker lookup is the sole decrypting path, deletion appends its audit only
 after a project-scoped removal, and key replacement retains one mapped
 transaction around the existing caller-owned credential command.
+The complete three-method run-comparison port lives in
+`repository.pg/run-comparison-repository.ts`. The facade constructs it once
+with the same pool. Creation preserves the supplied dataset, immutable
+revision, evaluator-version, and eval-run identities; project-scoped reads
+retain deterministic newest-first ordering and the existing default limit.
+The per-case comparison remains a read-time projection outside this storage
+slice.
 `repository-pg-support.test.ts` pins the support module surfaces, the sole
 `PgRepository` implementation owner, the complete 161-method public facade,
 and representative retirement-context query behavior;
@@ -137,17 +144,21 @@ persistence, project scoping, revocation outcomes, and raw-key resolution.
 `repository-pg-judge-credential-repository.test.ts` pins the complete
 judge-credential port, one allocation, exact pool identity and transaction
 wrapper, masked owner reads, audited deletion, and worker-only decryption.
+`repository-pg-run-comparison-repository.test.ts` pins the complete
+run-comparison port, one allocation, exact pool identity, direct facade
+delegates, insert bindings, project scoping, deterministic ordering, limits,
+and row mapping.
 
 The fixture also pins the one approved external pool handoff from the main
 repository:
 `authorizeSkillVersionExecution` constructs `PgEvaluatorLifecycleRepository`
 with the same pool. That repository owns a separate accepted-ADR lifecycle and
 is outside this map; passing `this.pool` to any other external constructor
-fails the guard. The internal API-key, criterion/suite, judge-credential, and
-project compositions each receive the constructor's exact pool once and are
-separately pinned by structural tests. The project composition also pins its
-four facade callbacks so later implementation slices cannot bypass facade
-dispatch.
+fails the guard. The internal API-key, criterion/suite, judge-credential,
+project, and run-comparison compositions each receive the constructor's exact
+pool once and are separately pinned by structural tests. The project
+composition also pins its four facade callbacks so later implementation slices
+cannot bypass facade dispatch.
 
 ## PostgreSQL ownership rule
 
