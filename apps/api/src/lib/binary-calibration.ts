@@ -17,6 +17,7 @@ import {
 } from "@coeval/shared";
 import { canonicalJson } from "./assessment-receipt.js";
 
+// Public v1 contract constants and artifact-construction inputs.
 export const BINARY_CALIBRATION_CONTRACT = "coeval/binary-calibration/v1" as const;
 export const BINARY_CALIBRATION_PRIVATE_LEDGER_CONTRACT =
   "coeval/binary-calibration-private-ledger/v1" as const;
@@ -112,6 +113,7 @@ export interface ExpectedBinaryCalibrationArtifact {
   suiteMemberPosition: number | null;
 }
 
+// Canonical digest, binary64, and Wilson primitives. Operation order is contract-sensitive.
 export function binary64FromBits(bits: string): number {
   if (!BINARY64_BITS_PATTERN.test(bits)) throw new Error("binary64 bits must be exactly 16 lowercase hexadecimal digits");
   return Buffer.from(bits, "hex").readDoubleBE(0);
@@ -170,6 +172,7 @@ export function binaryCalibrationArtifactDigest(bytes: Uint8Array): string {
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 }
 
+// Private-ledger validation and its canonical public commitment.
 export function verifyBinaryCalibrationPrivateLedger(raw: unknown): BinaryCalibrationPrivateLedger {
   verifyUntrustedJsonBounds(raw, 50_000);
   if (containsLoneUtf16Surrogate(raw)) {
@@ -393,6 +396,7 @@ function verifyPrivateLedgerRecord(
   }
 }
 
+// Public artifact construction, canonical bytes, parsing, and verification.
 export function buildBinaryCalibrationArtifact(
   input: BuildBinaryCalibrationArtifactInput
 ): BinaryCalibrationArtifact {
@@ -518,6 +522,8 @@ export function verifyBinaryCalibrationArtifact(
   return artifact;
 }
 
+// Ordered internal metric, lineage, evidence, and bound checks. These helpers
+// intentionally remain beside the public pipeline whose exact bytes they protect.
 function buildTrial(
   input: BinaryCalibrationTrialBuildInput,
   positiveClass: BinaryCalibrationArtifact["positiveClass"],
@@ -1065,6 +1071,7 @@ function sha256Canonical(value: unknown): string {
   return digest;
 }
 
+// Final public identity ordering and terminal-error classification helpers.
 export function compareProviderIdentityStrength(
   observed: BinaryCalibrationProviderIdentityStrength,
   required: BinaryCalibrationProviderIdentityStrength
