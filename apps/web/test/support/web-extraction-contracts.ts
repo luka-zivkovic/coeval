@@ -9,9 +9,13 @@ export const webExtractionContracts = {
   },
   datasets: {
     root: "screens/datasets.tsx",
-    sources: ["screens/datasets.tsx"],
-    dialogSources: ["screens/datasets.tsx"],
-    rowActionSources: ["screens/datasets.tsx"]
+    sources: [
+      "screens/datasets.tsx",
+      "screens/datasets/cards.tsx",
+      "screens/datasets/examples.tsx"
+    ],
+    dialogSources: ["screens/datasets/examples.tsx"],
+    rowActionSources: ["screens/datasets.tsx", "screens/datasets/cards.tsx"]
   },
   "skill-edit": {
     root: "screens/skill-edit.tsx",
@@ -21,8 +25,11 @@ export const webExtractionContracts = {
   },
   "trace-test-builder": {
     root: "screens/trace-test-builder.tsx",
-    sources: ["screens/trace-test-builder.tsx"],
-    dialogSources: ["screens/trace-test-builder.tsx"],
+    sources: [
+      "screens/trace-test-builder.tsx",
+      "screens/trace-test-builder/components.tsx"
+    ],
+    dialogSources: ["screens/trace-test-builder/components.tsx"],
     rowActionSources: []
   }
 } as const;

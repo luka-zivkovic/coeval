@@ -114,6 +114,14 @@ structural exception because canonical v1 construction and verification share
 digest-sensitive operation order. Its section comments are the navigation map,
 and its boundary test pins that order and the exact public surface.
 
+The web client keeps `apps/web/src/lib/api.ts` as its compatibility barrel over
+cohesive transport and resource modules under `apps/web/src/lib/api/`; transport
+internals are not part of the barrel surface. The datasets and trace-test-builder
+screens keep stateful journey orchestration in their root modules and place
+dialogs, panels, parsing, and result cards in same-named feature directories.
+Their extraction contract closes those directories and carries accessibility
+and row-action checks with each owned source.
+
 ## Revisit conditions
 
 Re-run the report and revisit a classification when:
