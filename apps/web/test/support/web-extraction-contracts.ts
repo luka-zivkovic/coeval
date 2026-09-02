@@ -3,7 +3,14 @@ import { readFile } from "node:fs/promises";
 export const webExtractionContracts = {
   "analysis-study-workspace": {
     root: "screens/analysis-study-workspace.tsx",
-    sources: ["screens/analysis-study-workspace.tsx"],
+    sources: [
+      "screens/analysis-study-workspace.tsx",
+      "screens/analysis-study-workspace/coding.tsx",
+      "screens/analysis-study-workspace/findings.tsx",
+      "screens/analysis-study-workspace/journey.tsx",
+      "screens/analysis-study-workspace/study.tsx",
+      "screens/analysis-study-workspace/support.ts"
+    ],
     dialogSources: [],
     rowActionSources: []
   },
@@ -19,7 +26,11 @@ export const webExtractionContracts = {
   },
   "skill-edit": {
     root: "screens/skill-edit.tsx",
-    sources: ["screens/skill-edit.tsx"],
+    sources: [
+      "screens/skill-edit.tsx",
+      "screens/skill-edit/editor.tsx",
+      "screens/skill-edit/regression.tsx"
+    ],
     dialogSources: [],
     rowActionSources: []
   },
