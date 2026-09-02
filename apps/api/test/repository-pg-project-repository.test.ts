@@ -259,6 +259,7 @@ describe("PostgreSQL project repository slice", () => {
     const constructor = repository.members.find(ts.isConstructorDeclaration);
     expect(constructor).toBeDefined();
     expect(constructor!.body!.statements.map((statement) => normalized(statement, repositorySource))).toEqual([
+      "this.apiKeyRepository = new PgApiKeyRepository(pool);",
       "this.criterionSuiteRepository = new PgCriterionSuiteRepository(pool);",
       "this.projectRepository = new PgProjectRepository(pool, { getCurrentSkill: (projectId) => this.getCurrentSkill(projectId), getCurrentSkillForCriterion: (projectId, criterionId) => this.getCurrentSkillForCriterion(projectId, criterionId), listGoldenSet: (projectId, criterionVersionId) => this.listGoldenSet(projectId, criterionVersionId), listExceptionCases: (projectId, criterionVersionId) => this.listExceptionCases(projectId, criterionVersionId) });"
     ]);
