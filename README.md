@@ -1,9 +1,15 @@
-# Coeval
+<h1 align="center">Coeval</h1>
 
-[![CI](https://github.com/luka-zivkovic/coeval/actions/workflows/ci.yml/badge.svg)](https://github.com/luka-zivkovic/coeval/actions/workflows/ci.yml)
-[![License: Sustainable Use v1.0](https://img.shields.io/badge/license-Sustainable%20Use%20v1.0-blue)](LICENSE.md)
+<p align="center"><strong>Turn examples of AI failure into evaluators you can check and improve.</strong></p>
 
-**Governed evaluators for AI systems.**
+<p align="center">
+  <a href="https://github.com/luka-zivkovic/coeval/actions/workflows/ci.yml"><img src="https://github.com/luka-zivkovic/coeval/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-Sustainable%20Use-475569" alt="Sustainable Use license"></a>
+</p>
+
+<p align="center">
+  <a href="#quickstart">Quickstart</a> · <a href="#install-with-your-coding-agent">Install with an agent</a> · <a href="#mcp">MCP</a> · <a href="#how-the-pieces-connect">Workflow</a> · <a href="#documentation">Documentation</a>
+</p>
 
 Coeval helps quality owners understand where an AI system falls short, define
 how each problem should be judged, and improve the evaluator without losing
@@ -11,7 +17,14 @@ the history behind it. You can begin with production traces or a small set of
 examples; Coeval keeps the human review, evaluator versions, and resulting
 evidence connected as the project grows.
 
-## Beginner-friendly by default
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/workflow-mobile.svg">
+    <img src="docs/assets/workflow.svg" width="100%" alt="Coeval workflow: understand failures, review human labels, version evaluators, and retain assessment and calibration evidence.">
+  </picture>
+</p>
+
+## Start with one useful check
 
 You do not need to learn evaluator-governance terminology before you can get
 useful work done. Coeval defaults to a **Guided** view that keeps the core
@@ -32,30 +45,17 @@ changes the presentation, not the evidence, permissions, or safety rules.
 
 ## How the pieces connect
 
-```text
-representative traces and cases
-→ failure taxonomy + narrow criteria
-→ governed review + versioned evaluators
-→ iterative development + sealed validation
-→ pinned execution
-→ verifiable assessment + calibration evidence
-```
+| You want to… | Coeval helps you… |
+| --- | --- |
+| Understand recurring failures | Inspect traces and develop a human-authored failure taxonomy. |
+| Judge a specific behavior | Define one criterion and version the evaluator that measures it. |
+| Check the evaluator itself | Compare its judgments with reviewed human labels and retain calibration evidence. |
+| Improve it without losing history | Re-run known failures and inspect evidence for exact evaluator versions. |
 
 Coeval complements tracing platforms rather than replacing them. It can import traces from LangSmith or Langfuse, or use Ironside's native versioned evaluator feed, and sync recorded assessments back to the source.
 
-[`PRODUCT.md`](PRODUCT.md) is authoritative for intended product scope. This
-README describes the current implementation. See the shared
-[glossary](docs/glossary.md) and [architecture decisions](docs/decisions/README.md)
-for the boundaries between Coeval, Dailies, and Casefile. The time-sensitive
-[positioning note](docs/positioning.md) explains the intended wedge without
-turning competitor features into product authority. The cross-product
-[implementation batches](docs/implementation-batches.md) sequence target work
-without changing those boundaries. Beginner-facing workflow language is kept
-in the [beginner onboarding journey](docs/beginner-onboarding-journey.md),
-[Analyze journey](docs/analyze-journey.md), and
-[trace-to-test journey](docs/trace-to-test-journey.md) contracts.
-
-## What is included
+<details>
+<summary><strong>Explore the full feature set</strong></summary>
 
 - Multiple independently versioned evaluation criteria per project, each with
   its own judging-skill lineage, human evidence, and exact definition binding.
@@ -81,6 +81,27 @@ in the [beginner onboarding journey](docs/beginner-onboarding-journey.md),
 - Judge Cards and portable [SkillFormat v1](spec/skill-format-v1.md) exports.
 - A small CI gate client in [`tools/ci/gate.mjs`](tools/ci/gate.mjs).
 
+</details>
+
+## Install with your coding agent
+
+Use Claude Code, Codex, or another coding agent with terminal access. Paste
+this into a session in the directory where you keep your projects:
+
+```text
+Set up Coeval locally from https://github.com/luka-zivkovic/coeval.
+Read its README and docs/agent-setup.md first, check the prerequisites,
+and follow the local installation steps. Keep existing files and services
+intact. Start the API and web app, verify their URLs, and guide me through
+owner signup and my first Check. Keep credentials out of chat and Git.
+Then help me install coeval-setup and coeval-audit for this harness.
+```
+
+The [agent setup guide](docs/agent-setup.md) covers Claude Code and Codex skill
+installation, other harnesses, first-run verification, and the optional
+[MCP connection](tools/mcp/README.md). The skills help you set up and use a
+Coeval project; the Coeval service still needs to be running.
+
 ## Quickstart
 
 Prerequisites:
@@ -88,11 +109,13 @@ Prerequisites:
 - Node.js 24 or newer
 - pnpm 10.33 or newer
 - Docker, for local Postgres
-- An Anthropic or OpenAI API key for real judging
+- An optional Anthropic or OpenAI API key for real judging; the local demo can use a deterministic mock
 
 Install dependencies and start Postgres:
 
 ```bash
+git clone https://github.com/luka-zivkovic/coeval.git
+cd coeval
 pnpm install
 cp .env.example .env
 docker compose -f docker-compose.pg.yml up -d
@@ -229,6 +252,9 @@ corrections append linked successors, and consumer-held canonical copies can
 be recorded as exact matches or divergences without overwriting history. See
 [the storage contract](docs/receipt-artifact-v1.md) and
 [ADR-0006](docs/decisions/0006-receipt-artifact-storage-and-freeze.md).
+
+<details>
+<summary><strong>Technical reference: datasets, human review, calibration, and evaluator lifecycle</strong></summary>
 
 ## Working collections and immutable revisions
 
@@ -392,37 +418,49 @@ The intended runtime and sequencing are documented in
 [ADR-0010](docs/decisions/0010-representative-analysis-and-taxonomy-lifecycle.md),
 and the accepted [pre-launch database policy](docs/decisions/0011-prelaunch-blank-slate-database-policy.md).
 
+</details>
+
 ## Set up and audit from Claude Code (and other agents)
 
-The repository ships two portable Agent Skills folders (SKILL.md format).
-[`skills/coeval-setup/`](skills/coeval-setup/) gives beginners a short,
-context-aware first setup: it inspects safe project text, asks only a
-decision-changing question, proposes one Check, and waits for **Finish setup**
-before requesting a connection. [`skills/coeval-audit/`](skills/coeval-audit/)
-then captures real agent-skill Runs as example lines, submits them through
-`POST /api/v1/judge/batch`, and reports the Results honestly. It complements
-the CI gate above: `gate.mjs` gates the judging skill against labeled examples
-in CI, while `coeval-audit` submits an external skill's day-to-day Runs
-interactively.
+Two bundled skills carry the workflow into your agent:
 
-To install, copy both folders into your agent's skills directory:
+| Skill | What it does |
+| --- | --- |
+| [coeval-setup](skills/coeval-setup/) | Reads safe project context, proposes a **Starter · unvalidated** Check, and connects it after **Finish setup**. |
+| [coeval-audit](skills/coeval-audit/) | Captures real input/output examples, submits Runs, and explains the resulting assessments. |
 
-- Claude Code: `~/.claude/skills/{coeval-setup,coeval-audit}/` (personal) or `.claude/skills/{coeval-setup,coeval-audit}/` (per repository)
-- Other SKILL.md-compatible tools (Codex CLI, Gemini CLI, Cursor, and others): the tool's documented skills directory
+Install both complete folders using the [harness-specific commands](docs/agent-setup.md#install-the-two-skills).
+Then ask your agent to “initialize Coeval for this project” or “audit my skill
+with Coeval.” Manual capture works across harnesses; the optional automatic
+capture hook is specific to Claude Code. Submission is explicit by default.
 
-Then ask the agent to "initialize Coeval for this project". It will inspect the
-repository before asking you to repeat context, present a Check as **Starter ·
-unvalidated**, and offer **Finish setup** or **Refine the Check**. For ongoing
-use, ask it to "audit my skill with Coeval". Configuration is `COEVAL_URL`
-plus a `coeval_sk_` key in `COEVAL_API_KEY`, from the environment or `.env` —
-the bundled script parses `.env` itself and never prints the key. Three capture
-modes are supported: manual, automatic capture with explicit submission
-(recommended; via a Claude Code Stop hook), and full auto-submit behind an
-explicit `COEVAL_AUTO_SUBMIT=1` opt-in. Automatic capture is Claude Code-only;
-everything else is tool-agnostic. The bundled scripts require Node.js 18 or
-newer.
+Unlabeled assessments are evaluator opinions, not verified correctness.
+Human adjudication and Golden promotion stay in the dashboard.
 
-Unlabeled submissions are reported as the judging skill's opinions, never as verified correctness. `skills/coeval-audit/examples/results.example.jsonl` is for demo instances only — verdicts are append-only, so sample data submitted to a real project stays there.
+## MCP
+
+Coeval includes a **Model Context Protocol (MCP) server** for harnesses that
+support local stdio tools. It lets an agent read project findings and cases,
+submit examples, and check agreement on labeled examples.
+
+The harness starts `tools/mcp/index.mjs`; that process connects to the Coeval
+HTTP API using your project key. It is optional: the audit skill can submit
+over HTTP without MCP.
+
+**[Connect Claude Code, Codex, or another MCP client →](tools/mcp/README.md)**
+
+## Documentation
+
+- [Agent setup](docs/agent-setup.md) — install the service, add skills, and verify the connection.
+- [MCP reference](tools/mcp/README.md) — commands, available tools, and current limitations.
+- [Self-hosting](docs/self-hosting.md) — deployment and operations.
+- [Architecture](docs/architecture.md) — runtime components and evidence boundaries.
+- [Guided onboarding](docs/beginner-onboarding-journey.md), [Analyze](docs/analyze-journey.md), and [trace-to-test](docs/trace-to-test-journey.md) — detailed workflows.
+- [Product charter](PRODUCT.md), [glossary](docs/glossary.md), and [architecture decisions](docs/decisions/README.md) — product scope and terminology.
+
+This README describes the current implementation. The product charter and
+accepted architecture decisions define intended scope; the
+[implementation batches](docs/implementation-batches.md) track its delivery.
 
 ## Development
 
