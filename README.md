@@ -429,7 +429,7 @@ Two bundled skills carry the workflow into your agent:
 | [coeval-setup](skills/coeval-setup/) | Reads safe project context, proposes a **Starter · unvalidated** Check, and connects it after **Finish setup**. |
 | [coeval-audit](skills/coeval-audit/) | Captures real input/output examples, submits Runs, and explains the resulting assessments. |
 
-Install both complete folders using the [harness-specific commands](docs/agent-setup.md#install-the-two-skills).
+To install, copy both folders in full using the [harness-specific commands](docs/agent-setup.md#install-the-two-skills).
 Then ask your agent to “initialize Coeval for this project” or “audit my skill
 with Coeval.” Manual capture works across harnesses; the optional automatic
 capture hook is specific to Claude Code. Submission is explicit by default.
