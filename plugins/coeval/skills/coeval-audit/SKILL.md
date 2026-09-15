@@ -1,14 +1,14 @@
 ---
 name: coeval-audit
-description: Audit a developer's own agent skill with a Coeval instance — connect an approved first Check, capture real skill runs, submit them for judging, and report Results honestly. Use when the user says "audit my skill with coeval", "submit results to coeval", "capture skill runs", or "judge these outputs". For a new or unclear setup, begin with the sibling coeval-setup skill's context-first interview and approved proposal.
+description: Audit a developer's own agent skill with a Coeval instance — connect an approved first Check, capture real skill runs, submit them for judging, and report Results honestly. Use when the user says "audit my skill with coeval", "submit results to coeval", "capture skill runs", or "judge these outputs". For a new or unclear setup, begin with the sibling coeval-setup skill's context-first interview and approved proposal. Do not use it for human adjudication, Golden promotion, or release decisions; those stay in the Coeval dashboard.
 ---
 
 # coeval-audit
 
 Audit any agent skill by judging its real inputs and outputs with a coeval
 judging skill. One coeval project (bench mode) per audited skill; results move
-through the bundled zero-dependency script (Node >= 18) — no SDK, no npm
-install. Three automation modes, lowest friction first to configure:
+through the bundled zero-dependency script (Node >= 18). Three automation
+modes:
 
 1. **Manual** — you append example lines yourself, then submit on request.
 2. **Capture + submit on command** (recommended default) — a Claude Code hook
@@ -26,17 +26,16 @@ inspects safe project context, asks only a short decision-changing question,
 shows the exact proposed Check, and waits for **Finish setup** before requesting
 the short-lived connection. Do not replace that flow with a one-shot rubric
 guess. If `coeval-setup` is not installed, follow its published instructions at
-https://github.com/luka-zivkovic/coeval/blob/main/skills/coeval-setup/SKILL.md.
+https://github.com/luka-zivkovic/coeval/blob/main/plugins/coeval/skills/coeval-setup/SKILL.md.
 
 Resume here after the user has approved the non-secret setup proposal.
 
 1. **Reachability pre-flight.** Require `COEVAL_URL` (environment or `.env`)
    and a reachable coeval instance. Otherwise point the user at the README
-   quickstart (https://github.com/luka-zivkovic/coeval#quickstart) and stop.
+   quickstart (https://github.com/luka-zivkovic/coeval#ten-minute-start) and stop.
 2. **Use an existing project when present.** Run
    `node scripts/coeval-submit.mjs check`. Exit 0 means connected. If the
-   project key is absent, connect it as follows. Never read `.env` directly;
-   the script consumes and updates it without printing secrets.
+   project key is absent, connect it as follows.
 3. **Prefer an onboarding connection after proposal approval.** Ask the user
    to open the new project's Coeval Overview, choose **Create agent
    connection**, and paste the generated instructions into this conversation.
@@ -157,10 +156,8 @@ node scripts/coeval-submit.mjs submit .coeval/<skillName>.jsonl [--skill-version
   failure or agreement below `--min-agreement`; 2 usage/config error (the
   message names the broken line).
 - In full-auto mode the hook submits in the background; outcomes (including
-  rate limits, retried next turn) are in `.coeval/submit.log` — check there
-  first when results seem missing.
-- No `curl`-capable environment restrictions apply; the raw HTTP fallback is
-  in `references/api.md`.
+  rate limits, retried next turn) are in `.coeval/submit.log`.
+- The raw HTTP fallback is in `references/api.md`.
 
 ## Phase 4 — Report
 

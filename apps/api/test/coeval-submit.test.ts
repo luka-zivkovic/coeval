@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { buildAgentConnectSnippets } from "@coeval/shared";
 
-const SCRIPT = fileURLToPath(new URL("../../../skills/coeval-audit/scripts/coeval-submit.mjs", import.meta.url));
+const SCRIPT = fileURLToPath(new URL("../../../plugins/coeval/skills/coeval-audit/scripts/coeval-submit.mjs", import.meta.url));
 
 describe("coeval-audit setup client", () => {
   it("refuses to connect before the setup plan names the approved Check", async () => {

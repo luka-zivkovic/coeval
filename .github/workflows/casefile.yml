@@ -1,0 +1,50 @@
+name: casefile
+
+# Static, no-execution admission scan of the Claude Code plugin this
+# repository publishes, using the Casefile composite Action. The one reviewed
+# suppression lives in casefile.config.json with its reason.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "plugins/**"
+      - ".claude-plugin/**"
+      - "casefile.config.json"
+      - ".github/workflows/casefile.yml"
+  pull_request:
+    paths:
+      - "plugins/**"
+      - ".claude-plugin/**"
+      - "casefile.config.json"
+      - ".github/workflows/casefile.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  scan-plugin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Scan plugins/coeval with Casefile
+        id: casefile
+        uses: luka-zivkovic/casefile@main
+        with:
+          path: plugins/coeval
+          config: casefile.config.json
+          version: 0.2.1
+          fail-on: warning
+          strict: "true"
+      - name: Upload Casefile reports
+        if: always() && steps.casefile.outputs.report-json != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: casefile-report
+          path: |
+            ${{ steps.casefile.outputs.report-json }}
+            ${{ steps.casefile.outputs.sarif }}
+          if-no-files-found: ignore

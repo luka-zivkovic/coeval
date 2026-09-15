@@ -3,12 +3,12 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = resolve(import.meta.dirname, "../../..");
-const setupSkill = readFileSync(resolve(root, "skills/coeval-setup/SKILL.md"), "utf8");
+const setupSkill = readFileSync(resolve(root, "plugins/coeval/skills/coeval-setup/SKILL.md"), "utf8");
 const setupReference = readFileSync(
-  resolve(root, "skills/coeval-setup/references/setup-artifacts.md"),
+  resolve(root, "plugins/coeval/skills/coeval-setup/references/setup-artifacts.md"),
   "utf8"
 );
-const auditSkill = readFileSync(resolve(root, "skills/coeval-audit/SKILL.md"), "utf8");
+const auditSkill = readFileSync(resolve(root, "plugins/coeval/skills/coeval-audit/SKILL.md"), "utf8");
 const normalizedAuditSkill = auditSkill.replace(/\s+/g, " ");
 const readme = readFileSync(resolve(root, "README.md"), "utf8");
 

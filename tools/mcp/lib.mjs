@@ -17,7 +17,7 @@ const DEFAULT_POLL_INTERVAL_MS = 2000;
  * Validate one example row and mint its batch item.
  *
  * DRIFT GUARD: the validation rules and the `ci_` content-hash recipe are
- * shared with tools/ci/gate.mjs and skills/coeval-audit/scripts/
+ * shared with tools/ci/gate.mjs and plugins/coeval/skills/coeval-audit/scripts/
  * coeval-submit.mjs (and the server's ex_ hash) — identical content must keep
  * minting identical sourceTraceIds across all three clients, or idempotency
  * breaks (unchanged examples would re-judge and re-spend). steps join the

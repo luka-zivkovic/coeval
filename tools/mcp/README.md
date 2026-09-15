@@ -19,7 +19,7 @@ not work.
 
 ## Prerequisites
 
-1. A running Coeval instance and a project. See the [quickstart](../../README.md#quickstart).
+1. A running Coeval instance and a project. See the [ten-minute start](../../README.md#ten-minute-start).
 2. A local checkout with dependencies installed using `pnpm install` from
    its root. `@coeval/mcp` is a private workspace package, not a published
    `npx` installer.
