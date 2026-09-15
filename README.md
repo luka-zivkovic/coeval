@@ -1,6 +1,6 @@
 <h1 align="center">Coeval</h1>
 
-<p align="center"><strong>Turn examples of AI failure into evaluators you can check and improve.</strong></p>
+<p align="center"><strong>Turn examples of your AI failing into evaluators you can check against human judgment, and keep the evidence.</strong></p>
 
 <p align="center">
   <a href="https://github.com/luka-zivkovic/coeval/actions/workflows/ci.yml"><img src="https://github.com/luka-zivkovic/coeval/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -8,30 +8,155 @@
 </p>
 
 <p align="center">
-  <a href="#quickstart">Quickstart</a> · <a href="#install-with-your-coding-agent">Install with an agent</a> · <a href="#mcp">MCP</a> · <a href="#how-the-pieces-connect">Workflow</a> · <a href="#documentation">Documentation</a>
+  <a href="#ten-minute-start">Ten-minute start</a> · <a href="#concepts">Concepts</a> · <a href="#where-coeval-fits">Where it fits</a> · <a href="#judgment-in-ci">CI</a> · <a href="#mcp">MCP</a> · <a href="#documentation">Documentation</a>
 </p>
 
-Coeval helps quality owners understand where an AI system falls short, define
-how each problem should be judged, and improve the evaluator without losing
-the history behind it. You can begin with production traces or a small set of
-examples; Coeval keeps the human review, evaluator versions, and resulting
-evidence connected as the project grows.
+Coeval is for the person who owns the quality of an AI feature: you have seen
+it fail, you want an automated check for that failure, and you want to know
+whether the check agrees with a human before you rely on it. You can start
+from production traces or from a handful of examples. Coeval keeps the human
+review, the evaluator versions, and the resulting evidence connected as the
+project grows, and it hands that evidence to whoever decides what ships.
 
-<p align="center">
-  <picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/workflow-mobile.svg">
-    <img src="docs/assets/workflow.svg" width="100%" alt="Coeval workflow: understand failures, review human labels, version evaluators, and retain assessment and calibration evidence.">
-  </picture>
-</p>
+## Ten-minute start
 
-## Start with one useful check
+Pick the path that matches what you already have. Every path ends at the same
+place: a running Coeval, an owner account, and one Check over one real Run.
 
-You do not need to learn evaluator-governance terminology before you can get
-useful work done. Coeval defaults to a **Guided** view that keeps the core
-journey visible, explains what each step changes, and leaves secondary
-diagnostics and system details out of the way.
+### a. Claude Code plugin
 
-A typical first project looks like this:
+If Coeval is already running somewhere (see paths b, c, or d), let the plugin
+do the rest:
+
+```text
+/plugin marketplace add luka-zivkovic/coeval
+/plugin install coeval@coeval
+```
+
+Open Claude Code in the project you want to evaluate and run
+`/coeval:coeval-setup`. The skill reads safe project text, asks one short
+question, shows a plain-language proposed Check, and connects it after you
+choose **Finish setup**. `/coeval:coeval-audit` then captures real examples
+and submits them. The agent connection it uses needs a Coeval running in
+Postgres mode (paths b or c). Codex and other harnesses copy the same two
+skill folders; see the [agent setup guide](docs/agent-setup.md).
+
+### b. Self-host the published images
+
+You need Docker Engine with Compose v2. This uses the release-owned bundle in
+[`deploy/self-host/compose.yaml`](deploy/self-host/compose.yaml) and the
+`0.2.0` images published on GHCR:
+
+```bash
+mkdir coeval && cd coeval
+curl -fsSLO https://raw.githubusercontent.com/luka-zivkovic/coeval/v0.2.0/deploy/self-host/compose.yaml
+cat > .env <<EOF
+COEVAL_VERSION=0.2.0
+COEVAL_POSTGRES_PASSWORD=$(openssl rand -hex 24)
+COEVAL_AUTH_SECRET=$(openssl rand -base64 32)
+COEVAL_PUBLIC_URL=http://localhost:8081
+EOF
+docker compose up -d
+curl --fail http://localhost:8081/health
+```
+
+`COEVAL_VERSION`, `COEVAL_POSTGRES_PASSWORD`, and `COEVAL_AUTH_SECRET` are
+required; the bundle refuses to start without them. `COEVAL_PUBLIC_URL`
+defaults to `http://localhost:8081` and must match the address you open in a
+browser. Optional: `COEVAL_BIND_ADDRESS` (default `127.0.0.1`), `COEVAL_PORT`
+(default `8081`), `COEVAL_POSTGRES_DB` (default `coeval`), and
+`COEVAL_BOOTSTRAP_TOKEN` for headless administration. Keep `.env` out of Git
+and keep `COEVAL_AUTH_SECRET` in a recovery record: it also encrypts stored
+credentials.
+
+Open [http://localhost:8081](http://localhost:8081), create the first owner,
+and follow the Guided setup ledger. Judge-provider keys are not part of the
+bundle; add an Anthropic or OpenAI key per project under **Settings**, where
+it is encrypted at rest. Use an exact version, never `latest`; see
+[self-hosting](docs/self-hosting.md) for updates, backups, and Coolify.
+
+### c. From source
+
+Prerequisites: Node.js 24 or newer, pnpm 10.33 or newer, Docker for local
+Postgres, and an optional Anthropic or OpenAI API key for real judging.
+
+```bash
+git clone https://github.com/luka-zivkovic/coeval.git
+cd coeval
+pnpm install
+cp .env.example .env
+docker compose -f docker-compose.pg.yml up -d
+```
+
+Generate a Better Auth secret with `openssl rand -base64 32` and add it to
+`.env`, together with an optional judge provider key:
+
+```dotenv
+DATABASE_URL=postgres://coeval:coeval@localhost:5432/coeval
+BETTER_AUTH_SECRET=<generated-secret>
+BETTER_AUTH_URL=http://localhost:8787
+COEVAL_TRUST_PROXY=0
+TRUSTED_ORIGINS=http://localhost:5173
+
+# Optional advanced fallback for setup with no signed-in onboarding session.
+# Normal users create a short-lived agent connection in the Coeval UI.
+COEVAL_BOOTSTRAP_TOKEN=
+
+# Optional. Without one, local demo judging uses a deterministic mock.
+ANTHROPIC_API_KEY=
+OPENAI_API_KEY=
+OPENROUTER_API_KEY=
+```
+
+Set `COEVAL_TRUST_PROXY=1` only when clients cannot bypass your trusted reverse
+proxy. Coeval will then use sanitized forwarded client-IP headers for the
+pre-auth onboarding rate limit; direct deployments use the socket address.
+
+Start the API and web app in separate terminals:
+
+```bash
+# terminal 1 — tsx does not load .env automatically
+set -a; source .env; set +a
+pnpm dev:api
+
+# terminal 2
+pnpm dev:web
+```
+
+Open [http://localhost:5173](http://localhost:5173), create the first owner,
+and follow the Guided setup ledger. It uses saved project state to show what
+is complete and what to do next. The API runs migrations when `DATABASE_URL`
+is configured.
+
+### d. Zero-infrastructure demo mode
+
+Without `DATABASE_URL`, the API starts against in-memory fixtures instead of
+Postgres. From a checkout with dependencies installed, and without sourcing
+`.env`:
+
+```bash
+pnpm dev:api    # prints "Coeval API listening on http://localhost:8787 (demo)"
+pnpm dev:web    # second terminal
+```
+
+Open [http://localhost:5173](http://localhost:5173). There is no signup: the
+dashboard renders seeded projects directly, judging runs inline with a
+deterministic mock unless a provider key is exported, and **Settings → API
+keys** mints keys you can use with the batch endpoint below.
+
+Demo mode is for looking around. Its limits: nothing persists across a
+restart; authentication is off, so do not expose it on a network; the agent
+connection used by the plugin, `COEVAL_BOOTSTRAP_TOKEN`, independent
+(governed) human review, protected sealed calibration, the Analyze study
+runtime, and evaluator activation all require the persistent Postgres
+workspace.
+
+### Your first Check
+
+You do not need to learn evaluator-governance terminology first. Coeval
+defaults to a **Guided** view that keeps the core journey visible, explains
+what each step changes, and leaves secondary diagnostics and system details
+out of the way. A typical first project looks like this:
 
 1. adding traces or a few example input-and-output pairs;
 2. defining what the evaluator should check;
@@ -42,6 +167,105 @@ A typical first project looks like this:
 Model identifiers, immutable revision details, calibration evidence, and other
 technical records remain available in the **Technical** view. Guided mode
 changes the presentation, not the evidence, permissions, or safety rules.
+
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/workflow-mobile.svg">
+    <img src="docs/assets/workflow.svg" width="100%" alt="Coeval workflow: understand failures, review human labels, version evaluators, and retain assessment and calibration evidence.">
+  </picture>
+</p>
+
+To onboard with an external AI agent, copy the no-secret setup prompt after
+creating the owner account (or from a new project's Overview). The bundled
+`coeval-setup` skill inspects safe project context, asks one short question,
+and shows a plain-language proposed Check. After you choose **Finish setup**,
+create the private agent connection and paste those instructions into Claude,
+Codex, or another agent. The connection is project-scoped, single-use, and
+expires after 15 minutes; no deployment secret is required. The returned
+`coeval_sk_` key is project-scoped and shown exactly once.
+`COEVAL_BOOTSTRAP_TOKEN` remains an optional advanced fallback for fully
+headless administration. Agents may create an explicitly unvalidated Check
+and submit real Runs, but human adjudication and Golden promotion remain
+session-only.
+
+#### Submit a first batch
+
+Coeval mints the first project key when the project is created and shows the
+plaintext once during onboarding. Save it then, or mint a replacement under
+**Settings → API keys**. Export it as `COEVAL_API_KEY`, then submit a labeled
+example (use port `8081` for the self-host bundle):
+
+```bash
+curl -X POST http://localhost:8787/api/v1/judge/batch \
+  -H "Authorization: Bearer ${COEVAL_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [
+      {
+        "sourceTraceId": "quickstart-001",
+        "input": { "question": "Can I get a refund?" },
+        "output": { "answer": "Refunds are available within 30 days." },
+        "expectedLabel": "pass"
+      }
+    ]
+  }'
+```
+
+The endpoint returns `202` with a `pollUrl`. Poll that URL until the eval run is complete. `expectedLabel` is optional; unlabeled items are judged but are not counted in agreement.
+
+Trajectory items may also include `steps`, an ordered array of `{ name?, input, output, metadata? }`. Expected failures can include a zero-based `expectedFailStep`.
+
+## Concepts
+
+The Guided view uses the first three words; the Technical view and the
+contracts below use the rest.
+
+| Term | Plain meaning |
+| --- | --- |
+| **Run** | One recorded example of what your AI did: input, output, and optionally the steps in between. |
+| **Check** | One reusable automated evaluation of one thing that matters, with a review guide saying when it passes, fails, or lacks evidence. |
+| **Result** | What a Check concluded about one Run. It is the evaluator's opinion, not a human decision or permission to ship. |
+| **Criterion** | The named quality question a Check measures. Each evaluator measures exactly one; its definition is versioned and never edited in place. |
+| **Evaluator version** | One exact rubric, prompt, output contract, and pinned model for a criterion. Runs are judged by a named version, never by "latest". |
+| **Human truth** | A person's independent label and rationale for a Run, collected without seeing the evaluator's Result. |
+| **Calibration** | Measuring how often an exact evaluator version agrees with human truth on a set it has never been tuned on, with the uncertainty of that measurement shown. |
+| **Dataset roles** | Every immutable set of Runs is marked by how it has been used: analysis, iterative development, sealed validation, or regression/golden. Coeval records exposure so a set used for tuning cannot later be passed off as a blind validation set. |
+| **Receipt** | The persisted, byte-exact record of one assessment: which evaluator version judged which Runs and what it returned. It carries no pass threshold or ship decision. |
+| **Suite** | An ordered list of criteria, each bound to an exact evaluator version, with no weights, thresholds, or combined score. |
+
+## Coeval is not
+
+These are decisions Coeval deliberately leaves to other tools or to people,
+per the [product charter](PRODUCT.md):
+
+- **Not a release gate.** It does not decide whether a product change should
+  ship.
+- **Not a threshold policy.** It does not set acceptable pass-rate,
+  regression, cost, or latency limits for a release.
+- **Not a deployment tool.** It does not manage rollout percentages,
+  promotion, rollback, or overrides.
+- **Not a supply-chain scanner.** It does not decide whether a static agent
+  capability artifact is safe to install.
+- **Not a replacement for your tracing platform.** It imports from LangSmith,
+  Langfuse, or Ironside and syncs assessments back rather than storing your
+  traces for you.
+
+## Where Coeval fits
+
+Coeval is one of a few small, separately installable tools. Each does one job;
+none requires the others.
+
+| Tool | Job | Status with Coeval |
+| --- | --- | --- |
+| [Ironside](https://github.com/luka-zivkovic/ironside) | Records what your AI did: traces via the SDK, JSON, or OTLP. | Trace source. Coeval consumes Ironside's native versioned evaluator feed and writes criterion-specific assessments back; verified end to end. |
+| [Dailies](https://github.com/luka-zivkovic/dailies) | Decides whether an AI change meets customer-owned release rules. | Evidence consumer. Dailies verifies Coeval receipts and binary-calibration artifacts and applies its own policy; implemented, with no network lookup of Coeval. |
+| [Casefile](https://github.com/luka-zivkovic/casefile) | Statically inspects agent skills and plugins before installation. | No runtime integration. It is the scanner used on the plugin in this repository. |
+
+Traces in Ironside can feed Coeval, and Coeval's evidence can feed Dailies,
+without any of the three owning the others' data. Many mature products
+combine traces, datasets, experiments, human annotation, and judge
+calibration; the claims Coeval still has to prove are recorded in
+[docs/positioning.md](docs/positioning.md).
 
 ## How the pieces connect
 
@@ -83,10 +307,30 @@ Coeval complements tracing platforms rather than replacing them. It can import t
 
 </details>
 
-## Install with your coding agent
+## Set up and audit from Claude Code (and other agents)
 
-Use Claude Code, Codex, or another coding agent with terminal access. Paste
-this into a session in the directory where you keep your projects:
+Two bundled skills carry the workflow into your agent. The Claude Code plugin
+in [`plugins/coeval`](plugins/coeval/) ships both:
+
+| Skill | What it does |
+| --- | --- |
+| [coeval-setup](plugins/coeval/skills/coeval-setup/) | Reads safe project context, proposes a **Starter · unvalidated** Check, and connects it after **Finish setup**. |
+| [coeval-audit](plugins/coeval/skills/coeval-audit/) | Captures real input/output examples, submits Runs, and explains the resulting assessments. |
+
+Claude Code users install the plugin as shown in the
+[ten-minute start](#a-claude-code-plugin). Codex and other harnesses
+copy both folders in full using the
+[harness-specific commands](docs/agent-setup.md#copy-the-skill-folders).
+Then ask your agent to "initialize Coeval for this project" or "audit my skill
+with Coeval." Manual capture works across harnesses; the optional automatic
+capture hook is specific to Claude Code. Submission is explicit by default.
+
+Unlabeled assessments are evaluator opinions, not verified correctness.
+Human adjudication and Golden promotion stay in the dashboard.
+
+You can also hand the whole installation to a coding agent. Paste this into a
+Claude Code, Codex, or other terminal-capable agent session in the directory
+where you keep your projects:
 
 ```text
 Set up Coeval locally from https://github.com/luka-zivkovic/coeval.
@@ -97,114 +341,10 @@ owner signup and my first Check. Keep credentials out of chat and Git.
 Then help me install coeval-setup and coeval-audit for this harness.
 ```
 
-The [agent setup guide](docs/agent-setup.md) covers Claude Code and Codex skill
+The [agent setup guide](docs/agent-setup.md) covers the plugin, Codex skill
 installation, other harnesses, first-run verification, and the optional
 [MCP connection](tools/mcp/README.md). The skills help you set up and use a
 Coeval project; the Coeval service still needs to be running.
-
-## Quickstart
-
-Prerequisites:
-
-- Node.js 24 or newer
-- pnpm 10.33 or newer
-- Docker, for local Postgres
-- An optional Anthropic or OpenAI API key for real judging; the local demo can use a deterministic mock
-
-Install dependencies and start Postgres:
-
-```bash
-git clone https://github.com/luka-zivkovic/coeval.git
-cd coeval
-pnpm install
-cp .env.example .env
-docker compose -f docker-compose.pg.yml up -d
-```
-
-Generate a Better Auth secret:
-
-```bash
-openssl rand -base64 32
-```
-
-Add it to `.env`, together with an optional judge provider key:
-
-```dotenv
-DATABASE_URL=postgres://coeval:coeval@localhost:5432/coeval
-BETTER_AUTH_SECRET=<generated-secret>
-BETTER_AUTH_URL=http://localhost:8787
-COEVAL_TRUST_PROXY=0
-TRUSTED_ORIGINS=http://localhost:5173
-
-# Optional advanced fallback for setup with no signed-in onboarding session.
-# Normal users create a short-lived agent connection in the Coeval UI.
-COEVAL_BOOTSTRAP_TOKEN=
-
-# Optional. Without one, local demo judging uses a deterministic mock.
-ANTHROPIC_API_KEY=
-OPENAI_API_KEY=
-OPENROUTER_API_KEY=
-```
-
-Set `COEVAL_TRUST_PROXY=1` only when clients cannot bypass your trusted reverse
-proxy. Coeval will then use sanitized forwarded client-IP headers for the
-pre-auth onboarding rate limit; direct deployments use the socket address.
-
-Start the API and web app in separate terminals:
-
-```bash
-# terminal 1 — tsx does not load .env automatically
-set -a; source .env; set +a
-pnpm dev:api
-
-# terminal 2
-pnpm dev:web
-```
-
-Open [http://localhost:5173](http://localhost:5173), create the first owner, and
-follow the Guided setup ledger. It uses saved project state to show what is
-complete and what to do next. The API runs migrations when `DATABASE_URL` is
-configured.
-
-To onboard with an external AI agent, copy the no-secret setup prompt after
-creating the owner account (or from a new project's Overview). The bundled
-`coeval-setup` skill inspects safe project context, asks one short question,
-and shows a plain-language proposed Check. After you choose **Finish setup**,
-create the private agent connection and paste those instructions into Claude,
-Codex, or another agent. The connection is project-scoped, single-use, and
-expires after 15 minutes; no deployment secret is required. The returned
-`coeval_sk_` key is project-scoped and shown exactly once.
-`COEVAL_BOOTSTRAP_TOKEN` remains an optional advanced fallback for fully
-headless administration. Agents may create an explicitly unvalidated Check
-and submit real Runs, but human adjudication and Golden promotion remain
-session-only.
-
-### Submit a first batch
-
-Coeval mints the first project key when the project is created and shows the
-plaintext once during onboarding. Save it then, or mint a replacement under
-**Settings → API keys**. Export it as `COEVAL_API_KEY`, then submit a labeled
-example:
-
-```bash
-curl -X POST http://localhost:8787/api/v1/judge/batch \
-  -H "Authorization: Bearer ${COEVAL_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "items": [
-      {
-        "sourceTraceId": "quickstart-001",
-        "input": { "question": "Can I get a refund?" },
-        "output": { "answer": "Refunds are available within 30 days." },
-        "expectedLabel": "pass"
-      }
-    ]
-  }'
-```
-
-The endpoint returns `202` with a `pollUrl`. Poll that URL until the eval run is complete. `expectedLabel` is optional; unlabeled items are judged but are not counted in agreement.
-
-Trajectory items may also include `steps`, an ordered array of `{ name?, input, output, metadata? }`. Expected failures can include a zero-based `expectedFailStep`.
 
 ## Judgment in CI
 
@@ -420,23 +560,6 @@ and the accepted [pre-launch database policy](docs/decisions/0011-prelaunch-blan
 
 </details>
 
-## Set up and audit from Claude Code (and other agents)
-
-Two bundled skills carry the workflow into your agent:
-
-| Skill | What it does |
-| --- | --- |
-| [coeval-setup](plugins/coeval/skills/coeval-setup/) | Reads safe project context, proposes a **Starter · unvalidated** Check, and connects it after **Finish setup**. |
-| [coeval-audit](plugins/coeval/skills/coeval-audit/) | Captures real input/output examples, submits Runs, and explains the resulting assessments. |
-
-To install, copy both folders in full using the [harness-specific commands](docs/agent-setup.md#install-the-two-skills).
-Then ask your agent to “initialize Coeval for this project” or “audit my skill
-with Coeval.” Manual capture works across harnesses; the optional automatic
-capture hook is specific to Claude Code. Submission is explicit by default.
-
-Unlabeled assessments are evaluator opinions, not verified correctness.
-Human adjudication and Golden promotion stay in the dashboard.
-
 ## MCP
 
 Coeval includes a **Model Context Protocol (MCP) server** for harnesses that
@@ -451,7 +574,7 @@ over HTTP without MCP.
 
 ## Documentation
 
-- [Agent setup](docs/agent-setup.md) — install the service, add skills, and verify the connection.
+- [Agent setup](docs/agent-setup.md) — install the plugin or skills, install the service, and verify the connection.
 - [MCP reference](tools/mcp/README.md) — commands, available tools, and current limitations.
 - [Self-hosting](docs/self-hosting.md) — deployment and operations.
 - [Architecture](docs/architecture.md) — runtime components and evidence boundaries.
@@ -496,7 +619,10 @@ apps/audit       Structured LLM judge runtime
 packages/shared  Shared Zod schemas and API contracts
 packages/db      Current PostgreSQL baseline and demo fixtures
 packages/queue   pg-boss queue wrapper
+plugins/coeval   Claude Code plugin bundling the coeval-setup and coeval-audit skills
+deploy           Release-owned Compose bundles for self-hosting
 tools/ci         Standalone CI gate client and examples
+tools/mcp        Stdio MCP server over the HTTP API
 tools/sim        Optional end-to-end simulation harness
 spec             Portable SkillFormat specification
 ```
