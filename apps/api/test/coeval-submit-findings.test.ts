@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-const SCRIPT = fileURLToPath(new URL("../../../skills/coeval-audit/scripts/coeval-submit.mjs", import.meta.url));
+const SCRIPT = fileURLToPath(new URL("../../../plugins/coeval/skills/coeval-audit/scripts/coeval-submit.mjs", import.meta.url));
 
 const FINDINGS = {
   generatedAt: "2026-09-01T00:00:00.000Z",

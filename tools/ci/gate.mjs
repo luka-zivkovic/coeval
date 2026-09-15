@@ -24,7 +24,7 @@
 // Zero dependencies. Source ids are content hashes, so re-running unchanged
 // examples reuses recorded verdicts (no provider spend); an EDITED
 // one is judged fresh. The API key is never printed.
-// DRIFT GUARD: skills/coeval-audit/scripts/coeval-submit.mjs adapts this
+// DRIFT GUARD: plugins/coeval/skills/coeval-audit/scripts/coeval-submit.mjs adapts this
 // file's skill-gate pipeline (JSONL validation + ci_ hash) — keep them in sync.
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";

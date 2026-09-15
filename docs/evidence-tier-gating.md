@@ -24,7 +24,7 @@ gate controls release.
 
 ## Rubric-tier recipe
 
-1. **One bench project per audited skill** (see `skills/coeval-audit/`),
+1. **One bench project per audited skill** (see `plugins/coeval/skills/coeval-audit/`),
    with a judging skill whose `rubricMarkdown` encodes the skill's
    contract — invariants as specific probes, not vibes.
 2. **Build the governed test set**: capture representative runs, have a

@@ -7,6 +7,28 @@ and an optional **MCP connection**. Start the service first. Skills guide the
 setup and auditing workflow; MCP gives your harness callable tools. The
 skills can submit over HTTP without MCP.
 
+## Claude Code: install the plugin
+
+Coeval publishes a Claude Code plugin marketplace from this repository. In
+Claude Code, run:
+
+```text
+/plugin marketplace add luka-zivkovic/coeval
+/plugin install coeval@coeval
+```
+
+Then open a Claude Code session in the project you want to evaluate and run
+`/coeval:coeval-setup`, or ask "initialize Coeval for this project." Use
+`/coeval:coeval-audit` for later runs. The plugin source lives in
+[`plugins/coeval`](../plugins/coeval); its two skills are described in
+[Install the two skills](#install-the-two-skills).
+
+The plugin does not start Coeval. The setup skill needs a running Coeval
+service in Postgres mode, because the private agent connection it uses is
+created from a signed-in owner session. Start the service with one of the
+paths in the README's [Ten-minute start](../README.md#ten-minute-start), or
+let the agent install it as described next.
+
 ## Let your agent install the service
 
 Claude Code, Codex, and other coding agents can follow the same instructions
@@ -19,16 +41,18 @@ Read README.md and docs/agent-setup.md first. Check Node 24+, pnpm 10.33+,
 Docker, and ports 5432, 8787, and 5173. Check any existing checkout's branch
 and local changes. Do not overwrite configuration or reset a database.
 
-Follow the README quickstart, generate the auth secret locally, and keep
-secrets out of chat and Git. Start Postgres, the API, and the web app.
+Follow the README's from-source start, generate the auth secret locally, and
+keep secrets out of chat and Git. Start Postgres, the API, and the web app.
 Verify the API health endpoint and show me the signup URL. Guide me through
 the owner account and first Check, then install both bundled skills for
 this harness. Identify any missing prerequisite clearly.
 ```
 
-Use the [manual quickstart](../README.md#quickstart) to inspect or run the same
-steps yourself. Commands use a POSIX shell, such as macOS, Linux, or WSL. For
-a persistent or networked deployment, see [self-hosting](self-hosting.md).
+Use the [from-source steps](../README.md#c-from-source) to inspect or run the
+same steps yourself. Commands use a POSIX shell, such as macOS, Linux, or WSL.
+For a persistent or networked deployment, see the
+[published images](../README.md#b-self-host-the-published-images) and
+[self-hosting](self-hosting.md).
 
 | Component | Local default | Verify |
 | --- | --- | --- |
@@ -42,33 +66,42 @@ alone neither starts Coeval nor installs its skills into your harness.
 
 ## Install the two skills
 
+| Skill | What it does |
+| --- | --- |
+| [coeval-setup](../plugins/coeval/skills/coeval-setup/) | Reads safe project context, proposes a **Starter · unvalidated** Check, and connects it after **Finish setup**. |
+| [coeval-audit](../plugins/coeval/skills/coeval-audit/) | Captures real input/output examples, submits Runs, and explains the resulting assessments. |
+
+The Claude Code plugin above installs both. Every other harness gets them by
+copying the folders.
+
+### Copy the skill folders
+
 Install **both complete directories**. `coeval-setup` uses transport resources
 from its sibling `coeval-audit`; copying only `SKILL.md` loses those resources.
 Run the following from the Coeval checkout. If either destination already
 exists, compare it before replacing an installed copy.
 
-### Claude Code
+#### Claude Code without the plugin
 
 For your user account:
 
 ```sh
 mkdir -p "$HOME/.claude/skills"
-cp -R skills/coeval-setup skills/coeval-audit "$HOME/.claude/skills/"
+cp -R plugins/coeval/skills/coeval-setup plugins/coeval/skills/coeval-audit "$HOME/.claude/skills/"
 ```
 
-In a Claude Code session opened in the project you want to evaluate, invoke
-`/coeval-setup`, or ask “initialize Coeval for this project.” Use
-`/coeval-audit` for subsequent runs. For a project-only installation, use
-that project's `.claude/skills/` instead.
+Copied skills are invoked without the plugin prefix: `/coeval-setup` and
+`/coeval-audit`. For a project-only installation, use that project's
+`.claude/skills/` instead.
 See [Claude Code's skill documentation](https://code.claude.com/docs/en/skills).
 
-### Codex
+#### Codex
 
 For your user account:
 
 ```sh
 mkdir -p "$HOME/.agents/skills"
-cp -R skills/coeval-setup skills/coeval-audit "$HOME/.agents/skills/"
+cp -R plugins/coeval/skills/coeval-setup plugins/coeval/skills/coeval-audit "$HOME/.agents/skills/"
 ```
 
 In Codex CLI or the IDE extension, invoke `$coeval-setup` or select it from
@@ -77,16 +110,16 @@ not appear, restart the session. For a project-only installation, use that
 project's `.agents/skills/` instead.
 See [Codex's skill documentation](https://developers.openai.com/codex/skills/).
 
-### Other harnesses
+#### Other harnesses
 
 Use the harness's documented Agent Skills directory and install both folders
 as siblings. Discovery, command syntax, and hook support vary by host. If it
 can read local files but does not discover skills, point it at the workflow:
 
 ```text
-Read /absolute/path/to/coeval/skills/coeval-setup/SKILL.md and its referenced
-resources. Use that workflow to initialize Coeval for the current project.
-The Coeval API is at http://localhost:8787.
+Read /absolute/path/to/coeval/plugins/coeval/skills/coeval-setup/SKILL.md and
+its referenced resources. Use that workflow to initialize Coeval for the
+current project. The Coeval API is at http://localhost:8787.
 ```
 
 Manual example capture and HTTP submission are portable. Automatic capture
@@ -142,7 +175,9 @@ shipped with the audit skill is for demo instances: verdicts are append-only.
 | --- | --- |
 | API cannot connect to Postgres | Database health, port conflicts, and the API process's `DATABASE_URL`. |
 | Web app cannot reach the API | Both processes are running; API URL and trusted origin match the local setup. |
+| `/coeval:coeval-setup` is not found | The plugin is installed from the `coeval` marketplace; restart the session after installing. Copied folders use `/coeval-setup` without the prefix. |
 | Skill is missing or cannot find a script | Both complete sibling folders are in the harness's discovery directory. |
+| The agent connection is refused | The service is running in demo mode (no `DATABASE_URL`). Agent connections need the Postgres workspace. |
 | MCP cannot start | Node is available to the harness, dependencies are installed, and the server path is absolute. |
 | MCP returns unauthorized | Use a current Coeval project key, not an onboarding token or provider key. |
 | Batch selection is ambiguous | MCP submission tools do not accept an evaluator pin. Use the HTTP API with an explicit `skillVersionId` for multi-criterion projects. |

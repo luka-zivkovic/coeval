@@ -1,0 +1,19 @@
+{
+  "name": "coeval",
+  "displayName": "Coeval",
+  "description": "Set up and use a Coeval evaluator project from a coding agent. The coeval-setup skill inspects safe project text, asks one short decision-changing question, proposes one plain-language Check, and connects it as Starter · unvalidated only after you choose Finish setup. The coeval-audit skill captures real input/output examples, submits them for judging through a bundled zero-dependency script, and reports Results as counts, never claiming an unlabeled run was verified. Both skills need a running Coeval instance and keep pairing tokens and keys out of chat and Git.",
+  "version": "0.2.0",
+  "author": {
+    "name": "Luka Zivkovic"
+  },
+  "license": "MIT",
+  "keywords": [
+    "evaluation",
+    "llm-judge",
+    "evaluators",
+    "calibration",
+    "human-review",
+    "ai",
+    "setup"
+  ]
+}

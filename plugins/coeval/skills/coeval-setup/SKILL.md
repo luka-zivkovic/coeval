@@ -1,6 +1,6 @@
 ---
 name: coeval-setup
-description: Guide a beginner through setting up Coeval for an AI agent, workflow, prompt, or skill. Inspect safe project text, identify the target and recorded evidence, ask a short context-aware question, propose one plain-language Check, then connect and create it as Starter · unvalidated. Use when the user asks to initialize, set up, configure, connect, onboard, or get started with Coeval, especially when they do not know eval terminology or say "use your best judgment" or "decide for me".
+description: Guide a beginner through setting up Coeval for an AI agent, workflow, prompt, or skill. Inspect safe project text, identify the target and recorded evidence, ask a short context-aware question, propose one plain-language Check, then connect and create it as Starter · unvalidated. Use when the user asks to initialize, set up, configure, connect, onboard, or get started with Coeval, especially when they do not know eval terminology or say "use your best judgment" or "decide for me". Do not use it to adjudicate Results, promote Golden examples, or make release decisions.
 ---
 
 # Coeval setup

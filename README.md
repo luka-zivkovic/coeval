@@ -426,8 +426,8 @@ Two bundled skills carry the workflow into your agent:
 
 | Skill | What it does |
 | --- | --- |
-| [coeval-setup](skills/coeval-setup/) | Reads safe project context, proposes a **Starter · unvalidated** Check, and connects it after **Finish setup**. |
-| [coeval-audit](skills/coeval-audit/) | Captures real input/output examples, submits Runs, and explains the resulting assessments. |
+| [coeval-setup](plugins/coeval/skills/coeval-setup/) | Reads safe project context, proposes a **Starter · unvalidated** Check, and connects it after **Finish setup**. |
+| [coeval-audit](plugins/coeval/skills/coeval-audit/) | Captures real input/output examples, submits Runs, and explains the resulting assessments. |
 
 To install, copy both folders in full using the [harness-specific commands](docs/agent-setup.md#install-the-two-skills).
 Then ask your agent to “initialize Coeval for this project” or “audit my skill

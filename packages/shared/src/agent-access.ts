@@ -152,7 +152,7 @@ export const AGENT_CONNECT_BOUNDARY_LINE =
   "Your agent can read findings and submit runs; it can never adjudicate or promote — that stays here, with you.";
 
 const AGENT_CONNECT_MCP_SERVER_PATH = "/path/to/coeval/tools/mcp/index.mjs";
-const AGENT_CONNECT_CLI_PATH = "/path/to/coeval/skills/coeval-audit/scripts/coeval-submit.mjs";
+const AGENT_CONNECT_CLI_PATH = "/path/to/coeval/plugins/coeval/skills/coeval-audit/scripts/coeval-submit.mjs";
 
 export const AgentConnectSnippetsSchema = z.object({
   claudeCode: z.string(),

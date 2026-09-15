@@ -219,7 +219,7 @@ Rules:
 </review_guide>`
 };
 
-// Flagship bench flow for skills/coeval-audit: one bench project evaluates
+// Flagship bench flow for plugins/coeval/skills/coeval-audit: one bench project evaluates
 // the real input/output runs of one external agent skill. The user should fork
 // this generic contract with clauses from that skill's own SKILL.md before
 // treating agreement as meaningful.
