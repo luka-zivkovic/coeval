@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/luka-zivkovic/coeval/actions/workflows/ci.yml"><img src="https://github.com/luka-zivkovic/coeval/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-Sustainable%20Use-475569" alt="Sustainable Use license"></a>
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-475569" alt="MIT license"></a>
 </p>
 
 <p align="center">
@@ -522,4 +522,4 @@ Coeval is early-stage software. APIs, migrations, and the SkillFormat specificat
 
 ## License
 
-Coeval is **source-available**, not OSI-approved open source, under the [Coeval Sustainable Use License v1.0](LICENSE.md). Internal business, personal, and non-commercial use are permitted. Offering Coeval as a hosted service or embedding it in a third-party product requires a separate commercial agreement.
+Coeval is open source under the [MIT License](LICENSE.md). You are free to use, modify, distribute, and self-host it, including in commercial products and hosted services, subject to the license terms.

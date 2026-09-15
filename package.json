@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "description": "Governed evaluators and verifiable assessment evidence for AI systems.",
-  "license": "SEE LICENSE IN LICENSE.md",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/luka-zivkovic/coeval.git"
