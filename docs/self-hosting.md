@@ -6,9 +6,11 @@
   `ghcr.io/luka-zivkovic/coeval-{api,web}:X.Y.Z`, plus matching generic
   single-host and Coolify Compose bundles.
 - **CURRENT:** the container workflow, `deploy/self-host/compose.yaml`, and
-  `deploy/coolify.yaml` are present in the repository. They become installable
-  after the next version tag publishes public GHCR packages. The existing
-  `v0.1.0` predates these artifacts and must not be selected.
+  `deploy/coolify.yaml` are present in the repository. `v0.2.0` is the first
+  installable release: `ghcr.io/luka-zivkovic/coeval-api:0.2.0` and
+  `ghcr.io/luka-zivkovic/coeval-web:0.2.0` are published as anonymously
+  pullable GHCR packages. The earlier `v0.1.0` predates these artifacts and
+  must not be selected.
 - **CURRENT:** founder-only deployments are disposable test instances. This
   pre-launch release supports clean database installs only; recreate the
   instance when the current baseline changes.
