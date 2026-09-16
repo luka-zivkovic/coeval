@@ -59,6 +59,36 @@ This is the detection layer that only becomes affordable with a cheap
 probability-returning provider, and the per-item log is what the current
 `coeval/binary-calibration/v1` artifact deliberately cannot hold.
 
+## Credentials
+
+Keys are read from the environment only. Nothing here reads a `.env` file,
+and nothing writes a key to disk or to a report.
+
+| Provider | Variable | Notes |
+| --- | --- | --- |
+| Claude | `TYPESAFE_LOOP_ANTHROPIC_API_KEY` (falls back to `ANTHROPIC_API_KEY`) | Use the dedicated name inside a Claude Code session so the harness key cannot shadow the session's own credential |
+| Jev | `TYPESAFE_API_KEY`, or none | With no key the request is sent without an `Authorization` header, for a proxy that attaches one |
+
+**In a Claude Code cloud environment.** Open the environment selector at
+claude.ai/code, edit the environment, and:
+
+- add the Claude key under **Environment variables** as
+  `TYPESAFE_LOOP_ANTHROPIC_API_KEY=...`; `api.anthropic.com` is reachable at
+  every network level, but values here are visible to anyone using the
+  environment;
+- add the Jev key under **API credentials** (Pro and Max only): type
+  **Bearer**, allowed website `api.typesafe.ai`, header `Authorization` with
+  prefix `Bearer`. The proxy attaches the key after the request leaves the
+  VM, the session never sees it, and the host becomes reachable even under
+  the **Trusted** network level, which otherwise blocks it. Leave
+  `TYPESAFE_API_KEY` unset so the provider runs in proxy mode.
+
+Sessions copy variables once at startup, so start a new session after saving.
+
+**Locally.** Export the variables in your shell, or keep them in an untracked
+`.env` file (already gitignored in this repo) and run
+`node --env-file=.env tools/typesafe-loop/run.mjs`.
+
 ## Running
 
 ```sh

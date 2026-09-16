@@ -92,6 +92,14 @@ describe("providers", () => {
     assert.equal(result.requestId, "req_1");
     assert.equal(result.answers.k.noul, 0.81);
   });
+  it("typesafe provider omits the auth header when a proxy is expected to attach it", async () => {
+    const calls = [];
+    const fetch = async (url, init) => { calls.push(init); return new Response(JSON.stringify({ model: "jev", answers: { k: { type: "noul", noul: 0.5 } } }), { status: 200 }); };
+    const provider = createTypeSafeProvider({ apiKey: undefined, fetch });
+    assert.equal(provider.authMode, "proxy");
+    await provider.systemOne({ state: "x", questions: { k: noul("q") } });
+    assert.equal(calls[0].headers.Authorization, undefined);
+  });
   it("typesafe provider surfaces non-2xx without retrying", async () => {
     let calls = 0;
     const fetch = async () => { calls += 1; return new Response(JSON.stringify({ error: "rate" }), { status: 429 }); };

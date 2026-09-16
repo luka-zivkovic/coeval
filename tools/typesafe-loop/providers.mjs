@@ -117,10 +117,15 @@ export function createTypeSafeProvider({
   fetch: fetchImpl = globalThis.fetch,
   timeoutMs = 10_000
 } = {}) {
-  if (!apiKey) throw new Error("TYPESAFE_API_KEY is required for the typesafe provider");
+  // No key means an upstream proxy is expected to attach one. Claude Code
+  // cloud environments do this for "API credentials" listed for a host, so
+  // the key never enters the session. A 401 from the API is the signal that
+  // neither a key nor a proxy credential was configured.
+  const authMode = apiKey ? "header" : "proxy";
   const root = baseURL.replace(/\/+$/, "");
   return {
     name: "typesafe",
+    authMode,
     async systemOne({ state, questions }) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -128,7 +133,7 @@ export function createTypeSafeProvider({
         const response = await fetchImpl(`${root}/v1/systemone`, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${apiKey}`,
+            ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
             "Content-Type": "application/json",
             Accept: "application/json"
           },
@@ -206,7 +211,9 @@ function describeQuestions(questions) {
  * trusted-protocol separation Coeval's judge providers already use.
  */
 export function createAnthropicProvider({
-  apiKey = process.env.ANTHROPIC_API_KEY,
+  // A dedicated variable comes first so a harness key never shadows the
+  // credential Claude Code itself may be using in the same environment.
+  apiKey = process.env.TYPESAFE_LOOP_ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_API_KEY,
   baseURL = process.env.ANTHROPIC_BASE_URL ?? ANTHROPIC_DEFAULT_BASE_URL,
   model = process.env.ANTHROPIC_MODEL ?? ANTHROPIC_DEFAULT_MODEL,
   fetch: fetchImpl = globalThis.fetch,
@@ -299,6 +306,6 @@ export function createProviderFromEnv({ cues, env = process.env } = {}) {
   const kind = (env.SYSTEM_ONE_PROVIDER ?? "mock").toLowerCase();
   if (kind === "mock") return createMockProvider({ cues });
   if (kind === "typesafe") return createTypeSafeProvider({ apiKey: env.TYPESAFE_API_KEY, baseURL: env.TYPESAFE_BASE_URL, model: env.TYPESAFE_DEFAULT_MODEL });
-  if (kind === "anthropic") return createAnthropicProvider({ apiKey: env.ANTHROPIC_API_KEY, baseURL: env.ANTHROPIC_BASE_URL, model: env.ANTHROPIC_MODEL });
+  if (kind === "anthropic") return createAnthropicProvider({ apiKey: env.TYPESAFE_LOOP_ANTHROPIC_API_KEY ?? env.ANTHROPIC_API_KEY, baseURL: env.ANTHROPIC_BASE_URL, model: env.ANTHROPIC_MODEL });
   throw new Error(`unknown SYSTEM_ONE_PROVIDER "${kind}"; use mock, typesafe, or anthropic`);
 }
