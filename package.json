@@ -20,7 +20,7 @@
   "scripts": {
     "build": "pnpm -r --sort build",
     "typecheck": "tsc -b",
-    "test": "vitest run && node --test tools/*.test.mjs tools/ci/*.test.mjs tools/mcp/*.test.mjs",
+    "test": "vitest run && node --test tools/*.test.mjs tools/ci/*.test.mjs tools/mcp/*.test.mjs tools/typesafe-loop/*.test.mjs",
     "test:pg": "tsx tools/test-postgres.ts",
     "repository-boundaries": "node tools/repository-boundaries.mjs",
     "shared-contracts": "tsc -b packages/shared/tsconfig.json --force && node tools/shared-contracts.mjs",
@@ -29,7 +29,8 @@
     "dev:api": "pnpm --filter @coeval/api dev",
     "dev:web": "pnpm --filter @coeval/web dev",
     "sim:prelude": "node tools/sim/prelude.mjs",
-    "sim:checks": "playwright test"
+    "sim:checks": "playwright test",
+    "typesafe-loop": "node tools/typesafe-loop/run.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
