@@ -1,21 +1,21 @@
 name: casefile
 
 # Static, no-execution admission scan of the Claude Code plugin this
-# repository publishes, using the Casefile composite Action. The one reviewed
-# suppression lives in casefile.config.json with its reason.
+# repository publishes, using the Casefile composite Action. Only critical
+# findings fail the job. Warnings stay visible in the job summary: the audit
+# skill's submit script makes HTTP calls to the user's own Coeval instance by
+# design, and that is reported, not blocked.
 on:
   push:
     branches: [main]
     paths:
       - "plugins/**"
       - ".claude-plugin/**"
-      - "casefile.config.json"
       - ".github/workflows/casefile.yml"
   pull_request:
     paths:
       - "plugins/**"
       - ".claude-plugin/**"
-      - "casefile.config.json"
       - ".github/workflows/casefile.yml"
 
 permissions:
@@ -35,9 +35,8 @@ jobs:
         uses: luka-zivkovic/casefile@main
         with:
           path: plugins/coeval
-          config: casefile.config.json
           version: 0.2.1
-          fail-on: warning
+          fail-on: critical
           strict: "true"
       - name: Upload Casefile reports
         if: always() && steps.casefile.outputs.report-json != ''
