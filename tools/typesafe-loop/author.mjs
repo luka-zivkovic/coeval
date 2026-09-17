@@ -134,7 +134,9 @@ export function createClaudeAuthor({
     model,
     async propose(packet) {
       const user = untrustedBlock("evidence_packet_json", JSON.stringify(packet));
-      const result = await anthropicStructuredRequest({ apiKey, baseURL, model, system: AUTHOR_SYSTEM, user, schema: PROPOSAL_SCHEMA, effort, maxTokens: 4096, fetch: fetchImpl });
+      // Thinking tokens count against max_tokens, and the author model thinks at high effort
+      // before it writes the proposal, so the cap must leave room for both.
+      const result = await anthropicStructuredRequest({ apiKey, baseURL, model, system: AUTHOR_SYSTEM, user, schema: PROPOSAL_SCHEMA, effort, maxTokens: 16000, fetch: fetchImpl });
       return { proposal: result.parsed, model: result.model, usage: result.usage };
     }
   };
