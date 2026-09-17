@@ -137,3 +137,57 @@ inside a tagged block.
 - ADR-0009: the per-item probability log is exactly the disclosure the sealed
   artifact forbids. It is allowed here only because nothing in this folder is
   sealed. Any product use needs a new accepted decision on access.
+
+## Automatic loop
+
+`autoloop.mjs` closes the loop without a human in the change step, and keeps
+a strict referee in the accept step.
+
+```
+measure ─► attribute ─► author proposes one change ─► gate on held-out ─► accept or discard
+   ▲                                                                              │
+   └──────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Split.** Cases are split once, by seed, into a shown set (default 60%)
+  and a held-out set. The author only ever sees shown-set evidence; the run
+  aborts if a held-out id reaches the packet.
+- **Measure.** Every judge answers every case, shown and held-out, for the
+  current version. Minimal pairs run on the bound judge.
+- **Attribute.** The evidence packet sorts shown items into truth-suspect
+  (both judges confidently agree against the label), criterion-suspect (the
+  judges disagree), near-threshold, and failed pairs, with excerpts.
+- **Author.** A stronger Claude model (default `claude-fable-5-1`, set
+  `AUTHOR_MODEL` to change it) proposes exactly one change of one kind:
+  question text, criteria descriptions, an abstention toggle to the three-way
+  pass/fail/cannot-determine shape, or a binding switch to another judge.
+- **Gate.** Pure arithmetic on held-out truth: no fall in either ADR-0004
+  recall, no fall in AUC, no Brier worsening beyond the margin, no
+  previously passing pair regressing, no cannot-determine balloon, and at
+  least one measurable improvement. A proposal that changes fields outside
+  its declared kind is rejected regardless of its numbers.
+- **Report.** Version 0 against the final version on held-out, every round's
+  proposal and reasons, the version chain, token usage and a cost estimate
+  per model, and whether the author model differed from every judge model.
+
+```sh
+pnpm typesafe-autoloop                                   # two mocks, scripted author
+AUTOLOOP_JUDGES=typesafe,anthropic AUTOLOOP_AUTHOR=claude \
+  pnpm typesafe-autoloop -- --binding typesafe --rounds 5 --fixtures tools/typesafe-loop/fixtures
+```
+
+Flags: `--fixtures <dir>` (needs `criterion.json`, `cases.json`, optional
+`pairs.json`), `--rounds`, `--seed`, `--heldout`, `--binding`. Judge calls are
+cached under `out/typesafe-loop/cache/` so a rerun after a transient failure
+pays only for what is missing.
+
+What the mock demo shows: a near-constant judge (`mock-a`) as the initial
+binding, a label-aware mock (`mock-oracle`, which knows the fixture labels
+with noise) as the alternative, and a scripted author whose binding switch
+the gate accepts while its no-effect text edits are discarded. It exercises
+the accept and reject paths; it says nothing about real models.
+
+What this does not do: activate a version, touch sealed truth, or choose a
+threshold. An accepted version is a candidate with proposal provenance, and
+the run's held-out set is development data under ADR-0002, not a sealed
+claim.

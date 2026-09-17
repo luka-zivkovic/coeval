@@ -4,7 +4,7 @@
 // nonsealed development fixtures and its outputs are ASSUMPTION-class
 // diagnostics, never a calibration claim under ADR-0004 or ADR-0009.
 
-import { criterionQuestion, questionDigest } from "./questions.mjs";
+import { criterionQuestion, passProbability, questionDigest } from "./questions.mjs";
 import {
   brierScore,
   confusionAt,
@@ -17,10 +17,8 @@ import {
 
 function probabilityOf(result, key) {
   const answer = result.answers?.[key];
-  if (!answer || answer.type !== "noul" || typeof answer.noul !== "number") {
-    throw new Error(`provider did not return a noul probability for "${key}"`);
-  }
-  return answer.noul;
+  if (!answer) throw new Error(`provider did not answer "${key}"`);
+  return passProbability(answer).p;
 }
 
 /**

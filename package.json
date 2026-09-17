@@ -30,7 +30,8 @@
     "dev:web": "pnpm --filter @coeval/web dev",
     "sim:prelude": "node tools/sim/prelude.mjs",
     "sim:checks": "playwright test",
-    "typesafe-loop": "node tools/typesafe-loop/run.mjs"
+    "typesafe-loop": "node tools/typesafe-loop/run.mjs",
+    "typesafe-autoloop": "node tools/typesafe-loop/autoloop.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

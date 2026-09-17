@@ -33,12 +33,35 @@ export function score(instructions, criteria) {
  * @param {{ key: string, question: string, passDescription: string, failDescription: string }} criterion
  */
 export function criterionQuestion(criterion) {
+  if (criterion.abstention) {
+    return {
+      [criterion.key]: choice(criterion.question, {
+        pass: criterion.passDescription,
+        fail: criterion.failDescription,
+        cannot_determine: criterion.cannotDetermineDescription ?? "The state does not contain enough evidence to decide either way."
+      })
+    };
+  }
   return {
     [criterion.key]: noul(criterion.question, {
       true: criterion.passDescription,
       false: criterion.failDescription
     })
   };
+}
+
+/**
+ * Probability that the criterion is satisfied, from either question shape,
+ * plus the cannot-determine mass when the shape has one. A plain yes/no
+ * scores missing evidence as "no", which is why the three-way shape exists.
+ */
+export function passProbability(answer) {
+  if (!answer) throw new Error("missing answer");
+  if (answer.type === "noul" && typeof answer.noul === "number") return { p: answer.noul, cannotDetermine: null };
+  if (answer.type === "choice" && answer.probabilities && typeof answer.probabilities.pass === "number") {
+    return { p: answer.probabilities.pass, cannotDetermine: answer.probabilities.cannot_determine ?? 0 };
+  }
+  throw new Error(`answer of type "${answer.type}" is not a criterion answer`);
 }
 
 /** Stable digest of a question set so a replay log can say what was asked. */

@@ -78,6 +78,7 @@ export function answerFromProbabilities(question, probabilities) {
 export function createMockProvider({ cues, bias = 0, model = "mock-lexical-v1" }) {
   return {
     name: "mock",
+    model,
     async systemOne({ state, questions }) {
       const text = stateToText(state).toLowerCase();
       const answers = {};
@@ -106,6 +107,44 @@ export function createMockProvider({ cues, bias = 0, model = "mock-lexical-v1" }
 }
 
 /**
+ * Label-aware mock that stands in for a genuinely better judge in demos and
+ * tests. It recognises a fixture case by its output text and answers near
+ * the human label with a little deterministic noise; anything it does not
+ * recognise (a minimal-pair edit, for instance) gets 0.5. It exists so the
+ * loop's accept path can be exercised without a real model, and it says
+ * nothing about any real model.
+ */
+export function createOracleProvider({ cases, key, noise = 0.12, model = "mock-oracle" }) {
+  const index = cases.map((c) => ({ output: String(c.output ?? "").toLowerCase(), label: c.humanLabel }));
+  return {
+    name: "oracle",
+    model,
+    async systemOne({ state, questions }) {
+      const text = stateToText(state).toLowerCase();
+      const hit = index.find((c) => c.output.length > 0 && text.includes(c.output.slice(0, 80)));
+      const jitter = ((fnv1a(text) % 1000) / 1000 - 0.5) * 2 * noise;
+      let p = 0.5;
+      if (hit?.label === "pass") p = clamp(0.85 + jitter, 0.02, 0.98);
+      else if (hit?.label === "fail") p = clamp(0.15 + jitter, 0.02, 0.98);
+      const answers = {};
+      for (const [name, question] of Object.entries(questions)) {
+        if (name !== key && Object.keys(questions).length > 1) continue;
+        if (question.type === "noul") answers[name] = answerFromProbabilities(question, { true: p });
+        else if (question.type === "choice") {
+          const labels = Object.keys(question.criteria);
+          const rest = (1 - p) / Math.max(1, labels.length - 1);
+          answers[name] = answerFromProbabilities(question, Object.fromEntries(labels.map((l) => [l, l === "pass" || l === labels[0] ? p : rest])));
+        } else {
+          const n = question.criteria.length;
+          answers[name] = answerFromProbabilities(question, Object.fromEntries(question.criteria.map((_, i) => [String(i), i === n - 1 ? p : (1 - p) / (n - 1)])));
+        }
+      }
+      return { model, answers, usage: { input_tokens: Math.ceil(text.length / 4), output_tokens: 0 } };
+    }
+  };
+}
+
+/**
  * TypeSafe AI provider over the SDK's wire contract: `POST /v1/systemone`
  * with `Authorization: Bearer`, body `{ state, questions, model }`, response
  * `{ model, answers, usage }`. One attempt, no retry, no body logging.
@@ -125,6 +164,7 @@ export function createTypeSafeProvider({
   const root = baseURL.replace(/\/+$/, "");
   return {
     name: "typesafe",
+    model,
     authMode,
     async systemOne({ state, questions }) {
       const controller = new AbortController();
@@ -204,6 +244,75 @@ function describeQuestions(questions) {
 }
 
 /**
+ * One structured-output request to the Messages API, returning the parsed
+ * JSON. Shared by the System One stand-in and the author. Single attempt,
+ * refusal and truncation are errors, nothing is logged.
+ */
+export async function anthropicStructuredRequest({
+  apiKey,
+  baseURL = ANTHROPIC_DEFAULT_BASE_URL,
+  model,
+  system,
+  user,
+  schema,
+  effort = "low",
+  maxTokens = 2048,
+  fetch: fetchImpl = globalThis.fetch,
+  timeoutMs = 120_000
+}) {
+  if (!apiKey) throw new Error("an Anthropic API key is required");
+  const root = baseURL.replace(/\/+$/, "");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(`${root}/v1/messages`, {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "server-side-fallback-2026-07-01",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        fallbacks: "default",
+        system,
+        output_config: { effort, format: { type: "json_schema", schema } },
+        messages: [{ role: "user", content: user }]
+      }),
+      signal: controller.signal
+    });
+    const body = await response.json().catch(() => undefined);
+    if (!response.ok) {
+      throw new Error(`anthropic ${response.status}: ${JSON.stringify(body?.error ?? body ?? null).slice(0, 300)}`);
+    }
+    if (body.stop_reason === "refusal") throw new Error("anthropic refused the request");
+    if (body.stop_reason === "max_tokens") throw new Error("anthropic output truncated");
+    const text = (body.content ?? []).filter((block) => block.type === "text").map((block) => block.text).join("");
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (error) {
+      throw new Error("anthropic returned non-JSON structured output", { cause: error });
+    }
+    return {
+      parsed,
+      model: typeof body.model === "string" ? body.model : model,
+      usage: { input_tokens: body.usage?.input_tokens ?? 0, output_tokens: body.usage?.output_tokens ?? 0 },
+      requestId: response.headers.get("request-id") ?? null
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Escape a state for the untrusted block so it cannot close the tag. */
+export function untrustedBlock(tag, text) {
+  return [`<${tag}>`, text.replace(/[<>&]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`), `</${tag}>`].join("\n");
+}
+
+/**
  * Claude stand-in for a System One model: same questions, same probability
  * answers, produced with structured outputs on the Messages API. This is the
  * TypeScript equivalent of TypeSafe's own `system-one-adapter-python`. The
@@ -221,9 +330,9 @@ export function createAnthropicProvider({
   effort = "low"
 } = {}) {
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is required for the anthropic provider");
-  const root = baseURL.replace(/\/+$/, "");
   return {
     name: "anthropic",
+    model,
     async systemOne({ state, questions }) {
       const schema = buildAnswerSchema(questions);
       const system = [
@@ -235,64 +344,49 @@ export function createAnthropicProvider({
         "Questions:",
         describeQuestions(questions)
       ].join("\n");
-      const user = [
-        "<untrusted_state>",
-        stateToText(state).replace(/[<>&]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`),
-        "</untrusted_state>"
-      ].join("\n");
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-      try {
-        const response = await fetchImpl(`${root}/v1/messages`, {
-          method: "POST",
-          headers: {
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01",
-            "anthropic-beta": "server-side-fallback-2026-07-01",
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model,
-            max_tokens: 2048,
-            fallbacks: "default",
-            system,
-            output_config: { effort, format: { type: "json_schema", schema } },
-            messages: [{ role: "user", content: user }]
-          }),
-          signal: controller.signal
-        });
-        const body = await response.json().catch(() => undefined);
-        if (!response.ok) {
-          throw new Error(`anthropic ${response.status}: ${JSON.stringify(body?.error ?? body ?? null).slice(0, 300)}`);
-        }
-        if (body.stop_reason === "refusal") throw new Error("anthropic refused the request");
-        if (body.stop_reason === "max_tokens") throw new Error("anthropic output truncated");
-        const text = (body.content ?? []).filter((block) => block.type === "text").map((block) => block.text).join("");
-        let parsed;
-        try {
-          parsed = JSON.parse(text);
-        } catch (error) {
-          throw new Error("anthropic returned non-JSON structured output", { cause: error });
-        }
-        const answers = {};
-        for (const [name, question] of Object.entries(questions)) {
-          const raw = parsed[name];
-          if (!raw || typeof raw !== "object") throw new Error(`anthropic answer missing for "${name}"`);
-          for (const value of Object.values(raw)) {
-            if (typeof value !== "number" || Number.isNaN(value) || value < 0 || value > 1) {
-              throw new Error(`anthropic probability out of range for "${name}"`);
-            }
+      const user = untrustedBlock("untrusted_state", stateToText(state));
+      const result = await anthropicStructuredRequest({ apiKey, baseURL, model, system, user, schema, effort, fetch: fetchImpl, timeoutMs });
+      const answers = {};
+      for (const [name, question] of Object.entries(questions)) {
+        const raw = result.parsed[name];
+        if (!raw || typeof raw !== "object") throw new Error(`anthropic answer missing for "${name}"`);
+        for (const value of Object.values(raw)) {
+          if (typeof value !== "number" || Number.isNaN(value) || value < 0 || value > 1) {
+            throw new Error(`anthropic probability out of range for "${name}"`);
           }
-          answers[name] = answerFromProbabilities(question, raw);
         }
-        return {
-          model: typeof body.model === "string" ? body.model : model,
-          answers,
-          usage: { input_tokens: body.usage?.input_tokens ?? 0, output_tokens: body.usage?.output_tokens ?? 0 },
-          requestId: response.headers.get("request-id") ?? null
-        };
-      } finally {
-        clearTimeout(timer);
+        answers[name] = answerFromProbabilities(question, raw);
+      }
+      return { model: result.model, answers, usage: result.usage, requestId: result.requestId };
+    }
+  };
+}
+
+/**
+ * Wrap a provider with an on-disk cache keyed by provider, model, state and
+ * questions, so a rerun after a transient failure pays only for what is
+ * missing. Cached entries store answers and usage, never the state.
+ */
+export async function withCache(provider, directory) {
+  const { mkdir, readFile, writeFile } = await import("node:fs/promises");
+  const { createHash } = await import("node:crypto");
+  const path = await import("node:path");
+  const { canonicalJson } = await import("./questions.mjs");
+  await mkdir(directory, { recursive: true });
+  return {
+    name: provider.name,
+    model: provider.model,
+    authMode: provider.authMode,
+    async systemOne(request) {
+      const key = createHash("sha256").update(canonicalJson({ provider: provider.name, model: provider.model ?? null, request })).digest("hex");
+      const file = path.join(directory, `${key}.json`);
+      try {
+        const hit = JSON.parse(await readFile(file, "utf8"));
+        return { ...hit, cached: true };
+      } catch {
+        const result = await provider.systemOne(request);
+        await writeFile(file, JSON.stringify({ model: result.model, answers: result.answers, usage: result.usage, requestId: result.requestId ?? null }));
+        return result;
       }
     }
   };
