@@ -1,0 +1,562 @@
+[
+  {
+    "id": "n01",
+    "input": {
+      "premise": "Emissions will be cut from current emissions of 48 tons to a cap of 26 tons in 2010, and"
+    },
+    "output": {
+      "hypothesis": "Emission caps are going to be cut substantially."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.89,
+    "note": "uid 127490e; counts {\"e\":89,\"n\":10,\"c\":1}; majority e; original 5 labels [\"entailment\",\"entailment\",\"neutral\",\"contradiction\",\"entailment\"]"
+  },
+  {
+    "id": "n02",
+    "input": {
+      "premise": "A button on the Chatterbox page will make this easy, so please do join in."
+    },
+    "output": {
+      "hypothesis": "There is a button on the page that is easy to use."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.86,
+    "note": "uid 80808e; counts {\"e\":86,\"n\":12,\"c\":2}; majority e; original 5 labels [\"entailment\",\"entailment\",\"neutral\",\"neutral\",\"entailment\"]"
+  },
+  {
+    "id": "n03",
+    "input": {
+      "premise": "Part of the reason for the difference in pieces per possible delivery may be due to the fact that five percent of possible residential deliveries are businesses, and it is thought, but not known, that a lesser percentage of possible deliveries on rural routes are businesses."
+    },
+    "output": {
+      "hypothesis": "It is thought, but not known, that a lesser percentage of possible deliveries on rural routes are businesses, and part of the reason for the difference in pieces per possible delivery, may be due to the fact that five percent of possible residential deliveries are businesses."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.85,
+    "note": "uid 23751e; counts {\"e\":85,\"n\":13,\"c\":2}; majority e; original 5 labels [\"entailment\",\"neutral\",\"entailment\",\"entailment\",\"contradiction\"]"
+  },
+  {
+    "id": "n04",
+    "input": {
+      "premise": "Look here, I said, \"I may be altogether wrong. "
+    },
+    "output": {
+      "hypothesis": "I was prepared to accept that my idea was flawed. "
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.95,
+    "note": "uid 53059e; counts {\"e\":95,\"n\":5,\"c\":null}; majority e; original 5 labels [\"entailment\",\"entailment\",\"neutral\",\"neutral\",\"entailment\"]"
+  },
+  {
+    "id": "n05",
+    "input": {
+      "premise": "Instead, we could recommend that, compared with other settings, the prevalence of alcohol problems among ED patients makes it worthy of careful consideration."
+    },
+    "output": {
+      "hypothesis": "The relationship between alcohol-dependent ED patients should be explored."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.89,
+    "note": "uid 138227e; counts {\"e\":89,\"n\":9,\"c\":2}; majority e; original 5 labels [\"entailment\",\"neutral\",\"neutral\",\"neutral\",\"entailment\"]"
+  },
+  {
+    "id": "n06",
+    "input": {
+      "premise": "well so okay you need to get married and have kids and then when they're big enough you can have them go do the yard  and you can do what you want to do"
+    },
+    "output": {
+      "hypothesis": "When your kids grow up you have have them do the yardwork."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.86,
+    "note": "uid 105790e; counts {\"e\":86,\"n\":10,\"c\":4}; majority e; original 5 labels [\"entailment\",\"neutral\",\"entailment\",\"entailment\",\"neutral\"]"
+  },
+  {
+    "id": "n07",
+    "input": {
+      "premise": "so who so if you go out and you're talking like a ten or fifteen thousand dollar vehicle and you add that sales tax on that's a that's a big chunk of change you have to come up with"
+    },
+    "output": {
+      "hypothesis": "The sales tax would really drive the price of the car up."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.9,
+    "note": "uid 53953n; counts {\"e\":90,\"n\":9,\"c\":1}; majority e; original 5 labels [\"neutral\",\"entailment\",\"entailment\",\"entailment\",\"neutral\"]"
+  },
+  {
+    "id": "n08",
+    "input": {
+      "premise": "yeah i do remember that and uh i remember as a kid my parents watching the Ed Sullivan Show that was really the big deal in our household was the Ed Sullivan Show yeah i guess i guess it was a Saturday night and i went to see the movie The Doors a couple of days ago and they had this scene"
+    },
+    "output": {
+      "hypothesis": "I remember watching the Ed Sullivan Show when I was a kid."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.85,
+    "note": "uid 25109e; counts {\"e\":85,\"n\":13,\"c\":2}; majority e; original 5 labels [\"entailment\",\"entailment\",\"entailment\",\"neutral\",\"neutral\"]"
+  },
+  {
+    "id": "n09",
+    "input": {
+      "premise": "It is nice to be reminded that people remember."
+    },
+    "output": {
+      "hypothesis": "It made me feel good that people remembered."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.97,
+    "note": "uid 125641n; counts {\"e\":97,\"n\":3,\"c\":null}; majority e; original 5 labels [\"neutral\",\"entailment\",\"entailment\",\"neutral\",\"entailment\"]"
+  },
+  {
+    "id": "n10",
+    "input": {
+      "premise": "Back to the subject of celebrity interviews, British magazines have published a huge number with actress Kate Winslet, the star of Titanic , to promote a new British film she has made."
+    },
+    "output": {
+      "hypothesis": "British magazines interviewed Kate Winslet a lot."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.87,
+    "note": "uid 6792e; counts {\"e\":87,\"n\":12,\"c\":1}; majority e; original 5 labels [\"entailment\",\"neutral\",\"neutral\",\"entailment\",\"entailment\"]"
+  },
+  {
+    "id": "n11",
+    "input": {
+      "premise": "Or just a philosophy of any weapon to hand?"
+    },
+    "output": {
+      "hypothesis": "They go with any weapon that they can find in the cave."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.15,
+    "note": "uid 139595n; counts {\"e\":15,\"n\":75,\"c\":10}; majority n; original 5 labels [\"neutral\",\"neutral\",\"entailment\",\"neutral\",\"contradiction\"]"
+  },
+  {
+    "id": "n12",
+    "input": {
+      "premise": "for a change i i got i get sick of winter just looking everything so dead i hate that"
+    },
+    "output": {
+      "hypothesis": "Winter is all year long."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.01,
+    "note": "uid 103863n; counts {\"e\":1,\"n\":40,\"c\":59}; majority c; original 5 labels [\"neutral\",\"contradiction\",\"neutral\",\"contradiction\",\"neutral\"]"
+  },
+  {
+    "id": "n13",
+    "input": {
+      "premise": "'You burned down my house.'"
+    },
+    "output": {
+      "hypothesis": "'Even though you tried to burn it down, my house is in perfect state.'"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0,
+    "note": "uid 49237c; counts {\"e\":null,\"n\":9,\"c\":91}; majority c; original 5 labels [\"contradiction\",\"contradiction\",\"contradiction\",\"neutral\",\"entailment\"]"
+  },
+  {
+    "id": "n14",
+    "input": {
+      "premise": "Cases in Comparative"
+    },
+    "output": {
+      "hypothesis": "Cases care not related to law."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.05,
+    "note": "uid 102708c; counts {\"e\":5,\"n\":87,\"c\":8}; majority n; original 5 labels [\"contradiction\",\"neutral\",\"neutral\",\"contradiction\",\"neutral\"]"
+  },
+  {
+    "id": "n15",
+    "input": {
+      "premise": "And, could it not result in a decline in Postal Service volumes across--the--board?"
+    },
+    "output": {
+      "hypothesis": "Nothing will affect Postal Service volumes across--the--board."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.02,
+    "note": "uid 73278c; counts {\"e\":2,\"n\":43,\"c\":55}; majority c; original 5 labels [\"contradiction\",\"neutral\",\"neutral\",\"contradiction\",\"contradiction\"]"
+  },
+  {
+    "id": "n16",
+    "input": {
+      "premise": "i've been getting a kick out of those lately"
+    },
+    "output": {
+      "hypothesis": "I guess they just don't like me. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.07,
+    "note": "uid 57816n; counts {\"e\":7,\"n\":48,\"c\":45}; majority n; original 5 labels [\"neutral\",\"contradiction\",\"contradiction\",\"neutral\",\"contradiction\"]"
+  },
+  {
+    "id": "n17",
+    "input": {
+      "premise": "well what station plays uh that type of music"
+    },
+    "output": {
+      "hypothesis": "What TV station has documentaries about space travel?"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0,
+    "note": "uid 31775c; counts {\"e\":null,\"n\":26,\"c\":74}; majority c; original 5 labels [\"contradiction\",\"contradiction\",\"contradiction\",\"neutral\",\"neutral\"]"
+  },
+  {
+    "id": "n18",
+    "input": {
+      "premise": "I feel, though, that I should like to point out to you once more the risks you are running, especially if you pursue the course you indicate."
+    },
+    "output": {
+      "hypothesis": "I want to join you on this course and forget about the risks."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.03,
+    "note": "uid 56258c; counts {\"e\":3,\"n\":20,\"c\":77}; majority c; original 5 labels [\"contradiction\",\"contradiction\",\"neutral\",\"neutral\",\"contradiction\"]"
+  },
+  {
+    "id": "n19",
+    "input": {
+      "premise": "Per week?"
+    },
+    "output": {
+      "hypothesis": "Every day."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.02,
+    "note": "uid 64123c; counts {\"e\":2,\"n\":24,\"c\":74}; majority c; original 5 labels [\"contradiction\",\"neutral\",\"neutral\",\"contradiction\",\"contradiction\"]"
+  },
+  {
+    "id": "n20",
+    "input": {
+      "premise": "On the days I go to my office, I wear a flannel shirt with no necktie if the weather is cool."
+    },
+    "output": {
+      "hypothesis": "On hot days, I wear a flannel shirt to the office. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.08,
+    "note": "uid 122397c; counts {\"e\":8,\"n\":25,\"c\":67}; majority c; original 5 labels [\"contradiction\",\"contradiction\",\"neutral\",\"contradiction\",\"entailment\"]"
+  },
+  {
+    "id": "n21",
+    "input": {
+      "premise": "It's come back? cried Julius excitedly."
+    },
+    "output": {
+      "hypothesis": "They were excited to hear it will come back."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.59,
+    "note": "uid 83247e; counts {\"e\":59,\"n\":37,\"c\":4}; majority e; original 5 labels [\"entailment\",\"entailment\",\"neutral\",\"neutral\",\"entailment\"]"
+  },
+  {
+    "id": "n22",
+    "input": {
+      "premise": "yeah yeah and i took a five year note out on my car when i right when i got out of college and uh i'll never do that again i still got a couple of years on it to go and i'm"
+    },
+    "output": {
+      "hypothesis": "My biggest mistake was taking a five year note out on my car."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.51,
+    "note": "uid 89305n; counts {\"e\":51,\"n\":46,\"c\":3}; majority e; original 5 labels [\"neutral\",\"neutral\",\"neutral\",\"entailment\",\"entailment\"]"
+  },
+  {
+    "id": "n23",
+    "input": {
+      "premise": "and they're more independent and there's things to do then it's good for them to go to different i mean it he goes to a a mother's day out program now once a week both of my kids do"
+    },
+    "output": {
+      "hypothesis": "More things are available to them when they become independent."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.5,
+    "note": "uid 60436n; counts {\"e\":50,\"n\":48,\"c\":2}; majority e; original 5 labels [\"neutral\",\"neutral\",\"neutral\",\"entailment\",\"entailment\"]"
+  },
+  {
+    "id": "n24",
+    "input": {
+      "premise": "Look, there's a legend here."
+    },
+    "output": {
+      "hypothesis": "See, there is a well known hero here."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.57,
+    "note": "uid 41636e; counts {\"e\":57,\"n\":42,\"c\":1}; majority e; original 5 labels [\"entailment\",\"neutral\",\"entailment\",\"entailment\",\"neutral\"]"
+  },
+  {
+    "id": "n25",
+    "input": {
+      "premise": "The park on the hill of Monte makes a good playground, while the ride down in a wicker toboggan is straight out of an Old World theme park (though surely tame for older kids)."
+    },
+    "output": {
+      "hypothesis": "Older kids may find the park on the hill of Monte unremarkable."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.65,
+    "note": "uid 54811n; counts {\"e\":65,\"n\":29,\"c\":6}; majority e; original 5 labels [\"neutral\",\"entailment\",\"entailment\",\"entailment\",\"neutral\"]"
+  },
+  {
+    "id": "n26",
+    "input": {
+      "premise": "But if you take it seriously, the anti-abortion position is definitive by definition."
+    },
+    "output": {
+      "hypothesis": "Some people take the anti-abortion position very seriously."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.63,
+    "note": "uid 6804e; counts {\"e\":63,\"n\":37,\"c\":null}; majority e; original 5 labels [\"entailment\",\"neutral\",\"neutral\",\"neutral\",\"entailment\"]"
+  },
+  {
+    "id": "n27",
+    "input": {
+      "premise": "To see how The Bell Curve tries and fails to get around these inherent problems, see and ."
+    },
+    "output": {
+      "hypothesis": "The Bell Curve tries to get around these problems and fails in many different ways."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.68,
+    "note": "uid 89068n; counts {\"e\":68,\"n\":30,\"c\":2}; majority e; original 5 labels [\"neutral\",\"entailment\",\"neutral\",\"neutral\",\"entailment\"]"
+  },
+  {
+    "id": "n28",
+    "input": {
+      "premise": "Sure enough, there was the chest, a fine old piece, all studded with brass nails, and full to overflowing with every imaginable type of garment. "
+    },
+    "output": {
+      "hypothesis": "The chest wasn't big enough to completely contain all of the garments."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.64,
+    "note": "uid 79130e; counts {\"e\":64,\"n\":24,\"c\":12}; majority e; original 5 labels [\"entailment\",\"neutral\",\"neutral\",\"entailment\",\"entailment\"]"
+  },
+  {
+    "id": "n29",
+    "input": {
+      "premise": "In the other sight he saw Adrin's hands cocking back a pair of dragon-hammered pistols."
+    },
+    "output": {
+      "hypothesis": "Adrin was seen cocking a pistol in each hand out of the corner of his eye."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.69,
+    "note": "uid 14191e; counts {\"e\":69,\"n\":23,\"c\":8}; majority e; original 5 labels [\"entailment\",\"neutral\",\"neutral\",\"neutral\",\"entailment\"]"
+  },
+  {
+    "id": "n30",
+    "input": {
+      "premise": "and not only that it it opens you to phone solicitations"
+    },
+    "output": {
+      "hypothesis": "It also opens the door to move marketing calls."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.62,
+    "note": "uid 17660e; counts {\"e\":62,\"n\":36,\"c\":2}; majority e; original 5 labels [\"entailment\",\"neutral\",\"neutral\",\"entailment\",\"entailment\"]"
+  },
+  {
+    "id": "n31",
+    "input": {
+      "premise": " Many restaurants and cafes welcome children."
+    },
+    "output": {
+      "hypothesis": "Children are great to take along with you to the many restaurants and cafes."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.42,
+    "note": "uid 116665n; counts {\"e\":42,\"n\":57,\"c\":1}; majority n; original 5 labels [\"neutral\",\"neutral\",\"entailment\",\"entailment\",\"entailment\"]"
+  },
+  {
+    "id": "n32",
+    "input": {
+      "premise": "Along the eastern coastline are several fine beaches with perfect windsurfing conditions in their wide, shallow bays."
+    },
+    "output": {
+      "hypothesis": "The shallow bays are great places for windsurfing, especially in the summer."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.49,
+    "note": "uid 113030n; counts {\"e\":49,\"n\":51,\"c\":null}; majority n; original 5 labels [\"neutral\",\"neutral\",\"entailment\",\"neutral\",\"entailment\"]"
+  },
+  {
+    "id": "n33",
+    "input": {
+      "premise": "so i like music i like listening to music so i don't usually listen to KCBI and then there's another one called Journey that's somewhere in between the two of those it's in between ninety and ninety four"
+    },
+    "output": {
+      "hypothesis": "KCBI does not play music, so I don't listen to it."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.42,
+    "note": "uid 144207n; counts {\"e\":42,\"n\":27,\"c\":31}; majority e; original 5 labels [\"neutral\",\"contradiction\",\"contradiction\",\"entailment\",\"contradiction\"]"
+  },
+  {
+    "id": "n34",
+    "input": {
+      "premise": "Although the accounting and reporting model needs to be updated, in my view, the current attest and assurance model is also out of date."
+    },
+    "output": {
+      "hypothesis": "The accounting model needs to be updated in addition to the acquisition model."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.43,
+    "note": "uid 112402c; counts {\"e\":43,\"n\":44,\"c\":13}; majority n; original 5 labels [\"contradiction\",\"entailment\",\"entailment\",\"neutral\",\"entailment\"]"
+  },
+  {
+    "id": "n35",
+    "input": {
+      "premise": "and see if Kansas if Kansas yeah but then you know it could be what if they're not hitting that night or they're low or anything and see i i feel like the college you know it's kids it's still kids"
+    },
+    "output": {
+      "hypothesis": "What if they are having a bad night?"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.39,
+    "note": "uid 102174n; counts {\"e\":39,\"n\":57,\"c\":4}; majority n; original 5 labels [\"neutral\",\"entailment\",\"neutral\",\"neutral\",\"entailment\"]"
+  },
+  {
+    "id": "n36",
+    "input": {
+      "premise": "They were inferior."
+    },
+    "output": {
+      "hypothesis": "He was superior."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.4,
+    "note": "uid 55339c; counts {\"e\":40,\"n\":43,\"c\":17}; majority n; original 5 labels [\"contradiction\",\"neutral\",\"contradiction\",\"contradiction\",\"neutral\"]"
+  },
+  {
+    "id": "n37",
+    "input": {
+      "premise": "they eat a lot of it you know you can take your vitamins and she was telling me to take zinc so anyway i've been taking enough zinc you know  to kill a horse probably  i hope it doesn't hurt me but anyway  i did read one chapter of that"
+    },
+    "output": {
+      "hypothesis": "The author advised that zinc supplements are good for health."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.41,
+    "note": "uid 126583n; counts {\"e\":41,\"n\":54,\"c\":5}; majority n; original 5 labels [\"neutral\",\"entailment\",\"neutral\",\"entailment\",\"entailment\"]"
+  },
+  {
+    "id": "n38",
+    "input": {
+      "premise": "Outside the cathedral you will find a statue of John Knox with Bible in hand."
+    },
+    "output": {
+      "hypothesis": "John Knox was someone who read the Bible."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.49,
+    "note": "uid 12092e; counts {\"e\":49,\"n\":50,\"c\":1}; majority n; original 5 labels [\"entailment\",\"entailment\",\"neutral\",\"entailment\",\"neutral\"]"
+  },
+  {
+    "id": "n39",
+    "input": {
+      "premise": "We were playing all sorts of sports, and you were not, so shut up and stop twitching,' the microbe's tone of voice changed, it was lower and more resounding."
+    },
+    "output": {
+      "hypothesis": "We have played football, basketball, baseball and soccer and you haven't played anything so shut your mouth. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.34,
+    "note": "uid 61285n; counts {\"e\":34,\"n\":63,\"c\":3}; majority n; original 5 labels [\"neutral\",\"entailment\",\"neutral\",\"entailment\",\"entailment\"]"
+  },
+  {
+    "id": "n40",
+    "input": {
+      "premise": "In this respect, bringing Steve Jobs back to save Apple is like bringing Gen."
+    },
+    "output": {
+      "hypothesis": "Steve Jobs came back to Apple."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.42,
+    "note": "uid 113039e; counts {\"e\":42,\"n\":40,\"c\":18}; majority e; original 5 labels [\"entailment\",\"neutral\",\"entailment\",\"entailment\",\"neutral\"]"
+  }
+]
