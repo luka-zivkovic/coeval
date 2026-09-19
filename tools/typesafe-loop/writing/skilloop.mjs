@@ -228,10 +228,16 @@ function violationExamples(rewrites, limit = 12) {
 /**
  * @param {{ corpus: object[], skillText: string, rewriter: object, judge: object|null, author: object, rounds?: number, seed?: number, heldOutFraction?: number, preservationLimit?: number, log?: Function }} input
  */
-export async function runSkillLoop({ corpus, skillText, rewriter, judge = null, author, rounds = 4, seed = 11, heldOutFraction = 0.4, preservationLimit = 30, log = () => {} }) {
+export async function runSkillLoop({ corpus, skillText, rewriter, judge = null, author, rounds = 4, seed = 11, heldOutFraction = 0.4, preservationLimit = 30, maxUsd = Infinity, log = () => {} }) {
   const { shown, heldOut } = splitCorpus(corpus, { seed, heldOutFraction });
   const ledger = {};
-  const add = (model, usage) => { ledger[model] ??= { input_tokens: 0, output_tokens: 0 }; ledger[model].input_tokens += usage?.input_tokens ?? 0; ledger[model].output_tokens += usage?.output_tokens ?? 0; };
+  const spent = () => Object.entries(ledger).reduce((sum, [m, u]) => sum + (estimateCost(m, u) ?? 0), 0);
+  const add = (model, usage) => {
+    ledger[model] ??= { input_tokens: 0, output_tokens: 0 };
+    ledger[model].input_tokens += usage?.input_tokens ?? 0;
+    ledger[model].output_tokens += usage?.output_tokens ?? 0;
+    if (spent() > maxUsd) throw new Error(`spend cap reached: estimated $${spent().toFixed(2)} > $${maxUsd}`);
+  };
   const rewriteAll = async (cases, text) => {
     const out = [];
     for (const c of cases) { const r = await rewriter.rewrite({ id: c.id, body: c.body, skillText: text }); if (!r.cached) add(r.model, r.usage); out.push(r); }
@@ -258,6 +264,7 @@ export async function runSkillLoop({ corpus, skillText, rewriter, judge = null, 
   const initial = { heldOut: strip(heldOutScore), shown: strip(shownScore) };
   const history = [];
   for (let roundIndex = 1; roundIndex <= rounds; roundIndex += 1) {
+    if (spent() > maxUsd * 0.8) { history.push({ round: roundIndex, kind: "stop", accepted: false, reasons: [`spend guard: estimated $${spent().toFixed(2)} of $${maxUsd} before round`] }); log(`round ${roundIndex}: stopped by spend guard`); break; }
     const packet = { skillText: current.text, shownLexical: shownScore.lexical, shownStyle: shownScore.style, shownPreservation: shownScore.preservation ? { meanFaithful: shownScore.preservation.meanFaithful, lowFaithfulRate: shownScore.preservation.lowFaithfulRate, pairSeparationRate: shownScore.preservation.pairSeparationRate } : null, examples: violationExamples(shownScore.rewrites), history: history.map((h) => ({ round: h.round, kind: h.kind, accepted: h.accepted, reasons: h.reasons, target: h.target?.slice(0, 120) })) };
     const { proposal, model, usage } = await author.propose(packet);
     add(model ?? author.model ?? "author", usage);
@@ -331,7 +338,14 @@ async function main() {
     judge = await withCache(judgeKind === "anthropic" ? createAnthropicProvider() : createTypeSafeProvider(), cacheDir);
     author = createClaudeSkillAuthor();
   }
-  const report = await runSkillLoop({ corpus: cases, skillText, rewriter, judge, author, rounds: Number(arg("rounds", "4")), seed: Number(arg("seed", "11")), heldOutFraction: Number(arg("heldout", "0.4")), preservationLimit: Number(arg("preserve", "30")), log: (l) => console.log(l) });
+  const maxUsd = Number(process.env.SKILLOOP_MAX_USD ?? "Infinity");
+  let report;
+  try {
+    report = await runSkillLoop({ corpus: cases, skillText, rewriter, judge, author, rounds: Number(arg("rounds", "4")), seed: Number(arg("seed", "11")), heldOutFraction: Number(arg("heldout", "0.4")), preservationLimit: Number(arg("preserve", "30")), maxUsd, log: (l) => console.log(l) });
+  } catch (error) {
+    if (/spend cap/.test(String(error.message))) { console.error(error.message); process.exitCode = 3; return; }
+    throw error;
+  }
   await writeFile(path.join(outDir, "skilloop.json"), JSON.stringify(report, null, 2));
   console.log("\n== held-out lexical violations per text");
   console.log(`originals ${report.originalsHeldOut.lexical.violationsPerText}  baseline-rewrite ${report.baselineHeldOut.lexical.violationsPerText}  skill v0 ${report.initial.heldOut.lexical.violationsPerText}  skill v${report.final.version} ${report.final.heldOut.lexical.violationsPerText}`);
