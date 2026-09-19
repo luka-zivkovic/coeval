@@ -1,0 +1,12 @@
+{
+  "key": "decorative_bold",
+  "title": "No decorative bold on bullet leads",
+  "question": "Does this text avoid decorative bold, where most bullets open with a bolded lead phrase used only for emphasis?",
+  "passDescription": "Bullets are plain, or bold is used only as a real structural header naming the item.",
+  "failDescription": "Most bullets in a list open with a bolded lead phrase for emphasis.",
+  "abstention": false,
+  "mockCues": {
+    "positive": [],
+    "negative": []
+  }
+}

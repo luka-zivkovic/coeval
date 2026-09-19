@@ -1,0 +1,12 @@
+{
+  "key": "dash_connective",
+  "title": "No em or en dash used as a connective",
+  "question": "Does this prose avoid using an em dash or en dash as a generic connective?",
+  "passDescription": "No em dash (—) or en dash (–) appears in the prose; commas, colons, parentheses, or separate sentences are used instead.",
+  "failDescription": "At least one em dash or en dash is used as a connective in the prose.",
+  "abstention": false,
+  "mockCues": {
+    "positive": [],
+    "negative": []
+  }
+}

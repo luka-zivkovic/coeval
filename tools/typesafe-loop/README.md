@@ -191,3 +191,59 @@ What this does not do: activate a version, touch sealed truth, or choose a
 threshold. An accepted version is a candidate with proposal provenance, and
 the run's held-out set is development data under ADR-0002, not a sealed
 claim.
+
+## Natural-writing experiment (`writing/`)
+
+A second subject for both loops: the `natural-writing` skill from
+luka-zivkovic/overclock, tested on real pull-request descriptions. It is a
+better subject than the public benchmarks because five of the skill's rules
+are decidable by pattern, so labels are exact and unlimited.
+
+- `build-corpus.mjs` pulls PR bodies from the public repos through the
+  GitHub REST API (footers and collapsed HTML stripped, three sentences or
+  more) and vendors the skill text at a pinned commit. In a cloud session the
+  GitHub proxy answers 403 for repos not attached to the session; those are
+  skipped with a warning. Run with `NODE_USE_ENV_PROXY=1` in a cloud session
+  so Node's fetch uses the session proxy.
+- `lexical.mjs` decides rules 1, 2, 3, 6 and 12 (dash connectives, AI-tell
+  vocabulary, bot scaffolding, contractions, decorative bold) with exact
+  spans. Judgment rules are deliberately not here.
+- `corrupt.mjs` injects one violation of a rule into clean text, and one
+  claim corruption (strengthened modal, changed number, dropped caveat) into
+  any text. The edit is the label.
+- `build-suite.mjs` writes one autoloop fixture set per rule under
+  `writing/fixtures/suite/<rule>/`, plus a `claims_preserved` pair set. Loop
+  A (`autoloop.mjs --fixtures ...`) runs on these unchanged, now with exact
+  labels and no ceiling problem.
+- `rewrite.mjs` is the candidate: rewrite a PR body with the skill text as
+  operating instructions, or with a plain instruction as the no-skill
+  baseline. Cached by skill digest.
+- `skilloop.mjs` is Loop B. Each round rewrites shown and held-out PRs with
+  the current skill text, scores exact violations, judge-scored style rules
+  the patterns cannot decide (varied rhythm, no flourish, concreteness), and
+  judge-based claim preservation (faithfulness of the rewrite, and separation
+  from a corrupted copy). A stronger Claude proposes one verbatim passage
+  replacement in the skill (or stop). The gate on held-out: violations per
+  text fall by 0.1 or judged style rises by 0.05, nothing regresses, and
+  faithfulness and pair separation do not fall.
+
+  Base rates on the corpus matter here. The PR bodies were mostly written by
+  Claude Code sessions under a house style, so on the originals only the
+  dash rule (19 of 113) and the contractions rule (112 of 113) have any
+  failures; AI-tell words and scaffolding are absent. Headroom for Loop B is
+  in contractions, dashes and the judged rules, not in the vocabulary lists. The report shows originals, the no-skill baseline, skill v0 and the
+  final skill on held-out, every proposal with reasons, and the full text of
+  each accepted skill version.
+
+```sh
+NODE_USE_ENV_PROXY=1 pnpm typesafe-writing-corpus
+pnpm typesafe-writing-suite                      # exact-label fixtures for Loop A
+pnpm typesafe-skilloop                           # mock demo of Loop B
+SKILLOOP_MODE=live SKILLOOP_JUDGE=typesafe pnpm typesafe-skilloop -- --rounds 4 --limit 80
+```
+
+`REWRITE_MODEL` (default `claude-opus-5`) sets the rewriter, `AUTHOR_MODEL`
+(default `claude-fable-5-1`) the skill author, `SKILLOOP_JUDGE` the
+preservation judge. The loop optimises a rewriter against style rules, so
+the preservation gate is the anchor; a skill edit that makes rewrites
+shorter and cleaner by dropping caveats is a rejection by construction.

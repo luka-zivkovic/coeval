@@ -1,0 +1,12 @@
+{
+  "key": "bot_scaffolding",
+  "title": "No bot scaffolding",
+  "question": "Does this prose avoid bot scaffolding such as 'In conclusion', 'Furthermore', 'Moreover', 'Firstly', 'Let's dive in', 'Without further ado', 'In summary'?",
+  "passDescription": "The prose states its points directly with no scaffolding phrases.",
+  "failDescription": "At least one scaffolding phrase appears.",
+  "abstention": false,
+  "mockCues": {
+    "positive": [],
+    "negative": []
+  }
+}

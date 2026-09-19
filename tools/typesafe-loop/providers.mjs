@@ -307,6 +307,44 @@ export async function anthropicStructuredRequest({
   }
 }
 
+/**
+ * One plain-text request to the Messages API. Used by the rewriter, where
+ * the output is prose rather than a schema. Single attempt, refusal and
+ * truncation are errors.
+ */
+export async function anthropicTextRequest({
+  apiKey,
+  baseURL = ANTHROPIC_DEFAULT_BASE_URL,
+  model,
+  system,
+  user,
+  effort = "medium",
+  maxTokens = 8192,
+  fetch: fetchImpl = globalThis.fetch,
+  timeoutMs = 180_000
+}) {
+  if (!apiKey) throw new Error("an Anthropic API key is required");
+  const root = baseURL.replace(/\/+$/, "");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(`${root}/v1/messages`, {
+      method: "POST",
+      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-beta": "server-side-fallback-2026-07-01", "Content-Type": "application/json" },
+      body: JSON.stringify({ model, max_tokens: maxTokens, fallbacks: "default", system, output_config: { effort }, messages: [{ role: "user", content: user }] }),
+      signal: controller.signal
+    });
+    const body = await response.json().catch(() => undefined);
+    if (!response.ok) throw new Error(`anthropic ${response.status}: ${JSON.stringify(body?.error ?? body ?? null).slice(0, 300)}`);
+    if (body.stop_reason === "refusal") throw new Error("anthropic refused the request");
+    if (body.stop_reason === "max_tokens") throw new Error("anthropic output truncated");
+    const text = (body.content ?? []).filter((block) => block.type === "text").map((block) => block.text).join("").trim();
+    return { text, model: typeof body.model === "string" ? body.model : model, usage: { input_tokens: body.usage?.input_tokens ?? 0, output_tokens: body.usage?.output_tokens ?? 0 } };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Escape a state for the untrusted block so it cannot close the tag. */
 export function untrustedBlock(tag, text) {
   return [`<${tag}>`, text.replace(/[<>&]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`), `</${tag}>`].join("\n");
