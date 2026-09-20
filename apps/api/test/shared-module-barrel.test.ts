@@ -15,6 +15,8 @@ import * as integrations from "../../../packages/shared/dist/integrations.js";
 import * as judge from "../../../packages/shared/dist/judge.js";
 import * as legacyReview from "../../../packages/shared/dist/legacy-review.js";
 import * as machineReads from "../../../packages/shared/dist/machine-reads.js";
+import * as productionCalibration from "../../../packages/shared/dist/production-calibration.js";
+import * as productionCalibrationAnalysis from "../../../packages/shared/dist/production-calibration-analysis.js";
 import * as projects from "../../../packages/shared/dist/projects.js";
 import * as skills from "../../../packages/shared/dist/skills.js";
 import * as traceTests from "../../../packages/shared/dist/trace-tests.js";
@@ -62,6 +64,8 @@ describe("shared module barrel", () => {
     expectRootIdentity(judge, new Set(["HttpUrlSchema", "UnicodeScalarValueSchema"]));
     expectRootIdentity(legacyReview);
     expectRootIdentity(machineReads);
+    expectRootIdentity(productionCalibration);
+    expectRootIdentity(productionCalibrationAnalysis);
     expectRootIdentity(projects);
     expectRootIdentity(skills);
     expectRootIdentity(traceTests);
