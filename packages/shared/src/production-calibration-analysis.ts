@@ -12,7 +12,8 @@ import {
   PRODUCTION_CALIBRATION_THRESHOLD_GRID,
   PRODUCTION_CALIBRATION_WILSON_Z,
   PRODUCTION_DECISION_RECORD_CONTRACT,
-  ProductionCalibrationParametersSchema
+  ProductionCalibrationParametersSchema,
+  ProductionCalibrationProbabilitySchema
 } from "./production-calibration.js";
 import type {
   ProductionActionRecord,
@@ -60,7 +61,21 @@ export interface ProductionCalibrationJoinedDecision {
   conflictingOutcomes: number;
 }
 
-/** Attach actions and outcomes to their decisions. Actions and outcomes without a decision are dropped. */
+// Compare JSON record contents independently of object key order; array order
+// and every provenance field remain significant. Only needed for duplicate IDs.
+function sameRecordValue(left: unknown, right: unknown): boolean {
+  if (left === right) return true;
+  if (left === null || right === null || typeof left !== "object" || typeof right !== "object") return false;
+  if (Array.isArray(left) !== Array.isArray(right)) return false;
+  const leftRecord = left as Record<string, unknown>;
+  const rightRecord = right as Record<string, unknown>;
+  const keys = Object.keys(leftRecord);
+  return keys.length === Object.keys(rightRecord).length && keys.every((key) =>
+    Object.hasOwn(rightRecord, key) && sameRecordValue(leftRecord[key], rightRecord[key])
+  );
+}
+
+/** Attach actions and outcomes; deduplicate identical decisions and reject conflicting IDs. Orphans are dropped. */
 export function joinProductionDecisionRecords(
   records: readonly ProductionDecisionLedgerRecord[]
 ): ProductionCalibrationJoinedDecision[] {
@@ -68,6 +83,11 @@ export function joinProductionDecisionRecords(
   const all = new Map<string, Map<string, ProductionOutcomeRecord[]>>();
   for (const record of records) {
     if (record.kind !== "decision") continue;
+    const existing = byId.get(record.id);
+    if (existing) {
+      if (!sameRecordValue(existing.decision, record)) throw new Error(`Conflicting decision records for id ${record.id}`);
+      continue;
+    }
     byId.set(record.id, { decision: record, actions: [], outcomes: {}, outcomeCount: 0, conflictingOutcomes: 0 });
     all.set(record.id, new Map());
   }
@@ -112,10 +132,10 @@ export interface ProductionCalibrationWilsonInterval {
 }
 
 /**
- * Wilson score interval for a binomial proportion, z = 1.96 for 95%.
- *
- *   centre = (p + z²/2n) / (1 + z²/n)
- *   half   = z · sqrt(p(1-p)/n + z²/4n²) / (1 + z²/n)
+ * Wilson score interval for a binomial proportion. The default z and binary64
+ * operation order are pinned by contracts/binary-calibration-v1.md; do not
+ * algebraically simplify them. Explicit endpoint bounds avoid rounding away
+ * from 0 or 1 and falsely flagging perfectly correct predictions as drift.
  *
  * Unlike the normal approximation it stays inside [0, 1] and behaves for
  * small n and rates near 0 or 1. Returns null when the denominator is 0.
@@ -126,13 +146,21 @@ export function productionCalibrationWilsonInterval(
   z: number = PRODUCTION_CALIBRATION_WILSON_Z
 ): ProductionCalibrationWilsonInterval | null {
   if (denominator <= 0) return null;
-  const n = denominator;
-  const p = numerator / n;
-  const z2 = z * z;
-  const scale = 1 + z2 / n;
-  const centre = (p + z2 / (2 * n)) / scale;
-  const half = (z * Math.sqrt((p * (1 - p)) / n + z2 / (4 * n * n))) / scale;
-  return { numerator, denominator, rate: p, lower: Math.max(0, centre - half), upper: Math.min(1, centre + half) };
+  const zSquared = z * z;
+  const adjustedDenominator = denominator + zSquared;
+  const centerNumerator = numerator + (zSquared / 2);
+  const remaining = denominator - numerator;
+  const product = numerator * remaining;
+  const scaledProduct = product / denominator;
+  const correction = zSquared / 4;
+  const radicand = scaledProduct + correction;
+  const root = Math.sqrt(radicand);
+  const marginNumerator = z * root;
+  const lowerRaw = (centerNumerator - marginNumerator) / adjustedDenominator;
+  const upperRaw = (centerNumerator + marginNumerator) / adjustedDenominator;
+  const lower = numerator === 0 ? 0 : Math.max(0, lowerRaw);
+  const upper = numerator === denominator ? 1 : Math.min(1, upperRaw);
+  return { numerator, denominator, rate: numerator / denominator, lower, upper };
 }
 
 /** A rate that carries its own denominator; explicit when it cannot be computed. */
@@ -347,7 +375,7 @@ export function productionBooleanCalibration(
   const bins = options.bins ?? PRODUCTION_CALIBRATION_DEFAULT_BINS;
   assertBins(bins);
   const positiveClass = options.positiveClass ?? true;
-  const threshold = options.threshold ?? PRODUCTION_CALIBRATION_DEFAULT_THRESHOLD;
+  const threshold = ProductionCalibrationProbabilitySchema.parse(options.threshold ?? PRODUCTION_CALIBRATION_DEFAULT_THRESHOLD);
   const pairs = booleanPairs(joined, question, positiveClass);
   const stats = binaryStats(pairs, bins);
   const confusion = confusionAt(pairs, threshold);
@@ -618,8 +646,7 @@ export function productionDriftByWindow(
   if (pairs.length === 0) return report;
 
   // Windows are anchored at the UTC midnight before the earliest decision.
-  const times = pairs.map((pair) => Date.parse(pair.at));
-  const first = Math.min(...times);
+  const first = pairs.reduce((earliest, pair) => Math.min(earliest, Date.parse(pair.at)), Infinity);
   const origin = Math.floor(first / DAY_MS) * DAY_MS;
   const span = windowDays * DAY_MS;
   const buckets = groupBy(pairs, (pair) => String(Math.floor((Date.parse(pair.at) - origin) / span)));

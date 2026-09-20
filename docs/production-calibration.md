@@ -42,8 +42,10 @@ those things, and its artifact says so in an `evidence` block that is fixed to
 Both use exact numerator/denominator pairs, 95% Wilson score intervals under
 `wilson-score/v1`, and an explicit `state: "undefined"` rate with
 `undefinedReason: "zero_denominator"` instead of `NaN`. Both group by observed
-provider identity. Production calibration is a measurement of your traffic,
-not a governed calibration claim, and it does not extend or replace the
+provider identity. Production intervals use the same pinned z constant,
+binary64 operation order, and exact 0/1 endpoint bounds as the sealed contract;
+only the bound encoding differs. Production calibration is a measurement of
+your traffic, not a governed calibration claim, and it does not extend or replace the
 `coeval/binary-calibration/v1` contract.
 
 ## Input records: `coeval/production-decision-record/v1`
@@ -67,9 +69,13 @@ question-set digest identifies it. `note` and `by` are stored as given, so
 keep personal data out of them.
 
 `joinProductionDecisionRecords` attaches actions and outcomes to their
-decisions. When several outcomes exist for one decision and question, the
-latest `at` wins and equal timestamps resolve to input order; superseded
-outcomes whose value differs from the winner are counted as conflicts. Actions
+decisions. Identical decision records with the same ID are counted once;
+object key order does not matter, while array order and every recorded field
+do. Conflicting records with the same decision ID reject the report instead
+of replacing the prediction or its provenance. When several outcomes exist
+for one decision and question, the latest `at` wins and equal timestamps
+resolve to input order; superseded outcomes whose value differs from the
+winner are counted as conflicts. Actions
 and outcomes whose decision is not in the input are dropped from the join and
 counted as orphans in the artifact.
 
@@ -82,6 +88,9 @@ builder never reads the clock. The artifact carries the record inventory
 outcomes, decisions tagged `synthetic: "true"`, question sets seen, model
 identities seen), the parameters used, and one entry per question and answer
 type.
+
+Global and per-question classification thresholds must be finite numbers in
+`[0, 1]`; invalid values reject the report before a calibration result is returned.
 
 ### Boolean questions
 

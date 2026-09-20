@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import {
   PRODUCTION_CALIBRATION_CONTRACT,
@@ -116,9 +117,57 @@ describe("production decision record contract", () => {
     expect(joined[0]?.conflictingOutcomes).toBe(1);
     expect(joined[1]?.outcomes).toEqual({});
   });
+
+  it("deduplicates identical decisions regardless of object key order without losing outcomes", () => {
+    const records = ledger([{ p: 0.9, y: true }]);
+    const decision = records[0];
+    if (decision?.kind !== "decision") throw new Error("expected a decision record");
+    const duplicate = {
+      ...decision,
+      questionSet: { digest, version: 1, name: "t" },
+      answers: { q: { probability: 0.9, type: "boolean" as const } }
+    };
+    const artifact = buildProductionCalibrationArtifact([...records, duplicate], { now });
+    expect(artifact).toEqual(buildProductionCalibrationArtifact(records, { now }));
+    expect(artifact.records.decisions.total).toBe(1);
+    expect(artifact.records.outcomes.total).toBe(1);
+  });
+
+  it.each([
+    { answers: { q: { type: "boolean", probability: 0.1 } } },
+    { model: "different-model" },
+    { stateDigest: `sha256:${"c".repeat(64)}` },
+    { tags: { synthetic: "true" } }
+  ])("rejects conflicting decision identity in either input order: %j", (change) => {
+    const records = ledger([{ p: 0.9, y: true }]);
+    const decision = records[0];
+    const conflicting = ProductionDecisionLedgerRecordSchema.parse({ ...decision, ...change });
+    for (const input of [[...records, conflicting], [conflicting, ...records]]) {
+      expect(() => joinProductionDecisionRecords(input)).toThrow(/conflicting decision.*d1/i);
+      expect(() => buildProductionCalibrationArtifact(input, { now })).toThrow(/conflicting decision.*d1/i);
+    }
+  });
 });
 
 describe("Wilson rates", () => {
+  it("matches every frozen wilson-score/v1 reference vector bit for bit", () => {
+    const script = new URL("../../../contracts/reference/binary-calibration-wilson-v1.py", import.meta.url);
+    const vectors = JSON.parse(execFileSync("python3", [script.pathname], { encoding: "utf8" })) as Array<{
+      x: number; n: number; lowerBinary64: string; upperBinary64: string;
+    }>;
+    const bits = (value: number): string => {
+      const bytes = Buffer.alloc(8);
+      bytes.writeDoubleBE(value);
+      return bytes.toString("hex");
+    };
+    for (const { x, n, lowerBinary64, upperBinary64 } of vectors) {
+      const interval = productionCalibrationWilsonInterval(x, n);
+      expect(interval).not.toBeNull();
+      expect(bits(interval!.lower), `lower ${x}/${n}`).toBe(lowerBinary64);
+      expect(bits(interval!.upper), `upper ${x}/${n}`).toBe(upperBinary64);
+    }
+  });
+
   it("matches known values and stays inside [0, 1] at the edges", () => {
     const interval = productionCalibrationWilsonInterval(42, 45);
     expect(interval?.rate).toBeCloseTo(0.9333, 4);
@@ -335,6 +384,17 @@ describe("threshold advisor", () => {
 });
 
 describe("drift by window", () => {
+  it.each([{ p: 0, y: false, n: 22 }, { p: 1, y: true, n: 21 }])(
+    "does not flag perfectly correct endpoint predictions: %j", ({ p, y, n }) => {
+      const cases = Array.from({ length: n }, () => ({ p, y }));
+      const drift = productionDriftByWindow(joinProductionDecisionRecords(ledger(cases)), "q");
+      expect(drift.windows[0]?.driftFlag).toBe(false);
+      expect(drift.windows[0]?.observedRate).toMatchObject({
+        interval: p === 0 ? { lower: 0 } : { upper: 1 }
+      });
+    }
+  );
+
   it("flags a window whose outcomes diverge from the predictions and marks a model change", () => {
     const cases: Case[] = [];
     // Week 1: calibrated, model m1. Week 2: calibrated, m1. Week 3: predicted 0.7 but observed 0.2, model m2.
@@ -364,6 +424,39 @@ describe("drift by window", () => {
 });
 
 describe("production calibration artifact", () => {
+  it("builds a schema-valid report for 150,000 decisions without an argument-limit crash", () => {
+    const records = ledger(Array.from({ length: 150_000 }, () => ({ p: 0.5 })));
+    // Put the earliest decision last to verify that the minimum is not input-order dependent.
+    records.reverse();
+    const artifact = buildProductionCalibrationArtifact(records, { now });
+    expect(ProductionCalibrationArtifactSchema.safeParse(artifact).success).toBe(true);
+    expect(artifact.records.decisions.total).toBe(150_000);
+    const question = artifact.questions[0];
+    if (question?.answerType !== "boolean") throw new Error("expected boolean calibration");
+    expect(question.drift.windows[0]?.start).toBe("2026-07-01T00:00:00.000Z");
+    expect(question.drift.windows.reduce((sum, window) => sum + window.n, 0)).toBe(150_000);
+  });
+
+  it.each([-0.1, 1.5, Number.NaN, Infinity, -Infinity])(
+    "rejects invalid per-question and standalone thresholds: %s", (threshold) => {
+      const records = ledger([{ p: 0.9, y: true }]);
+      expect(() => buildProductionCalibrationArtifact(records, {
+        now, questions: { q: { threshold } }
+      })).toThrow();
+      expect(() => productionBooleanCalibration(joinProductionDecisionRecords(records), "q", { threshold })).toThrow();
+    }
+  );
+
+  it.each([0, 0.8, 1])("accepts a valid per-question threshold override: %s", (threshold) => {
+    const artifact = buildProductionCalibrationArtifact(ledger([{ p: 0.9, y: true }]), {
+      now, questions: { q: { threshold } }
+    });
+    expect(ProductionCalibrationArtifactSchema.safeParse(artifact).success).toBe(true);
+    const question = artifact.questions[0];
+    if (question?.answerType !== "boolean") throw new Error("expected boolean calibration");
+    expect(question.calibration.confusion.threshold).toBe(threshold);
+  });
+
   it("builds a schema-valid artifact from live ledger lines without reading the clock", () => {
     const records = fixtureLines.map((line) => ProductionDecisionLedgerRecordSchema.parse(JSON.parse(line)));
     const artifact = buildProductionCalibrationArtifact(records, {

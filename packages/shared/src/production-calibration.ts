@@ -22,7 +22,8 @@ export const PRODUCTION_CALIBRATION_CONTRACT = "coeval/production-calibration/v1
 export const PRODUCTION_CALIBRATION_METRIC_DEFINITION_VERSION = "production-calibration-metrics/v1" as const;
 export const PRODUCTION_CALIBRATION_INTERVAL_DEFINITION_VERSION = "wilson-score/v1" as const;
 export const PRODUCTION_CALIBRATION_CONFIDENCE_BASIS_POINTS = 9_500 as const;
-export const PRODUCTION_CALIBRATION_WILSON_Z = 1.96;
+// Exact binary64 value 3fff5c0331eeff84, pinned by wilson-score/v1.
+export const PRODUCTION_CALIBRATION_WILSON_Z = 1.959963984540054;
 export const PRODUCTION_CALIBRATION_DEFAULT_BINS = 10;
 export const PRODUCTION_CALIBRATION_DEFAULT_THRESHOLD = 0.5;
 export const PRODUCTION_CALIBRATION_DEFAULT_WINDOW_DAYS = 7;
