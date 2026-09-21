@@ -73,6 +73,7 @@ import {
   PgAnalysisMeasurementRepository,
   type AnalysisMeasurementRepository
 } from "./analysis-measurement/index.js";
+import { createProductionCalibrationRouter } from "./production-calibration/routes.js";
 import { assertImportJudgingAllowed, scheduleImportedCaseJudging } from "./workers/import-judging.js";
 import type { TraceTestDraftGenerator } from "./lib/trace-test-drafter.js";
 import type { TraceTestValidationRunner } from "./lib/trace-test-validator.js";
@@ -629,6 +630,15 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
   }));
   app.route("/api/analysis-measurements", createAnalysisMeasurementRouter({
     repository: analysisMeasurementRepository,
+    databaseMode: Boolean(options.auth && options.pool),
+    requestIdentity: binaryCalibrationIdentity,
+    resolveProjectRole: resolveBinaryCalibrationRole
+  }));
+  // Production calibration preview is compute-only: the caller posts a
+  // decision ledger and receives the shared module's artifact. Nothing is
+  // persisted, so it shares the session-only membership boundary and keeps
+  // its own body ceiling inside the router.
+  app.route("/api/production-calibration", createProductionCalibrationRouter({
     databaseMode: Boolean(options.auth && options.pool),
     requestIdentity: binaryCalibrationIdentity,
     resolveProjectRole: resolveBinaryCalibrationRole
