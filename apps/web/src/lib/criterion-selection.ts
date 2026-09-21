@@ -1,7 +1,10 @@
 export const CRITERION_QUERY_PARAM = "criterionId";
 
+// Production calibration reads a pasted decision ledger whose questions are
+// its own criteria, so it needs a project but not a selected Coeval criterion.
 const PROJECT_LEVEL_ROUTES: ReadonlySet<string> = new Set([
   "/criteria",
+  "/production-calibration",
   "/settings",
 ]);
 

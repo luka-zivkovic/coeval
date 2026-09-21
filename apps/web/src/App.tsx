@@ -28,6 +28,7 @@ import { IntegrationsScreen } from "@/screens/integrations";
 import { SettingsScreen } from "@/screens/settings";
 import { CriteriaScreen } from "@/screens/criteria";
 import { HumanTruthScreen } from "@/screens/human-truth";
+import { ProductionCalibrationScreen } from "@/screens/production-calibration";
 import { HumanTruthCreateScreen } from "@/screens/human-truth-create";
 import { HumanTruthResolutionScreen } from "@/screens/human-truth-resolution";
 import { AnalyzeScreen } from "@/screens/analyze";
@@ -57,6 +58,7 @@ const router = createBrowserRouter([
       { path: "traces", element: <TracesScreen /> },
       { path: "exceptions", element: <ExceptionsScreen /> },
       { path: "reliability", element: <ReliabilityScreen /> },
+      { path: "production-calibration", element: <ProductionCalibrationScreen /> },
       { path: "cases/:id", element: <CaseScreen /> },
       { path: "cases/:id/make-test", element: <TraceTestBuilderScreen /> },
       { path: "tests/:id/evidence", element: <TraceTestEvidenceScreen /> },

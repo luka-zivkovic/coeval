@@ -16,7 +16,8 @@ import {
   Plus,
   Layers3,
   ShieldCheck,
-  Microscope
+  Microscope,
+  Activity
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { NewProjectModal } from "@/components/project-create";
@@ -76,7 +77,8 @@ const TRACING_NAV: JourneyNavGroup[] = [
     ]
   },
   { label: "Ungoverned diagnostics", items: [
-    { to: "/reliability", label: "Reliability signals", icon: Scale }
+    { to: "/reliability", label: "Reliability signals", icon: Scale },
+    { to: "/production-calibration", label: "Production calibration", icon: Activity }
   ] }
 ];
 
@@ -106,7 +108,8 @@ const BENCH_NAV: JourneyNavGroup[] = [
     ]
   },
   { label: "Ungoverned diagnostics", items: [
-    { to: "/reliability", label: "Reliability signals", icon: Scale }
+    { to: "/reliability", label: "Reliability signals", icon: Scale },
+    { to: "/production-calibration", label: "Production calibration", icon: Activity }
   ] }
 ];
 
