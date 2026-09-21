@@ -22,6 +22,7 @@ const CRUMBS: Record<string, string[]> = {
   "/traces":         ["Traces"],
   "/exceptions":     ["Exceptions"],
   "/reliability":    ["Reliability"],
+  "/production-calibration": ["Production calibration"],
   "/review-queues":  ["Review queues"],
   "/criteria":       ["Criteria"],
   "/skill":          ["Skill"],

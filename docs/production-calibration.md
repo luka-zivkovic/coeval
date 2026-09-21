@@ -1,6 +1,6 @@
 # Production calibration
 
-Status: **CURRENT shared contract and pure analysis; no API, UI, or ingest wiring**
+Status: **CURRENT shared contract, pure analysis, a compute-only preview route, and a project view; no persistence or ingest wiring**
 
 Production calibration reports whether a classifier's stated probabilities held
 up against the outcomes that arrived later on the customer's own traffic. It
@@ -19,6 +19,60 @@ repository under
 The Coeval tests carry a small fixture copied from that run's live check: two
 decision lines and their outcomes, which contain only digests, probabilities,
 and option names.
+
+## CURRENT: the preview route and the view
+
+`POST /api/production-calibration/preview` computes the artifact for a ledger
+sent with the request and returns it. Nothing is persisted, queued, or read
+from the database; each call is a fresh computation. The route is mounted next
+to the other session-only analysis surfaces and applies the same checks: it
+answers 501 without database-backed session mode, 401 without a project-member
+session or with an API key, and 403 when the resolved project has no
+membership for the user. The project comes from the session and the
+`x-coeval-project` header exactly as for the neighbouring routes. The body is
+capped at 4 MiB (the batch ceiling) and is checked inside the router.
+
+Request body (strict; unknown fields are rejected):
+
+| field | meaning |
+| --- | --- |
+| `records` | JSON Lines text, or a JSON array of records. Every entry must validate against `ProductionDecisionLedgerRecordSchema`; the first bad line stops the request with `400 production_calibration_invalid_record`, whose message and `details.line` name the one-based line (or array position). An empty ledger is `400 production_calibration_empty_ledger`; two decision records with the same id but different content are `400 production_calibration_conflicting_records`, while identical duplicates are counted once. |
+| `question?` | Scopes `threshold` and `costs` to this question; other questions keep the defaults. A question no decision answers is `400 production_calibration_unknown_question`. |
+| `threshold?`, `bins?`, `windowDays?` | Passed to `buildProductionCalibrationArtifact`; the shared defaults apply when omitted. |
+| `costs?` | `{ falsePositive, falseNegative, humanReview? }` for the advisor; `null` or omitted means no advice. |
+
+The response is `{ artifact, summary, projectRole }`: the
+`coeval/production-calibration/v1` artifact, and a summary with record counts
+(total, decisions, actions, outcomes), each question with its answer types and
+its decision and outcome counts, the model identities seen, and the
+question-set digests. The route is the fourth import shape after Ironside,
+LangSmith, and Langfuse in the sense that a decision-record ledger is another
+way evidence about an agent's work reaches Coeval, but unlike those importers
+this first slice stores nothing: closing the browser tab discards the reading.
+
+The web view lives at `/production-calibration`, under "Ungoverned
+diagnostics" beside Reliability signals in the project navigation (visible in
+the Technical display, like the other diagnostics), and needs a project but not
+a selected criterion. It takes a pasted or uploaded ledger, or the bundled
+sample (a CI flaky-test triage bot's 16 decisions with 32 human outcomes, served
+from the web app's static assets; digests, probabilities, and option names
+only). A question selector lists each question with its type and counts. A
+boolean question shows the reliability diagram (inline SVG: predicted on x,
+observed rate on y, the diagonal, marks sized by bin count, each bin's Wilson
+interval as a vertical range) beside the bin table, a threshold slider that
+re-requests the preview scoped to that question and redraws the confusion
+matrix and its four rates, the advisor with three cost inputs whose state
+(no costs, no outcomes, fewer than 30 outcomes, recommendation or band) is
+always visible, the drift table with its model-change and drift flags, and the
+by-model and by-digest groups. A choice question shows top-1 accuracy, the
+confidence reliability table and diagram, the off-diagonal confusion pairs,
+and the by-model groups. A score question shows the artifact's
+not-implemented notice. Every rate is rendered as numerator over denominator
+with its 95% interval, and every reading starts with the provenance line:
+"Outcomes from production sources are development feedback. Independent
+validation is a separate step." An independently reviewed sample routed
+through governed review is a separate, future step; the view does not simulate
+it.
 
 ## How it differs from sealed binary calibration
 
@@ -167,9 +221,16 @@ have. It recommends; it does not decide. Release thresholds and
 ## Not implemented
 
 - **Score (ordinal) calibration.** Reported as not implemented, with counts.
-- **API and web wiring.** There is no route, worker, persistence, or screen.
-  The module is a shared contract plus pure functions; wiring is a follow-up
-  and is TARGET only if a decision record accepts it.
+- **Persistence of decision records.** The preview route and the view are
+  compute-only. No table, worker, or history stores a ledger, an artifact, or
+  a reading; a refresh starts over. Persistence is TARGET only if a decision
+  record accepts it.
+- **Live import.** No poller or sink reads decisions from a running system;
+  the ledger arrives as pasted or uploaded text.
+- **Governed-review routing of a low-confidence sample.** The advisor names
+  a review band, but nothing sends the decisions inside it to governed review
+  or brings independent labels back. The view says this step is separate; it
+  does not fake it.
 - **Ironside ingest.** No sink reads decisions from, or writes outcomes to,
   Ironside or OpenTelemetry. The records are shaped so a decision maps to a
   span with attributes and an outcome to a later event on the same id.
