@@ -523,6 +523,7 @@ export function deriveGateCheckDecision(input: {
 
 
 export * from "./integrations.js";
+export * from "./trace-links.js";
 
 
 export * from "./machine-reads.js";

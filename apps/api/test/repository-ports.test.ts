@@ -27,7 +27,8 @@ const EXPECTED_PORT_METHODS = {
   ],
   TraceImportRepositoryPort: [
     "importTrace", "createImportJob", "markImportJobQueued", "markImportJobRunning",
-    "markImportJobCompleted", "markImportJobFailed", "listImportJobs"
+    "markImportJobCompleted", "markImportJobFailed", "listImportJobs",
+    "findImportedIronsideTraces", "getCaseSourceIdentity"
   ],
   IntegrationRepositoryPort: [
     "listLangSmithIntegrations", "createLangSmithIntegration", "updateLangSmithIntegration",

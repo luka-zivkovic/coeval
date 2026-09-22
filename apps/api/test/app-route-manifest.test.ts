@@ -23,11 +23,11 @@ describe("app route registration contract", () => {
     const authenticated = routeManifest({ auth: fakeAuth });
     const authenticatedWithPool = routeManifest({ auth: fakeAuth, pool: {} as Pool });
 
-    expect(demo).toHaveLength(227);
+    expect(demo).toHaveLength(229);
     // This snapshot intentionally follows Hono's route registry. A Hono upgrade
     // must show reviewers the complete ordered route-table diff, not a new hash.
     expect(demo).toMatchSnapshot("demo route manifest");
-    expect(authenticated).toHaveLength(229);
+    expect(authenticated).toHaveLength(231);
     expect(authenticated).toMatchSnapshot("authenticated route manifest");
     // Pool-backed auth changes runtime behavior, but not route registration.
     // Real auth behavior is characterized in pg-auth.test.ts.

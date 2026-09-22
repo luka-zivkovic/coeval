@@ -122,6 +122,9 @@ import type {
   CaseListEntry,
   ListVerdictsInput,
   TraceImportResult,
+  CaseSourceIdentity,
+  FindImportedIronsideTracesInput,
+  ImportedIronsideTraceMatch,
   JudgeRunContext,
   RecordJudgeRunInput,
   TraceImportContext,
@@ -388,6 +391,14 @@ export class DemoRepository implements CoevalRepository {
 
   async listImportJobs(input: ListImportJobsInput): Promise<ImportJobRecord[]> {
     return this.traceImportRepository.listImportJobs(input);
+  }
+
+  async findImportedIronsideTraces(input: FindImportedIronsideTracesInput): Promise<ImportedIronsideTraceMatch[]> {
+    return this.traceImportRepository.findImportedIronsideTraces(input);
+  }
+
+  async getCaseSourceIdentity(projectId: string, caseId: string): Promise<CaseSourceIdentity | null> {
+    return this.traceImportRepository.getCaseSourceIdentity(projectId, caseId);
   }
 
   async createLangSmithIntegration(projectId: string, input: LangSmithIntegrationInput): Promise<LangSmithIntegration> {

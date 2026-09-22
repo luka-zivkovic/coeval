@@ -23,7 +23,9 @@ const EXPECTED_PUBLIC_METHODS = [
   "markImportJobRunning",
   "markImportJobCompleted",
   "markImportJobFailed",
-  "listImportJobs"
+  "listImportJobs",
+  "findImportedIronsideTraces",
+  "getCaseSourceIdentity"
 ] as const;
 
 const API_DIRECTORY = fileURLToPath(new URL("../", import.meta.url));
@@ -216,6 +218,8 @@ describe("Demo trace-import repository slice", () => {
       "MethodDeclaration:markImportJobCompleted",
       "MethodDeclaration:markImportJobFailed",
       "MethodDeclaration:listImportJobs",
+      "MethodDeclaration:findImportedIronsideTraces",
+      "MethodDeclaration:getCaseSourceIdentity",
       "MethodDeclaration:getImportJob"
     ]);
     expect(slice.members.filter(ts.isConstructorDeclaration).map((constructor) =>
@@ -234,7 +238,9 @@ describe("Demo trace-import repository slice", () => {
       ["markImportJobRunning", "{ return this.traceImportRepository.markImportJobRunning(projectId, importJobId); }"],
       ["markImportJobCompleted", "{ return this.traceImportRepository.markImportJobCompleted(projectId, importJobId, result); }"],
       ["markImportJobFailed", "{ return this.traceImportRepository.markImportJobFailed(projectId, importJobId, error); }"],
-      ["listImportJobs", "{ return this.traceImportRepository.listImportJobs(input); }"]
+      ["listImportJobs", "{ return this.traceImportRepository.listImportJobs(input); }"],
+      ["findImportedIronsideTraces", "{ return this.traceImportRepository.findImportedIronsideTraces(input); }"],
+      ["getCaseSourceIdentity", "{ return this.traceImportRepository.getCaseSourceIdentity(projectId, caseId); }"]
     ]);
     const facadeMethods = repository.members.filter(ts.isMethodDeclaration)
       .filter((method) => EXPECTED_PUBLIC_METHODS.includes(

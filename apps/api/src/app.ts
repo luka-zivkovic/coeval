@@ -91,6 +91,7 @@ import {
 } from "./routes/project-administration.js";
 import { registerSkillAdministrationRoutes } from "./routes/skill-administration.js";
 import { registerTraceTestAdministrationRoutes } from "./routes/trace-test-administration.js";
+import { registerTraceLinkRoutes } from "./routes/trace-links.js";
 import { registerV1AgentAdministrationRoutes } from "./routes/v1-agent-administration.js";
 import { registerV1EvaluationAdministrationRoutes } from "./routes/v1-evaluation-administration.js";
 
@@ -517,6 +518,13 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       await next();
       return;
     }
+    // Trace deep links resolve across every project the user belongs to and
+    // filter by membership themselves, so no single project is pinned here.
+    if (c.req.path === "/api/links/trace") {
+      c.set("projectId", "");
+      await next();
+      return;
+    }
 
     // Project switching: the client pins a project with x-coeval-project;
     // membership is checked, not trusted. No header = oldest membership.
@@ -889,6 +897,11 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     ...(options.langSmithClientFactory ? { langSmithClientFactory: options.langSmithClientFactory } : {}),
     ...(options.langfuseClientFactory ? { langfuseClientFactory: options.langfuseClientFactory } : {}),
     ...(options.ironsideClientFactory ? { ironsideClientFactory: options.ironsideClientFactory } : {})
+  });
+
+  registerTraceLinkRoutes(app, {
+    repository,
+    authMode: Boolean(options.auth && options.pool)
   });
 
   registerLegacyEvidenceAdministrationRoutes(app, {

@@ -35,6 +35,7 @@ import { AnalyzeScreen } from "@/screens/analyze";
 import { GovernedReviewTasksScreen } from "@/screens/governed-review-tasks";
 import { GovernedReviewTaskScreen } from "@/screens/governed-review-task";
 import { ApiUnavailableScreen, NotFoundScreen } from "@/screens/system";
+import { TraceLinkScreen } from "@/screens/trace-link";
 import { fetchSetupState } from "@/lib/api";
 import { useSession } from "@/lib/auth-client";
 import { AppModeProvider } from "@/lib/app-mode";
@@ -50,6 +51,12 @@ const router = createBrowserRouter([
       { path: "tasks", element: <GovernedReviewTasksScreen /> },
       { path: "tasks/:taskId", element: <GovernedReviewTaskScreen /> }
     ]
+  },
+  {
+    // Inbound cross-product deep link. Outside RootLayout: the resolver picks
+    // the project before any project-scoped provider loads.
+    path: "links/trace",
+    element: <TraceLinkScreen />
   },
   {
     element: <RootLayout />,

@@ -146,7 +146,10 @@ import {
   type ImportDatasetExamplesDbInput,
   type ImportDatasetExamplesDbResult,
   type TraceImportContext,
-  type TraceImportResult
+  type TraceImportResult,
+  type CaseSourceIdentity,
+  type FindImportedIronsideTracesInput,
+  type ImportedIronsideTraceMatch
 } from "./repository.js";
 import { PgApiKeyRepository } from "./repository.pg/api-key-repository.js";
 import { PgAssessmentReceiptRepository } from "./repository.pg/assessment-receipt-repository.js";
@@ -539,6 +542,14 @@ export class PgRepository implements CoevalRepository {
 
   async listImportJobs(input: ListImportJobsInput): Promise<ImportJobRecord[]> {
     return this.traceImportRepository.listImportJobs(input);
+  }
+
+  async findImportedIronsideTraces(input: FindImportedIronsideTracesInput): Promise<ImportedIronsideTraceMatch[]> {
+    return this.traceImportRepository.findImportedIronsideTraces(input);
+  }
+
+  async getCaseSourceIdentity(projectId: string, caseId: string): Promise<CaseSourceIdentity | null> {
+    return this.traceImportRepository.getCaseSourceIdentity(projectId, caseId);
   }
 
   async createLangSmithIntegration(projectId: string, input: LangSmithIntegrationInput): Promise<LangSmithIntegration> {

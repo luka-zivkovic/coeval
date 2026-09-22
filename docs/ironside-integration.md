@@ -73,6 +73,67 @@ the create request returns 409; credential rotation uses update, and changing
 to another remote project requires disconnecting first. This keeps historical
 case writeback attached to the original remote.
 
+## Trace links
+
+Status: **CURRENT**. Both directions are read-only navigation; neither imports,
+writes back, nor creates evidence.
+
+### Into Coeval from Ironside
+
+Ironside's trace viewer links to one shared, stable route:
+
+```text
+/links/trace?source=ironside&project=<ironside project id>&trace=<traceId>&version=<traceVersion, optional>
+```
+
+The shape is a contract with Ironside; change it only together with Ironside's
+link builder. `parseTraceDeepLink` in `@coeval/shared` validates it strictly:
+`source` must be `ironside` (any other value renders a 400-style "can't open
+this link" page), `project` and `trace` are 1–500 characters with no
+surrounding whitespace or control characters, `version` is an ISO-8601 instant
+with an offset and is matched exactly, and repeating a recognized parameter is
+invalid. An empty `version` is treated as omitted; unrelated parameters are
+ignored.
+
+The web page calls `GET /api/links/trace` with the same query. The resolver
+matches the import source identity `(remote project, traceId, traceVersion)`
+across **every project the signed-in user is a member of**, so it is exempt
+from the usual single-project pin and filters by membership itself; a pinned
+`x-coeval-project` header neither narrows nor widens it. Without a `version`,
+each project's newest imported version is the match.
+
+- Exactly one member project holds the trace: the page selects that project
+  and replaces itself with the case page, `/cases/<caseId>`.
+- More than one does: the page lists the projects and the user picks.
+- None does: the page says the trace (or that version) has not been imported
+  yet. It lists other imported versions of the same trace, if any, and each
+  member project already connected to that Ironside project with that
+  connection's existing **Import now** action, which runs the ordinary
+  cursor-based import with the connection's own polling criterion. A
+  connection that needs revalidation or has no polling criterion sends the
+  user to Integrations instead. With no connection, the page explains that a
+  project owner connects Ironside from Integrations; no new import pathway
+  exists for links.
+
+Unauthenticated visitors get the normal login screen; signing in reloads the
+same URL and continues. The route sits outside the project-scoped layout so no
+project provider loads before a project is chosen.
+
+### Back to Ironside from Coeval
+
+A case imported through the native connection shows **View in Ironside**,
+linking to Ironside's viewer route `/projects/<project id>/traces/<traceId>`.
+That pattern lives only in `ironsideTraceViewerUrl` in `@coeval/shared`.
+`GET /api/cases/:caseId/source-link` builds the URL from the case's stored
+source identity and the project's current connection to that remote project.
+The base is the connection's optional **Ironside web URL** — set at connect
+time or later with **Set web URL** on the Integrations card, for deployments
+whose web app and API have different addresses — falling back to the
+deployment (API) URL. Only `http`/`https` bases produce a link. After a
+disconnect, no base remains and the case notes that the Ironside source has no
+current connection. The viewer link names the trace, not the version: Ironside
+shows its current version of that trace.
+
 ## Assessment writeback
 
 Recorded assessments are written to `POST /api/v1/evaluator/scores` with a

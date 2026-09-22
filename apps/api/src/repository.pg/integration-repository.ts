@@ -622,6 +622,7 @@ export class PgIntegrationRepository implements IntegrationRepositoryPort {
         encryptJson({ apiKey: input.apiKey }),
         JSON.stringify({
           url: input.url,
+          ...(input.webUrl ? { webUrl: input.webUrl } : {}),
           redaction: input.redaction ?? {},
           remoteProjectId: remote.project.id,
           remoteProjectName: remote.project.name,
@@ -679,7 +680,8 @@ export class PgIntegrationRepository implements IntegrationRepositoryPort {
                'protocolVersion', $11::text,
                'settlementQuietPeriodSeconds', $12::integer
              ))
-           ) || case when $9::text is null then '{}'::jsonb else jsonb_build_object(
+           ) || case when $16::boolean then jsonb_build_object('webUrl', $17::text) else '{}'::jsonb end
+             || case when $9::text is null then '{}'::jsonb else jsonb_build_object(
              'connectionRevision', (config ->> 'connectionRevision')::bigint + 1,
              'revalidationRequired', false,
              'revalidatedAt', clock_timestamp()
@@ -709,7 +711,9 @@ export class PgIntegrationRepository implements IntegrationRepositoryPort {
         remote?.settlement.quietPeriodSeconds ?? null,
         expected?.remoteProjectId ?? null,
         expected?.revalidationRequired ?? false,
-        expected?.connectionRevision ?? 0
+        expected?.connectionRevision ?? 0,
+        input.webUrl !== undefined,
+        input.webUrl ?? null
       ]
     );
     const row = result.rows[0];
@@ -901,6 +905,7 @@ export class PgIntegrationRepository implements IntegrationRepositoryPort {
     const credentials = decryptJson<{ apiKey?: string }>(String(row.encrypted_credentials));
     const config = parseJson(row.config) as {
       url?: string;
+      webUrl?: string | null;
       redaction?: IronsideImportContext["redactionConfig"];
       skillVersionId?: string | null;
       remoteProjectId?: string;
@@ -937,6 +942,7 @@ export class PgIntegrationRepository implements IntegrationRepositoryPort {
       provider: "ironside",
       skillVersionId: job.skillVersionId ?? config.skillVersionId ?? null,
       url: config.url,
+      webUrl: typeof config.webUrl === "string" ? config.webUrl : null,
       remoteProjectId: config.remoteProjectId,
       remoteProjectName: config.remoteProjectName,
       protocolVersion: "ironside/evaluator/v1",

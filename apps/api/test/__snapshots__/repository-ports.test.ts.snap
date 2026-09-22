@@ -649,6 +649,14 @@ exports[`repository ports > partition the complete facade into exact, disjoint m
       "kind": "MethodSignature",
       "signature": "listImportJobs(input: ListImportJobsInput): Promise<ImportJobRecord[]>;",
     },
+    {
+      "kind": "MethodSignature",
+      "signature": "findImportedIronsideTraces(input: FindImportedIronsideTracesInput): Promise<ImportedIronsideTraceMatch[]>;",
+    },
+    {
+      "kind": "MethodSignature",
+      "signature": "getCaseSourceIdentity(projectId: string, caseId: string): Promise<CaseSourceIdentity | null>;",
+    },
   ],
   "TraceTestRepositoryPort": [
     {

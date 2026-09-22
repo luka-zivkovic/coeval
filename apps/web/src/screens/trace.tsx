@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SectionHead } from "@/components/coeval";
 import { TraceDetail } from "@/components/trace-detail";
+import { ViewInIronside } from "@/components/view-in-ironside";
 import { fetchCaseDetail, fetchTraceTests } from "@/lib/api";
 import { intentForVerdict, type TraceTestIntent } from "@/lib/trace-test-flow";
 import { dismissTraceTestPrompt, traceTestPromptDismissed } from "@/lib/trace-test-pilot";
@@ -126,8 +127,11 @@ function TraceScreenBase({ fetcher, backTo, backLabel }: TraceScreenProps) {
         <Button variant="ghost" size="sm" onClick={() => navigate(backTo)}>
           <ArrowLeft /> {backLabel}
         </Button>
-        <div className="font-mono text-[11px] text-ink-3">
-          {detail.exception.id} · {detail.trace.id}
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <ViewInIronside caseId={caseId} />
+          <div className="font-mono text-[11px] text-ink-3">
+            {detail.exception.id} · {detail.trace.id}
+          </div>
         </div>
       </div>
 

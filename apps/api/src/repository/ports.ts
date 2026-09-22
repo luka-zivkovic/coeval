@@ -138,7 +138,10 @@ import type {
   ReviseTraceTestInputDb,
   StaleEvalRunItemExecution,
   TraceImportContext,
-  TraceImportResult
+  TraceImportResult,
+  FindImportedIronsideTracesInput,
+  ImportedIronsideTraceMatch,
+  CaseSourceIdentity
 } from "./contracts.js";
 
 // Narrow consumer/type-composition ports. They organize the facade for callers;
@@ -270,6 +273,8 @@ export interface TraceImportRepositoryPort {
   markImportJobCompleted(projectId: string, importJobId: string, result: CompleteImportJobInput): Promise<void>;
   markImportJobFailed(projectId: string, importJobId: string, error: unknown): Promise<ImportJobRecord>;
   listImportJobs(input: ListImportJobsInput): Promise<ImportJobRecord[]>;
+  findImportedIronsideTraces(input: FindImportedIronsideTracesInput): Promise<ImportedIronsideTraceMatch[]>;
+  getCaseSourceIdentity(projectId: string, caseId: string): Promise<CaseSourceIdentity | null>;
 }
 
 export interface IntegrationRepositoryPort {

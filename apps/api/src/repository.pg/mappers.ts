@@ -769,6 +769,7 @@ export function rowToLangfuseIntegration(row: Record<string, unknown>): Langfuse
 export function rowToIronsideIntegration(row: Record<string, unknown>): IronsideIntegration {
   const config = parseJson(row.config) as {
     url?: string;
+    webUrl?: string | null;
     remoteProjectId?: string;
     remoteProjectName?: string;
     protocolVersion?: string;
@@ -795,6 +796,7 @@ export function rowToIronsideIntegration(row: Record<string, unknown>): Ironside
     provider: "ironside",
     skillVersionId: config.skillVersionId ?? null,
     url: config.url,
+    webUrl: typeof config.webUrl === "string" ? config.webUrl : null,
     remoteProjectId: config.remoteProjectId,
     remoteProjectName: config.remoteProjectName,
     protocolVersion: "ironside/evaluator/v1",

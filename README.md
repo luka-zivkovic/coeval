@@ -257,7 +257,7 @@ none requires the others.
 
 | Tool | Job | Status with Coeval |
 | --- | --- | --- |
-| [Ironside](https://github.com/luka-zivkovic/ironside) | Records what your AI did: traces via the SDK, JSON, or OTLP. | Trace source. Coeval consumes Ironside's native versioned evaluator feed and writes criterion-specific assessments back; verified end to end. |
+| [Ironside](https://github.com/luka-zivkovic/ironside) | Records what your AI did: traces via the SDK, JSON, or OTLP. | Trace source. Coeval consumes Ironside's native versioned evaluator feed and writes criterion-specific assessments back; verified end to end. Imported traces link back to Ironside's viewer, and Ironside can deep-link into Coeval's copy of a trace ([trace links](docs/ironside-integration.md#trace-links)). |
 | [Dailies](https://github.com/luka-zivkovic/dailies) | Decides whether an AI change meets customer-owned release rules. | Evidence consumer. Dailies verifies Coeval receipts and binary-calibration artifacts and applies its own policy; implemented, with no network lookup of Coeval. |
 | [Casefile](https://github.com/luka-zivkovic/casefile) | Statically inspects agent skills and plugins before installation. | No runtime integration. It is the scanner used on the plugin in this repository. |
 

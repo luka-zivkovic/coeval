@@ -266,6 +266,22 @@ function IntegrationCard({
     }
   };
 
+  const editIronsideWebUrl = async () => {
+    if (integration.provider !== "ironside") return;
+    const next = window.prompt(
+      "Ironside web URL for \"View in Ironside\" links. Leave empty to use the deployment URL.",
+      integration.webUrl ?? ""
+    );
+    if (next === null) return;
+    setActionError(null);
+    try {
+      await updateIronsideIntegration(integration.id, { webUrl: next.trim() ? next.trim() : null });
+      onChanged();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const toggleIronsidePolling = async () => {
     if (integration.provider !== "ironside") return;
     setTogglingPolling(true);
@@ -346,9 +362,14 @@ function IntegrationCard({
             {new Date(integration.createdAt).toLocaleDateString()}
           </div>
           {integration.provider === "ironside" ? (
-            <div className="font-mono text-[10.5px] text-ink-3" title={integration.remoteProjectId}>
-              project {integration.remoteProjectId}
-            </div>
+            <>
+              <div className="font-mono text-[10.5px] text-ink-3" title={integration.remoteProjectId}>
+                project {integration.remoteProjectId}
+              </div>
+              <div className="font-mono text-[10.5px] text-ink-3">
+                web links {integration.webUrl ?? "use the deployment URL"}
+              </div>
+            </>
           ) : null}
         </div>
       </CardContent>
@@ -371,6 +392,11 @@ function IntegrationCard({
               : integration.pollEnabled
                 ? "Pause polling"
                 : "Enable polling"}
+          </Button>
+        ) : null}
+        {integration.provider === "ironside" ? (
+          <Button variant="ghost" size="sm" onClick={() => void editIronsideWebUrl()}>
+            Set web URL
           </Button>
         ) : null}
         <Button
@@ -415,6 +441,7 @@ function AddIntegrationModal({
   const [secretKey, setSecretKey] = useState("");
   const [projectName, setProjectName] = useState("");
   const [endpointUrl, setEndpointUrl] = useState("");
+  const [webUrl, setWebUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isLangfuse = provider === "langfuse";
@@ -436,6 +463,7 @@ function AddIntegrationModal({
         await createIronsideIntegration({
           skillVersionId: skillVersionId ?? undefined,
           url: endpointUrl.trim(),
+          ...(webUrl.trim() ? { webUrl: webUrl.trim() } : {}),
           apiKey: apiKey.trim()
         });
       } else if (isLangfuse) {
@@ -558,6 +586,24 @@ function AddIntegrationModal({
               className="h-9 rounded-sm border border-rule-soft bg-card-2 px-2 font-mono text-[12.5px] text-ink focus-visible:border-ink"
             />
           </div>
+          {isIronside ? (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="integration-web-url" className="eyebrow">
+                Ironside web URL <span className="lowercase tracking-normal text-ink-3">(optional)</span>
+              </label>
+              <input
+                id="integration-web-url"
+                value={webUrl}
+                onChange={(e) => setWebUrl(e.target.value)}
+                placeholder="https://ironside-app.example.com"
+                className="h-9 rounded-sm border border-rule-soft bg-card-2 px-2 font-mono text-[12.5px] text-ink focus-visible:border-ink"
+              />
+              <span className="text-[11.5px] text-ink-3">
+                Only needed when Ironside's web app is served from a different address than its API.
+                &ldquo;View in Ironside&rdquo; links use it, falling back to the deployment URL.
+              </span>
+            </div>
+          ) : null}
           {error ? <div role="alert" className="text-[12px] text-signal">{error}</div> : null}
           {!skillVersionId && !isIronside ? (
             <div role="alert" className="text-[12px] text-signal">Choose a criterion before connecting this integration.</div>

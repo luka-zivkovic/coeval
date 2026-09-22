@@ -6,8 +6,11 @@ import type {
 } from "@coeval/shared";
 import type { Pool } from "pg";
 import type {
+  CaseSourceIdentity,
   CompleteImportJobInput,
   CreateImportJobInput,
+  FindImportedIronsideTracesInput,
+  ImportedIronsideTraceMatch,
   ListImportJobsInput,
   TraceImportContext,
   TraceImportResult
@@ -17,7 +20,7 @@ import type {
   TraceImportRepositoryPort
 } from "../repository/ports.js";
 import { importTraceOnClient } from "./trace-import-commands.js";
-import { rowToImportJobRecord } from "./mappers.js";
+import { rowToImportJobRecord, toIso } from "./mappers.js";
 
 // PostgreSQL trace ingestion and import-job lifecycle persistence. Trace
 // creation retains one caller-owned transaction; job records bind an exact
@@ -148,6 +151,52 @@ export class PgTraceImportRepository implements TraceImportRepositoryPort {
       [input.projectId, input.status ?? null, input.limit]
     );
     return result.rows.map(rowToImportJobRecord);
+  }
+
+  // Resolves the native Ironside source identity (remote project, trace id)
+  // inside the given projects. One row per (project, trace version): the
+  // earliest case, matching importTraceOnClient's dedupe choice.
+  async findImportedIronsideTraces(input: FindImportedIronsideTracesInput): Promise<ImportedIronsideTraceMatch[]> {
+    if (input.projectIds.length === 0) return [];
+    const result = await this.pool.query(
+      `select distinct on (rt.project_id, rt.source_trace_version)
+              rt.project_id, c.id as case_id, rt.source_trace_version, c.created_at
+         from raw_traces rt
+         join cases c on c.raw_trace_id = rt.id and c.project_id = rt.project_id
+        where rt.project_id = any($1::text[])
+          and rt.source_remote_project_id = $2
+          and rt.source_trace_id = $3
+          and c.case_type = 'ironside'
+        order by rt.project_id, rt.source_trace_version, c.created_at asc, c.id asc
+        limit 500`,
+      [[...input.projectIds], input.remoteProjectId, input.traceId]
+    );
+    return result.rows.map((row) => ({
+      projectId: String(row.project_id),
+      caseId: String(row.case_id),
+      traceVersion: row.source_trace_version == null ? null : String(row.source_trace_version),
+      importedAt: toIso(row.created_at)
+    }));
+  }
+
+  async getCaseSourceIdentity(projectId: string, caseId: string): Promise<CaseSourceIdentity | null> {
+    const result = await this.pool.query(
+      `select c.case_type, rt.source_trace_id, rt.source_trace_version,
+              rt.source_remote_project_id, rt.source_integration_id
+         from cases c
+         join raw_traces rt on rt.id = c.raw_trace_id and rt.project_id = c.project_id
+        where c.project_id = $1 and c.id = $2`,
+      [projectId, caseId]
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      source: String(row.case_type) as CaseSource,
+      sourceTraceId: String(row.source_trace_id),
+      sourceTraceVersion: row.source_trace_version == null ? null : String(row.source_trace_version),
+      sourceRemoteProjectId: row.source_remote_project_id == null ? null : String(row.source_remote_project_id),
+      sourceIntegrationId: row.source_integration_id == null ? null : String(row.source_integration_id)
+    };
   }
 
   private async loadImportJobRecord(projectId: string, importJobId: string): Promise<ImportJobRecord> {
