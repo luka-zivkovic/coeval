@@ -223,17 +223,21 @@ have. It recommends; it does not decide. Release thresholds and
 - **Score (ordinal) calibration.** Reported as not implemented, with counts.
 - **Persistence of decision records.** The preview route and the view are
   compute-only. No table, worker, or history stores a ledger, an artifact, or
-  a reading; a refresh starts over. Persistence is TARGET only if a decision
-  record accepts it.
+  a reading; a refresh starts over. Persistence, ingest, saved snapshots, and
+  retention are TARGET under accepted
+  [ADR-0013](decisions/0013-production-outcome-monitoring.md) and Batch 7 in
+  [`implementation-batches.md`](implementation-batches.md).
 - **Live import.** No poller or sink reads decisions from a running system;
   the ledger arrives as pasted or uploaded text.
 - **Governed-review routing of a low-confidence sample.** The advisor names
   a review band, but nothing sends the decisions inside it to governed review
   or brings independent labels back. The view says this step is separate; it
-  does not fake it.
+  does not fake it. ADR-0013 records it as a follow-up that needs its own
+  decision.
 - **Ironside ingest.** No sink reads decisions from, or writes outcomes to,
-  Ironside or OpenTelemetry. The records are shaped so a decision maps to a
-  span with attributes and an outcome to a later event on the same id.
+  Ironside. Ironside delivers observations with string metadata, not spans,
+  and there is no attribute convention for decisions yet; ADR-0013 defers
+  this path until one exists.
 - **Outcome validation against question types.** Outcome values are stored
   as given; the analysis ignores values of the wrong type for a question.
 - **Governed evidence.** The artifact is not digest-pinned, has no private
