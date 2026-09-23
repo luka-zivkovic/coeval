@@ -45,16 +45,16 @@ skill folders; see the [agent setup guide](docs/agent-setup.md).
 
 You need Docker Engine with Compose v2. This uses the release-owned bundle in
 [`deploy/self-host/compose.yaml`](deploy/self-host/compose.yaml) and the
-`0.2.0` images published on GHCR. Rubrist was renamed from its former
-product name after `0.2.0`; that release's images and variables still carry the
-old name, and the next release is the first published under the `rubrist-*`
-image names and `RUBRIST_*` variables shown here:
+images published on GHCR. `v0.3.0` is the first release under the Rubrist
+name. Until its images are published, install `v0.2.0` instead: use the same
+steps with `v0.2.0` in the URL and the former product name as the variable
+prefix (`COEVAL_VERSION=0.2.0`, `COEVAL_POSTGRES_PASSWORD`, and so on).
 
 ```bash
 mkdir rubrist && cd rubrist
-curl -fsSLO https://raw.githubusercontent.com/luka-zivkovic/rubrist/v0.2.0/deploy/self-host/compose.yaml
+curl -fsSLO https://raw.githubusercontent.com/luka-zivkovic/rubrist/v0.3.0/deploy/self-host/compose.yaml
 cat > .env <<EOF
-RUBRIST_VERSION=0.2.0
+RUBRIST_VERSION=0.3.0
 RUBRIST_POSTGRES_PASSWORD=$(openssl rand -hex 24)
 RUBRIST_AUTH_SECRET=$(openssl rand -base64 32)
 RUBRIST_PUBLIC_URL=http://localhost:8081

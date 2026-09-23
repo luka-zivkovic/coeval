@@ -7,9 +7,8 @@
   single-host and Coolify Compose bundles.
 - **CURRENT:** the container workflow, `deploy/self-host/compose.yaml`, and
   `deploy/coolify.yaml` are present in the repository. `v0.2.0` is the first
-  installable release: `ghcr.io/luka-zivkovic/rubrist-api:0.2.0` and
-  `ghcr.io/luka-zivkovic/rubrist-web:0.2.0` are published as anonymously
-  pullable GHCR packages. The earlier `v0.1.0` predates these artifacts and
+  installable release; its images were published under the former product
+  name as anonymously pullable GHCR packages. The earlier `v0.1.0` predates these artifacts and
   must not be selected.
 - **CURRENT:** the product was renamed to Rubrist after `v0.2.0`
   ([ADR-0012](decisions/0012-rename-coeval-to-rubrist.md)). The `0.2.0` images
@@ -48,7 +47,7 @@ and a template that can be pasted into **Docker Compose Empty** today.
 
 1. Create a Docker Compose Empty Service in the target project/environment.
 2. Paste `deploy/coolify.yaml` and save it.
-3. Set `RUBRIST_VERSION` to an exact published release such as `0.2.0`. Do not
+3. Set `RUBRIST_VERSION` to an exact published release such as `0.3.0`. Do not
    use `latest`, `main`, or another floating value.
 4. Confirm Coolify generated the `SERVICE_URL_WEB`, Postgres password, auth
    secret, and bootstrap token. Do not replace those values during an update.
@@ -131,8 +130,8 @@ Before publishing a release:
 ```sh
 docker build -f apps/api/Dockerfile -t rubrist-api:smoke .
 docker build -f apps/web/Dockerfile -t rubrist-web:smoke .
-RUBRIST_VERSION=0.2.0 docker compose -f deploy/coolify.yaml config >/dev/null
-RUBRIST_VERSION=0.2.0 \
+RUBRIST_VERSION=0.3.0 docker compose -f deploy/coolify.yaml config >/dev/null
+RUBRIST_VERSION=0.3.0 \
   RUBRIST_POSTGRES_PASSWORD=render-only \
   RUBRIST_AUTH_SECRET=render-only-secret-at-least-32-bytes \
   docker compose -f deploy/self-host/compose.yaml config >/dev/null
