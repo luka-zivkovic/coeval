@@ -9407,6 +9407,54 @@ $$;
 
 
 --
+-- Name: guard_production_calibration_snapshot_append_only(); Type: FUNCTION; Schema: current; Owner: -
+--
+
+CREATE FUNCTION guard_production_calibration_snapshot_append_only() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  if tg_op = 'UPDATE' then
+    raise exception '% rows are append-only', tg_table_name using errcode = '55000';
+  end if;
+  if tg_op = 'DELETE' and exists (select 1 from projects where id = old.project_id) then
+    raise exception '% rows are append-only while their project exists', tg_table_name using errcode = '55000';
+  end if;
+  return old;
+end;
+$$;
+
+
+--
+-- Name: guard_production_calibration_snapshot_insert(); Type: FUNCTION; Schema: current; Owner: -
+--
+
+CREATE FUNCTION guard_production_calibration_snapshot_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+declare
+  artifact jsonb;
+begin
+  if new.artifact_digest is distinct from 'sha256:' || encode(sha256(new.canonical_bytes), 'hex') then
+    raise exception 'production calibration snapshot digest must match its bytes' using errcode = '23514';
+  end if;
+  artifact := convert_from(new.canonical_bytes, 'UTF8')::jsonb;
+  if artifact ->> 'contract' is distinct from new.report_contract then
+    raise exception 'production calibration snapshot contract must match its bytes' using errcode = '23514';
+  end if;
+  if (artifact -> 'window' ->> 'from')::timestamp with time zone is distinct from new.window_from
+    or (artifact -> 'window' ->> 'to')::timestamp with time zone is distinct from new.window_to then
+    raise exception 'production calibration snapshot window must match its bytes' using errcode = '23514';
+  end if;
+  if (artifact ->> 'generatedAt')::timestamp with time zone is distinct from new.built_at then
+    raise exception 'production calibration snapshot build time must match its bytes' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+
+
+--
 -- Name: guard_production_decision_record_append_only(); Type: FUNCTION; Schema: current; Owner: -
 --
 
@@ -11491,6 +11539,34 @@ CREATE TABLE organizations (
     id text NOT NULL,
     name text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: production_calibration_snapshots; Type: TABLE; Schema: current; Owner: -
+--
+
+CREATE TABLE production_calibration_snapshots (
+    id text NOT NULL,
+    project_id text NOT NULL,
+    report_contract text NOT NULL,
+    canonical_bytes bytea NOT NULL,
+    artifact_digest text NOT NULL,
+    window_from timestamp with time zone,
+    window_to timestamp with time zone,
+    parameters jsonb NOT NULL,
+    record_count integer NOT NULL,
+    record_set_digest text NOT NULL,
+    built_at timestamp with time zone NOT NULL,
+    created_by_user_id text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT production_calibration_snapshots_artifact_digest_check CHECK ((artifact_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
+    CONSTRAINT production_calibration_snapshots_canonical_bytes_check CHECK (((octet_length(canonical_bytes) > 0) AND (octet_length(canonical_bytes) <= 16777216))),
+    CONSTRAINT production_calibration_snapshots_check CHECK (((window_from IS NULL) OR (window_to IS NULL) OR (window_from < window_to))),
+    CONSTRAINT production_calibration_snapshots_parameters_check CHECK (((jsonb_typeof(parameters) = 'object'::text) AND (octet_length((parameters)::text) <= 65536))),
+    CONSTRAINT production_calibration_snapshots_record_count_check CHECK ((record_count >= 0)),
+    CONSTRAINT production_calibration_snapshots_record_set_digest_check CHECK ((record_set_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
+    CONSTRAINT production_calibration_snapshots_report_contract_check CHECK ((report_contract = 'rubrist/production-calibration/v2'::text))
 );
 
 
@@ -13794,6 +13870,14 @@ ALTER TABLE ONLY organizations
 
 
 --
+-- Name: production_calibration_snapshots production_calibration_snapshots_pkey; Type: CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY production_calibration_snapshots
+    ADD CONSTRAINT production_calibration_snapshots_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: production_decision_records production_decision_records_pkey; Type: CONSTRAINT; Schema: current; Owner: -
 --
 
@@ -15113,6 +15197,13 @@ CREATE INDEX judge_runs_project_idx ON judge_runs USING btree (project_id);
 --
 
 CREATE INDEX organization_members_user_idx ON organization_members USING btree (user_id);
+
+
+--
+-- Name: production_calibration_snapshots_project_created_idx; Type: INDEX; Schema: current; Owner: -
+--
+
+CREATE INDEX production_calibration_snapshots_project_created_idx ON production_calibration_snapshots USING btree (project_id, created_at DESC, id DESC);
 
 
 --
@@ -16457,6 +16548,20 @@ CREATE TRIGGER governed_sealed_intake_populations_guard BEFORE INSERT ON governe
 --
 
 CREATE TRIGGER import_jobs_skill_version_guard BEFORE INSERT OR UPDATE OF project_id, skill_version_id, status ON import_jobs FOR EACH ROW EXECUTE FUNCTION ensure_import_job_skill_version_binding();
+
+
+--
+-- Name: production_calibration_snapshots production_calibration_snapshots_append_only; Type: TRIGGER; Schema: current; Owner: -
+--
+
+CREATE TRIGGER production_calibration_snapshots_append_only BEFORE DELETE OR UPDATE ON production_calibration_snapshots FOR EACH ROW EXECUTE FUNCTION guard_production_calibration_snapshot_append_only();
+
+
+--
+-- Name: production_calibration_snapshots production_calibration_snapshots_insert_guard; Type: TRIGGER; Schema: current; Owner: -
+--
+
+CREATE TRIGGER production_calibration_snapshots_insert_guard BEFORE INSERT ON production_calibration_snapshots FOR EACH ROW EXECUTE FUNCTION guard_production_calibration_snapshot_insert();
 
 
 --
@@ -19023,6 +19128,14 @@ ALTER TABLE ONLY judge_runs
 
 ALTER TABLE ONLY organization_members
     ADD CONSTRAINT organization_members_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: production_calibration_snapshots production_calibration_snapshots_project_id_fkey; Type: FK CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY production_calibration_snapshots
+    ADD CONSTRAINT production_calibration_snapshots_project_id_fkey FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
 
 
 --

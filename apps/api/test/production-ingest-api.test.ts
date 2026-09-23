@@ -34,6 +34,11 @@ class FakeRecordRepository implements ProductionDecisionRecordRepository {
     if (this.failure) throw new ProductionRecordRepositoryError(this.failure, `fake ${this.failure}`, { line: 2 });
     return RESULT;
   }
+
+  loadRecords(): never { throw new Error("not used by ingest"); }
+  saveSnapshot(): never { throw new Error("not used by ingest"); }
+  listSnapshots(): never { throw new Error("not used by ingest"); }
+  getSnapshot(): never { throw new Error("not used by ingest"); }
 }
 
 async function setup(records: FakeRecordRepository | null = new FakeRecordRepository()) {

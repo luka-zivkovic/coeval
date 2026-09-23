@@ -11,7 +11,11 @@ import {
 } from "@rubrist/shared";
 import { productionRecordErrorStatus } from "./ingest-routes.js";
 import { LedgerParseError, parseLedgerRecords as parseLedger } from "./ledger.js";
-import { ProductionRecordRepositoryError, type ProductionDecisionRecordRepository } from "./repository.js";
+import {
+  PRODUCTION_REPORT_DEFAULT_MAX_RECORDS,
+  ProductionRecordRepositoryError,
+  type ProductionDecisionRecordRepository
+} from "./repository.js";
 
 // Session routes for production calibration. The preview is compute-only: the
 // caller posts the decision ledger with the request and nothing is persisted,
@@ -33,17 +37,33 @@ export const ProductionCalibrationPreviewCostsSchema = z.object({
   humanReview: NonNegativeSchema.nullable().optional()
 }).strict();
 
-export const ProductionCalibrationPreviewRequestSchema = z.object({
-  /** JSON Lines text, or an array of already-parsed records. */
-  records: z.union([z.string(), z.array(z.unknown())]),
+const ReportParametersShape = {
   /** When given, `threshold` and `costs` apply to this question only; other questions keep the defaults. */
   question: QuestionSchema.optional(),
   threshold: ProbabilitySchema.optional(),
   bins: z.number().int().min(1).max(PRODUCTION_CALIBRATION_MAX_BINS).optional(),
   windowDays: z.number().int().min(1).max(366).optional(),
   costs: ProductionCalibrationPreviewCostsSchema.nullable().optional()
+};
+
+export const ProductionCalibrationPreviewRequestSchema = z.object({
+  /** JSON Lines text, or an array of already-parsed records. */
+  records: z.union([z.string(), z.array(z.unknown())]),
+  ...ReportParametersShape
 }).strict();
 export type ProductionCalibrationPreviewRequest = z.infer<typeof ProductionCalibrationPreviewRequestSchema>;
+
+const WindowBoundSchema = z.string().datetime({ offset: true }).nullable().optional();
+
+/** A report over the project's stored records; `from` is inclusive and `to` exclusive, on decision time. */
+export const ProductionCalibrationStoredReportRequestSchema = z.object({
+  from: WindowBoundSchema,
+  to: WindowBoundSchema,
+  ...ReportParametersShape
+}).strict();
+export type ProductionCalibrationStoredReportRequest = z.infer<typeof ProductionCalibrationStoredReportRequestSchema>;
+
+type ReportParameters = Omit<ProductionCalibrationStoredReportRequest, "from" | "to">;
 
 export const ProductionCalibrationImportRequestSchema = z.object({
   /** JSON Lines text, or an array of records. */
@@ -72,6 +92,11 @@ export interface ProductionCalibrationPreviewResponse {
   projectRole: ProductionCalibrationProjectRole;
 }
 
+export interface ProductionCalibrationStoredReportResponse extends ProductionCalibrationPreviewResponse {
+  recordCount: number;
+  recordSetDigest: string;
+}
+
 export type ProductionCalibrationProjectRole = "owner" | "member";
 
 interface RouteIdentity {
@@ -92,6 +117,8 @@ export interface CreateProductionCalibrationRouterOptions {
   resolveProjectRole: (input: { projectId: string; userId: string }) => Promise<ProductionCalibrationProjectRole | null>;
   /** Durable decision records; null outside database-backed mode. */
   repository?: ProductionDecisionRecordRepository | null | undefined;
+  /** The most stored records one report may load; defaults to PRODUCTION_REPORT_DEFAULT_MAX_RECORDS. */
+  maxReportRecords?: number | undefined;
   /** The artifact's generation time; injectable so tests stay deterministic. */
   now?: () => Date;
 }
@@ -100,7 +127,7 @@ class PreviewHttpError extends Error {
   constructor(
     message: string,
     readonly code: string,
-    readonly status: 400 | 403 | 404 | 409 | 413 | 501 | 503,
+    readonly status: 400 | 403 | 404 | 409 | 413 | 422 | 501 | 503,
     readonly details?: unknown
   ) {
     super(message);
@@ -132,39 +159,7 @@ export function createProductionCalibrationRouter(options: CreateProductionCalib
     if (records.length === 0) {
       throw new PreviewHttpError("The ledger contains no records", "production_calibration_empty_ledger", 400);
     }
-    const costs = request.costs === undefined || request.costs === null
-      ? request.costs
-      : {
-        falsePositive: request.costs.falsePositive,
-        falseNegative: request.costs.falseNegative,
-        humanReview: request.costs.humanReview ?? null
-      };
-    const scoped = request.question !== undefined;
-    if (scoped && !records.some((record) => record.kind === "decision" && request.question! in record.answers)) {
-      throw new PreviewHttpError(
-        `No decision answers the question "${request.question}"`,
-        "production_calibration_unknown_question",
-        400
-      );
-    }
-    const artifact = ProductionCalibrationArtifactSchema.parse(buildArtifact(records, {
-      now: (options.now ?? (() => new Date()))(),
-      ...(request.bins === undefined ? {} : { bins: request.bins }),
-      ...(request.windowDays === undefined ? {} : { windowDays: request.windowDays }),
-      ...(scoped
-        ? {
-          questions: {
-            [request.question!]: {
-              ...(request.threshold === undefined ? {} : { threshold: request.threshold }),
-              ...(costs === undefined ? {} : { costs })
-            }
-          }
-        }
-        : {
-          ...(request.threshold === undefined ? {} : { threshold: request.threshold }),
-          ...(costs === undefined ? {} : { costs })
-        })
-    }));
+    const artifact = buildReport(records, request, (options.now ?? (() => new Date()))(), null);
     const response: ProductionCalibrationPreviewResponse = {
       artifact,
       summary: summarize(records, artifact, request.question ?? null),
@@ -172,15 +167,102 @@ export function createProductionCalibrationRouter(options: CreateProductionCalib
     };
     return context.json(response);
   });
+  // Reports over stored records (ADR-0013 §3). The server loads the window's
+  // records itself, so a stored report or snapshot can only describe records
+  // Rubrist holds, never a pasted ledger.
+  const storedReport = async (context: Context): Promise<{
+    access: RouteAccess;
+    repository: ProductionDecisionRecordRepository;
+    request: ProductionCalibrationStoredReportRequest;
+    response: ProductionCalibrationStoredReportResponse;
+  }> => {
+    const access = await resolveAccess(context, options);
+    if (access instanceof Response) throw new ResponseError(access);
+    const repository = requireRepository(options);
+    const parsed = ProductionCalibrationStoredReportRequestSchema.safeParse(await readJsonBody(context));
+    if (!parsed.success) {
+      throw new PreviewHttpError(
+        "Invalid production calibration report request",
+        "production_calibration_invalid_request",
+        400,
+        { validation: z.treeifyError(parsed.error) }
+      );
+    }
+    const request = parsed.data;
+    const window = {
+      from: request.from ? new Date(request.from) : null,
+      to: request.to ? new Date(request.to) : null
+    };
+    if (window.from && window.to && window.from.getTime() >= window.to.getTime()) {
+      throw new PreviewHttpError("The window's from must be earlier than its to", "production_calibration_invalid_window", 400);
+    }
+    const loaded = await withRecordErrors(context, () => repository.loadRecords({
+      projectId: access.projectId,
+      window,
+      maxRecords: options.maxReportRecords ?? PRODUCTION_REPORT_DEFAULT_MAX_RECORDS
+    }));
+    const artifact = buildReport(loaded.records, request, (options.now ?? (() => new Date()))(), window);
+    return {
+      access,
+      repository,
+      request,
+      response: {
+        artifact,
+        summary: summarize(loaded.records, artifact, request.question ?? null),
+        projectRole: access.projectRole,
+        recordCount: loaded.records.length,
+        recordSetDigest: loaded.recordSetDigest
+      }
+    };
+  };
+  router.post("/report", async (context) => {
+    try {
+      return context.json((await storedReport(context)).response);
+    } catch (error) {
+      if (error instanceof ResponseError) return error.response;
+      throw error;
+    }
+  });
+  router.post("/snapshots", async (context) => {
+    let built: Awaited<ReturnType<typeof storedReport>>;
+    try {
+      built = await storedReport(context);
+    } catch (error) {
+      if (error instanceof ResponseError) return error.response;
+      throw error;
+    }
+    const { access, repository, request, response } = built;
+    const snapshot = await withRecordErrors(context, () => repository.saveSnapshot({
+      projectId: access.projectId,
+      userId: access.userId,
+      artifact: response.artifact,
+      parameters: request,
+      recordCount: response.recordCount,
+      recordSetDigest: response.recordSetDigest
+    }));
+    return context.json({ snapshot }, 201);
+  });
+  router.get("/snapshots", async (context) => {
+    const access = await resolveAccess(context, options);
+    if (access instanceof Response) return access;
+    return context.json({ snapshots: await requireRepository(options).listSnapshots(access.projectId) });
+  });
+  router.get("/snapshots/:snapshotId", async (context) => {
+    const access = await resolveAccess(context, options);
+    if (access instanceof Response) return access;
+    const snapshot = await requireRepository(options).getSnapshot(access.projectId, context.req.param("snapshotId"));
+    if (!snapshot) {
+      throw new PreviewHttpError("Snapshot not found", "production_calibration_snapshot_not_found", 404);
+    }
+    return context.json(snapshot);
+  });
   router.post("/records", async (context) => {
     const access = await resolveAccess(context, options);
     if (access instanceof Response) return access;
     if (access.projectRole !== "owner") {
       throw new PreviewHttpError("Only project owners can import decision records", "production_calibration_owner_required", 403);
     }
-    if (!options.repository) {
-      throw new PreviewHttpError("Decision records need database-backed mode", "production_calibration_records_unavailable", 501);
-    }
+    const repository = requireRepository(options);
     const parsed = ProductionCalibrationImportRequestSchema.safeParse(await readJsonBody(context));
     if (!parsed.success) {
       throw new PreviewHttpError(
@@ -191,26 +273,89 @@ export function createProductionCalibrationRouter(options: CreateProductionCalib
       );
     }
     const records = parseLedgerRecords(parsed.data.records);
-    try {
-      return context.json(await options.repository.appendRecords({
-        projectId: access.projectId,
-        submitter: { kind: "user", userId: access.userId },
-        records
-      }));
-    } catch (error) {
-      if (error instanceof ProductionRecordRepositoryError) {
-        if (error.code === "write_contention") context.header("retry-after", "1");
-        throw new PreviewHttpError(
-          error.message,
-          `production_calibration_${error.code}`,
-          productionRecordErrorStatus(error.code),
-          error.details
-        );
-      }
-      throw error;
-    }
+    return context.json(await withRecordErrors(context, () => repository.appendRecords({
+      projectId: access.projectId,
+      submitter: { kind: "user", userId: access.userId },
+      records
+    })));
   });
   return router;
+}
+
+/** Carries an access-check response out of a helper. */
+class ResponseError extends Error {
+  constructor(readonly response: Response) {
+    super("access refused");
+    this.name = "ResponseError";
+  }
+}
+
+function requireRepository(options: CreateProductionCalibrationRouterOptions): ProductionDecisionRecordRepository {
+  if (!options.repository) {
+    throw new PreviewHttpError("Decision records need database-backed mode", "production_calibration_records_unavailable", 501);
+  }
+  return options.repository;
+}
+
+/** Answer a record store rejection with its own status and a `production_calibration_` code. */
+async function withRecordErrors<T>(context: Context, work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof ProductionRecordRepositoryError) {
+      if (error.code === "write_contention") context.header("retry-after", "1");
+      throw new PreviewHttpError(
+        error.message,
+        `production_calibration_${error.code}`,
+        productionRecordErrorStatus(error.code),
+        error.details
+      );
+    }
+    throw error;
+  }
+}
+
+/** Build one report from records and request parameters; shared by the preview and stored reports. */
+function buildReport(
+  records: readonly ProductionDecisionLedgerRecord[],
+  request: ReportParameters,
+  now: Date,
+  window: { from: Date | null; to: Date | null } | null
+): ProductionCalibrationArtifact {
+  const costs = request.costs === undefined || request.costs === null
+    ? request.costs
+    : {
+      falsePositive: request.costs.falsePositive,
+      falseNegative: request.costs.falseNegative,
+      humanReview: request.costs.humanReview ?? null
+    };
+  const scoped = request.question !== undefined;
+  if (scoped && !records.some((record) => record.kind === "decision" && request.question! in record.answers)) {
+    throw new PreviewHttpError(
+      `No decision answers the question "${request.question}"`,
+      "production_calibration_unknown_question",
+      400
+    );
+  }
+  return ProductionCalibrationArtifactSchema.parse(buildArtifact(records, {
+    now,
+    ...(window === null ? {} : { window }),
+    ...(request.bins === undefined ? {} : { bins: request.bins }),
+    ...(request.windowDays === undefined ? {} : { windowDays: request.windowDays }),
+    ...(scoped
+      ? {
+        questions: {
+          [request.question!]: {
+            ...(request.threshold === undefined ? {} : { threshold: request.threshold }),
+            ...(costs === undefined ? {} : { costs })
+          }
+        }
+      }
+      : {
+        ...(request.threshold === undefined ? {} : { threshold: request.threshold }),
+        ...(costs === undefined ? {} : { costs })
+      })
+  }));
 }
 
 // The shared join rejects two decision records that share an id but differ in
