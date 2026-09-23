@@ -6,7 +6,8 @@ import { SectionHead } from "@/components/rubrist";
 import { DatabaseModeRequired } from "@/components/database-mode-required";
 import { useAppMode } from "@/lib/app-mode";
 import { BooleanReading } from "../components/production-calibration/boolean-reading.js";
-import { ChoiceReading, ScoreNotice } from "../components/production-calibration/choice-reading.js";
+import { ChoiceReading } from "../components/production-calibration/choice-reading.js";
+import { ScoreReading } from "../components/production-calibration/score-reading.js";
 import {
   fetchProductionCalibrationSample,
   previewProductionCalibration,
@@ -19,6 +20,7 @@ import {
   costsFromInputs,
   formatModelIdentity,
   formatOutcomeSources,
+  formatReportWindow,
   questionOptionKey,
   questionOptionLabel,
   questionOptions,
@@ -292,6 +294,7 @@ function PersistentProductionCalibrationScreen() {
                 <Meta label="orphans" value={`${preview.artifact.records.actions.orphan} actions · ${preview.artifact.records.outcomes.orphan} outcomes`} />
                 <Meta label="superseded outcomes" value={`${preview.artifact.records.outcomes.superseded} · ${preview.artifact.records.outcomes.conflicting} conflicting`} />
                 <Meta label="synthetic decisions" value={String(preview.artifact.records.decisions.synthetic)} />
+                <Meta label="window" value={formatReportWindow(preview.artifact.window)} />
                 <Meta label="decision span" value={`${preview.artifact.records.decisions.firstAt ?? "n/a"} to ${preview.artifact.records.decisions.lastAt ?? "n/a"}`} />
                 <Meta label="models" value={preview.summary.models.map((row) => `${formatModelIdentity(row.model)} (${row.decisions})`).join(" · ")} />
                 <Meta label="question sets" value={preview.artifact.records.questionSets.map((set) => `${set.name} v${set.version} (${set.decisions})`).join(" · ")} />
@@ -325,7 +328,7 @@ function PersistentProductionCalibrationScreen() {
           ) : entry?.answerType === "choice" ? (
             <ChoiceReading entry={entry} />
           ) : entry?.answerType === "score" ? (
-            <ScoreNotice entry={entry} />
+            <ScoreReading entry={entry} />
           ) : (
             <p className="text-[12px] text-ink-3">The ledger has decisions but no question to read.</p>
           )}

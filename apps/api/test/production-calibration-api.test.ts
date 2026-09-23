@@ -183,7 +183,9 @@ describe("production calibration preview API boundary", () => {
     expect(isFlaky.calibration.confusion.threshold).toBe(0.5);
     expect(isFlaky.thresholdAdvice).toBeNull();
     const severity = artifact.questions.find((question) => question.question === "severity");
-    expect(severity?.answerType === "score" && severity.calibration.reason).toBe("ordinal_calibration_not_implemented");
+    if (severity?.answerType !== "score") throw new Error("expected score calibration for severity");
+    expect(severity.calibration).toMatchObject({ state: "defined", levels: 5, n: 16, nWithOutcome: 0 });
+    expect(artifact.window).toEqual({ from: null, to: null });
   });
 
   it("builds the artifact and summary for the trial-runner ledger", async () => {

@@ -2,24 +2,27 @@ import { z } from "zod";
 
 import { containsLoneUtf16Surrogate } from "./judge.js";
 
-// Production calibration v1 measures whether a classifier's stated
-// probabilities held up against the outcomes that arrived later on the
-// customer's own traffic. It shares sealed binary calibration's rate
-// conventions (exact numerator/denominator pairs, 95% Wilson score intervals,
-// explicit undefined rates with a reason, provider identity grouping) but it is
-// continuous, unsealed, and outcome-sourced evidence: nothing here is
-// governed-blind truth and the artifact says so in its `evidence` block.
-// Counts are unbounded safe integers because a ledger grows with traffic, and
-// Wilson bounds travel as ordinary finite numbers because this artifact is a
-// report over records, not a digest-pinned commitment.
+// Production calibration measures whether a classifier's stated probabilities
+// held up against the outcomes that arrived later on the customer's own
+// traffic. It shares sealed binary calibration's rate conventions (exact
+// numerator/denominator pairs, 95% Wilson score intervals, explicit undefined
+// rates with a reason, provider identity grouping) but it is continuous,
+// unsealed, and outcome-sourced evidence: nothing here is governed-blind truth
+// and the artifact says so in its `evidence` block. Counts are unbounded safe
+// integers because a ledger grows with traffic, and Wilson bounds travel as
+// ordinary finite numbers because this artifact is a report over records, not
+// a digest-pinned commitment.
+//
+// Report v2 adds score (ordinal) calibration and the time window a report
+// covers. No v1 report was ever stored, so v1 has no parser here.
 //
 // The input record shapes are ported field-for-field from jevkit's decision
 // ledger so that one of its JSON Lines entries validates unchanged. The state a
 // decision was made on is never stored: only its digest and length travel.
 
 export const PRODUCTION_DECISION_RECORD_CONTRACT = "rubrist/production-decision-record/v1" as const;
-export const PRODUCTION_CALIBRATION_CONTRACT = "rubrist/production-calibration/v1" as const;
-export const PRODUCTION_CALIBRATION_METRIC_DEFINITION_VERSION = "production-calibration-metrics/v1" as const;
+export const PRODUCTION_CALIBRATION_CONTRACT = "rubrist/production-calibration/v2" as const;
+export const PRODUCTION_CALIBRATION_METRIC_DEFINITION_VERSION = "production-calibration-metrics/v2" as const;
 export const PRODUCTION_CALIBRATION_INTERVAL_DEFINITION_VERSION = "wilson-score/v1" as const;
 export const PRODUCTION_CALIBRATION_CONFIDENCE_BASIS_POINTS = 9_500 as const;
 // Exact binary64 value 3fff5c0331eeff84, pinned by wilson-score/v1.
@@ -30,6 +33,11 @@ export const PRODUCTION_CALIBRATION_DEFAULT_WINDOW_DAYS = 7;
 export const PRODUCTION_CALIBRATION_DEFAULT_MIN_OUTCOMES_TO_FLAG = 20;
 export const PRODUCTION_CALIBRATION_MIN_ADVISABLE_OUTCOMES = 30;
 export const PRODUCTION_CALIBRATION_MAX_BINS = 100;
+/** A score answer describes an ordered rubric of 2 to 10 levels. */
+export const PRODUCTION_CALIBRATION_MIN_SCORE_LEVELS = 2;
+export const PRODUCTION_CALIBRATION_MAX_SCORE_LEVELS = 10;
+/** Score probabilities must sum to 1 within this tolerance; the analysis then divides them by their sum. */
+export const PRODUCTION_CALIBRATION_SCORE_SUM_TOLERANCE = 0.01;
 /** Thresholds swept by the advisor: 0.05 to 0.95 in steps of 0.05. */
 export const PRODUCTION_CALIBRATION_THRESHOLD_GRID: readonly number[] = Object.freeze(
   Array.from({ length: 19 }, (_, index) => Math.round((index + 1) * 5) / 100)
@@ -176,7 +184,7 @@ export const ProductionDecisionLedgerRecordSchema = z.discriminatedUnion("kind",
 export type ProductionDecisionLedgerRecord = z.infer<typeof ProductionDecisionLedgerRecordSchema>;
 
 // ---------------------------------------------------------------------------
-// Output artifact: rubrist/production-calibration/v1
+// Output artifact: rubrist/production-calibration/v2
 // ---------------------------------------------------------------------------
 
 export const ProductionCalibrationDefinedWilsonRateSchema = z.object({
@@ -322,13 +330,106 @@ export const ProductionCalibrationChoiceSchema = z.object({
 }).strict();
 export type ProductionCalibrationChoice = z.infer<typeof ProductionCalibrationChoiceSchema>;
 
-export const ProductionCalibrationScoreSchema = z.object({
-  question: ProductionCalibrationTextSchema,
-  implemented: z.literal(false),
-  reason: z.literal("ordinal_calibration_not_implemented"),
-  n: ProductionCalibrationCountSchema,
-  nWithOutcome: ProductionCalibrationCountSchema
+const ProductionCalibrationScoreLevelsSchema = z.number().int()
+  .min(PRODUCTION_CALIBRATION_MIN_SCORE_LEVELS)
+  .max(PRODUCTION_CALIBRATION_MAX_SCORE_LEVELS);
+const ProductionCalibrationScoreLevelSchema = z.number().int().min(0).max(PRODUCTION_CALIBRATION_MAX_SCORE_LEVELS - 1);
+
+export const ProductionCalibrationScoreLevelCountSchema = z.object({
+  levels: ProductionCalibrationScoreLevelsSchema,
+  decisions: ProductionCalibrationPositiveCountSchema
 }).strict();
+export type ProductionCalibrationScoreLevelCount = z.infer<typeof ProductionCalibrationScoreLevelCountSchema>;
+
+export const ProductionCalibrationScoreExclusionsSchema = z.object({
+  /**
+   * Answers left out of every score metric: a level count outside 2 to 10,
+   * probabilities that do not sum to 1 within 0.01, or a mean outside
+   * [0, levels - 1].
+   */
+  invalidAnswer: ProductionCalibrationCountSchema,
+  /** Valid answers whose numeric outcome is not an integer level of their own scale. */
+  outcomeOutOfRange: ProductionCalibrationCountSchema
+}).strict();
+export type ProductionCalibrationScoreExclusions = z.infer<typeof ProductionCalibrationScoreExclusionsSchema>;
+
+/** The event "outcome level >= atLeast", predicted by the summed probability of that level and every level above it. */
+export const ProductionCalibrationScoreCutSchema = z.object({
+  atLeast: z.number().int().min(1).max(PRODUCTION_CALIBRATION_MAX_SCORE_LEVELS - 1),
+  /** Mean predicted probability over the decisions that have an outcome. */
+  meanPredicted: ProductionCalibrationProbabilitySchema.nullable(),
+  observedRate: ProductionCalibrationWilsonRateSchema,
+  brier: ProductionCalibrationProbabilitySchema.nullable(),
+  ece: ProductionCalibrationProbabilitySchema.nullable(),
+  reliability: z.array(ProductionCalibrationReliabilityBinSchema).min(1).max(PRODUCTION_CALIBRATION_MAX_BINS)
+}).strict();
+export type ProductionCalibrationScoreCut = z.infer<typeof ProductionCalibrationScoreCutSchema>;
+
+export const ProductionCalibrationScoreConfusionCellSchema = z.object({
+  truth: ProductionCalibrationScoreLevelSchema,
+  /** The most likely level; ties resolve to the lowest level. */
+  predicted: ProductionCalibrationScoreLevelSchema,
+  count: ProductionCalibrationPositiveCountSchema
+}).strict();
+export type ProductionCalibrationScoreConfusionCell = z.infer<typeof ProductionCalibrationScoreConfusionCellSchema>;
+
+export const ProductionCalibrationScoreModelGroupSchema = z.object({
+  model: ProductionCalibrationModelIdentitySchema,
+  n: ProductionCalibrationCountSchema,
+  nWithOutcome: ProductionCalibrationCountSchema,
+  exactAccuracy: ProductionCalibrationWilsonRateSchema,
+  meanAbsoluteError: ProductionCalibrationNonNegativeSchema.nullable(),
+  rankedProbabilityScore: ProductionCalibrationProbabilitySchema.nullable()
+}).strict();
+export type ProductionCalibrationScoreModelGroup = z.infer<typeof ProductionCalibrationScoreModelGroupSchema>;
+
+const ProductionCalibrationScoreBaseShape = {
+  question: ProductionCalibrationTextSchema,
+  /** Valid score answers to this question; excluded answers are counted in `excluded`. */
+  n: ProductionCalibrationCountSchema,
+  /** Valid answers whose outcome is an integer level of their own scale. */
+  nWithOutcome: ProductionCalibrationCountSchema,
+  excluded: ProductionCalibrationScoreExclusionsSchema,
+  /** Every level count among the valid answers, ascending. */
+  levelCounts: z.array(ProductionCalibrationScoreLevelCountSchema)
+};
+
+// Score metrics are defined only when every valid answer uses the same number
+// of levels: level 3 of five and level 3 of ten are different claims. A
+// question whose answers disagree, or has no valid answer, is explicitly
+// undefined rather than averaged across scales.
+export const ProductionCalibrationScoreSchema = z.discriminatedUnion("state", [
+  z.object({
+    ...ProductionCalibrationScoreBaseShape,
+    state: z.literal("defined"),
+    levels: ProductionCalibrationScoreLevelsSchema,
+    bins: z.number().int().min(1).max(PRODUCTION_CALIBRATION_MAX_BINS),
+    /** The most likely level equalled the outcome. */
+    exactAccuracy: ProductionCalibrationWilsonRateSchema,
+    /** The most likely level was at most one level from the outcome. */
+    withinOneAccuracy: ProductionCalibrationWilsonRateSchema,
+    /** Mean of |mean - outcome|, in levels; it treats the levels as evenly spaced. */
+    meanAbsoluteError: ProductionCalibrationNonNegativeSchema.nullable(),
+    /** Mean of (mean - outcome), in levels; positive means the answers scored above the outcome. */
+    meanSignedError: ProductionCalibrationFiniteSchema.nullable(),
+    /** Ranked probability score: the Brier score of every "level >= k" cut, averaged; 0 is perfect. */
+    rankedProbabilityScore: ProductionCalibrationProbabilitySchema.nullable(),
+    /** Reliability of the most likely level's probability against exact correctness, as for choice questions. */
+    reliability: z.array(ProductionCalibrationReliabilityBinSchema).min(1).max(PRODUCTION_CALIBRATION_MAX_BINS),
+    ece: ProductionCalibrationProbabilitySchema.nullable(),
+    brier: ProductionCalibrationProbabilitySchema.nullable(),
+    /** One cut per k from 1 to levels - 1. */
+    cumulative: z.array(ProductionCalibrationScoreCutSchema),
+    /** One cell per observed (truth, predicted) pair, sorted by truth then predicted. */
+    confusion: z.array(ProductionCalibrationScoreConfusionCellSchema),
+    byModel: z.array(ProductionCalibrationScoreModelGroupSchema)
+  }).strict(),
+  z.object({
+    ...ProductionCalibrationScoreBaseShape,
+    state: z.literal("undefined"),
+    undefinedReason: z.enum(["mixed_levels", "no_valid_answers"])
+  }).strict()
+]);
 export type ProductionCalibrationScore = z.infer<typeof ProductionCalibrationScoreSchema>;
 
 export const ProductionCalibrationThresholdCostsSchema = z.object({
@@ -453,12 +554,22 @@ export const ProductionCalibrationParametersSchema = z.object({
 }).strict();
 export type ProductionCalibrationParameters = z.infer<typeof ProductionCalibrationParametersSchema>;
 
+/** The decisions a report covers, by decision time. */
+export const ProductionCalibrationWindowSchema = z.object({
+  /** Inclusive; null means no lower bound. */
+  from: ProductionCalibrationTimestampSchema.nullable(),
+  /** Exclusive; null means no upper bound. */
+  to: ProductionCalibrationTimestampSchema.nullable()
+}).strict();
+export type ProductionCalibrationWindow = z.infer<typeof ProductionCalibrationWindowSchema>;
+
 export const ProductionCalibrationArtifactSchema = z.object({
   contract: z.literal(PRODUCTION_CALIBRATION_CONTRACT),
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   metricDefinitionVersion: z.literal(PRODUCTION_CALIBRATION_METRIC_DEFINITION_VERSION),
   intervalDefinitionVersion: z.literal(PRODUCTION_CALIBRATION_INTERVAL_DEFINITION_VERSION),
   generatedAt: ProductionCalibrationTimestampSchema,
+  window: ProductionCalibrationWindowSchema,
   // What this evidence is and is not. Production outcomes are posted by the
   // customer's own people and signals after the decision was acted on; they
   // are not a sealed, governed-blind validation set.
@@ -466,16 +577,21 @@ export const ProductionCalibrationArtifactSchema = z.object({
     kind: z.literal("production_outcomes"),
     sealed: z.literal(false),
     independentHumanValidation: z.literal(false),
+    /** Every supplied outcome except those attached to decisions outside the window. */
     outcomeSources: z.object({
       human: ProductionCalibrationCountSchema,
       automatic: ProductionCalibrationCountSchema,
       delayed: ProductionCalibrationCountSchema
     }).strict()
   }).strict(),
+  // Totals count every record supplied. `outsideWindow` counts the decisions
+  // before or after the window and the actions and outcomes attached to them;
+  // everything else below, and every question, covers the window only.
   records: z.object({
     contract: z.literal(PRODUCTION_DECISION_RECORD_CONTRACT),
     decisions: z.object({
       total: ProductionCalibrationCountSchema,
+      outsideWindow: ProductionCalibrationCountSchema,
       /** Decisions tagged `synthetic: "true"`; a report over only these describes no real traffic. */
       synthetic: ProductionCalibrationCountSchema,
       firstAt: ProductionCalibrationTimestampSchema.nullable(),
@@ -484,11 +600,13 @@ export const ProductionCalibrationArtifactSchema = z.object({
     actions: z.object({
       total: ProductionCalibrationCountSchema,
       /** Actions whose decision id is not in the input. */
-      orphan: ProductionCalibrationCountSchema
+      orphan: ProductionCalibrationCountSchema,
+      outsideWindow: ProductionCalibrationCountSchema
     }).strict(),
     outcomes: z.object({
       total: ProductionCalibrationCountSchema,
       orphan: ProductionCalibrationCountSchema,
+      outsideWindow: ProductionCalibrationCountSchema,
       /** Outcomes replaced by a later outcome for the same decision and question. */
       superseded: ProductionCalibrationCountSchema,
       /** Superseded outcomes whose value differs from the one that won. */

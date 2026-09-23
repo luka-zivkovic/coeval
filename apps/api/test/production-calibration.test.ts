@@ -6,6 +6,7 @@ import {
   PRODUCTION_CALIBRATION_THRESHOLD_GRID,
   PRODUCTION_DECISION_RECORD_CONTRACT,
   ProductionCalibrationArtifactSchema,
+  ProductionCalibrationScoreSchema,
   ProductionDecisionLedgerRecordSchema,
   adviseProductionThreshold,
   buildProductionCalibrationArtifact,
@@ -303,15 +304,181 @@ describe("choice and score calibration", () => {
     expect(calibration.byModel[0]?.accuracy).toMatchObject({ numerator: 3, denominator: 4 });
   });
 
-  it("says plainly that score calibration is not implemented", () => {
-    const records: ProductionDecisionLedgerRecord[] = [{
-      kind: "decision", id: "s1", at: "2026-07-01T00:00:00.000Z", questionSet: { name: "t", version: 1, digest }, model: "m",
-      provider: "test", stateDigest: digest, stateLength: 1, latencyMs: null, usage: null,
-      answers: { sev: { type: "score", mean: 1, probabilities: [0.5, 0.5] } }
-    }, { kind: "outcome", decisionId: "s1", at: "2026-07-01T00:00:00.000Z", question: "sev", value: 1, source: "human" }];
-    expect(productionScoreCalibration(joinProductionDecisionRecords(records), "sev")).toEqual({
-      question: "sev", implemented: false, reason: "ordinal_calibration_not_implemented", n: 1, nWithOutcome: 1
+});
+
+interface ScoreCase {
+  probabilities: number[];
+  /** Defaults to the expected level of `probabilities`. */
+  mean?: number;
+  /** The outcome value; undefined means no outcome. */
+  truth?: number | string | boolean;
+  model?: string;
+}
+
+/** Build a ledger of score `sev` decisions. */
+function scoreLedger(cases: readonly ScoreCase[], question = "sev"): ProductionDecisionLedgerRecord[] {
+  const records: ProductionDecisionLedgerRecord[] = [];
+  cases.forEach((entry, index) => {
+    const id = `s${index + 1}`;
+    const at = new Date(t0 + index * 60_000).toISOString();
+    const mean = entry.mean ?? entry.probabilities.reduce((sum, p, level) => sum + level * p, 0);
+    records.push({
+      kind: "decision", id, at, questionSet: { name: "t", version: 1, digest }, model: entry.model ?? "m1", provider: "test",
+      stateDigest: digest, stateLength: 1, latencyMs: null, usage: null,
+      answers: { [question]: { type: "score", mean, probabilities: entry.probabilities } }
     });
+    if (entry.truth !== undefined) {
+      records.push({ kind: "outcome", decisionId: id, at, question, value: entry.truth, source: "human" });
+    }
+  });
+  return records;
+}
+
+function scoreCalibration(cases: readonly ScoreCase[]) {
+  const calibration = productionScoreCalibration(joinProductionDecisionRecords(scoreLedger(cases)), "sev");
+  expect(ProductionCalibrationScoreSchema.parse(calibration)).toEqual(calibration);
+  return calibration;
+}
+
+describe("score calibration", () => {
+  // Three levels. Hand-computed: A is exactly right; B and C are one level off;
+  // D puts 0.85 on level 2 when the outcome was 0; E has no outcome.
+  const cases: ScoreCase[] = [
+    { probabilities: [0.1, 0.25, 0.65], truth: 2, model: "m1" },
+    { probabilities: [0.55, 0.3, 0.15], truth: 1, model: "m1" },
+    { probabilities: [0.25, 0.45, 0.3], truth: 0, model: "m2" },
+    { probabilities: [0.05, 0.1, 0.85], truth: 0, model: "m2" },
+    { probabilities: [0.3, 0.4, 0.3], model: "m2" }
+  ];
+
+  it("measures level accuracy, mean error, ranked probability, and confidence reliability", () => {
+    const calibration = scoreCalibration(cases);
+    if (calibration.state !== "defined") throw new Error("expected defined score calibration");
+    expect(calibration).toMatchObject({
+      question: "sev", levels: 3, bins: 10, n: 5, nWithOutcome: 4,
+      excluded: { invalidAnswer: 0, outcomeOutOfRange: 0 },
+      levelCounts: [{ levels: 3, decisions: 5 }]
+    });
+    expect(calibration.exactAccuracy).toMatchObject({ numerator: 1, denominator: 4 });
+    expect(calibration.withinOneAccuracy).toMatchObject({ numerator: 3, denominator: 4 });
+    expect(calibration.meanAbsoluteError).toBeCloseTo(0.925, 10);
+    expect(calibration.meanSignedError).toBeCloseTo(0.5, 10);
+    expect(calibration.rankedProbabilityScore).toBeCloseTo(0.341875, 10);
+    expect(calibration.brier).toBeCloseTo(0.3375, 10);
+    expect(calibration.reliability[6]).toMatchObject({ count: 1 });
+    expect(calibration.reliability[6]?.observedRate).toMatchObject({ numerator: 1, denominator: 1 });
+    expect(calibration.reliability[8]?.observedRate).toMatchObject({ numerator: 0, denominator: 1 });
+    expect(calibration.confusion).toEqual([
+      { truth: 0, predicted: 1, count: 1 },
+      { truth: 0, predicted: 2, count: 1 },
+      { truth: 1, predicted: 0, count: 1 },
+      { truth: 2, predicted: 2, count: 1 }
+    ]);
+  });
+
+  it("reports one cumulative cut per level boundary whose Brier scores average to the ranked probability score", () => {
+    const calibration = scoreCalibration(cases);
+    if (calibration.state !== "defined") throw new Error("expected defined score calibration");
+    expect(calibration.cumulative.map((cut) => cut.atLeast)).toEqual([1, 2]);
+    const [atLeastOne, atLeastTwo] = calibration.cumulative;
+    expect(atLeastOne?.meanPredicted).toBeCloseTo(0.7625, 10);
+    expect(atLeastOne?.observedRate).toMatchObject({ numerator: 2, denominator: 4 });
+    expect(atLeastOne?.brier).toBeCloseTo(0.444375, 10);
+    expect(atLeastTwo?.meanPredicted).toBeCloseTo(0.4875, 10);
+    expect(atLeastTwo?.observedRate).toMatchObject({ numerator: 1, denominator: 4 });
+    expect(atLeastTwo?.brier).toBeCloseTo(0.239375, 10);
+    const meanCutBrier = calibration.cumulative.reduce((sum, cut) => sum + (cut.brier ?? 0), 0) / calibration.cumulative.length;
+    expect(calibration.rankedProbabilityScore).toBeCloseTo(meanCutBrier, 12);
+  });
+
+  it("groups by observed model identity", () => {
+    const calibration = scoreCalibration(cases);
+    if (calibration.state !== "defined") throw new Error("expected defined score calibration");
+    expect(calibration.byModel.map((group) => group.model.observedModel)).toEqual(["m1", "m2"]);
+    const [m1, m2] = calibration.byModel;
+    expect(m1).toMatchObject({ n: 2, nWithOutcome: 2 });
+    expect(m1?.exactAccuracy).toMatchObject({ numerator: 1, denominator: 2 });
+    expect(m1?.meanAbsoluteError).toBeCloseTo(0.425, 10);
+    expect(m1?.rankedProbabilityScore).toBeCloseTo(0.114375, 10);
+    expect(m2).toMatchObject({ n: 3, nWithOutcome: 2 });
+    expect(m2?.exactAccuracy).toMatchObject({ numerator: 0, denominator: 2 });
+    expect(m2?.meanAbsoluteError).toBeCloseTo(1.425, 10);
+    expect(m2?.rankedProbabilityScore).toBeCloseTo(0.569375, 10);
+  });
+
+  it("counts invalid answers and out-of-range outcomes instead of repairing them, and ignores wrong-type outcomes", () => {
+    const calibration = scoreCalibration([
+      { probabilities: [1] },
+      { probabilities: Array.from({ length: 11 }, () => 1 / 11) },
+      { probabilities: [0.5, 0.3] },
+      { probabilities: [0.2, 0.3, 0.5], mean: 2.5 },
+      { probabilities: [0.2, 0.3, 0.5], truth: 3 },
+      { probabilities: [0.2, 0.3, 0.5], truth: -1 },
+      { probabilities: [0.2, 0.3, 0.5], truth: 1.5 },
+      { probabilities: [0.2, 0.3, 0.5], truth: "2" },
+      { probabilities: [0.2, 0.3, 0.5], truth: true },
+      // Sums to 1.005: within the tolerance, so it is divided by its sum.
+      { probabilities: [0.605, 0.3, 0.1], truth: 1 },
+      // A tie resolves to the lowest level.
+      { probabilities: [0.4, 0.4, 0.2], truth: 0 }
+    ]);
+    if (calibration.state !== "defined") throw new Error("expected defined score calibration");
+    expect(calibration).toMatchObject({
+      n: 7,
+      nWithOutcome: 2,
+      excluded: { invalidAnswer: 4, outcomeOutOfRange: 3 },
+      levelCounts: [{ levels: 3, decisions: 7 }]
+    });
+    expect(calibration.confusion).toEqual([
+      { truth: 0, predicted: 0, count: 1 },
+      { truth: 1, predicted: 0, count: 1 }
+    ]);
+    expect(calibration.reliability[6]).toMatchObject({ count: 1 });
+    expect(calibration.reliability[6]?.meanPredicted).toBeCloseTo(0.605 / 1.005, 12);
+    expect(calibration.reliability[4]).toMatchObject({ count: 1 });
+    expect(calibration.reliability[4]?.meanPredicted).toBeCloseTo(0.4, 12);
+  });
+
+  it("stays defined with single-level outcomes, empty bins, and no outcomes, and never emits NaN", () => {
+    const sameLevel = scoreCalibration([
+      { probabilities: [0.1, 0.8, 0.1], truth: 1 },
+      { probabilities: [0.3, 0.6, 0.1], truth: 1 }
+    ]);
+    if (sameLevel.state !== "defined") throw new Error("expected defined score calibration");
+    expect(sameLevel.cumulative[0]?.observedRate).toMatchObject({ numerator: 2, denominator: 2, interval: { upper: 1 } });
+    expect(sameLevel.cumulative[1]?.observedRate).toMatchObject({ numerator: 0, denominator: 2, interval: { lower: 0 } });
+    expect(sameLevel.reliability[0]).toMatchObject({ count: 0, meanPredicted: null, observedRate: { state: "undefined" } });
+
+    const unscored = scoreCalibration([{ probabilities: [0.1, 0.9] }]);
+    if (unscored.state !== "defined") throw new Error("expected defined score calibration");
+    expect(unscored).toMatchObject({
+      levels: 2, n: 1, nWithOutcome: 0, meanAbsoluteError: null, meanSignedError: null,
+      rankedProbabilityScore: null, brier: null, ece: null, confusion: []
+    });
+    expect(unscored.exactAccuracy).toMatchObject({ state: "undefined", undefinedReason: "zero_denominator" });
+    expect(unscored.cumulative).toEqual([expect.objectContaining({ atLeast: 1, meanPredicted: null, brier: null })]);
+    expect(JSON.stringify([sameLevel, unscored])).not.toContain("NaN");
+  });
+
+  it("is explicitly undefined when answers use different level counts or none is valid", () => {
+    expect(scoreCalibration([
+      { probabilities: [0.2, 0.3, 0.5], truth: 2 },
+      { probabilities: [0.2, 0.2, 0.2, 0.2, 0.2], truth: 4 },
+      { probabilities: [0.7] }
+    ])).toEqual({
+      question: "sev",
+      state: "undefined",
+      undefinedReason: "mixed_levels",
+      n: 2,
+      nWithOutcome: 2,
+      excluded: { invalidAnswer: 1, outcomeOutOfRange: 0 },
+      levelCounts: [{ levels: 3, decisions: 1 }, { levels: 5, decisions: 1 }]
+    });
+    expect(scoreCalibration([{ probabilities: [0.2, 0.2], truth: 0 }])).toMatchObject({
+      state: "undefined", undefinedReason: "no_valid_answers", n: 0, nWithOutcome: 0,
+      excluded: { invalidAnswer: 1, outcomeOutOfRange: 0 }, levelCounts: []
+    });
+    expect(() => productionScoreCalibration([], "sev", { bins: 0 })).toThrow(RangeError);
   });
 });
 
@@ -467,7 +634,10 @@ describe("production calibration artifact", () => {
     });
     expect(ProductionCalibrationArtifactSchema.parse(artifact)).toEqual(artifact);
     expect(artifact.contract).toBe(PRODUCTION_CALIBRATION_CONTRACT);
+    expect(artifact.contract).toBe("rubrist/production-calibration/v2");
+    expect(artifact.schemaVersion).toBe(2);
     expect(artifact.generatedAt).toBe("2026-09-20T12:00:00.000Z");
+    expect(artifact.window).toEqual({ from: null, to: null });
     expect(artifact.evidence).toEqual({
       kind: "production_outcomes",
       sealed: false,
@@ -476,9 +646,9 @@ describe("production calibration artifact", () => {
     });
     expect(artifact.records).toMatchObject({
       contract: PRODUCTION_DECISION_RECORD_CONTRACT,
-      decisions: { total: 2, synthetic: 0, firstAt: "2026-09-20T20:41:31.392Z", lastAt: "2026-09-20T20:41:31.544Z" },
-      actions: { total: 0, orphan: 0 },
-      outcomes: { total: 4, orphan: 0, superseded: 0, conflicting: 0 },
+      decisions: { total: 2, outsideWindow: 0, synthetic: 0, firstAt: "2026-09-20T20:41:31.392Z", lastAt: "2026-09-20T20:41:31.544Z" },
+      actions: { total: 0, orphan: 0, outsideWindow: 0 },
+      outcomes: { total: 4, orphan: 0, outsideWindow: 0, superseded: 0, conflicting: 0 },
       questionSets: [{ name: "flaky-triage", version: 3, decisions: 2 }],
       models: [{ model: { provider: "typesafe", observedModel: "jev-1.13.0", identityStrength: "observed_version" }, decisions: 2 }]
     });
@@ -512,11 +682,18 @@ describe("production calibration artifact", () => {
     ]);
 
     const severity = artifact.questions.find((question) => question.question === "severity");
-    expect(severity).toEqual({
+    if (severity?.answerType !== "score") throw new Error("expected score calibration for severity");
+    expect(severity.calibration).toMatchObject({
       question: "severity",
-      answerType: "score",
-      calibration: { question: "severity", implemented: false, reason: "ordinal_calibration_not_implemented", n: 2, nWithOutcome: 0 }
+      state: "defined",
+      levels: 5,
+      n: 2,
+      nWithOutcome: 0,
+      excluded: { invalidAnswer: 0, outcomeOutOfRange: 0 },
+      levelCounts: [{ levels: 5, decisions: 2 }],
+      meanAbsoluteError: null
     });
+    expect(severity.calibration.state === "defined" && severity.calibration.cumulative).toHaveLength(4);
     expect(JSON.stringify(artifact)).not.toContain("NaN");
   });
 
@@ -533,8 +710,8 @@ describe("production calibration artifact", () => {
     const artifact = buildProductionCalibrationArtifact(records, { now });
     expect(ProductionCalibrationArtifactSchema.safeParse(artifact).success).toBe(true);
     expect(artifact.records.decisions).toMatchObject({ total: 2, synthetic: 1 });
-    expect(artifact.records.actions).toEqual({ total: 1, orphan: 1 });
-    expect(artifact.records.outcomes).toEqual({ total: 5, orphan: 1, superseded: 2, conflicting: 1 });
+    expect(artifact.records.actions).toEqual({ total: 1, orphan: 1, outsideWindow: 0 });
+    expect(artifact.records.outcomes).toEqual({ total: 5, orphan: 1, outsideWindow: 0, superseded: 2, conflicting: 1 });
     expect(artifact.evidence.outcomeSources).toEqual({ human: 2, automatic: 2, delayed: 1 });
     const question = artifact.questions[0];
     if (question?.answerType !== "boolean") throw new Error("expected boolean calibration");
@@ -548,6 +725,40 @@ describe("production calibration artifact", () => {
     const empty = buildProductionCalibrationArtifact([], { now });
     expect(ProductionCalibrationArtifactSchema.safeParse(empty).success).toBe(true);
     expect(empty.questions).toEqual([]);
-    expect(empty.records.decisions).toEqual({ total: 0, synthetic: 0, firstAt: null, lastAt: null });
+    expect(empty.records.decisions).toEqual({ total: 0, outsideWindow: 0, synthetic: 0, firstAt: null, lastAt: null });
+  });
+
+  it("covers only the decisions inside the window and counts what it left out", () => {
+    const records = ledger([0, 1, 2, 3].map((offset) => ({ p: 0.8, y: true, at: new Date(t0 + offset * day).toISOString() })));
+    records.push({ kind: "action", decisionId: "d1", at: new Date(t0).toISOString(), question: "q", threshold: 0.5, action: "auto" });
+    records.push({ kind: "action", decisionId: "d2", at: new Date(t0 + day).toISOString(), question: "q", threshold: 0.5, action: "auto" });
+    records.push({ kind: "outcome", decisionId: "ghost", at: new Date(t0).toISOString(), question: "q", value: true, source: "delayed" });
+    const artifact = buildProductionCalibrationArtifact(records, {
+      now, window: { from: new Date(t0 + day), to: new Date(t0 + 3 * day) }
+    });
+    expect(ProductionCalibrationArtifactSchema.parse(artifact)).toEqual(artifact);
+    expect(artifact.window).toEqual({ from: "2026-07-02T00:00:00.000Z", to: "2026-07-04T00:00:00.000Z" });
+    expect(artifact.records.decisions).toEqual({
+      total: 4, outsideWindow: 2, synthetic: 0, firstAt: "2026-07-02T00:00:00.000Z", lastAt: "2026-07-03T00:00:00.000Z"
+    });
+    expect(artifact.records.actions).toEqual({ total: 2, orphan: 0, outsideWindow: 1 });
+    expect(artifact.records.outcomes).toEqual({ total: 5, orphan: 1, outsideWindow: 2, superseded: 0, conflicting: 0 });
+    expect(artifact.evidence.outcomeSources).toEqual({ human: 0, automatic: 2, delayed: 1 });
+    const question = artifact.questions[0];
+    if (question?.answerType !== "boolean") throw new Error("expected boolean calibration");
+    expect(question.calibration).toMatchObject({ n: 2, nWithOutcome: 2 });
+  });
+
+  it("rejects conflicting decisions outside the window, and an empty or invalid window", () => {
+    const records = ledger([{ p: 0.8 }]);
+    const decision = records[0];
+    if (decision?.kind !== "decision") throw new Error("expected a decision record");
+    records.push({ ...decision, stateLength: 2 });
+    expect(() => buildProductionCalibrationArtifact(records, { now, window: { from: new Date(t0 + day) } }))
+      .toThrow(/Conflicting decision records/);
+    expect(() => buildProductionCalibrationArtifact([], { now, window: { from: new Date(t0), to: new Date(t0) } })).toThrow(RangeError);
+    expect(() => buildProductionCalibrationArtifact([], { now, window: { to: new Date(Number.NaN) } })).toThrow(RangeError);
+    expect(buildProductionCalibrationArtifact([], { now, window: { from: null, to: new Date(t0) } }).window)
+      .toEqual({ from: null, to: "2026-07-01T00:00:00.000Z" });
   });
 });

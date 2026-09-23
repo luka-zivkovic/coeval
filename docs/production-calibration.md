@@ -42,7 +42,7 @@ Request body (strict; unknown fields are rejected):
 | `costs?` | `{ falsePositive, falseNegative, humanReview? }` for the advisor; `null` or omitted means no advice. |
 
 The response is `{ artifact, summary, projectRole }`: the
-`rubrist/production-calibration/v1` artifact, and a summary with record counts
+`rubrist/production-calibration/v2` artifact, and a summary with record counts
 (total, decisions, actions, outcomes), each question with its answer types and
 its decision and outcome counts, the model identities seen, and the
 question-set digests. The route is the fourth import shape after Ironside,
@@ -66,8 +66,11 @@ matrix and its four rates, the advisor with three cost inputs whose state
 always visible, the drift table with its model-change and drift flags, and the
 by-model and by-digest groups. A choice question shows top-1 accuracy, the
 confidence reliability table and diagram, the off-diagonal confusion pairs,
-and the by-model groups. A score question shows the artifact's
-not-implemented notice. Every rate is rendered as numerator over denominator
+and the by-model groups. A score question shows exact and within-one level
+accuracy, mean absolute error, the bias with its direction in words, the ranked
+probability score, the confidence reliability table and diagram, the
+cumulative level-cut table, the off-diagonal level confusions, and the
+by-model groups; when its metrics are undefined it says why instead. Every rate is rendered as numerator over denominator
 with its 95% interval, and every reading starts with the provenance line:
 "Outcomes from production sources are development feedback. Independent
 validation is a separate step." An independently reviewed sample routed
@@ -133,15 +136,29 @@ winner are counted as conflicts. Actions
 and outcomes whose decision is not in the input are dropped from the join and
 counted as orphans in the artifact.
 
-## Output artifact: `rubrist/production-calibration/v1`
+## Output artifact: `rubrist/production-calibration/v2`
 
-`buildProductionCalibrationArtifact(records, { now, ... })` produces one
-`ProductionCalibrationArtifact`. `now` is a required parameter because the
-builder never reads the clock. The artifact carries the record inventory
-(decision, action, and outcome totals, orphans, superseded and conflicting
-outcomes, decisions tagged `synthetic: "true"`, question sets seen, model
-identities seen), the parameters used, and one entry per question and answer
-type.
+`buildProductionCalibrationArtifact(records, { now, window?, ... })` produces
+one `ProductionCalibrationArtifact`. `now` is a required parameter because the
+builder never reads the clock. The artifact carries the window it covers, the
+record inventory (decision, action, and outcome totals, orphans, records
+outside the window, superseded and conflicting outcomes, decisions tagged
+`synthetic: "true"`, question sets seen, model identities seen), the
+parameters used, and one entry per question and answer type.
+
+Version 2 replaced version 1 on 2026-09-24, before any report was stored. It
+adds score-question metrics and the window, and its metric definitions are
+`production-calibration-metrics/v2`. The input record contract is unchanged.
+
+The **window** selects decisions by their `at`: `from` is inclusive, `to` is
+exclusive, and either may be null for no bound. The preview route sends no
+window, so a preview covers every decision supplied (`{ from: null, to: null }`).
+Record totals count everything supplied; `outsideWindow` counts the decisions
+before or after the window and the actions and outcomes attached to them, and
+those never count as orphans. Every other inventory figure, the outcome
+sources, and every question cover the window only. Conflicting decision IDs
+are checked across everything supplied, so a window cannot hide one. A window
+whose `from` is not earlier than its `to` rejects the report.
 
 Global and per-question classification thresholds must be finite numbers in
 `[0, 1]`; invalid values reject the report before a calibration result is returned.
@@ -187,9 +204,43 @@ identity.
 
 ### Score questions
 
-Reported with `implemented: false` and
-`reason: "ordinal_calibration_not_implemented"`, plus the decision and
-outcome counts. Nothing else is claimed.
+A score answer is a distribution over an ordered rubric, `probabilities[k]`
+for level `k` from 0, with the fractional `mean`; the outcome is the true level
+index. Each answer is checked before it is used, and nothing is repaired:
+
+- An answer with fewer than 2 or more than 10 levels, probabilities that do
+  not sum to 1 within 0.01, or a `mean` outside `[0, levels - 1]` is counted in
+  `excluded.invalidAnswer` and left out. Probabilities within the tolerance
+  are divided by their sum.
+- A numeric outcome that is not an integer level of that answer's scale is
+  counted in `excluded.outcomeOutOfRange` and left out. Outcomes of another
+  type are ignored, as for the other question types.
+
+Metrics are defined only when every valid answer to the question uses the
+same number of levels: level 3 of five and level 3 of ten are different
+claims. Otherwise the entry is `state: "undefined"` with `undefinedReason:
+"mixed_levels"` or `"no_valid_answers"`, and it keeps the counts and the level
+counts seen. A defined entry reports:
+
+- **Exact and within-one accuracy** of the most likely level (ties resolve to
+  the lowest level), as Wilson rates.
+- **Mean absolute error and bias** of the stated `mean` against the outcome,
+  in levels. They treat the levels as evenly spaced. Positive bias means the
+  answers scored above the outcome on average.
+- **Confidence reliability.** The most likely level's probability against
+  exact correctness, with ECE and Brier: the same pairing as choice questions.
+- **Cumulative cuts.** For each `k` from 1 to `levels - 1`, the predicted
+  `P(level >= k)` against whether the outcome reached level `k`. Each cut is a
+  binary event, so it gets the boolean reliability bins, mean prediction,
+  observed Wilson rate, Brier, and ECE.
+- **Ranked probability score.** The mean over cuts of each cut's Brier score:
+  the ordinal counterpart of Brier. 0 is perfect.
+- A sorted list of `(truth, predicted, count)` level confusion cells, and
+  exact accuracy, mean absolute error, and ranked probability score by model
+  identity.
+
+Score questions have no drift report or threshold advisor, like choice
+questions.
 
 ## The threshold advisor
 
@@ -220,7 +271,6 @@ have. It recommends; it does not decide. Release thresholds and
 
 ## Not implemented
 
-- **Score (ordinal) calibration.** Reported as not implemented, with counts.
 - **Persistence of decision records.** The preview route and the view are
   compute-only. No table, worker, or history stores a ledger, an artifact, or
   a reading; a refresh starts over. Persistence, ingest, saved snapshots, and

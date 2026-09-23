@@ -172,9 +172,9 @@ composite score or authority decision.
 
 Production calibration exists as a compute-only diagnostic. A pasted or
 uploaded ledger in the `rubrist/production-decision-record/v1` format produces
-a `rubrist/production-calibration/v1` report for boolean and choice questions,
-and nothing is stored. Durable records, a non-paste ingest path, and
-score-question analysis are TARGET. Accepted
+a `rubrist/production-calibration/v2` report for boolean, choice, and score
+questions over an explicit decision window, and nothing is stored. Durable
+records, a non-paste ingest path, and saved snapshots are TARGET. Accepted
 [ADR-0013](docs/decisions/0013-production-outcome-monitoring.md) defines their
 persistence, ingest, snapshot, and retention design, and Batch 7 sequences the
 runtime work.

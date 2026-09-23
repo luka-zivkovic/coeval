@@ -12,15 +12,21 @@ import {
   cheapestBandRows,
   costsFromInputs,
   driftFlags,
+  formatLevels,
   formatModelIdentity,
   formatOutcomeSources,
   formatRate,
   formatRateCompact,
+  formatReportWindow,
   questionOptionLabel,
   questionOptions,
   recommendationText,
   reliabilityDiagramLayout,
-  topConfusionPairs
+  scoreBias,
+  scoreExclusionText,
+  scoreUndefinedText,
+  topConfusionPairs,
+  topScoreConfusionPairs
 } from "../src/lib/production-calibration-ui.js";
 
 const records = readFileSync(
@@ -125,5 +131,37 @@ describe("production calibration presentation helpers", () => {
     expect(costsFromInputs({ falsePositive: "-1", falseNegative: "4", humanReview: "" })).toBeNull();
     const artifact = buildProductionCalibrationArtifact(records, { now });
     expect(booleanEntry(artifact, "is_flaky").drift.windows.map(driftFlags)).toEqual([[]]);
+  });
+
+  it("states the report window, level errors, bias direction, and score exclusions in words", () => {
+    expect(formatReportWindow({ from: null, to: null })).toBe("every decision supplied");
+    expect(formatReportWindow({ from: "2026-07-01T00:00:00.000Z", to: null }))
+      .toBe("2026-07-01T00:00:00.000Z (inclusive) to the last decision (exclusive)");
+    expect(formatLevels(null)).toBe("n/a");
+    expect(formatLevels(1)).toBe("1.00 level");
+    expect(formatLevels(0.925)).toBe("0.93 levels");
+    expect(scoreBias(0.5)).toEqual({ value: "+0.50 levels", direction: "stated mean above the outcome on average" });
+    expect(scoreBias(-0.25)).toEqual({ value: "-0.25 levels", direction: "stated mean below the outcome on average" });
+    expect(scoreBias(0)).toEqual({ value: "0.00 levels", direction: "no average offset" });
+    expect(scoreBias(null)).toEqual({ value: "n/a", direction: "no outcomes yet" });
+    expect(scoreExclusionText({ invalidAnswer: 0, outcomeOutOfRange: 0 })).toBeNull();
+    expect(scoreExclusionText({ invalidAnswer: 2, outcomeOutOfRange: 1 })).toBe(
+      "2 answers excluded: a level count outside 2 to 10, probabilities that do not sum to 1, or a mean off the scale · 1 outcome is not a level of the answer's scale."
+    );
+    const base = { question: "sev", state: "undefined" as const, n: 0, nWithOutcome: 0, excluded: { invalidAnswer: 1, outcomeOutOfRange: 0 } };
+    expect(scoreUndefinedText({ ...base, undefinedReason: "no_valid_answers", levelCounts: [] })).toContain("No answer to this question");
+    expect(scoreUndefinedText({
+      ...base, undefinedReason: "mixed_levels", levelCounts: [{ levels: 3, decisions: 2 }, { levels: 5, decisions: 1 }]
+    })).toContain("(3 levels: 2 decisions · 5 levels: 1 decision)");
+    expect(topScoreConfusionPairs([
+      { truth: 0, predicted: 0, count: 9 },
+      { truth: 0, predicted: 2, count: 1 },
+      { truth: 2, predicted: 1, count: 3 },
+      { truth: 1, predicted: 2, count: 1 }
+    ])).toEqual([
+      { truth: 2, predicted: 1, count: 3 },
+      { truth: 0, predicted: 2, count: 1 },
+      { truth: 1, predicted: 2, count: 1 }
+    ]);
   });
 });
