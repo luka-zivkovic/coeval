@@ -32,8 +32,10 @@ The separate pre-release `trustctl` CLI installs this bundle, generates the
 required secrets, preserves operator additions in `compose.override.yaml`,
 and provides `status`, `doctor`, update checking, and explicit updates. It is
 not part of Rubrist's runtime and receives no Docker or hosting credentials.
-Its one-line bootstrap must not be advertised until the trustctl repository,
-this bundle, and anonymously pullable images are all public.
+[trustctl v0.2.0](https://github.com/luka-zivkovic/trustctl/releases/tag/v0.2.0),
+this bundle, and the Rubrist images are public. Its bootstrap integration test
+installs the published Rubrist and Ironside 0.3.0 bundles and verifies health,
+status, update discovery and owner setup.
 
 Coolify remains a separate deployment method. Its control plane owns the
 saved Compose and environment state; trustctl neither adopts nor updates a

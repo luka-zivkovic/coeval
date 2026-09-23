@@ -263,11 +263,10 @@ none requires the others.
 | [Dailies](https://github.com/luka-zivkovic/dailies) | Decides whether an AI change meets customer-owned release rules. | Evidence consumer. Dailies verifies Rubrist receipts and binary-calibration artifacts and applies its own policy; implemented, with no network lookup of Rubrist. |
 | [Casefile](https://github.com/luka-zivkovic/casefile) | Statically inspects agent skills and plugins before installation. | No runtime integration. It is the scanner used on the plugin in this repository. |
 
-The renamed evidence requires a Rubrist-compatible Dailies build. The
-published `dailies@0.3.x` packages still expect Coeval identifiers. Until the
-renamed npm release is available, build Dailies from its current source;
-Dailies 0.4.0 is the prepared release for these contracts. Rubrist Stack keeps
-its previous compatible server/consumer pair until both releases are published.
+Use `dailies@0.4.0` or later with Rubrist 0.3.0 evidence. The older
+`dailies@0.3.x` packages expect Coeval identifiers and are incompatible.
+[Rubrist Stack](https://github.com/luka-zivkovic/rubrist-stack) pins the
+compatible released server, consumer and plugins together.
 
 Traces in Ironside can feed Rubrist, and Rubrist's evidence can feed Dailies,
 without any of the three owning the others' data. Many mature products
