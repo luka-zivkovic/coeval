@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="apps/web/public/brand/rubrist-app-icon.svg" alt="Rubrist logo" width="80" height="80">
+</p>
+
 <h1 align="center">Rubrist</h1>
 
 <p align="center"><strong>Turn examples of your AI failing into evaluators you can check against human judgment, and keep the evidence.</strong></p>
