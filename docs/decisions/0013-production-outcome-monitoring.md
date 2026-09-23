@@ -8,7 +8,11 @@ Decision owner: Luka Živković (founder), explicit approval on 2026-09-23.
 The founder placed production monitoring in Rubrist's charter, now recorded
 in `PRODUCT.md`, and settled retention, stored snapshots, notifications, and
 outcome sources the same day. Runtime work follows its implementation batch
-in `docs/implementation-batches.md`.
+in `docs/implementation-batches.md`. An independent review on 2026-09-24
+added retention by receive time and its bounds, rejection of future-dated
+records, erasure tombstones, revoked-key purges, the deletion mechanism, the
+stored build order, and the ingest budget, under the founder's instruction to
+resolve review findings before merging.
 
 ## Context
 
@@ -63,12 +67,17 @@ become human truth, dataset revisions, exposure events, calibration evidence,
 sealed validation, suite members, or receipt content. The report's `evidence`
 block stays fixed to `kind: "production_outcomes"`, `sealed: false`, and
 `independentHumanValidation: false`. An outcome with `source: "human"` is
-still not governed review.
+still not governed review. The calibration requirements of ADR-0002 and
+ADR-0004 govern evaluator calibration evidence only; production analysis of
+boolean, choice, or score questions neither satisfies nor reopens them.
 
 Routing a low-confidence sample from production into governed review is a
-separate, later decision. When it exists, reviewers see only the frozen
-review item under ADR-0008, never the production probability, action, or
-outcome.
+separate, later decision. When it exists, the reviewer view includes only the
+frozen review item under ADR-0008, never the production probability, action,
+or outcome. That decision must also stop a reviewer from finding the item's
+production record another way, for example by hashing the item's text to
+match an unsalted `stateDigest`: routed reviewers get no per-record reads, or
+such a read counts as exposure.
 
 Monitoring makes no operating decision. The threshold advisor recommends a
 threshold or review band from past outcomes; it does not set one. Drift and
@@ -98,6 +107,9 @@ Conflict and duplicate rules move to write time:
 - Several outcomes for one decision and question are kept. The report applies
   the existing rule: the latest `at` wins and differing superseded values
   count as conflicts. A correction is a new outcome record, never an edit.
+- A record whose `at` is more than five minutes after Rubrist receives it is
+  rejected, so a future-dated outcome cannot win every later build. Older
+  records, including backfills, are accepted.
 
 Rubrist records who submitted each record and when it was received (the API
 key or session user, and the receive time) outside the record content. The
@@ -106,16 +118,28 @@ record's `by` field stays caller-asserted and is not treated as observed.
 The record format stays `production-decision-record/v1`. Rubrist does not add
 source values or fields for one deployment or demo. Outcomes from any
 population use the existing `source` values, and `by` or `note` can say where
-they came from.
+they came from. Reports do not filter on `by` or `note`; populations that must
+be read apart belong in separate projects, or in a later report filter on
+decision `tags`, which needs no contract change.
 
 ### 3. Reports and saved snapshots
 
 A report is built from stored records for an explicit time window and
-parameters, with `now` supplied by the server at request time. A build that
-would exceed the record ceiling is rejected with an error that names the
-ceiling and the window. It is never silently sampled or truncated.
+parameters, with `now` supplied by the server at request time. A windowed
+build loads the decisions whose `at` falls in the window with all of their
+actions and outcomes, plus orphan actions and outcomes whose own `at` falls in
+the window. Records reach the builder ordered by `at`, then receive time, then
+content digest, so outcome ties resolve the same way on every build. A build
+whose loaded records would exceed the record ceiling is rejected with an error
+that names the ceiling and the window. It is never silently sampled or
+truncated.
 
-A project member can save a report as a snapshot. A snapshot stores the
+Because identical records are stored once, a stored build counts them once,
+and its outcome and superseded totals can be lower than a preview of the same
+pasted ledger.
+
+A project member can save a report built from stored records as a snapshot; a
+preview of a pasted ledger cannot be saved. A snapshot stores the
 report's exact canonical bytes and their digest, append-only, with its build
 time, window, parameters, report contract version, and a record-set digest
 over the sorted content digests of the records it used. Snapshots keep
@@ -147,7 +171,13 @@ reports, or read other project data. Existing keys keep their current
 capabilities and do not gain ingest. A leaked ingest key can then only add
 records, and every record names the key that sent it.
 
-Ingest is batch-first. Rate limits charge for records as well as requests.
+Ingest is batch-first. A batch holds at most 10,000 records and 4 MiB. Ingest
+keys have their own records-per-minute budget, separate from the judge request
+bucket, with a burst no smaller than one full batch; like the existing
+guardrails, the limits are configurable. The current limiter is in memory and
+per process, which is acceptable only while ADR-0011's pre-launch conditions
+hold. A shared quota is required before more than one API instance serves
+ingest.
 
 An owner can also import a ledger file through the session UI. It uses the
 same write path, rules, and submitter provenance. The existing preview route
@@ -161,15 +191,31 @@ observation limit.
 ### 5. Retention and erasure
 
 Each project has a retention period for production records: 90 days by
-default, adjustable by the owner. A scheduled job, not only an owner action,
-deletes whole decisions older than the period together with their actions
-and outcomes, and deletes orphans by their own `at`. Each run writes an audit
-entry with counts and the cutoff.
+default, adjustable by the owner between 1 and 730 days. It cannot be switched
+off. Retention runs on the time Rubrist received a record, not on the caller's
+`at`, so neither a future-dated record nor an old backfill escapes it. A
+scheduled job, not only an owner action, deletes whole decisions received
+before the cutoff together with their actions and outcomes, and deletes
+orphans by their own receive time. Each run writes an audit entry with counts
+and the cutoff.
 
 Records are otherwise append-only. Because `note`, `by`, and `tags` are
 caller-controlled and may contain personal data, an owner may erase all
-records for one decision ID. The audit entry keeps only the decision ID's
-digest and the erased record digests.
+records for one decision ID. Erasure leaves a tombstone holding only the
+decision ID's digest, and later records for that decision ID are rejected, so
+a producer replaying its own ledger cannot bring erased data back. The audit
+entry keeps only the decision ID's digest and the erased record digests.
+
+An owner may also purge every record sent by a revoked API key. That removes
+what a leaked key added, including outcomes posted in advance for decisions
+that had not arrived yet. The audit entry names the key and the counts.
+
+Records and snapshots reject every UPDATE. DELETE is allowed once the project
+row is gone, or inside Rubrist's retention, erasure, purge, and
+snapshot-deletion operations, which write their audit entry in the same
+transaction; the trigger checks a transaction-local marker that only those
+operations set. Audit entries go to the existing `audit_logs` table, which is
+not append-only today; this ADR does not change that.
 
 Record retention and decision erasure do not rewrite saved snapshots.
 Snapshots hold aggregates and carry no `note`, `by`, or `tags` content, but
@@ -184,6 +230,14 @@ Records never store state text or question text. `stateDigest` and
 questions, as today. The documentation must say that an unsalted digest of a
 short or predictable state can be guessed, so it identifies the state rather
 than anonymizing it. Reads require a project-member session.
+
+### 7. Pre-launch status
+
+Until ADR-0011's exit condition is met, stored records and snapshots are as
+disposable as every other pre-launch table, and the baseline may be rebuilt
+under them. The first persistent ingest of records from a system outside the
+founder's own testing is an ADR-0011 exit event and is recorded as one before
+it happens.
 
 ## Alternatives considered
 
@@ -200,6 +254,8 @@ than anonymizing it. Reads require a project-member session.
   as truth.
 - **Start with Ironside ingest.** Deferred: there is no attribute convention,
   the feed is pull-based, and the import path is tied to judging.
+- **Run retention on the caller's `at`.** Rejected: a future-dated record
+  would never expire and an old backfill would be deleted on the next run.
 
 ## Consequences
 
@@ -211,9 +267,10 @@ than anonymizing it. Reads require a project-member session.
 - Implementation follows Batch 7 in `docs/implementation-batches.md`. Under
   ADR-0011 the tables go into the single baseline with append-only triggers.
   Tests cover clean install, key capabilities, conflict rejection, idempotent
-  retries, orphans that later join, the record ceiling, retention and
-  erasure, snapshot byte and digest stability, and the absence of any
-  state-text storage.
+  retries, future-dated rejection, orphans that later join, deterministic
+  build order, the record ceiling, retention by receive time, erasure
+  tombstones, revoked-key purges, snapshot byte and digest stability, and the
+  absence of any state-text storage.
 - `docs/production-calibration.md` changes from compute-only to the accepted
   design when that batch lands.
 
@@ -226,4 +283,5 @@ before runtime work.
   snapshots are in use.
 - **Ironside ingest**, under the prerequisites in section 4.
 - **Governed-review routing** of a low-confidence production sample, under
-  the separation in section 1.
+  the separation in section 1, including the `stateDigest` lookup it must
+  prevent.

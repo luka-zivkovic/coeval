@@ -232,10 +232,12 @@ have. It recommends; it does not decide. Release thresholds and
 - **Governed-review routing of a low-confidence sample.** The advisor names
   a review band, but nothing sends the decisions inside it to governed review
   or brings independent labels back. The view says this step is separate; it
-  does not fake it.
+  does not fake it. ADR-0013 records it as a follow-up that needs its own
+  decision.
 - **Ironside ingest.** No sink reads decisions from, or writes outcomes to,
-  Ironside or OpenTelemetry. The records are shaped so a decision maps to a
-  span with attributes and an outcome to a later event on the same id.
+  Ironside. Ironside delivers observations with string metadata, not spans,
+  and there is no attribute convention for decisions yet; ADR-0013 defers
+  this path until one exists.
 - **Outcome validation against question types.** Outcome values are stored
   as given; the analysis ignores values of the wrong type for a question.
 - **Governed evidence.** The artifact is not digest-pinned, has no private

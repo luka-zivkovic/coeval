@@ -112,9 +112,12 @@ requested model bindings, immutable dataset revisions, and production
 decision, action, and outcome records.
 
 Outputs include review and taxonomy provenance, versioned evaluators and
-suites, calibration results, execution records, immutable policy-free
-evidence, and production monitoring reports. A consumer may use that evidence
-in a release decision, but the decision is not part of Rubrist's evidence.
+suites, calibration results, execution records, and immutable policy-free
+evidence. A consumer may use that evidence in a release decision, but the
+decision is not part of Rubrist's evidence.
+
+Rubrist also outputs production monitoring reports. They are ungoverned
+feedback about the customer's own traffic, not evidence.
 
 ## Relationship to the other products
 
@@ -200,8 +203,9 @@ into Rubrist.
    independent labels; it never rewrites disagreement out of history.
 9. Semantic clustering is explicitly deferred and outside the current plan.
 10. Production outcomes are development feedback, not human truth. They can
-    direct attention and review, but they become truth or validation evidence
-    only through governed review.
+    direct attention and select items for governed review, but only
+    independent governed review produces truth or validation evidence; the
+    outcome itself never becomes either.
 
 ## Success signals
 
