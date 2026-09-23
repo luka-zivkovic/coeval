@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import type { AnalysisWorkflowMeasurementReport, BinaryCalibrationWilsonRate } from "@coeval/shared";
+import type { AnalysisWorkflowMeasurementReport, BinaryCalibrationWilsonRate } from "@rubrist/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchAnalysisWorkflowMeasurement } from "@/lib/analysis-measurement-api";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type FeedbackSyncJob } from "@coeval/shared";
+import { type FeedbackSyncJob } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 import { isPermanentFeedbackSyncError, processFeedbackSyncJob } from "../src/workers/feedback-sync.js";
@@ -153,7 +153,7 @@ describe("LangSmith import worker", () => {
         posted = input;
       }
     }));
-    expect(posted).toMatchObject({ runId: "ls_e2e_run", key: "coeval_verdict", value: "pass" });
+    expect(posted).toMatchObject({ runId: "ls_e2e_run", key: "rubrist_verdict", value: "pass" });
     const synced = await createApp(repository).request("/api/feedback-syncs?status=synced&limit=5");
     await expect(synced.json()).resolves.toMatchObject({
       feedbackSyncs: [{ provider: "langsmith", status: "synced", attempts: 0, lastError: null }]

@@ -7,7 +7,7 @@ import {
   MinimumVerdictOutputSchema,
   type EvaluatorSuiteManifest,
   type SkillVersion
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { skillDigest } from "../src/lib/assessment-receipt.js";
 import {
   buildEvaluatorSuiteManifest,
@@ -37,24 +37,24 @@ interface ConformanceCase {
 }
 
 interface ConformanceCorpus {
-  contract: "coeval/evaluator-suite-manifest/v1";
+  contract: "rubrist/evaluator-suite-manifest/v1";
   baseFixture: string;
   cases: ConformanceCase[];
 }
 
 const contractRoot = new URL("../../../contracts/", import.meta.url);
 const pinnedFileDigests = {
-  schema: "d9510a027313659f0fe11f8dc300874a9b106c57ca08f7cf168d90839bd60b26",
-  specification: "6f0982d3e2b8da38b54fb4d91dab2a92340799b4cd406f29e0698264dd1a43e8",
-  fixture: "64fcd11e94f209015914294bb9f6ef33ee3e1fb4766c3081e0a58f69eed785ae",
-  conformance: "d09392d37c255fcf05361fbe8b7e78ec4306af876352d9b8a05dd621ae0d2458"
+  schema: "5d32cb547d354ffb74f0236bddb249c65fc8c32ae113fced46a62561fb9d9f3a",
+  specification: "d20974868c3d3f126ccc3b0f926489c20089ff0f8aa1659834a9441920eb0564",
+  fixture: "cc8a51571b4b16ff2c004fad8d3bd1eb747dae526a457f7c0806dcb21e523134",
+  conformance: "0ae717946ba9124e0caf5adf68ea4c3808d0f7285c68f394c940782263534506"
 } as const;
 
 const pinnedReceiptV1FileDigests = {
-  schema: "ca18a7b3bfa4610ff56ab88d60044f4357df2d035ac5e072356becc20250e9e7",
-  specification: "85c4a502709a4a6a8c27b96634262fa2b583bbafce98558c99de475528df8802",
-  fixture: "530e7322feb5bc16d025daaef14bec8d73488a168a602d82b37fae2a06d12274",
-  conformance: "9a9ba86d54e78a6cc8d63d592712791f21984e68f09bbbe011d8903296af3e07"
+  schema: "3e5ce757a7f86d02a6ab33057c9176ea052225d65f984ca91e48e5dbaead30a3",
+  specification: "3316bd789574b8976e6449e4fd52725fb972b920eed004e9edf6c9a2456c2432",
+  fixture: "803606d52c79b15c9869ced5920c166a180f4534a3eaf521423e6d0ed1b76752",
+  conformance: "caa74e8632721cf48ceca1133078ade568bfad4fcea177b5e7588837080c0692"
 } as const;
 
 function fileBytes(relativePath: string): Buffer {
@@ -192,9 +192,9 @@ describe("evaluator suite manifest v1 contract", () => {
       additionalProperties?: boolean;
       properties?: { contract?: { const?: string }; schemaVersion?: { const?: number } };
     };
-    expect(schema.$id).toBe("https://coeval.dev/contracts/evaluator-suite-manifest-v1.schema.json");
+    expect(schema.$id).toBe("https://rubrist.dev/contracts/evaluator-suite-manifest-v1.schema.json");
     expect(schema.additionalProperties).toBe(false);
-    expect(schema.properties?.contract?.const).toBe("coeval/evaluator-suite-manifest/v1");
+    expect(schema.properties?.contract?.const).toBe("rubrist/evaluator-suite-manifest/v1");
     expect(schema.properties?.schemaVersion?.const).toBe(1);
 
     const validate = new Ajv2020({ strict: true, allErrors: true }).compile(schema as object);

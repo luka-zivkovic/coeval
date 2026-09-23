@@ -155,7 +155,7 @@ describe("MarkdownPreview", () => {
     expect(skill).toContain("Result format · exact JSON schema");
     expect(skill).toContain("Requested model · immutable settings");
     expect(skill).not.toContain("Model used");
-    expect(skill).not.toContain("Coeval flips this skill to");
+    expect(skill).not.toContain("Rubrist flips this skill to");
     expect(versions).toContain("<MarkdownPreview markdown={v.rubricMarkdown}");
     expect(versions).toContain("{compiledPrompt.content");
     expect(editor).toContain('rubricMode === "preview"');

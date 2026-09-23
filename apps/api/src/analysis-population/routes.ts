@@ -14,7 +14,7 @@ import {
   AnalysisPopulationSummariesPageSchema,
   DatasetEvidenceDigestSchema,
   DatasetRevisionPayloadSnapshotSchema
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   AnalysisPopulationRepositoryError,
   type AnalysisPopulationAccess,

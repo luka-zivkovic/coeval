@@ -1,4 +1,4 @@
-# Coeval architecture decisions
+# Rubrist architecture decisions
 
 ADRs record product and architecture choices that refine `PRODUCT.md`.
 
@@ -22,3 +22,4 @@ Status meanings:
 - [0009 — Binary calibration artifact contract](0009-binary-calibration-artifact-contract.md) — Accepted
 - [0010 — Representative analysis and taxonomy lifecycle](0010-representative-analysis-and-taxonomy-lifecycle.md) — Accepted
 - [0011 — Pre-launch blank-slate database policy](0011-prelaunch-blank-slate-database-policy.md) — Accepted; clean-install policy remains active for founder-only disposable testing
+- [0012 — Rename Coeval to Rubrist](0012-rename-coeval-to-rubrist.md) — Accepted

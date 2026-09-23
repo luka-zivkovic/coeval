@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { DEFAULT_OUTPUT_SCHEMA, type JudgePrompt, type JudgeProvider } from "@coeval/audit/runtime";
-import { JudgeRunJobSchema, renderJudgePromptContent, type JudgeRun, type JudgeRunJob, type VerdictPayload, type VerdictRecord } from "@coeval/shared";
-import type { Queue } from "@coeval/queue";
-import type { CoevalRepository } from "../repository.js";
+import { DEFAULT_OUTPUT_SCHEMA, type JudgePrompt, type JudgeProvider } from "@rubrist/audit/runtime";
+import { JudgeRunJobSchema, renderJudgePromptContent, type JudgeRun, type JudgeRunJob, type VerdictPayload, type VerdictRecord } from "@rubrist/shared";
+import type { Queue } from "@rubrist/queue";
+import type { RubristRepository } from "../repository.js";
 import {
   createJudgeProvider,
   JudgeProviderUnavailableError,
@@ -25,7 +25,7 @@ function toFactory(arg: ProviderArg): JudgeProviderFactory {
 
 export async function registerJudgeRunWorker(
   queue: Queue,
-  repository: CoevalRepository,
+  repository: RubristRepository,
   provider: ProviderArg = createJudgeProvider
 ): Promise<void> {
   await queue.work<JudgeRunJob>("judge.run", async ({ id, data }) => {
@@ -42,7 +42,7 @@ export async function registerJudgeRunWorker(
 }
 
 export async function processJudgeRunJob(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   job: JudgeRunJob,
   provider: ProviderArg = createJudgeProvider,
   queue?: Queue | undefined
@@ -77,7 +77,7 @@ export async function processJudgeRunJob(
 //   - the legacy `judge_runs` row → dashboard verdict distribution + LangSmith
 //     feedback sync still read this.
 export async function judgeAndRecord(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   job: JudgeRunJob,
   providerArg: ProviderArg = createJudgeProvider,
   providerCallLifecycle?: ProviderCallLifecycle | undefined

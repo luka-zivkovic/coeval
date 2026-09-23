@@ -1,6 +1,6 @@
 import type { Pool } from "pg";
 import type { Hono } from "hono";
-import type { Queue } from "@coeval/queue";
+import type { Queue } from "@rubrist/queue";
 import {
   CONVERGENCE_CASE_PAGE_DEFAULT_LIMIT,
   CONVERGENCE_CASE_PAGE_MAX_LIMIT,
@@ -8,7 +8,7 @@ import {
   CreateSkillVersionInputSchema,
   SKILL_FORMAT_EXAMPLES_CAP,
   type SkillFormatV1
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { z } from "zod";
 import { sha256Digest } from "../lib/assessment-receipt.js";
 import { userProjectRole } from "../lib/auth.js";
@@ -22,7 +22,7 @@ import {
   RegressionGateJudgeError,
   RegressionGateUnavailableError,
   SkillVersionNotSignableError,
-  type CoevalRepository
+  type RubristRepository
 } from "../repository.js";
 import type { AppVariables, RequestServices } from "../request-services/index.js";
 import { runExistingCaseBackfill } from "../workers/gate.js";
@@ -30,7 +30,7 @@ import { runExistingCaseBackfill } from "../workers/gate.js";
 type SkillAdministrationApp = Hono<{ Variables: AppVariables }>;
 
 export interface SkillAdministrationRouteOptions {
-  repository: CoevalRepository;
+  repository: RubristRepository;
   pool?: Pool | undefined;
   queue?: Queue | undefined;
   requestServices: RequestServices;
@@ -182,7 +182,7 @@ export function registerSkillAdministrationRoutes(
       const headers: Record<string, string> = { "content-type": "text/markdown; charset=utf-8" };
       if (c.req.query("download") === "1") {
         const stamp = new Date().toISOString().slice(0, 10);
-        headers["content-disposition"] = `attachment; filename="coeval-judge-card-${stamp}.md"`;
+        headers["content-disposition"] = `attachment; filename="rubrist-judge-card-${stamp}.md"`;
       }
       return c.text(renderJudgeCardMarkdown(card), 200, headers);
     }
@@ -235,7 +235,7 @@ export function registerSkillAdministrationRoutes(
     if (c.req.query("download") === "1") {
       const stamp = new Date().toISOString().slice(0, 10);
       return c.json(doc, 200, {
-        "content-disposition": `attachment; filename="coeval-skill-format-${stamp}.json"`
+        "content-disposition": `attachment; filename="rubrist-skill-format-${stamp}.json"`
       });
     }
     return c.json(doc);

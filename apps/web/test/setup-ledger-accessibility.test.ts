@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { SetupLedger } from "../src/components/coeval/setup-ledger.js";
+import { SetupLedger } from "../src/components/rubrist/setup-ledger.js";
 
 vi.mock("@/components/ui/card", async () => {
   const { createElement } = await import("react");

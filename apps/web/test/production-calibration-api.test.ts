@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ProductionDecisionLedgerRecordSchema,
   buildProductionCalibrationArtifact
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   PRODUCTION_CALIBRATION_SAMPLE_PATH,
   ProductionCalibrationApiError,
@@ -54,7 +54,7 @@ describe("production calibration preview client", () => {
     expect(url).toBe("/api/production-calibration/preview");
     expect(init.method).toBe("POST");
     expect(init.credentials).toBe("include");
-    expect(new Headers(init.headers).get("x-coeval-project")).toBe("project_1");
+    expect(new Headers(init.headers).get("x-rubrist-project")).toBe("project_1");
     expect(JSON.parse(String(init.body))).toEqual({
       records: ledgerText,
       question: "is_flaky",

@@ -14,7 +14,7 @@ import {
   Ref,
   SectionHead,
   VerdictChip
-} from "@/components/coeval";
+} from "@/components/rubrist";
 import { SaveQueueModal } from "@/components/save-queue-modal";
 import { RowLink } from "@/components/row-action";
 import { fetchDisagreements, fetchGoldenSet, fetchProjectVerdicts } from "@/lib/api";
@@ -24,7 +24,7 @@ import { isBench, journeyStage } from "@/lib/journey";
 import { resolvedDecisions, type ResolvedDecision } from "@/lib/resolved";
 import { caseReviewUrl, rationalePreview } from "@/lib/exception-queue";
 import { cn, formatTimestamp } from "@/lib/utils";
-import { isVerdictLabel, type DisagreementCase, type ExceptionCase, type VerdictLabel } from "@coeval/shared";
+import { isVerdictLabel, type DisagreementCase, type ExceptionCase, type VerdictLabel } from "@rubrist/shared";
 
 const ALL_CATEGORIES = "All categories";
 const ALL_VERDICTS = "All verdicts";

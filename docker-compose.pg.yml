@@ -2,13 +2,13 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: coeval
-      POSTGRES_PASSWORD: coeval
-      POSTGRES_DB: coeval
+      POSTGRES_USER: rubrist
+      POSTGRES_PASSWORD: rubrist
+      POSTGRES_DB: rubrist
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U coeval -d coeval"]
+      test: ["CMD-SHELL", "pg_isready -U rubrist -d rubrist"]
       interval: 5s
       timeout: 5s
       retries: 10

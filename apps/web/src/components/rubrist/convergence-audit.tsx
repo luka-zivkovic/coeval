@@ -5,7 +5,7 @@ import { Table } from "@/components/ui/table";
 import { Eyebrow } from "./eyebrow";
 import { MarginNote } from "./margin-note";
 import { Chip, LabelChip } from "./chip";
-import type { ConvergenceAudit, ConvergenceCaseChange } from "@coeval/shared";
+import type { ConvergenceAudit, ConvergenceCaseChange } from "@rubrist/shared";
 
 // Below this many re-judged adjudicated cases, the improved/regressed counts are
 // noise — the card shows the data but withholds a confident headline (per the

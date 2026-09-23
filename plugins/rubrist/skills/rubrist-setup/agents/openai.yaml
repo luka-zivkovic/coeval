@@ -1,0 +1,4 @@
+interface:
+  display_name: "Set Up Rubrist"
+  short_description: "Build a useful first Check without eval jargon"
+  default_prompt: "Use $rubrist-setup to set up Rubrist for this project with a short, context-aware interview."

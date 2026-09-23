@@ -1,4 +1,4 @@
-import type { JudgeProvider, Trace } from "@coeval/audit/runtime";
+import type { JudgeProvider, Trace } from "@rubrist/audit/runtime";
 import type {
   AssessmentReceipt,
   CaseSource,
@@ -32,7 +32,7 @@ import type {
   TraceTestValidationMethod,
   VerdictPayload,
   VerdictSource
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { NormalizedTraceStep } from "../lib/redaction.js";
 
 // Public shapes at the repository boundary. Implementations continue to own

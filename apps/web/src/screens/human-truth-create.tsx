@@ -445,7 +445,7 @@ function titleFor(kind: CreateKind): string {
 
 function descriptionFor(kind: CreateKind): string {
   if (kind === "instruction") return "Write the exact criterion instructions and failure-code guidance reviewers will see. Saving creates a new immutable instruction version.";
-  if (kind === "intake") return "Add a fixed set of sealed cases for protected review. The form remains in this browser until you submit it. Coeval then checks for overlap and returns a receipt without exposing item contents through project screens.";
+  if (kind === "intake") return "Add a fixed set of sealed cases for protected review. The form remains in this browser until you submit it. Rubrist then checks for overlap and returns a receipt without exposing item contents through project screens.";
   return "Choose a fixed source set, assign independent reviewers, and set the order and closing time. These details cannot change after the batch opens.";
 }
 

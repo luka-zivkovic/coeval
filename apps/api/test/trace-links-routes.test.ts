@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import { demoProject } from "@coeval/db";
+import { demoProject } from "@rubrist/db";
 import {
   ironsideTraceViewerUrl,
   parseTraceDeepLink,
@@ -8,10 +8,10 @@ import {
   type IronsideIntegration,
   type Project,
   type TraceLinkResolution
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import type { IronsideTraceSource } from "../src/lib/ironside.js";
-import { DemoRepository, type CoevalRepository, type ImportedIronsideTraceMatch } from "../src/repository.js";
+import { DemoRepository, type RubristRepository, type ImportedIronsideTraceMatch } from "../src/repository.js";
 import type { AppVariables } from "../src/request-services/index.js";
 import { registerTraceLinkRoutes } from "../src/routes/trace-links.js";
 
@@ -269,7 +269,7 @@ describe("trace link membership resolution", () => {
       async listIronsideIntegrations() {
         return [];
       }
-    } as unknown as CoevalRepository;
+    } as unknown as RubristRepository;
     const app = new Hono<{ Variables: AppVariables }>();
     app.use("*", async (c, next) => {
       c.set("user", options.user ? { id: "user_1", email: "u@example.com", name: "U" } : null);

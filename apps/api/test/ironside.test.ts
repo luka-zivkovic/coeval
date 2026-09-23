@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import type { QueueName, Queue } from "@coeval/queue";
-import type { IronsideEvaluatorContext, IronsideEvaluatorTrace } from "@coeval/shared";
-import { MockJudgeProvider } from "@coeval/audit/runtime";
+import type { QueueName, Queue } from "@rubrist/queue";
+import type { IronsideEvaluatorContext, IronsideEvaluatorTrace } from "@rubrist/shared";
+import { MockJudgeProvider } from "@rubrist/audit/runtime";
 import {
   IRONSIDE_SCORE_COMMENT_MAX_CHARS,
   IronsideClient,
@@ -159,7 +159,7 @@ describe("Ironside native evaluator client", () => {
     await client.createFeedback({
       feedbackId: "fsync_123",
       runId: "trace_123",
-      key: "coeval_assessment/response-quality",
+      key: "rubrist_assessment/response-quality",
       score: 0.8,
       value: "pass",
       comment: "x".repeat(IRONSIDE_SCORE_COMMENT_MAX_CHARS + 100),
@@ -170,10 +170,10 @@ describe("Ironside native evaluator client", () => {
     expect(scoreBody).toMatchObject({
       id: "fsync_123",
       traceId: "trace_123",
-      name: "coeval_assessment/response-quality",
+      name: "rubrist_assessment/response-quality",
       value: 0.8,
       assessmentLabel: "pass",
-      evaluator: { provider: "coeval", versionId: "skillv_1", criterionKey: "response-quality" }
+      evaluator: { provider: "rubrist", versionId: "skillv_1", criterionKey: "response-quality" }
     });
     expect(scoreBody.comment).toHaveLength(IRONSIDE_SCORE_COMMENT_MAX_CHARS);
     expect(scoreBody.comment).toMatch(/…\[TRUNCATED\]$/);
@@ -554,7 +554,7 @@ describe("Ironside polling and feedback", () => {
     }));
     expect(body).toMatchObject({
       traceId: "ironside_trace_feedback",
-      name: "coeval_assessment/response-quality"
+      name: "rubrist_assessment/response-quality"
     });
   });
 

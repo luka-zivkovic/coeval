@@ -66,7 +66,7 @@ import {
   type TraceTestRunResult,
   type TraceTestSourceScope,
   type TraceTestValidation
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   type EditableDraftTextField,
   type ReceiptKind,
@@ -597,7 +597,7 @@ export function TraceTestBuilderScreen() {
         <Button variant="ghost" size="sm" onClick={() => navigate(backTo)}><ArrowLeft /> {backLabel}</Button>
         <LocalState
           title={loadErrorTitle}
-          body={loadError ?? "Coeval could not access the source. The test was not created from partial or stale content."}
+          body={loadError ?? "Rubrist could not access the source. The test was not created from partial or stale content."}
         />
         <div className="mt-3 flex justify-center"><Button variant="outline" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Retry loading</Button></div>
       </div>

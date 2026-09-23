@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { demoSkill, demoSkillPrevVersion } from "@coeval/db";
+import { demoSkill, demoSkillPrevVersion } from "@rubrist/db";
 import type {
   Criterion,
   CriterionDetail,
@@ -12,7 +12,7 @@ import type {
   EvaluatorSuiteManifest,
   Skill,
   SkillVersion
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   buildEvaluatorSuiteManifest,
   canonicalEvaluatorSuiteManifestBytes,

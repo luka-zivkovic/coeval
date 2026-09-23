@@ -4,7 +4,7 @@ import { z } from "zod";
 //
 // Inbound: Ironside's trace viewer links to
 //   /links/trace?source=ironside&project=<ironside project id>&trace=<traceId>&version=<traceVersion?>
-// and Coeval resolves that against the native integration's source identity
+// and Rubrist resolves that against the native integration's source identity
 // `(remote project, traceId, traceVersion)` inside the signed-in user's
 // project memberships. The shape is a shared contract with Ironside; change it
 // only together with Ironside's link builder.
@@ -62,7 +62,7 @@ export function parseTraceDeepLink(params: URLSearchParams): TraceDeepLinkParseR
     return {
       ok: false,
       code: "unsupported_source",
-      error: `Coeval cannot open trace links from "${candidate.source.slice(0, 80)}". Supported sources: ${TRACE_LINK_SOURCES.join(", ")}.`
+      error: `Rubrist cannot open trace links from "${candidate.source.slice(0, 80)}". Supported sources: ${TRACE_LINK_SOURCES.join(", ")}.`
     };
   }
   const parsed = TraceDeepLinkQuerySchema.safeParse(candidate);

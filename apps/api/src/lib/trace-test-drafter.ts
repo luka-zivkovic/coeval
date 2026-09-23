@@ -5,7 +5,7 @@ import {
   type TracePayload,
   type TraceTestDraftJob,
   type TraceTestSourceScope
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { redactNormalizedTracePayload } from "./redaction.js";
 
 const DRAFT_OUTPUT_TOKENS = 4096;

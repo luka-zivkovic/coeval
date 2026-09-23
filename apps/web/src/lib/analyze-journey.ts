@@ -1,4 +1,4 @@
-import { ANALYSIS_POPULATION_MIN_WINDOW_LAG_SECONDS } from "@coeval/shared";
+import { ANALYSIS_POPULATION_MIN_WINDOW_LAG_SECONDS } from "@rubrist/shared";
 
 export type AnalyzeJourneyStatus = "current" | "complete" | "incomplete" | "available" | "blocked";
 

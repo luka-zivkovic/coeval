@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { DashboardSummary } from "@coeval/shared";
+import type { DashboardSummary } from "@rubrist/shared";
 import { FirstRunSetupLedger } from "../src/components/first-run-setup-ledger.js";
 
 const ledgerHarness = vi.hoisted(() => ({
@@ -14,7 +14,7 @@ const ledgerHarness = vi.hoisted(() => ({
 }));
 
 vi.mock("react-router-dom", () => ({ useNavigate: () => ledgerHarness.navigate }));
-vi.mock("@/components/coeval", () => ({
+vi.mock("@/components/rubrist", () => ({
   SetupLedger: ({ steps, description }: {
     steps: Array<{
       state: string;
@@ -109,7 +109,7 @@ describe("first-run setup ledger", () => {
     }));
 
     expect(html).toContain("Bring one recorded run");
-    expect(html).toContain("Coeval reads the record; it does not replay your AI.");
+    expect(html).toContain("Rubrist reads the record; it does not replay your AI.");
     expect(html).toContain("Add a recorded run");
 
     ledgerHarness.steps[0]?.onCta?.();

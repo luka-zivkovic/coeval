@@ -9,7 +9,7 @@ import {
   type ProductionCalibrationArtifact,
   type ProductionDecisionAnswerType,
   type ProductionDecisionLedgerRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 // Compute-only preview of production calibration. The caller posts the
 // decision ledger with the request; nothing is persisted, queued, or read from

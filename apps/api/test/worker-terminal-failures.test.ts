@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { MockJudgeProvider } from "@coeval/audit/runtime";
-import type { Queue, QueueJob, QueueName, QueueSendOptions } from "@coeval/queue";
-import { CreateSkillVersionInputSchema, type EvalItemJob, type GateRunJob } from "@coeval/shared";
+import { MockJudgeProvider } from "@rubrist/audit/runtime";
+import type { Queue, QueueJob, QueueName, QueueSendOptions } from "@rubrist/queue";
+import { CreateSkillVersionInputSchema, type EvalItemJob, type GateRunJob } from "@rubrist/shared";
 import { DemoRepository, GateRunBindingMismatchError } from "../src/repository.js";
 import { registerEvalRunWorkers } from "../src/workers/eval-run.js";
 import { registerGateRunWorker } from "../src/workers/gate.js";

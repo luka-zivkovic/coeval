@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Skill } from "@coeval/shared";
+import type { Skill } from "@rubrist/shared";
 import type { Pool, PoolClient } from "pg";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";

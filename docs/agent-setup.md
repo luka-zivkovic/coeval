@@ -1,29 +1,29 @@
-# Install Coeval with your coding agent
+# Install Rubrist with your coding agent
 
 [← README](../README.md) · [MCP reference](../tools/mcp/README.md) · [Self-hosting](self-hosting.md)
 
-There are three pieces: the **Coeval service**, two optional **agent skills**,
+There are three pieces: the **Rubrist service**, two optional **agent skills**,
 and an optional **MCP connection**. Start the service first. Skills guide the
 setup and auditing workflow; MCP gives your harness callable tools. The
 skills can submit over HTTP without MCP.
 
 ## Claude Code: install the plugin
 
-Coeval publishes a Claude Code plugin marketplace from this repository. In
+Rubrist publishes a Claude Code plugin marketplace from this repository. In
 Claude Code, run:
 
 ```text
-/plugin marketplace add luka-zivkovic/coeval
-/plugin install coeval@coeval
+/plugin marketplace add luka-zivkovic/rubrist
+/plugin install rubrist@rubrist
 ```
 
 Then open a Claude Code session in the project you want to evaluate and run
-`/coeval:coeval-setup`, or ask "initialize Coeval for this project." Use
-`/coeval:coeval-audit` for later runs. The plugin source lives in
-[`plugins/coeval`](../plugins/coeval); its two skills are described in
+`/rubrist:rubrist-setup`, or ask "initialize Rubrist for this project." Use
+`/rubrist:rubrist-audit` for later runs. The plugin source lives in
+[`plugins/rubrist`](../plugins/rubrist); its two skills are described in
 [Install the two skills](#install-the-two-skills).
 
-The plugin does not start Coeval. The setup skill needs a running Coeval
+The plugin does not start Rubrist. The setup skill needs a running Rubrist
 service in Postgres mode, because the private agent connection it uses is
 created from a signed-in owner session. Start the service with one of the
 paths in the README's [Ten-minute start](../README.md#ten-minute-start), or
@@ -36,7 +36,7 @@ when they have filesystem and terminal access. Open a session in your projects
 directory and paste:
 
 ```text
-Set up Coeval locally from https://github.com/luka-zivkovic/coeval.
+Set up Rubrist locally from https://github.com/luka-zivkovic/rubrist.
 Read README.md and docs/agent-setup.md first. Check Node 24+, pnpm 10.33+,
 Docker, and ports 5432, 8787, and 5173. Check any existing checkout's branch
 and local changes. Do not overwrite configuration or reset a database.
@@ -62,23 +62,23 @@ For a persistent or networked deployment, see the
 
 The API needs the environment from `.env`; the README shows how to load it
 before `pnpm dev:api`. Keep both application processes running. `pnpm install`
-alone neither starts Coeval nor installs its skills into your harness.
+alone neither starts Rubrist nor installs its skills into your harness.
 
 ## Install the two skills
 
 | Skill | What it does |
 | --- | --- |
-| [coeval-setup](../plugins/coeval/skills/coeval-setup/) | Reads safe project context, proposes a **Starter · unvalidated** Check, and connects it after **Finish setup**. |
-| [coeval-audit](../plugins/coeval/skills/coeval-audit/) | Captures real input/output examples, submits Runs, and explains the resulting assessments. |
+| [rubrist-setup](../plugins/rubrist/skills/rubrist-setup/) | Reads safe project context, proposes a **Starter · unvalidated** Check, and connects it after **Finish setup**. |
+| [rubrist-audit](../plugins/rubrist/skills/rubrist-audit/) | Captures real input/output examples, submits Runs, and explains the resulting assessments. |
 
 The Claude Code plugin above installs both. Every other harness gets them by
 copying the folders.
 
 ### Copy the skill folders
 
-Install **both complete directories**. `coeval-setup` uses transport resources
-from its sibling `coeval-audit`; copying only `SKILL.md` loses those resources.
-Run the following from the Coeval checkout. If either destination already
+Install **both complete directories**. `rubrist-setup` uses transport resources
+from its sibling `rubrist-audit`; copying only `SKILL.md` loses those resources.
+Run the following from the Rubrist checkout. If either destination already
 exists, compare it before replacing an installed copy.
 
 #### Claude Code without the plugin
@@ -87,11 +87,11 @@ For your user account:
 
 ```sh
 mkdir -p "$HOME/.claude/skills"
-cp -R plugins/coeval/skills/coeval-setup plugins/coeval/skills/coeval-audit "$HOME/.claude/skills/"
+cp -R plugins/rubrist/skills/rubrist-setup plugins/rubrist/skills/rubrist-audit "$HOME/.claude/skills/"
 ```
 
-Copied skills are invoked without the plugin prefix: `/coeval-setup` and
-`/coeval-audit`. For a project-only installation, use that project's
+Copied skills are invoked without the plugin prefix: `/rubrist-setup` and
+`/rubrist-audit`. For a project-only installation, use that project's
 `.claude/skills/` instead.
 See [Claude Code's skill documentation](https://code.claude.com/docs/en/skills).
 
@@ -101,11 +101,11 @@ For your user account:
 
 ```sh
 mkdir -p "$HOME/.agents/skills"
-cp -R plugins/coeval/skills/coeval-setup plugins/coeval/skills/coeval-audit "$HOME/.agents/skills/"
+cp -R plugins/rubrist/skills/rubrist-setup plugins/rubrist/skills/rubrist-audit "$HOME/.agents/skills/"
 ```
 
-In Codex CLI or the IDE extension, invoke `$coeval-setup` or select it from
-`/skills`. Use `$coeval-audit` for later runs. If a newly installed skill does
+In Codex CLI or the IDE extension, invoke `$rubrist-setup` or select it from
+`/skills`. Use `$rubrist-audit` for later runs. If a newly installed skill does
 not appear, restart the session. For a project-only installation, use that
 project's `.agents/skills/` instead.
 See [Codex's skill documentation](https://developers.openai.com/codex/skills/).
@@ -117,9 +117,9 @@ as siblings. Discovery, command syntax, and hook support vary by host. If it
 can read local files but does not discover skills, point it at the workflow:
 
 ```text
-Read /absolute/path/to/coeval/plugins/coeval/skills/coeval-setup/SKILL.md and
-its referenced resources. Use that workflow to initialize Coeval for the
-current project. The Coeval API is at http://localhost:8787.
+Read /absolute/path/to/rubrist/plugins/rubrist/skills/rubrist-setup/SKILL.md and
+its referenced resources. Use that workflow to initialize Rubrist for the
+current project. The Rubrist API is at http://localhost:8787.
 ```
 
 Manual example capture and HTTP submission are portable. Automatic capture
@@ -132,15 +132,15 @@ scripts require Node.js 18 or newer; the application requires Node.js 24+.
    from onboarding or the project's Overview into your coding-agent session.
 2. Review the proposed **Check**. The setup skill reads safe project context
    and presents the Check as **Starter · unvalidated**.
-3. Choose **Finish setup**, then create the private agent connection in Coeval.
+3. Choose **Finish setup**, then create the private agent connection in Rubrist.
    Follow the generated connection instructions locally. The connection is
    project-scoped, single-use, and expires after 15 minutes.
 4. Save the returned project key securely; its plaintext is shown once.
-   The audit client uses `COEVAL_URL` and `COEVAL_API_KEY`, supplied through its
+   The audit client uses `RUBRIST_URL` and `RUBRIST_API_KEY`, supplied through its
    environment or a local, uncommitted `.env` file. Existing projects can mint
    a replacement under **Settings → API keys**.
 
-`COEVAL_BOOTSTRAP_TOKEN` is a separate, optional instance-owner mechanism for
+`RUBRIST_BOOTSTRAP_TOKEN` is a separate, optional instance-owner mechanism for
 headless administration. It is not needed for normal signed-in onboarding or
 MCP, and it is not a substitute for a project key.
 
@@ -148,14 +148,14 @@ MCP, and it is not a substitute for a project key.
 
 Follow the [MCP installation commands](../tools/mcp/README.md#connect-your-harness)
 for Claude Code, Codex, or another client with **stdio** support. The harness
-launches a local Node process, which calls your local or hosted Coeval API.
+launches a local Node process, which calls your local or hosted Rubrist API.
 The API URL itself is not an MCP endpoint.
 
 Start with `get_project` to check the connection without submitting examples
 or spending judge-model tokens. Then ask for findings or specific cases.
 New submissions can incur provider costs and retain project data. MCP does
 not provide the entire owner workflow: adjudication, Golden promotion, and
-governed calibration remain session-controlled operations in Coeval.
+governed calibration remain session-controlled operations in Rubrist.
 
 ## Make the first run useful
 
@@ -166,7 +166,7 @@ opinion, not verified correctness.
 
 Manual submission is the portable starting point. Claude Code can optionally
 capture examples automatically while retaining explicit submission; full
-auto-submit requires the separate `COEVAL_AUTO_SUBMIT=1` opt-in. Sample JSONL
+auto-submit requires the separate `RUBRIST_AUTO_SUBMIT=1` opt-in. Sample JSONL
 shipped with the audit skill is for demo instances: verdicts are append-only.
 
 ## Troubleshooting
@@ -175,11 +175,11 @@ shipped with the audit skill is for demo instances: verdicts are append-only.
 | --- | --- |
 | API cannot connect to Postgres | Database health, port conflicts, and the API process's `DATABASE_URL`. |
 | Web app cannot reach the API | Both processes are running; API URL and trusted origin match the local setup. |
-| `/coeval:coeval-setup` is not found | The plugin is installed from the `coeval` marketplace; restart the session after installing. Copied folders use `/coeval-setup` without the prefix. |
+| `/rubrist:rubrist-setup` is not found | The plugin is installed from the `rubrist` marketplace; restart the session after installing. Copied folders use `/rubrist-setup` without the prefix. |
 | Skill is missing or cannot find a script | Both complete sibling folders are in the harness's discovery directory. |
 | The agent connection is refused | The service is running in demo mode (no `DATABASE_URL`). Agent connections need the Postgres workspace. |
 | MCP cannot start | Node is available to the harness, dependencies are installed, and the server path is absolute. |
-| MCP returns unauthorized | Use a current Coeval project key, not an onboarding token or provider key. |
+| MCP returns unauthorized | Use a current Rubrist project key, not an onboarding token or provider key. |
 | Batch selection is ambiguous | MCP submission tools do not accept an evaluator pin. Use the HTTP API with an explicit `skillVersionId` for multi-criterion projects. |
 
 This pre-launch version supports clean database installations. If an existing

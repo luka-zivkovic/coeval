@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// coeval gate — turn a labeled examples file into a CI exit code (M1 E3).
+// rubrist gate — turn a labeled examples file into a CI exit code (M1 E3).
 //
 // Usage (skill gate — the original mode, unchanged):
-//   COEVAL_URL=https://… COEVAL_API_KEY=coeval_sk_… \
+//   RUBRIST_URL=https://… RUBRIST_API_KEY=rubrist_sk_… \
 //     node tools/ci/gate.mjs <examples.jsonl> [--min-agreement 1.0] [--timeout 300]
 //
 // Examples file: one JSON object per line — { "input": …, "output": …,
@@ -12,7 +12,7 @@
 //
 // `--product` is a removed compatibility mode. It exits 2 locally before
 // reading configuration or making an HTTP request. Release systems should
-// submit purpose=release_evidence, verify Coeval's assessment receipt, and
+// submit purpose=release_evidence, verify Rubrist's assessment receipt, and
 // apply their own rollout policy.
 //
 // Exit codes:
@@ -24,13 +24,13 @@
 // Zero dependencies. Source ids are content hashes, so re-running unchanged
 // examples reuses recorded verdicts (no provider spend); an EDITED
 // one is judged fresh. The API key is never printed.
-// DRIFT GUARD: plugins/coeval/skills/coeval-audit/scripts/coeval-submit.mjs adapts this
+// DRIFT GUARD: plugins/rubrist/skills/rubrist-audit/scripts/rubrist-submit.mjs adapts this
 // file's skill-gate pipeline (JSONL validation + ci_ hash) — keep them in sync.
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 
 function fail(code, message) {
-  console.error(`coeval-gate: ${message}`);
+  console.error(`rubrist-gate: ${message}`);
   process.exit(code);
 }
 
@@ -38,7 +38,7 @@ const args = process.argv.slice(2);
 if (args.includes("--product")) {
   fail(
     2,
-    '--product has been removed: Coeval does not make release decisions. Submit POST /api/v1/judge/batch with purpose="release_evidence", verify the assessment receipt, and apply rollout policy in your release layer.'
+    '--product has been removed: Rubrist does not make release decisions. Submit POST /api/v1/judge/batch with purpose="release_evidence", verify the assessment receipt, and apply rollout policy in your release layer.'
   );
 }
 const VALUE_FLAGS = new Set(["--min-agreement", "--timeout"]);
@@ -51,10 +51,10 @@ function flag(name, fallback) {
   return value;
 }
 
-const baseUrl = (process.env.COEVAL_URL ?? "").replace(/\/$/, "");
-const apiKey = process.env.COEVAL_API_KEY ?? "";
-if (!baseUrl) fail(2, "COEVAL_URL is not set");
-if (!apiKey) fail(2, "COEVAL_API_KEY is not set");
+const baseUrl = (process.env.RUBRIST_URL ?? "").replace(/\/$/, "");
+const apiKey = process.env.RUBRIST_API_KEY ?? "";
+if (!baseUrl) fail(2, "RUBRIST_URL is not set");
+if (!apiKey) fail(2, "RUBRIST_API_KEY is not set");
 if (!fileArg) {
   fail(2, "usage: node tools/ci/gate.mjs <examples.jsonl> [--min-agreement 1.0] [--timeout 300]");
 }
@@ -168,7 +168,7 @@ const submitted = await api("/api/v1/judge/batch", {
   body: JSON.stringify({ items })
 });
 console.log(
-  `coeval-gate: submitted ${submitted.totalItems} case(s) ` +
+  `rubrist-gate: submitted ${submitted.totalItems} case(s) ` +
   `(${submitted.cachedItems} cached, ${submitted.skippedItems} skipped) → run ${submitted.evalRunId}`
 );
 
@@ -202,7 +202,7 @@ for (const item of run.items) {
 const stepLabeled = run.items.filter((item) => item.expectedFailStep !== null && item.expectedFailStep !== undefined && item.status === "completed").length;
 const stepAgreed = run.items.filter((item) => item.stepAgreement === true).length;
 if (stepLabeled > 0) {
-  console.log(`\ncoeval-gate: judge named the expected failing step on ${stepAgreed} of ${stepLabeled} step-labeled case(s) (informational — does not affect the exit code)`);
+  console.log(`\nrubrist-gate: judge named the expected failing step on ${stepAgreed} of ${stepLabeled} step-labeled case(s) (informational — does not affect the exit code)`);
 }
 
 // informational spend (tokens + counts, never dollars; no exit-code effect).
@@ -212,7 +212,7 @@ if (run.spend) {
     ? "usage unavailable"
     : `${s.inputTokens ?? 0} in / ${s.outputTokens ?? 0} out tokens`;
   console.log(
-    `coeval-gate: spend — ${s.freshItems} fresh, ${s.cachedItems} cached (no spend), ${tokens}` +
+    `rubrist-gate: spend — ${s.freshItems} fresh, ${s.cachedItems} cached (no spend), ${tokens}` +
     (s.usageMissingCount > 0 ? ` (usage unavailable for ${s.usageMissingCount} call(s))` : "")
   );
 }
@@ -221,7 +221,7 @@ const labeledCompleted = run.items.filter((item) => item.expectedLabel !== null 
 const failedItems = run.items.filter((item) => item.status === "failed").length;
 const agreement = labeledCompleted === 0 ? 0 : run.agreedItems / labeledCompleted;
 console.log(
-  `\ncoeval-gate: ${run.agreedItems}/${labeledCompleted} labeled case(s) agree ` +
+  `\nrubrist-gate: ${run.agreedItems}/${labeledCompleted} labeled case(s) agree ` +
   `· skill version ${run.skillVersionId}` +
   (failedItems > 0 ? ` · ${failedItems} item(s) FAILED (infrastructure)` : "")
 );
@@ -233,4 +233,4 @@ if (labeledCompleted === 0) fail(2, "no labeled case completed — nothing to ga
 if (agreement < minAgreement) {
   fail(1, `BLOCKED — agreement ${run.agreedItems}/${labeledCompleted} is below the --min-agreement ${minAgreement} threshold`);
 }
-console.log("coeval-gate: PASSED");
+console.log("rubrist-gate: PASSED");

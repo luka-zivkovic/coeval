@@ -1,4 +1,4 @@
-import type { VerdictKind } from "@coeval/shared";
+import type { VerdictKind } from "@rubrist/shared";
 
 // Starter rubrics for the existing B2B SaaS ICP — support-agent teams,
 // RAG-assistant teams, code-copilot teams. These are *templates* that pre-fill
@@ -219,7 +219,7 @@ Rules:
 </review_guide>`
 };
 
-// Flagship bench flow for plugins/coeval/skills/coeval-audit: one bench project evaluates
+// Flagship bench flow for plugins/rubrist/skills/rubrist-audit: one bench project evaluates
 // the real input/output runs of one external agent skill. The user should fork
 // this generic contract with clauses from that skill's own SKILL.md before
 // treating agreement as meaningful.

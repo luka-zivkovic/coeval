@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "reac
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { SectionHead } from "@/components/coeval";
+import { SectionHead } from "@/components/rubrist";
 import { DatabaseModeRequired } from "@/components/database-mode-required";
 import { useAppMode } from "@/lib/app-mode";
 import { BooleanReading } from "../components/production-calibration/boolean-reading.js";
@@ -211,7 +211,7 @@ function PersistentProductionCalibrationScreen() {
         <CardHeader className="justify-between">
           <CardTitle>Decision ledger</CardTitle>
           <span className="font-mono text-[10px] text-ink-4">
-            coeval/production-decision-record/v1 · JSON Lines · decision, action, outcome records · up to {MAX_UPLOAD_BYTES / (1024 * 1024)} MiB
+            rubrist/production-decision-record/v1 · JSON Lines · decision, action, outcome records · up to {MAX_UPLOAD_BYTES / (1024 * 1024)} MiB
           </span>
         </CardHeader>
         <CardContent className="space-y-3">

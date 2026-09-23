@@ -8,7 +8,7 @@ import {
   type SelfConsistencyReport,
   type Skill,
   type SkillVersion
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 // assemble the Judge Card from RECORDED data only. Every absent signal
 // becomes an explicit null/empty plus a basis note — the card never implies

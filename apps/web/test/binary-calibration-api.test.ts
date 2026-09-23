@@ -57,9 +57,9 @@ function artifactResponse(digest = artifactDigest): Response {
     headers: {
       "content-type": "application/json",
       "cache-control": "no-store",
-      "x-coeval-artifact-digest": digest,
-      "x-coeval-evidence-digest": fixture.evidenceDigest,
-      "x-coeval-canonicalization": "coeval-canonical-json/v1"
+      "x-rubrist-artifact-digest": digest,
+      "x-rubrist-evidence-digest": fixture.evidenceDigest,
+      "x-rubrist-canonicalization": "rubrist-canonical-json/v1"
     }
   });
 }
@@ -81,7 +81,7 @@ describe("binary calibration web API", () => {
       accountedObservations: 3
     });
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
-    expect(new Headers(request.headers).get("x-coeval-project")).toBe("project_1");
+    expect(new Headers(request.headers).get("x-rubrist-project")).toBe("project_1");
     expect(request.credentials).toBe("include");
   });
 
@@ -134,7 +134,7 @@ describe("binary calibration web API", () => {
 
   it("requires the versioned no-policy current status contract", async () => {
     const status = {
-      contract: "coeval/binary-calibration-artifact-status/v1",
+      contract: "rubrist/binary-calibration-artifact-status/v1",
       schemaVersion: 1,
       artifactId: fixture.artifactId,
       calibrationRunId: fixture.calibrationRunId,

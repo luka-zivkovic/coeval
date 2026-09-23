@@ -6,7 +6,7 @@ import {
   ProductionDecisionLedgerRecordSchema,
   buildProductionCalibrationArtifact,
   type ProductionCalibrationArtifact
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { BooleanReading } from "../src/components/production-calibration/boolean-reading.js";
 import { ChoiceReading, ScoreNotice } from "../src/components/production-calibration/choice-reading.js";
 import { ReliabilityDiagram } from "../src/components/production-calibration/reliability-diagram.js";

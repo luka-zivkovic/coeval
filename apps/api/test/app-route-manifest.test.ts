@@ -1,14 +1,14 @@
 import type { Pool } from "pg";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.js";
-import type { CoevalAuth } from "../src/lib/auth.js";
+import type { RubristAuth } from "../src/lib/auth.js";
 
 const fakeAuth = {
   api: { getSession: async () => null },
   handler: async () => new Response(null, { status: 404 })
-} as unknown as CoevalAuth;
+} as unknown as RubristAuth;
 
-function routeManifest(options: { auth?: CoevalAuth; pool?: Pool } = {}): string[] {
+function routeManifest(options: { auth?: RubristAuth; pool?: Pool } = {}): string[] {
   const app = createApp(undefined, options);
   return app.routes.map(({ method, path }) => `${method} ${path}`);
 }

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { demoGoldenSet, demoProject, demoSkill, getDemoDashboardSummary } from "@coeval/db";
+import { demoGoldenSet, demoProject, demoSkill, getDemoDashboardSummary } from "@rubrist/db";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import * as repositoryModule from "../src/repository.js";

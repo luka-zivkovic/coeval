@@ -11,7 +11,7 @@ import {
   type AnalysisCriterionPromotionHandoff,
   type AnalysisCriterionPromotionSupportArtifact,
   type AnalysisCriterionPromotionSupportInput
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { canonicalGovernedJsonV1 } from "./governed-content-digest.js";
 import { compareCodeUnits } from "./analysis-population.js";
 

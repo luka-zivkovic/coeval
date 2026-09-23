@@ -3,7 +3,7 @@ import {
   CaseSourceSchema,
   IngestionPurposeSchema,
   RuntimeIngestionPurposeSchema
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import {
   assertTraceIngestionPurpose,

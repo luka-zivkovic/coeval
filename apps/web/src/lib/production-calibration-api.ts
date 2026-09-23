@@ -2,14 +2,14 @@ import {
   ProductionCalibrationArtifactSchema,
   type ProductionCalibrationArtifact,
   type ProductionCalibrationModelIdentity
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 // Compute-only client for POST /api/production-calibration/preview. The ledger
 // travels with each request and nothing is stored server-side, so every
 // recomputation (a new threshold, new costs) is a fresh preview.
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
-const PROJECT_KEY = "coeval.project";
+const PROJECT_KEY = "rubrist.project";
 export const PRODUCTION_CALIBRATION_SAMPLE_PATH = "/samples/production-decision-ledger.flaky-triage.jsonl";
 
 export interface ProductionCalibrationPreviewInput {
@@ -96,7 +96,7 @@ function projectFetch(input: string, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers);
   try {
     const projectId = localStorage.getItem(PROJECT_KEY);
-    if (projectId) headers.set("x-coeval-project", projectId);
+    if (projectId) headers.set("x-rubrist-project", projectId);
   } catch {
     // The authenticated server default remains available when storage is not.
   }

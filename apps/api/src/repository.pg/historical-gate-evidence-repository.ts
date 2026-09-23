@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type {
   GateCheck,
   GateCheckDetail
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import type { CreateGateCheckInputDb } from "../repository.js";
 import type { HistoricalGateEvidenceRepositoryPort } from "../repository/ports.js";

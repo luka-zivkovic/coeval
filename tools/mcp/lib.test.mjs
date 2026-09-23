@@ -1,11 +1,11 @@
-// node --test coverage for the SDK-free client core of the coeval MCP server.
+// node --test coverage for the SDK-free client core of the rubrist MCP server.
 // The stdio entry (index.mjs) only registers these functions as tools, so the
 // contract lives here where it can run without installing the MCP SDK.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createCoevalClient, exampleToBatchItem } from "./lib.mjs";
+import { createRubristClient, exampleToBatchItem } from "./lib.mjs";
 
-const KEY = "coeval_sk_mcp-test-key";
+const KEY = "rubrist_sk_mcp-test-key";
 
 function jsonResponse(status, body) {
   return {
@@ -28,25 +28,25 @@ function recordingFetch(routes) {
 }
 
 function client(fetchImpl) {
-  return createCoevalClient({
-    baseUrl: "https://coeval.example",
+  return createRubristClient({
+    baseUrl: "https://rubrist.example",
     apiKey: KEY,
     fetchImpl,
     sleep: async () => {}
   });
 }
 
-test("requires COEVAL_URL and COEVAL_API_KEY without printing values", () => {
-  assert.throws(() => createCoevalClient({ baseUrl: "", apiKey: KEY }), /COEVAL_URL/);
+test("requires RUBRIST_URL and RUBRIST_API_KEY without printing values", () => {
+  assert.throws(() => createRubristClient({ baseUrl: "", apiKey: KEY }), /RUBRIST_URL/);
   const error = (() => {
     try {
-      createCoevalClient({ baseUrl: "https://coeval.example", apiKey: "" });
+      createRubristClient({ baseUrl: "https://rubrist.example", apiKey: "" });
     } catch (caught) {
       return caught;
     }
     return null;
   })();
-  assert.match(error.message, /COEVAL_API_KEY/);
+  assert.match(error.message, /RUBRIST_API_KEY/);
   assert.ok(!error.message.includes(KEY));
 });
 
@@ -57,18 +57,18 @@ test("read tools hit the expected endpoints with bearer auth and query params", 
     ["/api/v1/cases", () => jsonResponse(200, { cases: [] })],
     ["/api/v1/golden-set", () => jsonResponse(200, { entries: [], totalEntries: 0 })]
   ]);
-  const coeval = client(fetchImpl);
+  const rubrist = client(fetchImpl);
 
-  await coeval.getProject();
-  await coeval.getFindings({ since: "2026-08-01T00:00:00Z" });
-  await coeval.getCases({ verdict: "fail", stratum: "billing", limit: 10 });
-  await coeval.getGolden({});
+  await rubrist.getProject();
+  await rubrist.getFindings({ since: "2026-08-01T00:00:00Z" });
+  await rubrist.getCases({ verdict: "fail", stratum: "billing", limit: 10 });
+  await rubrist.getGolden({});
 
-  assert.equal(calls[0].url, "https://coeval.example/api/v1/project");
+  assert.equal(calls[0].url, "https://rubrist.example/api/v1/project");
   assert.equal(calls[0].init.headers.authorization, `Bearer ${KEY}`);
-  assert.equal(calls[1].url, `https://coeval.example/api/v1/findings?since=${encodeURIComponent("2026-08-01T00:00:00Z")}`);
-  assert.equal(calls[2].url, "https://coeval.example/api/v1/cases?verdict=fail&stratum=billing&limit=10");
-  assert.equal(calls[3].url, "https://coeval.example/api/v1/golden-set");
+  assert.equal(calls[1].url, `https://rubrist.example/api/v1/findings?since=${encodeURIComponent("2026-08-01T00:00:00Z")}`);
+  assert.equal(calls[2].url, "https://rubrist.example/api/v1/cases?verdict=fail&stratum=billing&limit=10");
+  assert.equal(calls[3].url, "https://rubrist.example/api/v1/golden-set");
 });
 
 test("HTTP errors surface status + server message, never the key", async () => {
@@ -87,7 +87,7 @@ test("HTTP errors surface status + server message, never the key", async () => {
 });
 
 // DRIFT GUARD companion: identical content must mint the identical
-// sourceTraceId that tools/ci/gate.mjs and coeval-submit.mjs mint, or
+// sourceTraceId that tools/ci/gate.mjs and rubrist-submit.mjs mint, or
 // idempotency breaks across clients (re-submitting unchanged examples would
 // re-judge and re-spend).
 test("exampleToBatchItem mints the shared ci_ content hash", () => {
@@ -181,8 +181,8 @@ test("run_gate_check blocks on disagreement and requires labels", async () => {
     ["/api/v1/judge/batch", () => jsonResponse(202, { evalRunId: "eval_b", status: "completed", totalItems: 2, cachedItems: 0, skippedItems: 0, pollUrl: "/api/v1/eval-runs/eval_b" })],
     ["/api/v1/eval-runs/eval_b", () => jsonResponse(200, run)]
   ]);
-  const coeval = client(fetchImpl);
-  const blocked = await coeval.runGateCheck({
+  const rubrist = client(fetchImpl);
+  const blocked = await rubrist.runGateCheck({
     examples: [
       { input: "q1", output: "a1", expected: "pass" },
       { input: "q2", output: "a2", expected: "fail" }
@@ -192,7 +192,7 @@ test("run_gate_check blocks on disagreement and requires labels", async () => {
   assert.match(blocked.blockedReason, /agreement/i);
 
   await assert.rejects(
-    () => coeval.runGateCheck({ examples: [{ input: "q", output: "a" }] }),
+    () => rubrist.runGateCheck({ examples: [{ input: "q", output: "a" }] }),
     /label/
   );
 });

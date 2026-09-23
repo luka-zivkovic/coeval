@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eyebrow } from "@/components/coeval";
+import { Eyebrow } from "@/components/rubrist";
 import { createReviewQueue } from "@/lib/api";
 import { useDashboard } from "@/lib/dashboard-context";
 import { dashboardCriterionVersionId } from "@/lib/criterion-scope";

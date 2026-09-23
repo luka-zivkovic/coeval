@@ -43,14 +43,14 @@ describe("tools/ci/gate.mjs", () => {
     try {
       const address = server.address();
       if (address === null || typeof address === "string") throw new Error("test server has no TCP address");
-      const dir = await mkdtemp(join(tmpdir(), "coeval-product-gate-"));
+      const dir = await mkdtemp(join(tmpdir(), "rubrist-product-gate-"));
       tempDirs.push(dir);
       const candidatesPath = join(dir, "candidates.jsonl");
       await writeFile(candidatesPath, '{"goldenCaseId":"case_1","output":"candidate"}\n');
 
       const result = await runGate(["--product", candidatesPath], {
-        COEVAL_URL: `http://127.0.0.1:${address.port}`,
-        COEVAL_API_KEY: "coeval_sk_test"
+        RUBRIST_URL: `http://127.0.0.1:${address.port}`,
+        RUBRIST_API_KEY: "rubrist_sk_test"
       });
 
       assert.equal(result.code, 2);

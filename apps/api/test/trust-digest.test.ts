@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildTrustDigest } from "../src/lib/trust-digest.js";
-import type { GoldenSetHealthSummary, KappaSummary, SelfConsistencyReport, SkillVersion } from "@coeval/shared";
+import type { GoldenSetHealthSummary, KappaSummary, SelfConsistencyReport, SkillVersion } from "@rubrist/shared";
 
 const VERSION = {
   id: "skillv_digest",

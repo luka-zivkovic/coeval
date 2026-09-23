@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { describe, expect, it } from "vitest";
-import { runMigrations } from "@coeval/db";
+import { runMigrations } from "@rubrist/db";
 import {
   ANALYSIS_CRITERION_PROMOTION_CONTRACT_VERSION,
   ANALYSIS_CRITERION_PROMOTION_HANDOFF_VERSION,
@@ -10,7 +10,7 @@ import {
   type AnalysisCriterionPromotionCreateInput,
   type AnalysisCriterionPromotionHandoff,
   type AnalysisCriterionPromotionSupportArtifact
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { PgAnalysisPopulationRepository } from "../src/analysis-population/repository.pg.js";
 import { PgAnalysisPromotionRepository } from "../src/analysis-promotion/repository.pg.js";
 import { PgAnalysisStudyRepository } from "../src/analysis-study/repository.pg.js";
@@ -518,7 +518,7 @@ async function insertPromotionBundle(
                'Analysis failure-code criterion authoring',$7::jsonb,$8,$9)`,
       [criterionAuthoringExposureEventId, evidence.projectId, evidence.sourceRevisionId,
         evidence.ownerSubjectId, evidence.ownerUserId, promotionId, JSON.stringify({
-          contract: "coeval/analysis-criterion-promotion-exposure/v1",
+          contract: "rubrist/analysis-criterion-promotion-exposure/v1",
           promotionId,
           criterionId,
           criterionVersionId,
@@ -540,7 +540,7 @@ async function insertPromotionBundle(
       [exampleSelectionExposureEventId, evidence.projectId, evidence.sourceRevisionId,
         evidence.sourceRevisionItemId, evidence.memberSubjectId, evidence.ownerUserId, promotionId,
         JSON.stringify({
-          contract: "coeval/analysis-criterion-promotion-support-exposure/v1",
+          contract: "rubrist/analysis-criterion-promotion-support-exposure/v1",
           promotionId,
           promotionSupportId: supportId,
           criterionId,
@@ -632,7 +632,7 @@ async function insertPromotionHandoffBatch(
        'custodianRoleAtReview',null,
        'custodianSubjectId',null,
        'drawDigest',$2::text,
-       'drawExecutedBy','coeval_server',
+       'drawExecutedBy','rubrist_server',
        'evaluatorBlind',true,
        'fixedBudget',1,
        'instructionVersionId',$3::text,
@@ -675,7 +675,7 @@ async function insertPromotionHandoffBatch(
        custodian_subject_id,custodian_role_at_review,state_machine_version,content_digest,
        idempotency_key,request_digest,created_by_subject_id)
      values ($1,$2,$3,$4,'analysis_authoring','analysis_promotion_handoff',$5,$6,$7::jsonb,
-             $8::jsonb,1,$9,null,null,'manual',null,null,'manual/v1','coeval_server',1,
+             $8::jsonb,1,$9,null,null,'manual',null,null,'manual/v1','rubrist_server',1,
              'fixed',$10,$11,'[]'::jsonb,1,true,true,false,null,null,
              'governed-review-state/v1',$12,$13,$14,$15)`,
     [batchId, evidence.projectId, promotion.criterionVersionId, instructionId,
@@ -814,7 +814,7 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
                values ('same_tx_sealed_attack',$1,$2,'sealed_attack_instruction',
                  'sealed_validation','sealed_intake','sealed_attack_population',
                  'sealed_attack_population','{}','{}',1,$3,null,null,'manual',null,null,
-                 'manual/v1','coeval_server',1,'fixed','2099-01-01T00:00:00.000Z',$3,
+                 'manual/v1','rubrist_server',1,'fixed','2099-01-01T00:00:00.000Z',$3,
                  '[]',2,true,true,true,$4,'owner','governed-review-state/v1',$3,
                  'same-tx-sealed-attack',$3,$4)`,
               [evidence.projectId, promotion.criterionVersionId,
@@ -1209,7 +1209,7 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
            (id,contract_version,lifecycle_id,project_id,criterion_id,skill_version_id,sequence,
             transition,state,predecessor_event_id,predecessor_event_digest,actor_role,reason,
             idempotency_key,request_digest,content_digest)
-         values ('elce_forged_system_retire','coeval/evaluator-lifecycle-event/v1',$1,$2,$3,$4,2,
+         values ('elce_forged_system_retire','rubrist/evaluator-lifecycle-event/v1',$1,$2,$3,$4,2,
                  'retired','retired',$5,$6,'system','Forged system retirement.',
                  'forged-system-retire',$7,$7)`,
         [candidate.projection.lifecycle.id,evidence.projectId,created.criterion.id,

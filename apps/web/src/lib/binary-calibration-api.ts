@@ -1,10 +1,10 @@
 import {
   BinaryCalibrationArtifactSchema,
   type BinaryCalibrationArtifact
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
-const PROJECT_KEY = "coeval.project";
+const PROJECT_KEY = "rubrist.project";
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const MAX_ARTIFACT_BYTES = 16 * 1024 * 1024;
 
@@ -53,7 +53,7 @@ export interface CreateBinaryCalibrationRunInput {
 }
 
 export interface BinaryCalibrationArtifactStatus {
-  contract: "coeval/binary-calibration-artifact-status/v1";
+  contract: "rubrist/binary-calibration-artifact-status/v1";
   schemaVersion: 1;
   artifactId: string;
   calibrationRunId: string;
@@ -152,9 +152,9 @@ export async function fetchBinaryCalibrationArtifact(
   if (canonicalBytes.byteLength > MAX_ARTIFACT_BYTES) {
     throw new Error("Binary calibration artifact exceeds 16 MiB");
   }
-  const artifactDigest = requiredDigestHeader(response, "x-coeval-artifact-digest");
-  const evidenceDigest = requiredDigestHeader(response, "x-coeval-evidence-digest");
-  if (response.headers.get("x-coeval-canonicalization") !== "coeval-canonical-json/v1") {
+  const artifactDigest = requiredDigestHeader(response, "x-rubrist-artifact-digest");
+  const evidenceDigest = requiredDigestHeader(response, "x-rubrist-evidence-digest");
+  if (response.headers.get("x-rubrist-canonicalization") !== "rubrist-canonical-json/v1") {
     throw new Error("Binary calibration artifact omitted its canonicalization contract");
   }
   const actualDigest = await sha256Digest(canonicalBytes);
@@ -187,7 +187,7 @@ export async function fetchBinaryCalibrationArtifactStatus(
   const body = await responseJson(response, "Binary calibration status request failed");
   if (!response.ok) throw apiError(response, body, "Binary calibration status request failed");
   const value = object(body, "binary calibration status response");
-  if (value.contract !== "coeval/binary-calibration-artifact-status/v1" || value.schemaVersion !== 1) {
+  if (value.contract !== "rubrist/binary-calibration-artifact-status/v1" || value.schemaVersion !== 1) {
     throw new Error("Unsupported binary calibration artifact status contract");
   }
   const currentAdmissibility = enumValue(
@@ -230,7 +230,7 @@ function calibrationFetch(input: string, init?: RequestInit): Promise<Response> 
   const headers = new Headers(init?.headers);
   try {
     const projectId = localStorage.getItem(PROJECT_KEY);
-    if (projectId) headers.set("x-coeval-project", projectId);
+    if (projectId) headers.set("x-rubrist-project", projectId);
   } catch {
     // The authenticated server default remains available when storage is not.
   }

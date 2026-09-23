@@ -4,7 +4,7 @@ import {
   ANALYSIS_CRITERION_PROMOTION_HANDOFF_VERSION,
   type AnalysisCriterionPromotionCreateInput,
   type AnalysisCriterionPromotionCreateResult
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { createAnalysisPromotionRouter } from "../src/analysis-promotion/routes.js";
 import type { AnalysisPromotionRepository } from "../src/analysis-promotion/repository.js";
 import { analysisCriterionPromotionRequestDigest } from "../src/lib/analysis-promotion.js";

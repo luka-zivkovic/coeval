@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import type { Criterion, CriterionDetail } from "@coeval/shared";
+import type { Criterion, CriterionDetail } from "@rubrist/shared";
 import { ApiError, fetchCriteria, fetchCriterionDetail, selectedProjectId, selectProject } from "@/lib/api";
 import {
   CRITERION_QUERY_PARAM,

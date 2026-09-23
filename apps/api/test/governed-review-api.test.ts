@@ -42,9 +42,9 @@ const OTHER_HEADERS = { "x-test-user": "user_other", "x-test-project": PROJECT_I
 const JSON_HEADERS = { "content-type": "application/json" };
 
 const VIEW = {
-  contract: "coeval/governed-blind-task-view/v1",
+  contract: "rubrist/governed-blind-task-view/v1",
   schemaVersion: 1,
-  canonicalizationVersion: "coeval-canonical-json/v1",
+  canonicalizationVersion: "rubrist-canonical-json/v1",
   taskId: "task_member",
   batchId: "batch_1",
   servePosition: 0,
@@ -345,7 +345,7 @@ describe("governed review session-only API", () => {
 
     const authenticated = testApp().app;
     const apiKeyOnly = await authenticated.request("/api/governed-review/tasks", {
-      headers: { authorization: "Bearer coeval_sk_not_a_session", "x-test-project": PROJECT_ID }
+      headers: { authorization: "Bearer rubrist_sk_not_a_session", "x-test-project": PROJECT_ID }
     });
     expect(apiKeyOnly.status).toBe(401);
     await expect(apiKeyOnly.json()).resolves.toMatchObject({ code: "governed_review_session_required" });
@@ -504,8 +504,8 @@ describe("governed review session-only API", () => {
     const secondBytes = Buffer.from(await second.arrayBuffer());
     expect(firstBytes.equals(VIEW_BYTES)).toBe(true);
     expect(secondBytes.equals(firstBytes)).toBe(true);
-    expect(first.headers.get("x-coeval-view-digest")).toBe(VIEW_DIGEST);
-    expect(first.headers.get("access-control-expose-headers")).toContain("X-Coeval-View-Digest");
+    expect(first.headers.get("x-rubrist-view-digest")).toBe(VIEW_DIGEST);
+    expect(first.headers.get("access-control-expose-headers")).toContain("X-Rubrist-View-Digest");
     expect(JSON.parse(firstBytes.toString("utf8"))).not.toHaveProperty("viewDigest");
     expect(repository!.calls.filter((call) => call.method === "getOrCreateBlindTaskView")).toHaveLength(2);
   });

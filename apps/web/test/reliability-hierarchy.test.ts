@@ -1,6 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import type { ConvergenceAudit } from "@coeval/shared";
+import type { ConvergenceAudit } from "@rubrist/shared";
 import {
   convergenceCaseComparisonLabel,
   reliabilityHeroAction,
@@ -129,7 +129,7 @@ describe("reliability hierarchy", () => {
 
   it("uses baseline-safe change copy in both reliability surfaces", async () => {
     const source = await readFile(
-      new URL("../src/components/coeval/convergence-audit.tsx", import.meta.url),
+      new URL("../src/components/rubrist/convergence-audit.tsx", import.meta.url),
       "utf8"
     );
     expect(source).toContain("c.beforeLabel === null");

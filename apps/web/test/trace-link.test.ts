@@ -2,12 +2,12 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFile } from "node:fs/promises";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { TraceLinkConnection, TraceLinkMatch, TraceLinkResolution } from "@coeval/shared";
+import type { TraceLinkConnection, TraceLinkMatch, TraceLinkResolution } from "@rubrist/shared";
 
 vi.mock("@/components/ui/button", () => ({
   Button: ({ children, ...props }: { children?: unknown }) => createElement("button", props, children as never)
 }));
-vi.mock("@/components/coeval", () => ({
+vi.mock("@/components/rubrist", () => ({
   EmptyGlyph: () => createElement("i"),
   EmptyShell: ({ eyebrow, title, body, primary }: { eyebrow?: string; title: string; body?: unknown; primary?: unknown }) =>
     createElement("section", null, eyebrow, createElement("h1", null, title), body as never, primary as never)
@@ -103,7 +103,7 @@ describe("trace link page", () => {
       error: null,
       onRetry: () => {}
     }));
-    expect(html).toContain("This trace version hasn&#x27;t been imported into Coeval yet.");
+    expect(html).toContain("This trace version hasn&#x27;t been imported into Rubrist yet.");
     expect(html).toContain("after Ironside&#x27;s quiet period ends");
     expect(html).toContain("Other imported versions of this trace");
     expect(html).toContain("Open this version");
@@ -118,7 +118,7 @@ describe("trace link page", () => {
       error: null,
       onRetry: () => {}
     }));
-    expect(html).toContain("None of your Coeval projects is connected to Ironside project");
+    expect(html).toContain("None of your Rubrist projects is connected to Ironside project");
     expect(html).toContain("Integrations → Connect Ironside");
     expect(html).not.toContain("Import now");
   });
@@ -191,7 +191,7 @@ describe("trace link clients", () => {
     await expect(syncIronsideConnection(connection)).resolves.toMatchObject({ queued: true });
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("/api/integrations/ironside/int_1/import");
-    expect(new Headers(init.headers).get("x-coeval-project")).toBe("proj_a");
+    expect(new Headers(init.headers).get("x-rubrist-project")).toBe("proj_a");
     expect(JSON.parse(String(init.body))).toEqual({ limit: 25, skillVersionId: "skillv_1" });
     await expect(syncIronsideConnection({ ...connection, skillVersionId: null })).rejects.toThrow("no polling criterion");
   });

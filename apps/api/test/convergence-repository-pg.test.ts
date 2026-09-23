@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { runMigrations } from "@coeval/db";
-import { MinimumVerdictOutputSchema } from "@coeval/shared";
-import { PgBossQueue, type Queue, type QueueJob, type QueueName, type QueueSendOptions } from "@coeval/queue";
+import { runMigrations } from "@rubrist/db";
+import { MinimumVerdictOutputSchema } from "@rubrist/shared";
+import { PgBossQueue, type Queue, type QueueJob, type QueueName, type QueueSendOptions } from "@rubrist/queue";
 import type { Pool } from "pg";
 import { createApp } from "../src/app.js";
 import { createStrictJudgeProvider } from "../src/lib/judge-provider.js";

@@ -17,14 +17,14 @@ describe("governed-review app boundary", () => {
       headers: {
         origin: "http://localhost:5173",
         "access-control-request-method": "GET",
-        "access-control-request-headers": "x-coeval-project"
+        "access-control-request-headers": "x-rubrist-project"
       }
     });
     expect(response.status).toBe(204);
-    expect(response.headers.get("access-control-allow-headers")?.toLowerCase()).toContain("x-coeval-project");
+    expect(response.headers.get("access-control-allow-headers")?.toLowerCase()).toContain("x-rubrist-project");
     const exposed = response.headers.get("access-control-expose-headers")?.toLowerCase() ?? "";
-    expect(exposed).toContain("x-coeval-view-digest");
-    expect(exposed).toContain("x-coeval-canonicalization");
-    expect(exposed).toContain("x-coeval-governance-class");
+    expect(exposed).toContain("x-rubrist-view-digest");
+    expect(exposed).toContain("x-rubrist-canonicalization");
+    expect(exposed).toContain("x-rubrist-governance-class");
   });
 });

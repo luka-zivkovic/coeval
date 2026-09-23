@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { demoProject } from "@coeval/db";
+import { demoProject } from "@rubrist/db";
 import {
   type CaseSource,
   type ImportJobRecord,
   type ManualTraceImportInput,
   isInternalTraceMetadata
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { datasetInputIdentity } from "../lib/dataset-revision.js";
 import { normalizeTracePayload, redactNormalizedTracePayload } from "../lib/redaction.js";
 import type {

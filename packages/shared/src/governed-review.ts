@@ -38,7 +38,7 @@ export const GovernedReviewSelectionMethodSchema = z.enum([
 export type GovernedReviewSelectionMethod = z.infer<typeof GovernedReviewSelectionMethodSchema>;
 
 export const GovernedReviewInstructionVersionSchema = z.object({
-  contract: z.literal("coeval/governed-review-instruction/v1"),
+  contract: z.literal("rubrist/governed-review-instruction/v1"),
   schemaVersion: z.literal(1),
   instructionVersionId: z.string().min(1),
   projectId: z.string().min(1),
@@ -82,7 +82,7 @@ export const GovernedReviewPayloadSnapshotSchema = z.object({
 export type GovernedReviewPayloadSnapshot = z.infer<typeof GovernedReviewPayloadSnapshotSchema>;
 
 export const GovernedReviewItemSchema = z.object({
-  contract: z.literal("coeval/governed-review-item/v1"),
+  contract: z.literal("rubrist/governed-review-item/v1"),
   schemaVersion: z.literal(1),
   reviewItemId: z.string().min(1),
   projectId: z.string().min(1),
@@ -137,7 +137,7 @@ export const GovernedReviewSelectionStratumSchema = z.object({
 export type GovernedReviewSelectionStratum = z.infer<typeof GovernedReviewSelectionStratumSchema>;
 
 export const GovernedReviewSelectionPlanSchema = z.object({
-  contract: z.literal("coeval/governed-review-selection/v1"),
+  contract: z.literal("rubrist/governed-review-selection/v1"),
   schemaVersion: z.literal(1),
   method: GovernedReviewSelectionMethodSchema,
   sourcePopulationId: z.string().min(1),
@@ -158,7 +158,7 @@ export const GovernedReviewSelectionPlanSchema = z.object({
   weight: z.number().positive().nullable(),
   fixedBudget: z.number().int().positive(),
   stoppingRule: z.literal("fixed"),
-  drawExecutor: z.literal("coeval_server"),
+  drawExecutor: z.literal("rubrist_server"),
   drawItemDigests: z.array(DatasetEvidenceDigestSchema).min(1).max(10_000),
   drawDigest: DatasetEvidenceDigestSchema,
   strata: z.array(GovernedReviewSelectionStratumSchema).max(1_000),
@@ -175,7 +175,7 @@ export const GovernedReviewBatchMemberSchema = z.object({
 export type GovernedReviewBatchMember = z.infer<typeof GovernedReviewBatchMemberSchema>;
 
 export const GovernedReviewBatchSchema = z.object({
-  contract: z.literal("coeval/governed-review-batch/v1"),
+  contract: z.literal("rubrist/governed-review-batch/v1"),
   schemaVersion: z.literal(1),
   batchId: z.string().min(1),
   projectId: z.string().min(1),
@@ -219,7 +219,7 @@ export const GovernedReviewBatchSchema = z.object({
 export type GovernedReviewBatch = z.infer<typeof GovernedReviewBatchSchema>;
 
 export const GovernedReviewTaskSchema = z.object({
-  contract: z.literal("coeval/governed-review-task/v1"),
+  contract: z.literal("rubrist/governed-review-task/v1"),
   schemaVersion: z.literal(1),
   taskId: z.string().min(1),
   projectId: z.string().min(1),
@@ -237,7 +237,7 @@ export const GovernedReviewTaskSchema = z.object({
 export type GovernedReviewTask = z.infer<typeof GovernedReviewTaskSchema>;
 
 export const GovernedReviewLabelSchema = z.object({
-  contract: z.literal("coeval/governed-review-label/v1"),
+  contract: z.literal("rubrist/governed-review-label/v1"),
   schemaVersion: z.literal(1),
   labelId: z.string().min(1),
   projectId: z.string().min(1),
@@ -269,7 +269,7 @@ export const GovernedReviewLabelSchema = z.object({
 export type GovernedReviewLabel = z.infer<typeof GovernedReviewLabelSchema>;
 
 const GovernedReviewTaskEventBaseSchema = z.object({
-  contract: z.literal("coeval/governed-review-task-event/v1"),
+  contract: z.literal("rubrist/governed-review-task-event/v1"),
   schemaVersion: z.literal(1),
   eventId: z.string().min(1),
   projectId: z.string().min(1),
@@ -291,8 +291,8 @@ const GovernedReviewTaskEventBaseSchema = z.object({
 export const GovernedReviewTaskEventSchema = z.discriminatedUnion("type", [
   GovernedReviewTaskEventBaseSchema.extend({
     type: z.literal("viewed"),
-    viewContractVersion: z.literal("coeval/governed-blind-task-view/v1"),
-    canonicalizationVersion: z.literal("coeval-canonical-json/v1"),
+    viewContractVersion: z.literal("rubrist/governed-blind-task-view/v1"),
+    canonicalizationVersion: z.literal("rubrist-canonical-json/v1"),
     canonicalViewBytesBase64: z.string().min(1).max(2_796_204),
     viewDigest: DatasetEvidenceDigestSchema,
     exposureClass: z.literal("provenance"),
@@ -336,7 +336,7 @@ export const GovernedReviewBatchStateSchema = z.enum([
 export type GovernedReviewBatchState = z.infer<typeof GovernedReviewBatchStateSchema>;
 
 const GovernedReviewBatchEventBaseSchema = z.object({
-  contract: z.literal("coeval/governed-review-batch-event/v1"),
+  contract: z.literal("rubrist/governed-review-batch-event/v1"),
   schemaVersion: z.literal(1),
   batchEventId: z.string().min(1),
   projectId: z.string().min(1),
@@ -383,7 +383,7 @@ export const GovernedReviewBatchEventSchema = z.discriminatedUnion("type", [
 export type GovernedReviewBatchEvent = z.infer<typeof GovernedReviewBatchEventSchema>;
 
 export const GovernedReviewAlignmentEventSchema = z.object({
-  contract: z.literal("coeval/governed-review-alignment-event/v1"),
+  contract: z.literal("rubrist/governed-review-alignment-event/v1"),
   schemaVersion: z.literal(1),
   alignmentEventId: z.string().min(1),
   projectId: z.string().min(1),
@@ -402,7 +402,7 @@ export const GovernedReviewAlignmentEventSchema = z.object({
 export type GovernedReviewAlignmentEvent = z.infer<typeof GovernedReviewAlignmentEventSchema>;
 
 export const GovernedReviewAdjudicationSchema = z.object({
-  contract: z.literal("coeval/governed-review-adjudication/v1"),
+  contract: z.literal("rubrist/governed-review-adjudication/v1"),
   schemaVersion: z.literal(1),
   adjudicationId: z.string().min(1),
   projectId: z.string().min(1),
@@ -437,7 +437,7 @@ export const ImportedTruthClassificationSchema = z.enum([
 export type ImportedTruthClassification = z.infer<typeof ImportedTruthClassificationSchema>;
 
 export const ImportedHumanTruthSchema = z.object({
-  contract: z.literal("coeval/imported-human-truth/v1"),
+  contract: z.literal("rubrist/imported-human-truth/v1"),
   schemaVersion: z.literal(1),
   importedTruthId: z.string().min(1),
   projectId: z.string().min(1),
@@ -487,9 +487,9 @@ export const ImportedHumanTruthSchema = z.object({
 export type ImportedHumanTruth = z.infer<typeof ImportedHumanTruthSchema>;
 
 export const GovernedBlindTaskViewSchema = z.object({
-  contract: z.literal("coeval/governed-blind-task-view/v1"),
+  contract: z.literal("rubrist/governed-blind-task-view/v1"),
   schemaVersion: z.literal(1),
-  canonicalizationVersion: z.literal("coeval-canonical-json/v1"),
+  canonicalizationVersion: z.literal("rubrist-canonical-json/v1"),
   taskId: z.string().min(1),
   batchId: z.string().min(1),
   servePosition: z.number().int().nonnegative(),
@@ -520,7 +520,7 @@ export type GovernedBlindTaskView = z.infer<typeof GovernedBlindTaskViewSchema>;
 // pseudonymous governed IDs into DatasetReferenceProvenance's legacy
 // verdictIds/actorUserIds fields.
 const GovernedDatasetReferenceProvenanceBaseSchema = z.object({
-  contract: z.literal("coeval/governed-dataset-reference-provenance/v1"),
+  contract: z.literal("rubrist/governed-dataset-reference-provenance/v1"),
   schemaVersion: z.literal(1),
   projectId: z.string().min(1),
   datasetRevisionId: z.string().min(1),

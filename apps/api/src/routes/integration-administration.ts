@@ -20,9 +20,9 @@ import {
   UpdateIronsideIntegrationInputSchema,
   UpdateLangfuseIntegrationInputSchema,
   UpdateLangSmithIntegrationInputSchema
-} from "@coeval/shared";
-import type { Queue } from "@coeval/queue";
-import type { CoevalAuth } from "../lib/auth.js";
+} from "@rubrist/shared";
+import type { Queue } from "@rubrist/queue";
+import type { RubristAuth } from "../lib/auth.js";
 import { userProjectRole } from "../lib/auth.js";
 import { IronsideClient, IronsideHttpError, type IronsideTraceSource } from "../lib/ironside.js";
 import { LangfuseClient, LangfuseHttpError, type LangfuseTraceFetcher } from "../lib/langfuse.js";
@@ -35,7 +35,7 @@ import {
   IronsideIntegrationNotFoundError,
   LangfuseIntegrationNotFoundError,
   LangSmithIntegrationNotFoundError,
-  type CoevalRepository,
+  type RubristRepository,
   type IronsideImportContext,
   type LangfuseImportContext,
   type LangSmithImportContext
@@ -45,9 +45,9 @@ import type { AppVariables, RequestServices } from "../request-services/index.js
 type IntegrationAdministrationApp = Hono<{ Variables: AppVariables }>;
 
 export interface IntegrationAdministrationRouteOptions {
-  repository: CoevalRepository;
+  repository: RubristRepository;
   requestServices: RequestServices;
-  auth?: CoevalAuth | undefined;
+  auth?: RubristAuth | undefined;
   pool?: Pool | undefined;
   queue?: Queue | undefined;
   langSmithClientFactory?: ((context: LangSmithImportContext) => LangSmithTraceFetcher) | undefined;

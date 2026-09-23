@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
-import { runMigrations } from "@coeval/db";
-import { createQueue } from "@coeval/queue";
+import { runMigrations } from "@rubrist/db";
+import { createQueue } from "@rubrist/queue";
 
 import { GoldenSetEntryAlreadyRetiredError, IronsideIntegrationAlreadyExistsError, IronsideIntegrationRevalidationRequiredError } from "../src/repository.js";
 import { PgRepository } from "../src/repository.pg.js";

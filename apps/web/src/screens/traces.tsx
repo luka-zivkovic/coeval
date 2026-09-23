@@ -12,7 +12,7 @@ import {
   ProvChip,
   SectionHead,
   VerdictChip
-} from "@/components/coeval";
+} from "@/components/rubrist";
 import {
   fetchProjectVerdicts
 } from "@/lib/api";
@@ -31,7 +31,7 @@ import {
   verdictLabelFromPayload,
   VERDICT_LIST_MAX_LIMIT,
   type VerdictRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 type VerdictFilter = "all" | "pass" | "fail" | "ambiguous";
 type SourceFilter = TraceSourceFilter;
@@ -55,7 +55,7 @@ const SOURCE_OPTIONS: ReadonlyArray<{ value: SourceFilter; label: string }> = [
 // drift back into a 400 on the whole screen.
 const FETCH_LIMIT = VERDICT_LIST_MAX_LIMIT;
 
-// Label projection is single-sourced in @coeval/shared; this page previously
+// Label projection is single-sourced in @rubrist/shared; this page previously
 // kept a private 0.66/0.33-banded copy that could disagree with the queue and
 // the dashboard about the same verdict.
 const derivedVerdict = verdictLabelFromPayload;
@@ -191,8 +191,8 @@ export function TracesScreen() {
         title={connected ? "Connected. Listening." : "No traces yet."}
         body={
           connected
-            ? "Coeval is connected to your tracer. The first batch should appear after the next polling cycle, with a recorded verdict for each imported trace."
-            : "Connect a tracer, or paste a single trace with the + Import trace button in the top bar to see Coeval judge a case end-to-end."
+            ? "Rubrist is connected to your tracer. The first batch should appear after the next polling cycle, with a recorded verdict for each imported trace."
+            : "Connect a tracer, or paste a single trace with the + Import trace button in the top bar to see Rubrist judge a case end-to-end."
         }
         primary={
           <Button variant="primary" onClick={() => navigate("/integrations")}>

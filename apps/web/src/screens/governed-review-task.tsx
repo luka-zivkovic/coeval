@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, Clock3, RotateCcw, ShieldCheck, Undo2 } from "lucide-react";
-import type { GovernedBlindTaskView, GovernedReviewLabelValue } from "@coeval/shared";
+import type { GovernedBlindTaskView, GovernedReviewLabelValue } from "@rubrist/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";

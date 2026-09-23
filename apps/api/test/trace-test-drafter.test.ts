@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { TracePayload } from "@coeval/shared";
+import type { TracePayload } from "@rubrist/shared";
 import {
   buildTraceTestDraftPrompt,
   parseAssistedTraceTestContent,

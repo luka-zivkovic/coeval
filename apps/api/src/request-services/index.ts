@@ -1,9 +1,9 @@
 import type { Pool } from "pg";
 import type { Context } from "hono";
-import type { Queue } from "@coeval/queue";
+import type { Queue } from "@rubrist/queue";
 import { judgeProviderAvailability } from "../lib/judge-provider.js";
 import { userProjectRole, type AgentSetupPairingRecord } from "../lib/auth.js";
-import type { CoevalRepository } from "../repository.js";
+import type { RubristRepository } from "../repository.js";
 import { createEvalRunRequestService, type EvalRunRequestService } from "./eval-runs.js";
 import { createTokenBucket } from "./rate-limit.js";
 import { createSkillVersionResolver, type ResolveSkillVersionId } from "./skill-versions.js";
@@ -26,7 +26,7 @@ export interface RequestServices extends EvalRunRequestService {
 }
 
 export interface CreateRequestServicesOptions {
-  repository: CoevalRepository;
+  repository: RubristRepository;
   pool?: Pool | undefined;
   queue?: Queue | undefined;
   ownerAuthorizationEnabled: boolean;

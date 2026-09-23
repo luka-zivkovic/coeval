@@ -9,7 +9,7 @@ import {
   type EvaluatorLifecycleEvent,
   type EvaluatorLifecycleState,
   type EvaluatorExecutionContext
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { governedContentV1Digest } from "./governed-content-digest.js";
 
 export const EVALUATOR_CANDIDATE_REQUEST_DIGEST_BASIS = "evaluator-candidate-request/v1" as const;

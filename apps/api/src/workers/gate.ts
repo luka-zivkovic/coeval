@@ -1,15 +1,15 @@
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
-import { GateRunJobSchema, type EvalRun, type GateRunJob } from "@coeval/shared";
-import type { Queue } from "@coeval/queue";
-import { GateRunBindingMismatchError, type CoevalRepository } from "../repository.js";
+import { GateRunJobSchema, type EvalRun, type GateRunJob } from "@rubrist/shared";
+import type { Queue } from "@rubrist/queue";
+import { GateRunBindingMismatchError, type RubristRepository } from "../repository.js";
 import { runEvalRunInline } from "./eval-run.js";
 
 // gate.run (M0 C5a): executes the golden-set regression gate for a pending
 // (calibrating) skill version. Provider failures (RegressionGateJudgeError /
 // RegressionGateUnavailableError) retry while budget remains. Permanent and
 // exhausted failures are persisted as a failed version + error run.
-export async function registerGateRunWorker(queue: Queue, repository: CoevalRepository): Promise<void> {
+export async function registerGateRunWorker(queue: Queue, repository: RubristRepository): Promise<void> {
   await queue.work<GateRunJob>("gate.run", async ({ id, data, retryCount, retryLimit }) => {
     try {
       await processGateRunJob(repository, data, queue);
@@ -38,7 +38,7 @@ export async function registerGateRunWorker(queue: Queue, repository: CoevalRepo
 }
 
 export async function processGateRunJob(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   job: GateRunJob,
   queue?: Queue | undefined
 ): Promise<void> {
@@ -77,7 +77,7 @@ export async function processGateRunJob(
 // Replaying gate.run reuses the version's single backfill run; eval.item
 // delivery has its own deterministic identities and execution claims.
 export async function runExistingCaseBackfill(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   projectId: string,
   skillVersionId: string,
   queue?: Queue | undefined
@@ -103,7 +103,7 @@ export async function runExistingCaseBackfill(
 export type EvalRunDispatchState = "ready" | "busy";
 
 export async function dispatchEvalRunOnce(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   run: EvalRun,
   queue?: Queue | undefined
 ): Promise<EvalRunDispatchState> {

@@ -24,7 +24,7 @@ import {
   type UpdateIronsideIntegrationInput,
   type UpdateLangfuseIntegrationInput,
   type UpdateLangSmithIntegrationInput
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import type {
   ClaimIronsideImportTargetsInput,

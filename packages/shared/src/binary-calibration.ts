@@ -156,9 +156,9 @@ export type BinaryCalibrationPrivateLedgerRecord = z.infer<
 >;
 
 export const BinaryCalibrationPrivateLedgerSchema = z.object({
-  contract: z.literal("coeval/binary-calibration-private-ledger/v1"),
+  contract: z.literal("rubrist/binary-calibration-private-ledger/v1"),
   schemaVersion: z.literal(1),
-  canonicalizationVersion: z.literal("coeval-canonical-json/v1"),
+  canonicalizationVersion: z.literal("rubrist-canonical-json/v1"),
   artifactId: BinaryCalibrationNonEmptyStringSchema,
   calibrationRunId: BinaryCalibrationNonEmptyStringSchema,
   projectId: BinaryCalibrationNonEmptyStringSchema,
@@ -246,9 +246,9 @@ export type BinaryCalibrationRepresentativeIneligibleReason = z.infer<
 >;
 
 export const BinaryCalibrationArtifactSchema = z.object({
-  contract: z.literal("coeval/binary-calibration/v1"),
+  contract: z.literal("rubrist/binary-calibration/v1"),
   schemaVersion: z.literal(1),
-  canonicalizationVersion: z.literal("coeval-canonical-json/v1"),
+  canonicalizationVersion: z.literal("rubrist-canonical-json/v1"),
   artifactId: BinaryCalibrationNonEmptyStringSchema,
   calibrationRunId: BinaryCalibrationNonEmptyStringSchema,
   projectId: BinaryCalibrationNonEmptyStringSchema,
@@ -368,7 +368,7 @@ export const BinaryCalibrationArtifactSchema = z.object({
     fail: BinaryCalibrationCountSchema
   }).strict(),
   privateLedger: z.object({
-    contract: z.literal("coeval/binary-calibration-private-ledger/v1"),
+    contract: z.literal("rubrist/binary-calibration-private-ledger/v1"),
     commitmentDigest: BinaryCalibrationSha256DigestSchema
   }).strict(),
   trials: z.array(BinaryCalibrationTrialSchema).min(1).max(10),

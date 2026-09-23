@@ -20,7 +20,7 @@ import type {
   UpdateIronsideIntegrationInput,
   UpdateLangfuseIntegrationInput,
   UpdateLangSmithIntegrationInput
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type {
   ClaimIronsideImportTargetsInput,
   ClaimLangfuseImportTargetsInput,

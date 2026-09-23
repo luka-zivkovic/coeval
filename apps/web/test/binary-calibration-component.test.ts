@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { BinaryCalibrationArtifactSchema } from "@coeval/shared";
+import { BinaryCalibrationArtifactSchema } from "@rubrist/shared";
 import { describe, expect, it, vi } from "vitest";
 import {
   ArtifactEvidence,
@@ -68,7 +68,7 @@ const download: BinaryCalibrationArtifactDownload = {
   evidenceDigest: artifact.evidenceDigest
 };
 const status: BinaryCalibrationArtifactStatus = {
-  contract: "coeval/binary-calibration-artifact-status/v1",
+  contract: "rubrist/binary-calibration-artifact-status/v1",
   schemaVersion: 1,
   artifactId: artifact.artifactId,
   calibrationRunId: artifact.calibrationRunId,

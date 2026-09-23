@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
-import type { CaseSourceLink } from "@coeval/shared";
+import type { CaseSourceLink } from "@rubrist/shared";
 import { fetchCaseSourceLink } from "../lib/trace-link-api.js";
 
 // "View in Ironside" for a case imported through the native connection. The

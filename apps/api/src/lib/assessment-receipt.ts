@@ -5,7 +5,7 @@ import {
   type EvalRunDetail,
   type ProviderResponseMetadata,
   type SkillVersion
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 const UNAVAILABLE_PROVIDER_METADATA: ProviderResponseMetadata = {
   model: null,

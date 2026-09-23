@@ -1,5 +1,5 @@
-import type { Queue } from "@coeval/queue";
-import type { CoevalRepository } from "../repository.js";
+import type { Queue } from "@rubrist/queue";
+import type { RubristRepository } from "../repository.js";
 
 export interface LangSmithPollerOptions {
   intervalMs?: number | undefined;
@@ -23,7 +23,7 @@ const DEFAULT_IMPORT_LIMIT = 25;
 
 export function registerLangSmithPoller(
   queue: Queue,
-  repository: CoevalRepository,
+  repository: RubristRepository,
   options: LangSmithPollerOptions = {}
 ): LangSmithPollerHandle {
   const intervalMs = options.intervalMs ?? DEFAULT_INTERVAL_MS;
@@ -52,7 +52,7 @@ export function registerLangSmithPoller(
 }
 
 export async function enqueueDueLangSmithImports(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   queue: Queue,
   options: LangSmithPollerOptions & { now?: Date | undefined } = {}
 ): Promise<LangSmithPollingResult> {

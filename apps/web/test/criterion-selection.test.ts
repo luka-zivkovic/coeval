@@ -30,7 +30,7 @@ describe("criterion selection", () => {
     expect(withCriterionSearch("?criterionId=criterion_tone&from=a", "criterion_correctness"))
       .toBe("?criterionId=criterion_correctness&from=a");
     expect(withCriterionSearch("?criterionId=criterion_tone", null)).toBe("");
-    expect(criterionSelectionStorageKey("project_1")).toBe("coeval.criterion.project_1");
+    expect(criterionSelectionStorageKey("project_1")).toBe("rubrist.criterion.project_1");
   });
 
   it("does not block project-level Settings on an unrelated criterion choice", () => {

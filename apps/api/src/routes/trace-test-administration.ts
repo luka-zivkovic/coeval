@@ -9,7 +9,7 @@ import {
   ReviseTraceTestInputSchema,
   RunTraceTestValidationInputSchema,
   TraceTestFunnelEventInputSchema
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   openAIJudgeProviderBaseUrl,
   resolveJudgeProviderApiKey
@@ -36,14 +36,14 @@ import {
   TraceTestRevisionConflictError,
   TraceTestSourceNotFoundError,
   TraceTestValidationNotReadyError,
-  type CoevalRepository
+  type RubristRepository
 } from "../repository.js";
 import type { AppVariables, RequestServices } from "../request-services/index.js";
 
 type TraceTestAdministrationApp = Hono<{ Variables: AppVariables }>;
 
 export interface TraceTestAdministrationRouteOptions {
-  repository: CoevalRepository;
+  repository: RubristRepository;
   pool?: Pool | undefined;
   requestServices: RequestServices;
   traceTestDraftGenerator?: TraceTestDraftGenerator | undefined;

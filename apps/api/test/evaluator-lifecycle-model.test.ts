@@ -7,7 +7,7 @@ import {
   MinimumVerdictOutputSchema,
   type EvaluatorExecutionContext,
   type EvaluatorLifecycleState
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   evaluatorCandidateRequestDigest,
   evaluatorExecutionContextAllowsState,
@@ -118,7 +118,7 @@ describe("evaluator lifecycle authority", () => {
 
   it("rejects a system-authored activation even when every other field is well shaped",()=>{
     expect(EvaluatorLifecycleEventSchema.safeParse({
-      id:"event",contractVersion:"coeval/evaluator-lifecycle-event/v1",
+      id:"event",contractVersion:"rubrist/evaluator-lifecycle-event/v1",
       lifecycleId:"lifecycle",projectId:"project",criterionId:"criterion",skillVersionId:"version",
       sequence:"2",transition:"activated",state:"active",predecessorEventId:"prior",
       predecessorEventDigest:digest,activationBundleId:"bundle",activationEvidence:{

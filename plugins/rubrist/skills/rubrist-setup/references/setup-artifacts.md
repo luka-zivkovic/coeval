@@ -1,11 +1,11 @@
 # Setup artifacts and handoff
 
-Read this file when persisting or applying a Coeval setup proposal. The files
+Read this file when persisting or applying a Rubrist setup proposal. The files
 below are local working artifacts, not governed truth.
 
 ## Resumable draft
 
-Write `.coeval/<slug>.setup-draft.json` before requesting a connection. Keep it
+Write `.rubrist/<slug>.setup-draft.json` before requesting a connection. Keep it
 non-secret and small enough for a later agent to review:
 
 ```json
@@ -42,8 +42,8 @@ into this file. Allowed assumption origins are `user`, `artifact`, and
 ## Final setup plan
 
 After the user chooses **Finish setup**, translate the exact approved proposal
-to `.coeval/<slug>.setup.json`, which is consumed by the existing
-`coeval-audit` transport:
+to `.rubrist/<slug>.setup.json`, which is consumed by the existing
+`rubrist-audit` transport:
 
 ```json
 {
@@ -63,28 +63,28 @@ to `.coeval/<slug>.setup.json`, which is consumed by the existing
 
 The `check.question` must be the exact quality question shown in the proposal;
 the server appends it as an immutable criterion definition and binds the new
-evaluator version to it atomically. Omit `modelId` for Anthropic, OpenAI, or OpenRouter to let Coeval choose the
+evaluator version to it atomically. Omit `modelId` for Anthropic, OpenAI, or OpenRouter to let Rubrist choose the
 first compatible catalog model. Custom providers require `modelId` and
 `baseUrl`. A provider choice is reversible setup configuration; credentials
 are not. Never persist any credential in either JSON file.
 
 ## Apply through the existing transport
 
-Resolve `scripts/coeval-submit.mjs` from the installed `coeval-audit` skill
+Resolve `scripts/rubrist-submit.mjs` from the installed `rubrist-audit` skill
 directory and run:
 
 ```bash
-node <coeval-audit-dir>/scripts/coeval-submit.mjs setup .coeval/<slug>.setup.json \
-  --pairing-env-var COEVAL_PAIRING_TOKEN \
+node <rubrist-audit-dir>/scripts/rubrist-submit.mjs setup .rubrist/<slug>.setup.json \
+  --pairing-env-var RUBRIST_PAIRING_TOKEN \
   --provider-key-env-var ANTHROPIC_API_KEY \
-  --env-var COEVAL_KEY_<SLUG>
+  --env-var RUBRIST_KEY_<SLUG>
 ```
 
 Use the provider credential variable already authorized by the user. If a real
 Run has already been captured, add:
 
 ```bash
---first-batch .coeval/<slug>.jsonl
+--first-batch .rubrist/<slug>.jsonl
 ```
 
 Do not add `--first-batch` for a synthetic or invented example. The transport
@@ -101,7 +101,7 @@ It reads <exact fields> and cannot verify <missing evidence>.
 <N real Runs were submitted and a first Result is available | No Run was submitted, so there is no Result yet.>
 Status: Starter · unvalidated.
 Saved the non-secret setup files at <paths>.
-Next: <capture real runs with coeval-audit | submit examples | connect the trace source>.
+Next: <capture real runs with rubrist-audit | submit examples | connect the trace source>.
 ```
 
 Do not say passed, accurate, trusted, calibrated, human-approved, or ready to
@@ -109,7 +109,7 @@ ship unless separate evidence with exactly that scope exists.
 
 ## Harness limits
 
-- Claude Code may install the optional `coeval-audit` Stop hook after explicit
+- Claude Code may install the optional `rubrist-audit` Stop hook after explicit
   permission. The default is capture plus explicit submission.
 - Codex, Gemini, Cursor, and generic MCP clients use manual JSONL capture, CI,
   or a tracing integration. Do not advertise automatic capture for them.

@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FirstRunCheckSetup } from "@/components/first-run-check-setup";
 import type { SkillEditPhase } from "@/components/skill-edit-flow";
-import { SectionHead } from "@/components/coeval";
+import { SectionHead } from "@/components/rubrist";
 import {
   createSkillVersion,
   createOnboardingCheck,
@@ -50,7 +50,7 @@ import {
   type SkillVersion,
   type SkillVersionTimeScope,
   type VerdictKind
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { SkillVersionEditor } from "./skill-edit/editor.js";
 import {
   GovernedEvaluatorEditBoundary,
@@ -332,7 +332,7 @@ export function SkillEditScreen() {
       skillId: skill.id,
       starter,
       decisionSource: source,
-      decisionReason: source === "coeval" ? recommendationReason(starter, projectName) : null
+      decisionReason: source === "rubrist" ? recommendationReason(starter, projectName) : null
     });
     setOnboardingDraft(draft);
     setRefiningOnboardingDraft(false);
@@ -818,7 +818,7 @@ export function SkillEditScreen() {
         submitting={submitting}
         error={submitError}
         onChoose={(starter) => chooseOnboardingStarter(starter, "user")}
-        onDecide={() => chooseOnboardingStarter(recommendedStarter, "coeval")}
+        onDecide={() => chooseOnboardingStarter(recommendedStarter, "rubrist")}
         onChangeFocus={() => {
           setOnboardingDraft(null);
           setRefiningOnboardingDraft(false);

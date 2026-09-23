@@ -1,14 +1,14 @@
 import { useEffect, useRef } from "react";
 import { Check } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Chip, Eyebrow } from "@/components/coeval";
+import { Chip, Eyebrow } from "@/components/rubrist";
 import { knownFailureGateSummary, sameModelBinding } from "../lib/skill-edit-flow.js";
 import { cn } from "@/lib/utils";
 import {
   type SkillVersion,
   type SkillVersionTimeScope,
   type VerdictKind
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 export type SkillEditPhase = "edit" | "creating" | "running" | "result";
 export type SkillEditOutcome = "passed" | "blocked" | "overridden" | "error";

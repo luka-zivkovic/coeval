@@ -3,7 +3,7 @@ name: casefile
 # Static, no-execution admission scan of the Claude Code plugin this
 # repository publishes, using the Casefile composite Action. Only critical
 # findings fail the job. Warnings stay visible in the job summary: the audit
-# skill's submit script makes HTTP calls to the user's own Coeval instance by
+# skill's submit script makes HTTP calls to the user's own Rubrist instance by
 # design, and that is reported, not blocked.
 on:
   push:
@@ -30,11 +30,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Scan plugins/coeval with Casefile
+      - name: Scan plugins/rubrist with Casefile
         id: casefile
         uses: luka-zivkovic/casefile@main
         with:
-          path: plugins/coeval
+          path: plugins/rubrist
           version: 0.2.1
           fail-on: critical
           strict: "true"

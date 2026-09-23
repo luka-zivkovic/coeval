@@ -13,7 +13,7 @@ import {
   type AnalysisCriterionPromotionCreateInput,
   type AnalysisCriterionPromotionHandoff,
   type AnalysisCriterionPromotionSupportArtifact
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   ANALYSIS_CRITERION_PROMOTION_CONTENT_DIGEST_BASIS,
   ANALYSIS_CRITERION_PROMOTION_HANDOFF_DIGEST_BASIS,

@@ -1,5 +1,5 @@
-import type { Trace } from "@coeval/audit/runtime";
-import { demoProject, demoSkill, getDemoDashboardSummary } from "@coeval/db";
+import type { Trace } from "@rubrist/audit/runtime";
+import { demoProject, demoSkill, getDemoDashboardSummary } from "@rubrist/db";
 import type {
   DashboardSummary,
   GoldenSetEntry,
@@ -9,7 +9,7 @@ import type {
   RetentionPruneResult,
   Skill,
   UpdateProjectSettingsInput
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { capabilityGapsFromExceptions } from "../lib/capability-gaps.js";
 import type { DemoRepositoryStore } from "./demo-store.js";
 import type { ProjectRepositoryPort } from "./ports.js";

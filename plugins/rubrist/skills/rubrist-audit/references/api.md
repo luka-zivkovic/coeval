@@ -3,11 +3,11 @@
 Use these endpoints directly when Node >= 18 is unavailable. Setup and normal
 project use have different credentials by design:
 
-- Preferred: `POST /api/v1/bootstrap` uses a short-lived `coeval_pair_...`
+- Preferred: `POST /api/v1/bootstrap` uses a short-lived `rubrist_pair_...`
   token created by a signed-in owner during onboarding.
 - Headless fallback: the same endpoint accepts the optional instance-scoped
-  `COEVAL_BOOTSTRAP_TOKEN`.
-- Every other `/api/v1/*` request uses the project-scoped `coeval_sk_...` key
+  `RUBRIST_BOOTSTRAP_TOKEN`.
+- Every other `/api/v1/*` request uses the project-scoped `rubrist_sk_...` key
   returned exactly once by setup or Settings.
 
 All requests:
@@ -26,7 +26,7 @@ project-key bucket.
 ## Preferred authorization — onboarding pairing
 
 A signed-in project owner calls `POST /api/agent-setup/pairings`. The `201`
-response contains a `coeval_pair_...` token exactly once. Only its SHA-256 hash
+response contains a `rubrist_pair_...` token exactly once. Only its SHA-256 hash
 is stored. It is scoped to that existing project, expires after 15 minutes,
 and is consumed by one successful setup. Creating another connection revokes
 the previous one. Pairing is limited to new projects with no imported cases;
@@ -40,18 +40,18 @@ persist the pairing token in setup JSON or `.env`.
 
 ## `POST /api/v1/bootstrap` — configure the paired project
 
-Use `Authorization: Bearer coeval_pair_...`. The request's owner/project text
+Use `Authorization: Bearer rubrist_pair_...`. The request's owner/project text
 helps the client produce a readable setup plan, but the token—not those
 fields—selects the existing owner and project.
 
 For a fully headless deployment with no browser session, an administrator may
-instead enable `COEVAL_BOOTSTRAP_TOKEN` with a random value of at least 32
+instead enable `RUBRIST_BOOTSTRAP_TOKEN` with a random value of at least 32
 characters. That fallback creates the project and, on an empty instance,
 requires `owner.password` to create the first owner.
 
 ```bash
-curl -s -X POST "$COEVAL_URL/api/v1/bootstrap" \
-  -H "Authorization: Bearer $COEVAL_PAIRING_TOKEN" \
+curl -s -X POST "$RUBRIST_URL/api/v1/bootstrap" \
+  -H "Authorization: Bearer $RUBRIST_PAIRING_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "owner": { "email": "owner@example.com" },
@@ -100,10 +100,10 @@ or promote golden cases.
 
 ## `GET /api/v1/project` — connection check
 
-Free (no provider spend; 1 rate token). What `coeval-submit.mjs check` calls.
+Free (no provider spend; 1 rate token). What `rubrist-submit.mjs check` calls.
 
 ```bash
-curl -s "$COEVAL_URL/api/v1/project" -H "Authorization: Bearer $COEVAL_API_KEY"
+curl -s "$RUBRIST_URL/api/v1/project" -H "Authorization: Bearer $RUBRIST_API_KEY"
 ```
 
 ```json
@@ -119,8 +119,8 @@ curl -s "$COEVAL_URL/api/v1/project" -H "Authorization: Bearer $COEVAL_API_KEY"
 ## `POST /api/v1/judge/batch` — submit results (fire-and-poll)
 
 ```bash
-curl -s -X POST "$COEVAL_URL/api/v1/judge/batch" \
-  -H "Authorization: Bearer $COEVAL_API_KEY" \
+curl -s -X POST "$RUBRIST_URL/api/v1/judge/batch" \
+  -H "Authorization: Bearer $RUBRIST_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "items": [
@@ -155,7 +155,7 @@ Response is `202`:
 ## `GET /api/v1/eval-runs/:evalRunId` — poll the run
 
 ```bash
-curl -s "$COEVAL_URL$POLL_URL" -H "Authorization: Bearer $COEVAL_API_KEY"
+curl -s "$RUBRIST_URL$POLL_URL" -H "Authorization: Bearer $RUBRIST_API_KEY"
 ```
 
 Poll every ~2s until `status` is `"completed"` or `"failed"`. The fields the
@@ -169,7 +169,7 @@ script's table reads, per item: `caseId`, `status`
 ## `GET /api/v1/findings` — aggregated judgment intelligence
 
 ```bash
-curl -s "$COEVAL_URL/api/v1/findings?since=2026-08-01T00:00:00Z" -H "Authorization: Bearer $COEVAL_API_KEY"
+curl -s "$RUBRIST_URL/api/v1/findings?since=2026-08-01T00:00:00Z" -H "Authorization: Bearer $RUBRIST_API_KEY"
 ```
 
 What the `findings` command wraps. Read-only: `humanOverrides` (human or

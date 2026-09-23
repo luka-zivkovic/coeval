@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CircleAlert, LoaderCircle, RefreshCcw } from "lucide-react";
-import { verdictLabelFromPayload, type CriterionVersion, type EvalRunDetail, type VerdictRecord } from "@coeval/shared";
+import { verdictLabelFromPayload, type CriterionVersion, type EvalRunDetail, type VerdictRecord } from "@rubrist/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eyebrow, SectionHead, VerdictChip } from "@/components/coeval";
+import { Eyebrow, SectionHead, VerdictChip } from "@/components/rubrist";
 import {
   ensureSkillVersionBackfill,
   fetchCaseVerdicts,
@@ -244,8 +244,8 @@ export function FirstResultScreen() {
         sub={result
           ? "This is the Check's opinion about evidence your AI already produced. It is not a human decision, proof of accuracy, or permission to ship."
           : dispatchPending
-            ? "The Run is saved, but Coeval has not confirmed that evaluation started. No Result exists yet."
-            : "Coeval is evaluating saved evidence. You can leave this page and return—the progress below is stored."}
+            ? "The Run is saved, but Rubrist has not confirmed that evaluation started. No Result exists yet."
+            : "Rubrist is evaluating saved evidence. You can leave this page and return—the progress below is stored."}
       />
 
       {criterionError ? (
@@ -259,7 +259,7 @@ export function FirstResultScreen() {
         <StatusCard
           icon={<LoaderCircle className="size-4 animate-spin" />}
           title="Loading the saved quality question"
-          body="Coeval is verifying the exact Check definition bound to this Result before showing its verdict."
+          body="Rubrist is verifying the exact Check definition bound to this Result before showing its verdict."
         />
       ) : criterionVersion ? (
         <Card className="mb-4 border-gold-tint">
@@ -282,7 +282,7 @@ export function FirstResultScreen() {
         <StatusCard
           icon={<LoaderCircle className="size-4 animate-spin" />}
           title="Preparing the Check run"
-          body="The Check has been saved. Coeval is creating a tracked run over the recorded evidence."
+          body="The Check has been saved. Rubrist is creating a tracked run over the recorded evidence."
         />
       ) : error ? (
         <StatusCard
@@ -306,7 +306,7 @@ export function FirstResultScreen() {
           urgent
           icon={<CircleAlert className="size-4" />}
           title="Run saved, waiting to enter the evaluation queue"
-          body="Coeval has not confirmed a live queue job yet. It will keep checking this saved run; no Result has been produced or queued successfully yet."
+          body="Rubrist has not confirmed a live queue job yet. It will keep checking this saved run; no Result has been produced or queued successfully yet."
           actions={
             <Button size="sm" variant="outline" onClick={() => {
               setLoading(true);

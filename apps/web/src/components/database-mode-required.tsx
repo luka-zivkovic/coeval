@@ -1,6 +1,6 @@
 import { Database } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { SectionHead } from "@/components/coeval";
+import { SectionHead } from "@/components/rubrist";
 
 export function DatabaseModeRequired({
   eyebrow,

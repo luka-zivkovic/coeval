@@ -1,23 +1,23 @@
-# Coeval primer
+# Rubrist primer
 
-Coeval is CI for LLM judging skills: it turns a judge prompt into a shared,
+Rubrist is CI for LLM judging skills: it turns a judge prompt into a shared,
 versioned team artifact, judges traces or curated examples with it, routes
 uncertain and failing cases to humans, and regression-tests every judge edit
 against a human-approved golden set.
 
 ## What a judging skill is
 
-A *judging skill* is coeval's versioned judge definition: a rubric (markdown
+A *judging skill* is rubrist's versioned judge definition: a rubric (markdown
 review guide), few-shot examples, a pinned model binding, and a structured
 output schema. Verdicts it produces are labeled `pass`/`fail` (or scalar/
 categorical, depending on the schema). Skill versions and verdicts are
 **append-only** — history is never silently rewritten, which is also why you
 must not submit throwaway sample data to a real project.
 
-**Naming disambiguation:** coeval's portable judging-skill format
-(SkillFormat v1, `spec/skill-format-v1.md` in the coeval repo) defines the
+**Naming disambiguation:** rubrist's portable judging-skill format
+(SkillFormat v1, `spec/skill-format-v1.md` in the rubrist repo) defines the
 *judge* artifact and is unrelated to the Claude Code / Agent Skills
-folder-with-SKILL.md format that this `coeval-audit` skill itself is written
+folder-with-SKILL.md format that this `rubrist-audit` skill itself is written
 in — same word, two different specifications.
 
 ## Project modes
@@ -53,11 +53,11 @@ an agent:
    Pick a model binding (pinned model, never `latest`) and the binary
    pass/fail output schema to start.
 3. **Activate a version** — a draft judges nothing; the batch API refuses to
-   run while `currentSkillVersionId` is null (`coeval-submit.mjs check` tells
+   run while `currentSkillVersionId` is null (`rubrist-submit.mjs check` tells
    you).
-4. **Mint an API key** — **Settings → API keys**. The `coeval_sk_` key is
-   shown once; store it in `.env` (e.g. `COEVAL_API_KEY=...` or the per-skill
-   variable named in `.coeval/config.json`). The key is project-scoped: one
+4. **Mint an API key** — **Settings → API keys**. The `rubrist_sk_` key is
+   shown once; store it in `.env` (e.g. `RUBRIST_API_KEY=...` or the per-skill
+   variable named in `.rubrist/config.json`). The key is project-scoped: one
    key, one project, one audited skill.
 
 In either path, agents stop after submitting runs. Only a human adjudicates
@@ -68,6 +68,6 @@ not evidence that the judge is correct; the Judge Card exposes that provenance.
 
 A judge verdict is one signal, not ground truth. Agreement is only measured
 against the labels *you* supply (`expected` per line). With zero labels there
-is no agreement at all — only the judging skill's opinions. Coeval's own
+is no agreement at all — only the judging skill's opinions. Rubrist's own
 UI follows the same rules (counts, not percentages; consistent is not
 correct), and so does this skill's Phase 4.

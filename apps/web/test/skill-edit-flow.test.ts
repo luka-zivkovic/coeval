@@ -13,7 +13,7 @@ import {
   skillVersionChangeLabels,
   verdictOutputContractChanged
 } from "../src/lib/skill-edit-flow.js";
-import type { RegressionRunResult, SkillVersion } from "@coeval/shared";
+import type { RegressionRunResult, SkillVersion } from "@rubrist/shared";
 import { readFeatureSource } from "./support/web-extraction-contracts.js";
 
 vi.mock("@/components/ui/card", () => ({
@@ -23,7 +23,7 @@ vi.mock("@/components/ui/card", () => ({
   CardHeader: ({ children, ...props }: { children?: unknown }) => createElement("div", props, children as never),
   CardTitle: ({ children, ...props }: { children?: unknown }) => createElement("div", props, children as never)
 }));
-vi.mock("@/components/coeval", () => ({
+vi.mock("@/components/rubrist", () => ({
   Chip: ({ children, ...props }: { children?: unknown }) => createElement("div", props, children as never),
   Eyebrow: ({ children, ...props }: { children?: unknown }) => createElement("div", props, children as never)
 }));

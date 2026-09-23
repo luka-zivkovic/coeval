@@ -4,8 +4,8 @@ import type {
   DatasetRevision,
   DatasetRevisionPayloadSnapshot,
   VerdictRecord
-} from "@coeval/shared";
-import { verdictLabelFromPayload } from "@coeval/shared";
+} from "@rubrist/shared";
+import { verdictLabelFromPayload } from "@rubrist/shared";
 import type { PoolClient } from "pg";
 import {
   datasetInputIdentity,

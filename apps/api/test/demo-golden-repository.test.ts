@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { demoExceptions, demoProject, demoSkill } from "@coeval/db";
-import type { GoldenSetEntry } from "@coeval/shared";
+import { demoExceptions, demoProject, demoSkill } from "@rubrist/db";
+import type { GoldenSetEntry } from "@rubrist/shared";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import * as repositoryModule from "../src/repository.js";

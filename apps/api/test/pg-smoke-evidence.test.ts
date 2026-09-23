@@ -1,8 +1,8 @@
 import { expect, it } from "vitest";
 
-import { runMigrations } from "@coeval/db";
+import { runMigrations } from "@rubrist/db";
 
-import { CreateSkillVersionInputSchema } from "@coeval/shared";
+import { CreateSkillVersionInputSchema } from "@rubrist/shared";
 
 import { PgRepository } from "../src/repository.pg.js";
 

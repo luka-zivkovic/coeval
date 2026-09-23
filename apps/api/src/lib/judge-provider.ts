@@ -6,7 +6,7 @@ import {
   type JudgeVerdict,
   type StructuredVerdict,
   type VerdictSpec
-} from "@coeval/audit/runtime";
+} from "@rubrist/audit/runtime";
 import {
   verdictLabelFromPayload,
   type JudgeProviderAvailabilityItem,
@@ -14,7 +14,7 @@ import {
   type StoredModelBinding,
   type SkillVersion,
   type VerdictPayload
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 // Factory keyed by a skill version's immutable requested `modelBinding`. This is what makes
 // the platform judge *real*: the worker (and the eval-as-a-service endpoint)

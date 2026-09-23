@@ -14,7 +14,7 @@ import {
   type UndefinedPairwiseKappa,
   type VerdictPayload,
   type VerdictRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 /**
  * Compute Cohen's κ summary across human verdicts.
@@ -24,7 +24,7 @@ import {
  *   p_e = expected agreement by chance = sum over categories of P_A(c) * P_B(c)
  *   κ = (p_o - p_e) / (1 - p_e)
  *
- * Coeval's flagship differentiator — Langfuse community discussion #4348
+ * Rubrist's flagship differentiator — Langfuse community discussion #4348
  * explicitly asks for this and gets a "naming hack" workaround. None of the
  * competitors (Langfuse, Langtrace, Braintrust, Promptfoo, Opik) compute κ.
  *
@@ -575,7 +575,7 @@ export function computeJudgeHumanDisagreement(verdicts: VerdictRecord[]): JudgeH
  * a synthetic "reviewer" keyed by `judge:<skillVersionId>` so the existing
  * pairwise-κ logic flows unchanged.
  *
- * Coeval's second κ-shaped wedge: not just "do humans agree with each other?"
+ * Rubrist's second κ-shaped wedge: not just "do humans agree with each other?"
  * but "does the LLM judge agree with our team?" — a calibration metric none of
  * the surveyed competitors compute. Builds on PR #42 (Cohen's κ math) + PR #43
  * (human verdicts) + PR #54 (full verdict-shape UI).

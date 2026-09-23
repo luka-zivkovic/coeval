@@ -1,4 +1,4 @@
-import type { ProductionCalibrationQuestion, ProductionCalibrationWilsonRate } from "@coeval/shared";
+import type { ProductionCalibrationQuestion, ProductionCalibrationWilsonRate } from "@rubrist/shared";
 import { ReliabilityDiagram } from "./reliability-diagram.js";
 import {
   adviceState,
@@ -126,7 +126,7 @@ export function BooleanReading({ entry, threshold, onThresholdChange, costs, onC
         <div className="font-serif text-[14px] font-medium">Threshold advisor</div>
         <p className="mt-1 max-w-[70ch] text-[11.5px] leading-5 text-ink-3">
           An empirical sweep from 0.05 to 0.95 over the decisions that already have outcomes. It assumes tomorrow
-          looks like this ledger. It recommends; it does not decide, and release thresholds stay outside Coeval.
+          looks like this ledger. It recommends; it does not decide, and release thresholds stay outside Rubrist.
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <CostField

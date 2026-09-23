@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, Plus, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Chip, Eyebrow, MarginNote } from "@/components/coeval";
+import { Chip, Eyebrow, MarginNote } from "@/components/rubrist";
 import { importTrace } from "@/lib/api";
 import { useDashboard } from "@/lib/dashboard-context";
 import { dashboardSkillVersionId } from "@/lib/criterion-scope";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/use-dialog-focus";
-import type { ManualTraceImportResult } from "@coeval/shared";
+import type { ManualTraceImportResult } from "@rubrist/shared";
 
 const SAMPLE_INPUT = `{
   "case_id": "manual-001",
@@ -117,7 +117,7 @@ function ImportTraceModal({ onClose }: { onClose: () => void }) {
             <CardDescription>
               {result
                 ? "The recorded Run now appears in Traces. Its Check is queued; a Result or exception appears after evaluation finishes."
-                : "For one-off cases, dry runs, or workspaces without an upstream tracer. Coeval queues the current Check after import."}
+                : "For one-off cases, dry runs, or workspaces without an upstream tracer. Rubrist queues the current Check after import."}
             </CardDescription>
           </div>
           <button

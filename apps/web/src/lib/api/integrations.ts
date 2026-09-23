@@ -61,7 +61,7 @@ import {
   UpdateLangSmithIntegrationInputSchema,
   type UpdateProjectSettingsInput,
   UpdateProjectSettingsInputSchema
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   API_BASE,
   apiError,

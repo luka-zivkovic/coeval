@@ -9,7 +9,7 @@ import {
   BinaryCalibrationPrivateLedgerSchema,
   type BinaryCalibrationArtifact,
   type BinaryCalibrationPrivateLedger
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { canonicalJson } from "../src/lib/assessment-receipt.js";
 import {
   BINARY_CALIBRATION_MAX_CANONICAL_BYTES,
@@ -43,7 +43,7 @@ interface ConformanceCase {
 }
 
 interface ConformanceCorpus {
-  contract: "coeval/binary-calibration/v1";
+  contract: "rubrist/binary-calibration/v1";
   baseFixture: string;
   expectedIdentityByFixture: Record<string, ExpectedBinaryCalibrationArtifact>;
   cases: ConformanceCase[];
@@ -51,29 +51,29 @@ interface ConformanceCorpus {
 
 const contractRoot = new URL("../../../contracts/", import.meta.url);
 const pinnedFileDigests = {
-  schema: "fc671a8dbac5f4d7599667f85931283304071135058021a5df4b9f0a5ddd9686",
-  specification: "340816ebfe0b7b591776ba2f0b8a1bea80380980a2ce90261f4772d16c93b370",
-  completeFixture: "61a5a2b5abeb3303c209d1a9bd32352ec094b77190b3b139fcf8f6b76f010c4f",
-  repeatedFixture: "a4ebaa3036c3bc9e1e868b3a2a8eee3ca828db3ed67006dc6daab98e25a3f53c",
-  incompleteFixture: "b4bf55752831c5a9a7a237654a0b92a32137790b5ea270ccda02c56f9a9c633f",
-  conformance: "07636d660500f693f2c160d2d09e2a43a4699e243bfe44918e0c9ec357fb97e4",
-  wilsonReference: "bdf28e4ecd43a64fb51890dcf2414820fd820aaad422caa51190f9ff1a080c71",
-  privateLedgerSchema: "26f4ac08590752c14af8dbc02fb906a4447e2b4ee63d12bf1c60ab6b9043d544",
-  privateLedgerFixture: "725f1f3257d56a9ea77af97e399f3dda14de9ef1f6faedf5298951b4cfcd637e"
+  schema: "2e50ce0cef7b650a06f0aa011c552f1f7bb60e02bd3dc3d6751ff923b66ddf0d",
+  specification: "dee8960964941a65e819fbd50168ed5cd9f2764bc2eac50c57e1905bcf56f0f6",
+  completeFixture: "f68a7aae8216dcf91510f63d72b0f8955bb5d0cae1ae0abc633245d0d183283c",
+  repeatedFixture: "37b3b8471f9b4f9f4278655c54a6033ed185c5d731d9bcb881f7d0052e17e3e7",
+  incompleteFixture: "3cf6d2b44e790cad592fd4372a38fcce8748c43cb1cff4067b707d48a76198cd",
+  conformance: "4caaa800b5e5d2a63ab1ef71511918b2d90877a5f6d147809f7334db075c1c89",
+  wilsonReference: "948ac238d7b5780dd160dd29bbcad52259c3ae574287fc19fb63cdc41e02d8dd",
+  privateLedgerSchema: "08f890b6a5ed6b7e137602a6e4bcd3c9e0a58e14d92030aaa3337ea8acb388a2",
+  privateLedgerFixture: "71e8126a04b8b6878695cc57945b9366b7fbf8e08a4c8813563e772818e01ac1"
 } as const;
 
 const frozenReceiptV1FileDigests = {
-  schema: "ca18a7b3bfa4610ff56ab88d60044f4357df2d035ac5e072356becc20250e9e7",
-  specification: "85c4a502709a4a6a8c27b96634262fa2b583bbafce98558c99de475528df8802",
-  fixture: "530e7322feb5bc16d025daaef14bec8d73488a168a602d82b37fae2a06d12274",
-  conformance: "9a9ba86d54e78a6cc8d63d592712791f21984e68f09bbbe011d8903296af3e07"
+  schema: "3e5ce757a7f86d02a6ab33057c9176ea052225d65f984ca91e48e5dbaead30a3",
+  specification: "3316bd789574b8976e6449e4fd52725fb972b920eed004e9edf6c9a2456c2432",
+  fixture: "803606d52c79b15c9869ced5920c166a180f4534a3eaf521423e6d0ed1b76752",
+  conformance: "caa74e8632721cf48ceca1133078ade568bfad4fcea177b5e7588837080c0692"
 } as const;
 
 const frozenSuiteV1FileDigests = {
-  schema: "d9510a027313659f0fe11f8dc300874a9b106c57ca08f7cf168d90839bd60b26",
-  specification: "6f0982d3e2b8da38b54fb4d91dab2a92340799b4cd406f29e0698264dd1a43e8",
-  fixture: "64fcd11e94f209015914294bb9f6ef33ee3e1fb4766c3081e0a58f69eed785ae",
-  conformance: "d09392d37c255fcf05361fbe8b7e78ec4306af876352d9b8a05dd621ae0d2458"
+  schema: "5d32cb547d354ffb74f0236bddb249c65fc8c32ae113fced46a62561fb9d9f3a",
+  specification: "d20974868c3d3f126ccc3b0f926489c20089ff0f8aa1659834a9441920eb0564",
+  fixture: "cc8a51571b4b16ff2c004fad8d3bd1eb747dae526a457f7c0806dcb21e523134",
+  conformance: "0ae717946ba9124e0caf5adf68ea4c3808d0f7285c68f394c940782263534506"
 } as const;
 
 function fileBytes(relativePath: string): Buffer {

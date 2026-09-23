@@ -10,7 +10,7 @@ import {
 // read-time calibration admissibility. It deliberately has no composite,
 // threshold, trust, promotion, block, or release field.
 export const ANALYSIS_WORKFLOW_MEASUREMENT_CONTRACT_VERSION =
-  "coeval/analysis-workflow-measurement/v1" as const;
+  "rubrist/analysis-workflow-measurement/v1" as const;
 export const ANALYSIS_WORKFLOW_MEASUREMENT_CALCULATION_VERSION =
   "analysis-workflow-components/v1" as const;
 

@@ -1,6 +1,6 @@
 import { serve } from "@hono/node-server";
-import { runMigrations } from "@coeval/db";
-import { createQueue } from "@coeval/queue";
+import { runMigrations } from "@rubrist/db";
+import { createQueue } from "@rubrist/queue";
 import { createApp } from "./app.js";
 import { createBinaryCalibrationProviderExecutor } from "./binary-calibration/provider.js";
 import { PgBinaryCalibrationRepository } from "./binary-calibration/repository.pg.js";
@@ -104,12 +104,12 @@ const server = serve({
   port
 });
 
-console.log(`Coeval API listening on http://localhost:${port}${pool ? " (Postgres + judge worker)" : " (demo)"}`);
+console.log(`Rubrist API listening on http://localhost:${port}${pool ? " (Postgres + judge worker)" : " (demo)"}`);
 
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
-  console.log(`Received ${signal}; shutting down Coeval API`);
+  console.log(`Received ${signal}; shutting down Rubrist API`);
   const forceExit = setTimeout(() => {
-    console.error("Timed out while shutting down Coeval API; forcing exit");
+    console.error("Timed out while shutting down Rubrist API; forcing exit");
     process.exit(1);
   }, 30_000);
   forceExit.unref();
@@ -123,7 +123,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     process.exit(0);
   } catch (error) {
     clearTimeout(forceExit);
-    console.error("Failed to shut down Coeval API cleanly", error);
+    console.error("Failed to shut down Rubrist API cleanly", error);
     process.exit(1);
   }
 }

@@ -1,6 +1,6 @@
 # Results file and config formats
 
-## Results file: `.coeval/<skillName>.jsonl`
+## Results file: `.rubrist/<skillName>.jsonl`
 
 One JSON object per line. Malformed lines fail submission loudly (exit 2 with
 the line number) — silently dropping examples would be false confidence.
@@ -20,23 +20,23 @@ them is rarely worth judging.
 
 ### Idempotency
 
-`coeval-submit.mjs` derives each line's `sourceTraceId` as `ci_` + the first
+`rubrist-submit.mjs` derives each line's `sourceTraceId` as `ci_` + the first
 32 hex chars of `sha256(JSON.stringify({input, output, ...(steps && {steps})}))`
 — the same recipe as `tools/ci/gate.mjs` and the server's example hash.
 Re-submitting an unchanged line reuses the recorded verdict (no provider
 spend); editing `input`, `output`, or `steps` mints a new case and a fresh
 judgment. Editing `name`, labels, or `metadata` does not.
 
-## Config file: `.coeval/config.json`
+## Config file: `.rubrist/config.json`
 
-Maps each audited skill to its coeval connection, and doubles as the capture
+Maps each audited skill to its rubrist connection, and doubles as the capture
 hook's allowlist:
 
 ```json
 {
   "skills": {
-    "my-skill": { "keyEnvVar": "COEVAL_KEY_MY_SKILL", "capture": true },
-    "other-skill": { "keyEnvVar": "COEVAL_KEY_OTHER", "url": "https://other-coeval.example", "capture": false }
+    "my-skill": { "keyEnvVar": "RUBRIST_KEY_MY_SKILL", "capture": true },
+    "other-skill": { "keyEnvVar": "RUBRIST_KEY_OTHER", "url": "https://other-rubrist.example", "capture": false }
   }
 }
 ```
@@ -44,19 +44,19 @@ hook's allowlist:
 Per skill entry:
 
 - `keyEnvVar` (string, optional) — the environment/.env variable holding this
-  skill's `coeval_sk_` API key. Defaults to `COEVAL_API_KEY`. Pass it to the
+  skill's `rubrist_sk_` API key. Defaults to `RUBRIST_API_KEY`. Pass it to the
   script with `--env-var <NAME>`.
-- `url` (string, optional) — per-skill `COEVAL_URL` override (used by the
-  hook's auto-submit; for manual submits, set `COEVAL_URL` yourself).
+- `url` (string, optional) — per-skill `RUBRIST_URL` override (used by the
+  hook's auto-submit; for manual submits, set `RUBRIST_URL` yourself).
 - `capture` (boolean, optional) — `true` enrolls the skill in the Claude Code
   capture hook. The `capture: true` entries ARE the hook allowlist.
-  **`coeval-audit` itself is never captured**, even if listed — the server's
-  anti-recursion guard covers only coeval-internal metadata, not this skill.
+  **`rubrist-audit` itself is never captured**, even if listed — the server's
+  anti-recursion guard covers only rubrist-internal metadata, not this skill.
 
 Config keys must match the invoked skill name. Plugin-namespaced invocations
 (`plugin:name`) match a key of either the full or the short form.
 
-## The `.coeval/` directory
+## The `.rubrist/` directory
 
 | Path | Purpose |
 | --- | --- |

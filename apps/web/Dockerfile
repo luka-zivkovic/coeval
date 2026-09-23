@@ -10,8 +10,8 @@ COPY packages ./packages
 COPY apps ./apps
 
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @coeval/shared build
-RUN pnpm --filter @coeval/web build
+RUN pnpm --filter @rubrist/shared build
+RUN pnpm --filter @rubrist/web build
 
 FROM nginx:1.29-alpine AS runtime
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html

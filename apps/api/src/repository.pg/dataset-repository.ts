@@ -8,7 +8,7 @@ import {
   type DatasetRevision,
   type DatasetRevisionDetail,
   type DatasetRevisionPayloadSnapshot
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import {
   datasetRevisionItemDigest,

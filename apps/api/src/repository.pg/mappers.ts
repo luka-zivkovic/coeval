@@ -41,7 +41,7 @@ import type {
   TraceTestSummary,
   TraceTestValidation,
   VerdictRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   deriveGateCheckDecision,
   IronsideConnectionTestResultSchema,
@@ -53,7 +53,7 @@ import {
   VerdictLabelSchema,
   VerdictPayloadSchema,
   VerdictRecordSchema
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { parseCanonicalReceiptBytes, receiptArtifactDigest } from "../lib/assessment-receipt.js";
 import type {
   AssessmentReceiptArtifact,

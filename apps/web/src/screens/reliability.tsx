@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table } from "@/components/ui/table";
 import { RowLink } from "@/components/row-action";
-import { Chip, Eyebrow, LabelChip, MarginNote, SectionHead } from "@/components/coeval";
+import { Chip, Eyebrow, LabelChip, MarginNote, SectionHead } from "@/components/rubrist";
 
 import { adjudicateCase, fetchDisagreements, fetchJudgeHumanDisagreements, fetchKappaSummary,
   fetchEvalRunDetail, fetchSkillVersionConvergence, fetchTrustDigest, runNextUncoveredConvergenceCase
@@ -20,7 +20,7 @@ import {
   reliabilityHeroAction,
   reliabilityHeroProjection
 } from "@/lib/reliability-ui";
-import { interpretKappa, KAPPA_MIN_SHARED_CASES } from "@coeval/shared";
+import { interpretKappa, KAPPA_MIN_SHARED_CASES } from "@rubrist/shared";
 import type {
   ConvergenceAudit,
   ConvergenceAuditPage,
@@ -30,7 +30,7 @@ import type {
   KappaSummary,
   ReviewerLabel,
   TrustDigest
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 const KAPPA_BAND_LABEL: Record<KappaInterpretation, string> = {
   poor: "poor",

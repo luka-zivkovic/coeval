@@ -81,8 +81,8 @@ import type {
   TraceTestDetail,
   TraceTestSummary,
   TraceTestValidation
-} from "@coeval/shared";
-import type { Trace } from "@coeval/audit/runtime";
+} from "@rubrist/shared";
+import type { Trace } from "@rubrist/audit/runtime";
 import { createJudgeProvider, type JudgeProviderFactory } from "./lib/judge-provider.js";
 import type {
   ConvergenceAuditPageInput,
@@ -100,7 +100,7 @@ import {
   type ClaimLangSmithImportTargetsInput,
   type CompleteEvalRunItemInputDb,
   type CompleteImportJobInput,
-  type CoevalRepository,
+  type RubristRepository,
   type CompareAssessmentReceiptCopyInput,
   type CreateApiKeyInputDb,
   type CreateAssessmentReceiptCorrectionInput,
@@ -171,9 +171,9 @@ import { PgTraceTestRepository } from "./repository.pg/trace-test-repository.js"
 
 // Explicit PostgreSQL compatibility facade over the 17 cohesive port
 // implementations below. Direct methods intentionally stay visible and in
-// CoevalRepository port order; only the three named cross-port resolvers own
+// RubristRepository port order; only the three named cross-port resolvers own
 // coordination logic in this file.
-export class PgRepository implements CoevalRepository {
+export class PgRepository implements RubristRepository {
   private readonly apiKeyRepository: PgApiKeyRepository;
   private readonly assessmentReceiptRepository: PgAssessmentReceiptRepository;
   private readonly caseEvidenceRepository: PgCaseEvidenceRepository;

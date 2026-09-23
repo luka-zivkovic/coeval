@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 // API keys are high-entropy random tokens (not user-chosen passwords), so a
 // fast unsalted SHA-256 is the right hash: it's a single deterministic lookup
 // key, and there's nothing to brute-force in 192 bits of randomness.
-const KEY_PREFIX = "coeval_sk_";
+const KEY_PREFIX = "rubrist_sk_";
 
 export interface GeneratedApiKey {
   key: string; // plaintext — shown to the user exactly once

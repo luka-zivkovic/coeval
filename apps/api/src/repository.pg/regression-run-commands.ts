@@ -1,4 +1,4 @@
-import type { RegressionRunResult } from "@coeval/shared";
+import type { RegressionRunResult } from "@rubrist/shared";
 import type { PoolClient } from "pg";
 import type { CreateSkillVersionContext } from "../repository/contracts.js";
 

@@ -192,7 +192,7 @@ export type IronsideEvaluatorTrace = z.infer<typeof IronsideEvaluatorTraceSchema
 export const IronsideWebUrlSchema = z.url({ protocol: /^https?$/ }).max(2_000);
 
 // A native connection is one Ironside project plus a scoped machine key. The
-// remote service owns settlement and exposes immutable trace versions; Coeval
+// remote service owns settlement and exposes immutable trace versions; Rubrist
 // persists only the opaque continuation cursor it receives from that feed.
 export const IronsideIntegrationInputSchema = z.object({
   skillVersionId: z.string().min(1).optional(),
@@ -257,7 +257,7 @@ export const IronsideIntegrationSchema = z.object({
 export type IronsideIntegration = z.infer<typeof IronsideIntegrationSchema>;
 
 // The cursor is intentionally opaque: ordering, settlement, bootstrap and
-// recovery remain Ironside concerns rather than duplicated Coeval policy.
+// recovery remain Ironside concerns rather than duplicated Rubrist policy.
 export const IronsideSyncStateSchema = z.object({
   cursor: z.string().nullable()
 });

@@ -42,7 +42,7 @@ import type {
 // Pure analysis over arrays of production decision records, ported from
 // jevkit's decision ledger with the same math. No I/O and no clock: every
 // function is a deterministic map from records (and explicit options) to the
-// `coeval/production-calibration/v1` artifact or one of its parts. Every rate
+// `rubrist/production-calibration/v1` artifact or one of its parts. Every rate
 // carries its numerator and denominator and a 95% Wilson interval; a rate
 // with a zero denominator is an explicit "undefined" object, never NaN.
 

@@ -8,7 +8,7 @@ import {
   PROJECT_NAME_MAX_LENGTH,
   ProjectModeSchema,
   UpdateProjectSettingsInputSchema
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   AgentSetupPairingInProgressError,
   AGENT_SETUP_PAIRING_CLAIM_GRACE_MS,
@@ -27,7 +27,7 @@ import { fetchJudgeModelCatalog, JudgeModelCatalogError } from "../lib/judge-mod
 import {
   AmbiguousProjectSkillError,
   NoCurrentSkillError,
-  type CoevalRepository
+  type RubristRepository
 } from "../repository.js";
 import type { AppVariables, RequestServices } from "../request-services/index.js";
 
@@ -57,7 +57,7 @@ export function agentSetupPairingStatus(
 type ProjectAdministrationApp = Hono<{ Variables: AppVariables }>;
 
 export interface ProjectAdministrationRouteOptions {
-  repository: CoevalRepository;
+  repository: RubristRepository;
   pool?: Pool | undefined;
   requestServices: RequestServices;
   publicApiBaseUrl(c: Context<{ Variables: AppVariables }>): string;

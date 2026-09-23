@@ -1,4 +1,4 @@
-import type { CapabilityGap, ExceptionCase } from "@coeval/shared";
+import type { CapabilityGap, ExceptionCase } from "@rubrist/shared";
 
 // These are exact evaluator-supplied categories, not semantic clusters.
 // Severity only describes the number of unresolved cases in the current queue.

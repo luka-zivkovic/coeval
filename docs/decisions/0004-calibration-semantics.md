@@ -10,7 +10,7 @@ Current judge-versus-human reporting uses inter-rater agreement machinery.
 That is useful diagnostics, but a governed evaluator compared with human truth
 is more directly evaluated as a classifier. Scalar and categorical evaluators
 need different definitions and can accidentally import release policy into
-Coeval if thresholds are chosen carelessly.
+Rubrist if thresholds are chosen carelessly.
 
 ## Decision
 
@@ -35,17 +35,17 @@ Keep Cohen's kappa for human-human agreement and as an optional diagnostic for
 judge-human comparison. Do not use it as the primary claim that an evaluator
 is valid.
 
-Coeval reports measurements and uncertainty without a universal pass
+Rubrist reports measurements and uncertainty without a universal pass
 threshold. It identifies undefined or weakly supported metrics rather than
 substituting a favorable value. A customer's required TPR, TNR, precision,
 coverage, confidence, or sample size is policy and belongs in Dailies or
 another consumer.
 
 If repeated trials are used to characterize a nondeterministic evaluator,
-Coeval preserves trial identity and reports the observed distribution or
+Rubrist preserves trial identity and reports the observed distribution or
 variance. It does not hide trial disagreement behind an unqualified mean.
 
-If a consumer asks Coeval to estimate production failure prevalence, any
+If a consumer asks Rubrist to estimate production failure prevalence, any
 confusion-matrix correction or bootstrap interval is a separately named,
 versioned estimate with its assumptions and sampling frame. It is not silently
 substituted for the observed rate.
@@ -53,7 +53,7 @@ substituted for the observed rate.
 Categorical calibration requires an explicit per-class or one-vs-rest
 definition before implementation. Scalar calibration is deferred until the
 meaning of an error and any threshold can be defined without smuggling release
-policy into Coeval.
+policy into Rubrist.
 
 Blind review means raters do not see the evaluator result before supplying the
 reference judgment. Numeric course heuristics are starting hypotheses, not

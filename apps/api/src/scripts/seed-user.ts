@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { runMigrations } from "@coeval/db";
+import { runMigrations } from "@rubrist/db";
 import { createAuth, ensureWorkspaceForUser } from "../lib/auth.js";
 import { createPgPool } from "../lib/db.js";
 
@@ -8,7 +8,7 @@ const emailArg = args.email;
 const passwordArg = args.password;
 
 if (!emailArg || !passwordArg) {
-  console.error("Usage: pnpm -F @coeval/api seed:user --email owner@example.com --password 'min-8-chars' [--name 'Owner']");
+  console.error("Usage: pnpm -F @rubrist/api seed:user --email owner@example.com --password 'min-8-chars' [--name 'Owner']");
   process.exit(1);
 }
 

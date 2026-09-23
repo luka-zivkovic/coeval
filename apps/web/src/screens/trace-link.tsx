@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { ExternalLink, RefreshCcw } from "lucide-react";
-import { parseTraceDeepLink, type TraceDeepLinkQuery, type TraceLinkConnection, type TraceLinkMatch, type TraceLinkResolution } from "@coeval/shared";
+import { parseTraceDeepLink, type TraceDeepLinkQuery, type TraceLinkConnection, type TraceLinkMatch, type TraceLinkResolution } from "@rubrist/shared";
 import { Button } from "@/components/ui/button";
-import { EmptyGlyph, EmptyShell } from "@/components/coeval";
+import { EmptyGlyph, EmptyShell } from "@/components/rubrist";
 import { selectProject } from "../lib/api/transport.js";
 import { resolveTraceLink, syncIronsideConnection } from "../lib/trace-link-api.js";
 import { caseHref, connectionSyncBlocker, traceLinkOutcome } from "../lib/trace-link.js";
@@ -51,10 +51,10 @@ export function TraceLinkScreen() {
       <Page>
         <EmptyShell
           eyebrow={parsed.code === "unsupported_source" ? "400 · unsupported link source" : "400 · invalid trace link"}
-          title="Coeval can't open this link."
+          title="Rubrist can't open this link."
           body={parsed.error}
           art={<EmptyGlyph kind="404" />}
-          primary={<Button variant="primary" onClick={() => window.location.assign("/")}>Go to Coeval</Button>}
+          primary={<Button variant="primary" onClick={() => window.location.assign("/")}>Go to Rubrist</Button>}
         />
       </Page>
     );
@@ -95,7 +95,7 @@ export function TraceLinkView({ query, resolution, error, onRetry }: TraceLinkVi
     return (
       <EmptyShell
         eyebrow="Trace link"
-        title="Coeval could not look up this trace."
+        title="Rubrist could not look up this trace."
         body={<>{error}{identity}</>}
         art={<EmptyGlyph kind="offline" />}
         primary={<Button variant="primary" onClick={onRetry}><RefreshCcw /> Try again</Button>}
@@ -103,7 +103,7 @@ export function TraceLinkView({ query, resolution, error, onRetry }: TraceLinkVi
     );
   }
   if (!resolution) {
-    return <EmptyShell eyebrow="Trace link" title="Finding this trace in Coeval…" body={identity} />;
+    return <EmptyShell eyebrow="Trace link" title="Finding this trace in Rubrist…" body={identity} />;
   }
   const outcome = traceLinkOutcome(resolution);
   if (outcome.kind === "open") {
@@ -115,7 +115,7 @@ export function TraceLinkView({ query, resolution, error, onRetry }: TraceLinkVi
         <EmptyShell
           eyebrow="Trace link · choose a project"
           title="This trace is imported in more than one of your projects."
-          body={<>Choose which Coeval project to open it in.{identity}</>}
+          body={<>Choose which Rubrist project to open it in.{identity}</>}
         />
         <ul className="flex flex-col gap-2" aria-label="Projects containing this trace">
           {outcome.matches.map((match) => (
@@ -151,10 +151,10 @@ function NotImported({
     <div className="flex flex-col gap-4">
       <EmptyShell
         eyebrow="Trace link · not imported yet"
-        title={query.version ? "This trace version hasn't been imported into Coeval yet." : "This trace hasn't been imported into Coeval yet."}
+        title={query.version ? "This trace version hasn't been imported into Rubrist yet." : "This trace hasn't been imported into Rubrist yet."}
         body={
           <>
-            Coeval imports settled trace versions from Ironside through a project's Ironside
+            Rubrist imports settled trace versions from Ironside through a project's Ironside
             connection, either on its polling schedule or when someone runs an import. A trace
             becomes available after Ironside's quiet period ends.
             <TraceIdentity query={query} />
@@ -186,7 +186,7 @@ function NotImported({
         </section>
       ) : (
         <p className="text-center text-[13px] text-ink-3">
-          None of your Coeval projects is connected to Ironside project{" "}
+          None of your Rubrist projects is connected to Ironside project{" "}
           <span className="font-mono">{query.project}</span>. A project owner connects it from{" "}
           <a className="underline" href="/integrations">Integrations → Connect Ironside</a> with an
           Ironside Integration credential; imports then run on its polling schedule or from its import action there.

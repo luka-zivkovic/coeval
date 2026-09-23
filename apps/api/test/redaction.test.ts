@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { JudgeProvider } from "@coeval/audit/runtime";
+import type { JudgeProvider } from "@rubrist/audit/runtime";
 import { DemoRepository } from "../src/repository.js";
 import { processJudgeRunJob } from "../src/workers/judge.js";
 import { CYCLE_VALUE, EXCLUDED_VALUE, MAX_DEPTH_VALUE, REDACTED_VALUE, TRUNCATED_SUFFIX, redactJson } from "../src/lib/redaction.js";

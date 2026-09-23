@@ -9,10 +9,10 @@ import {
   type AnalysisCriterionPromotionCreateResult,
   type AnalysisCriterionPromotionSummariesPage,
   type AnalysisCriterionPromotionSupportsPage
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
-const PROJECT_KEY = "coeval.project";
+const PROJECT_KEY = "rubrist.project";
 
 export class AnalysisPromotionApiError extends Error {
   constructor(message: string, readonly status: number, readonly code: string | null) {
@@ -96,7 +96,7 @@ function projectFetch(path: string, init?: RequestInit): Promise<Response> {
     credentials: "include",
     headers: {
       ...(init?.headers ?? {}),
-      ...(projectId ? { "x-coeval-project": projectId } : {})
+      ...(projectId ? { "x-rubrist-project": projectId } : {})
     }
   });
 }

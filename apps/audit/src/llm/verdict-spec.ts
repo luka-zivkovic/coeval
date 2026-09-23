@@ -7,7 +7,7 @@ import { z } from "zod";
 // the pinned kind, and return a structured result the platform can persist as a
 // tagged-union verdict payload.
 //
-// This module stays inside `@coeval/audit` (no `@coeval/shared` dependency, in
+// This module stays inside `@rubrist/audit` (no `@rubrist/shared` dependency, in
 // keeping with the package's standalone schema.ts). The API layer maps the
 // audit-local `StructuredVerdict` below onto the shared `VerdictPayload`.
 

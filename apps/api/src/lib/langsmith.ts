@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ManualTraceImportInput } from "@coeval/shared";
+import type { ManualTraceImportInput } from "@rubrist/shared";
 
 export interface LangSmithClientOptions {
   apiKey: string;

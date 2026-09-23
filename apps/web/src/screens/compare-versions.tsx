@@ -14,13 +14,13 @@ import {
   KPIRow,
   Ref,
   SectionHead
-} from "@/components/coeval";
+} from "@/components/rubrist";
 import {
   fetchCurrentSkill,
   fetchSkillVersionRegression,
   fetchSkillVersions
 } from "@/lib/api";
-import type { RegressionRunResult, SkillVersion } from "@coeval/shared";
+import type { RegressionRunResult, SkillVersion } from "@rubrist/shared";
 import { useCriterion } from "@/lib/criterion-context";
 
 interface ChainStep {

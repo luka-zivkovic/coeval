@@ -23,7 +23,7 @@ import {
 import {
   Chip,
   Receipt
-} from "@/components/coeval";
+} from "@/components/rubrist";
 import {
   type ConversationTurn,
   type CorrectionResult,
@@ -46,7 +46,7 @@ import {
   type TraceTestSourceScope,
   type TraceTestValidation,
   type TraceTestValidationOutcome
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 export type Stage = "source" | "desired" | "draft" | "validate" | "receipt";
 export type ReceiptKind = "draft" | "correction" | "enabled";
@@ -198,7 +198,7 @@ export function SourceStage(props: SourceStageProps) {
   const selectedResponse = turns.find((turn) => samePath(turn.path, props.responsePath));
   return (
     <>
-      <PageHeading title="What are we protecting?" body="Confirm the response and the part of the conversation that gives it meaning. Coeval keeps the complete source as evidence." />
+      <PageHeading title="What are we protecting?" body="Confirm the response and the part of the conversation that gives it meaning. Rubrist keeps the complete source as evidence." />
       <Card>
         <CardHeader>
           <div>
@@ -290,7 +290,7 @@ interface DesiredStageProps {
 export function DesiredStage(props: DesiredStageProps) {
   const choices: Array<{ value: TraceTestJob; title: string; body: string }> = [
     { value: "response", title: "The AI response", body: "Prevent an unwanted product behavior from happening again." },
-    { value: "verdict", title: "Coeval's verdict", body: "Correct how Coeval judged this conversation. This will not create a product test." },
+    { value: "verdict", title: "Rubrist's verdict", body: "Correct how Rubrist judged this conversation. This will not create a product test." },
     { value: "preserve", title: "Nothing is wrong; this is worth preserving", body: "Protect the useful behavior already shown in the response." }
   ];
   return (
@@ -437,7 +437,7 @@ export function DraftStage(props: DraftStageProps) {
             </div>
             {props.inferredContext.length > 0 ? (
               <div className="rounded-sm border border-rule-soft bg-paper-2 px-4 py-3">
-                <div className="text-[12.5px] font-medium text-ink">Coeval inferred — review these</div>
+                <div className="text-[12.5px] font-medium text-ink">Rubrist inferred — review these</div>
                 <ul className="mt-2 list-disc space-y-1 pl-4 text-[12px] leading-[1.5] text-ink-2">
                   {props.inferredContext.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}
                 </ul>
@@ -468,7 +468,7 @@ export function DraftStage(props: DraftStageProps) {
                   <input className={INPUT_CLASS} value={props.fields.checkerLabel} onChange={(event) => props.onCheckerLabelChange(event.target.value)} />
                 </FieldLabel>
               </div>
-              {props.fields.checkerRationale ? <p className="mt-2 text-[11.5px] leading-[1.45] text-ink-3">Why Coeval suggested it: {props.fields.checkerRationale}</p> : null}
+              {props.fields.checkerRationale ? <p className="mt-2 text-[11.5px] leading-[1.45] text-ink-3">Why Rubrist suggested it: {props.fields.checkerRationale}</p> : null}
             </div>
             {props.error ? <InlineError>{props.error}</InlineError> : null}
           </CardContent>
@@ -524,8 +524,8 @@ export function ValidationStage(props: ValidationStageProps) {
       <PageHeading
         title="Can this test tell good from bad?"
         body={preservesOriginal
-          ? "Coeval checks a known-bad response and the original response you want to preserve. Only the expected fail/pass split can make the draft ready."
-          : "Coeval checks the original unwanted response and the known-good response separately. Only the expected fail/pass split can make the draft ready."}
+          ? "Rubrist checks a known-bad response and the original response you want to preserve. Only the expected fail/pass split can make the draft ready."
+          : "Rubrist checks the original unwanted response and the known-good response separately. Only the expected fail/pass split can make the draft ready."}
       />
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <ValidationEvidenceCard
@@ -659,7 +659,7 @@ function SourceSummary({ detail, turns, scope }: { detail: ExceptionDetail; turn
   return (
     <aside className="rounded-sm border border-rule-soft bg-card px-4 py-4 lg:sticky lg:top-5" aria-label="Selected source">
       <div className="flex items-center gap-2"><ShieldCheck className="size-4 text-ink-2" /><h2 className="font-serif text-[15px] font-medium text-ink">Source stays attached</h2></div>
-      <p className="mt-1 text-[11.5px] leading-[1.5] text-ink-3">Coeval keeps the full conversation. This summary shows the selected scope.</p>
+      <p className="mt-1 text-[11.5px] leading-[1.5] text-ink-3">Rubrist keeps the full conversation. This summary shows the selected scope.</p>
       <div className="mt-4 flex flex-col gap-3">
         {scopedTurns.map((turn) => (
           <div key={turn.index} className="border-t border-rule-soft pt-3 first:border-0 first:pt-0">
@@ -703,7 +703,7 @@ export function ReceiptStage({
     return (
       <div className="mx-auto max-w-2xl pt-10">
         <Receipt icon={<Check className="size-4" />} meta="Evaluator feedback">
-          <b>Correction recorded.</b> Coeval saved your result on the source conversation. No product test was created.
+          <b>Correction recorded.</b> Rubrist saved your result on the source conversation. No product test was created.
         </Receipt>
         <h1 data-trace-test-heading tabIndex={-1} className="mt-7 font-serif text-[30px] font-medium tracking-[-0.025em] text-ink outline-none">Evaluator correction recorded</h1>
         <p className="mt-2 max-w-[65ch] text-[13.5px] leading-[1.65] text-ink-2">The ruling is now part of the source case's ungoverned review history. It can inform later evaluator changes, but it does not create a regression test or governed calibration evidence.</p>
@@ -719,7 +719,7 @@ export function ReceiptStage({
           <b>Test enabled.</b> The validated revision is now ready for normal use.
         </Receipt>
         <h1 data-trace-test-heading tabIndex={-1} className="mt-7 font-serif text-[30px] font-medium tracking-[-0.025em] text-ink outline-none">Test enabled</h1>
-        <p className="mt-2 max-w-[65ch] text-[13.5px] leading-[1.65] text-ink-2">Run the enabled test against the current evaluator. Coeval adds the test to Regression tests and keeps each run linked to the validated evidence.</p>
+        <p className="mt-2 max-w-[65ch] text-[13.5px] leading-[1.65] text-ink-2">Run the enabled test against the current evaluator. Rubrist adds the test to Regression tests and keeps each run linked to the validated evidence.</p>
         {result ? (
           <div className="mt-5 rounded-sm border border-rule-soft bg-paper-2 px-4 py-3" role="status">
             <div className="text-[13px] font-medium text-ink">{result.title}</div>

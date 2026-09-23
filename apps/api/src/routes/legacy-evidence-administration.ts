@@ -11,7 +11,7 @@ import {
   VERDICT_LIST_MAX_LIMIT,
   VerdictPayloadSchema,
   VerdictSourceSchema
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { userProjectRole } from "../lib/auth.js";
 import { buildTrustDigest, SPEND_WINDOW_RUNS } from "../lib/trust-digest.js";
 import {
@@ -22,7 +22,7 @@ import {
   GoldenSetEntryNotFoundError,
   GoldenSetLabelConflictError,
   NoCurrentSkillError,
-  type CoevalRepository
+  type RubristRepository
 } from "../repository.js";
 import type { AppVariables } from "../request-services/index.js";
 
@@ -32,13 +32,13 @@ const LEGACY_GOVERNANCE_CLASS = "ungoverned_legacy";
 // governed-review contract. Keep their wire shapes stable while making the
 // evidence boundary machine-readable on successes and validation errors.
 function markUngovernedLegacy(c: Context): void {
-  c.header("X-Coeval-Governance-Class", LEGACY_GOVERNANCE_CLASS);
+  c.header("X-Rubrist-Governance-Class", LEGACY_GOVERNANCE_CLASS);
 }
 
 type LegacyEvidenceAdministrationApp = Hono<{ Variables: AppVariables }>;
 
 export interface LegacyEvidenceAdministrationRouteOptions {
-  repository: CoevalRepository;
+  repository: RubristRepository;
   pool?: Pool | undefined;
 }
 
@@ -532,7 +532,7 @@ export function registerLegacyEvidenceAdministrationRoutes(
       ...(parsed.data.criterionId ? { criterionId: parsed.data.criterionId } : {}),
       limit: parsed.data.limit
     });
-    const filenameStem = `coeval-verdicts-${new Date().toISOString().slice(0, 10)}`;
+    const filenameStem = `rubrist-verdicts-${new Date().toISOString().slice(0, 10)}`;
     if (parsed.data.format === "csv") {
       const body = verdictsToCsv(verdicts);
       c.header("content-type", "text/csv; charset=utf-8");
@@ -767,7 +767,7 @@ export function registerLegacyEvidenceAdministrationRoutes(
 //   - binary    → "true" | "false" | "ambiguous"
 //   - scalar    → number formatted as string + `range_min` / `range_max`
 //   - categorical → choice key + the JSON-encoded choiceScores map
-function verdictsToCsv(verdicts: import("@coeval/shared").VerdictRecord[]): string {
+function verdictsToCsv(verdicts: import("@rubrist/shared").VerdictRecord[]): string {
   const header = [
     "id",
     "project_id",

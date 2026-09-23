@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import type { Trace } from "@coeval/audit/runtime";
-import { demoProject, demoSkill } from "@coeval/db";
-import type { FeedbackSyncJob, JudgeRun, JudgeRunJob } from "@coeval/shared";
+import type { Trace } from "@rubrist/audit/runtime";
+import { demoProject, demoSkill } from "@rubrist/db";
+import type { FeedbackSyncJob, JudgeRun, JudgeRunJob } from "@rubrist/shared";
 import type {
   FeedbackSyncContext,
   FeedbackSyncJobListItem,

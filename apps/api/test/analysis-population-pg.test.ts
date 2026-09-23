@@ -1,12 +1,12 @@
 import { Pool, type PoolClient } from "pg";
 import { describe, expect, it } from "vitest";
-import { runMigrations } from "@coeval/db";
+import { runMigrations } from "@rubrist/db";
 import {
   ANALYSIS_POPULATION_CANONICALIZATION_VERSION,
   ANALYSIS_POPULATION_ELIGIBLE_INGESTION_PURPOSES,
   ANALYSIS_POPULATION_ELIGIBLE_SOURCES,
   ANALYSIS_POPULATION_ORDERING_VERSION
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   analysisPopulationContentDigest,
   analysisPopulationDrawContentDigest,
@@ -333,8 +333,8 @@ async function insertAnalysisBundle(
         draw_executor,seed,rng_version,algorithm_version,fixed_budget,population_size,
         inclusion_numerator,inclusion_denominator,draw_digest,content_digest,
         executed_by_subject_id,executed_at)
-     select $1,$2,$3,$4,'simple_random','fixed','coeval_server',$5,'sha256-rank/v1',
-            'coeval-analysis-draw/v1',$6,1,$6,1,$7,$8,$9,transaction_timestamp()`,
+     select $1,$2,$3,$4,'simple_random','fixed','rubrist_server',$5,'sha256-rank/v1',
+            'rubrist-analysis-draw/v1',$6,1,$6,1,$7,$8,$9,transaction_timestamp()`,
     [drawId, actor.projectId, populationId, revisionId, seed, fixedBudget, drawDigest, drawContentDigest, actor.subjectId]
   );
   await client.query(

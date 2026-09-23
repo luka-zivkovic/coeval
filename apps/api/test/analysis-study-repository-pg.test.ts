@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { describe, expect, it, vi } from "vitest";
-import { runMigrations } from "@coeval/db";
+import { runMigrations } from "@rubrist/db";
 import { PgAnalysisPopulationRepository } from "../src/analysis-population/repository.pg.js";
 import { PgAnalysisStudyRepository } from "../src/analysis-study/repository.pg.js";
 import { datasetInputIdentity } from "../src/lib/dataset-revision.js";

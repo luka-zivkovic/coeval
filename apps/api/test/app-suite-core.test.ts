@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Pool } from "pg";
 
-import { AgentBootstrapRequestSchema, CreateSkillVersionInputSchema, SkillVersionSchema, VerdictPayloadSchema, effectiveHumanLabel, verdictComparableScore, verdictLabelFromPayload } from "@coeval/shared";
+import { AgentBootstrapRequestSchema, CreateSkillVersionInputSchema, SkillVersionSchema, VerdictPayloadSchema, effectiveHumanLabel, verdictComparableScore, verdictLabelFromPayload } from "@rubrist/shared";
 import { bootstrapRateLimitIdentity, createApp } from "../src/app.js";
 import { DemoRepository, buildGoldenSetHealthSummary } from "../src/repository.js";
 
-describe("Coeval Hono API", () => {
+describe("Rubrist Hono API", () => {
   const app = createApp();
 
   it("returns health", async () => {
@@ -26,12 +26,12 @@ describe("Coeval Hono API", () => {
     // Pool-less mode can never bootstrap — a pairing token must NOT get a 401
     // "invalid or expired" that tells the user to regenerate connections that
     // can never work; the mode itself is the cause and the response says so.
-    const previous = process.env.COEVAL_BOOTSTRAP_TOKEN;
+    const previous = process.env.RUBRIST_BOOTSTRAP_TOKEN;
     try {
-      delete process.env.COEVAL_BOOTSTRAP_TOKEN;
+      delete process.env.RUBRIST_BOOTSTRAP_TOKEN;
       for (const headers of [
         undefined,
-        { authorization: "Bearer coeval_pair_expired-or-made-up" },
+        { authorization: "Bearer rubrist_pair_expired-or-made-up" },
         { authorization: "Bearer wrong-token" }
       ]) {
         const response = await app.request("/api/v1/bootstrap", { method: "POST", ...(headers ? { headers } : {}) });
@@ -39,16 +39,16 @@ describe("Coeval Hono API", () => {
         await expect(response.json()).resolves.toMatchObject({ code: "bootstrap_requires_auth" });
       }
 
-      process.env.COEVAL_BOOTSTRAP_TOKEN = "test-bootstrap-token-that-is-at-least-32-chars";
+      process.env.RUBRIST_BOOTSTRAP_TOKEN = "test-bootstrap-token-that-is-at-least-32-chars";
       const demo = await app.request("/api/v1/bootstrap", {
         method: "POST",
-        headers: { authorization: `Bearer ${process.env.COEVAL_BOOTSTRAP_TOKEN}` }
+        headers: { authorization: `Bearer ${process.env.RUBRIST_BOOTSTRAP_TOKEN}` }
       });
       expect(demo.status).toBe(501);
       await expect(demo.json()).resolves.toMatchObject({ code: "bootstrap_requires_auth" });
     } finally {
-      if (previous === undefined) delete process.env.COEVAL_BOOTSTRAP_TOKEN;
-      else process.env.COEVAL_BOOTSTRAP_TOKEN = previous;
+      if (previous === undefined) delete process.env.RUBRIST_BOOTSTRAP_TOKEN;
+      else process.env.RUBRIST_BOOTSTRAP_TOKEN = previous;
     }
   });
 
@@ -77,8 +77,8 @@ describe("Coeval Hono API", () => {
   });
 
   it("reports a retryable rollback when headless setup removes its failed project", async () => {
-    const previous = process.env.COEVAL_BOOTSTRAP_TOKEN;
-    process.env.COEVAL_BOOTSTRAP_TOKEN = "headless-rollback-token-that-is-at-least-32-characters";
+    const previous = process.env.RUBRIST_BOOTSTRAP_TOKEN;
+    process.env.RUBRIST_BOOTSTRAP_TOKEN = "headless-rollback-token-that-is-at-least-32-characters";
     try {
       const repository = new DemoRepository();
       vi.spyOn(repository, "createApiKey").mockRejectedValue(new Error("simulated key insert failure"));
@@ -107,7 +107,7 @@ describe("Coeval Hono API", () => {
       const response = await headlessApp.request("/api/v1/bootstrap", {
         method: "POST",
         headers: {
-          authorization: `Bearer ${process.env.COEVAL_BOOTSTRAP_TOKEN}`,
+          authorization: `Bearer ${process.env.RUBRIST_BOOTSTRAP_TOKEN}`,
           "content-type": "application/json"
         },
         body: JSON.stringify({
@@ -126,14 +126,14 @@ describe("Coeval Hono API", () => {
       await expect(response.json()).resolves.toMatchObject({ code: "bootstrap_rolled_back" });
       expect(deleteProject).toHaveBeenCalledOnce();
     } finally {
-      if (previous === undefined) delete process.env.COEVAL_BOOTSTRAP_TOKEN;
-      else process.env.COEVAL_BOOTSTRAP_TOKEN = previous;
+      if (previous === undefined) delete process.env.RUBRIST_BOOTSTRAP_TOKEN;
+      else process.env.RUBRIST_BOOTSTRAP_TOKEN = previous;
     }
   });
 
   it("isolates trusted-proxy bootstrap limits by client address", () => {
-    const previous = process.env.COEVAL_TRUST_PROXY;
-    process.env.COEVAL_TRUST_PROXY = "1";
+    const previous = process.env.RUBRIST_TRUST_PROXY;
+    process.env.RUBRIST_TRUST_PROXY = "1";
     try {
       const context = (address: string) => ({
         req: { header: (name: string) => name === "x-forwarded-for" ? `${address}, 10.0.0.1` : undefined }
@@ -141,8 +141,8 @@ describe("Coeval Hono API", () => {
       expect(bootstrapRateLimitIdentity(context("203.0.113.10") as never)).toBe("203.0.113.10");
       expect(bootstrapRateLimitIdentity(context("203.0.113.11") as never)).toBe("203.0.113.11");
     } finally {
-      if (previous === undefined) delete process.env.COEVAL_TRUST_PROXY;
-      else process.env.COEVAL_TRUST_PROXY = previous;
+      if (previous === undefined) delete process.env.RUBRIST_TRUST_PROXY;
+      else process.env.RUBRIST_TRUST_PROXY = previous;
     }
   });
 

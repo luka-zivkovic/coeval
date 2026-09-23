@@ -55,7 +55,7 @@ function runProjection(): BinaryCalibrationRunProjection {
     plannedObservations: 3,
     accountedObservations: 3,
     artifactId: fixtureArtifact.artifactId,
-    artifactDigest: "sha256:61a5a2b5abeb3303c209d1a9bd32352ec094b77190b3b139fcf8f6b76f010c4f",
+    artifactDigest: "sha256:f68a7aae8216dcf91510f63d72b0f8955bb5d0cae1ae0abc633245d0d183283c",
     evidenceDigest: fixtureArtifact.evidenceDigest,
     createdAt: CREATED_AT,
     startedAt: CREATED_AT,
@@ -97,7 +97,7 @@ class FakeCalibrationRepository implements BinaryCalibrationControlRepository {
       artifactId,
       calibrationRunId: fixtureArtifact.calibrationRunId,
       canonicalBytes: fixtureBytes,
-      artifactDigest: "sha256:61a5a2b5abeb3303c209d1a9bd32352ec094b77190b3b139fcf8f6b76f010c4f",
+      artifactDigest: "sha256:f68a7aae8216dcf91510f63d72b0f8955bb5d0cae1ae0abc633245d0d183283c",
       evidenceDigest: fixtureArtifact.evidenceDigest,
       createdAt: CREATED_AT,
       ...this.artifactOverride
@@ -111,7 +111,7 @@ class FakeCalibrationRepository implements BinaryCalibrationControlRepository {
     this.record("getArtifactStatus", { access, artifactId });
     if (this.error) throw this.error;
     return {
-      contract: "coeval/binary-calibration-artifact-status/v1",
+      contract: "rubrist/binary-calibration-artifact-status/v1",
       schemaVersion: 1,
       artifactId,
       calibrationRunId: fixtureArtifact.calibrationRunId,
@@ -263,11 +263,11 @@ describe("binary calibration control API", () => {
     expect(Buffer.from(await response.arrayBuffer())).toEqual(fixtureBytes);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("content-type")).toContain("application/json");
-    expect(response.headers.get("x-coeval-artifact-digest")).toBe(
-      "sha256:61a5a2b5abeb3303c209d1a9bd32352ec094b77190b3b139fcf8f6b76f010c4f"
+    expect(response.headers.get("x-rubrist-artifact-digest")).toBe(
+      "sha256:f68a7aae8216dcf91510f63d72b0f8955bb5d0cae1ae0abc633245d0d183283c"
     );
-    expect(response.headers.get("x-coeval-evidence-digest")).toBe(fixtureArtifact.evidenceDigest);
-    expect(response.headers.get("x-coeval-canonicalization")).toBe("coeval-canonical-json/v1");
+    expect(response.headers.get("x-rubrist-evidence-digest")).toBe(fixtureArtifact.evidenceDigest);
+    expect(response.headers.get("x-rubrist-canonicalization")).toBe("rubrist-canonical-json/v1");
     expect(response.headers.get("etag")).toContain("sha256:");
     expect(response.headers.get("digest")).toMatch(/^sha-256=/);
   });
@@ -330,7 +330,7 @@ describe("binary calibration control API", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     const body = await response.json() as Record<string, unknown>;
     expect(body).toMatchObject({
-      contract: "coeval/binary-calibration-artifact-status/v1",
+      contract: "rubrist/binary-calibration-artifact-status/v1",
       schemaVersion: 1,
       currentAdmissibility: "admissible",
       reasons: []

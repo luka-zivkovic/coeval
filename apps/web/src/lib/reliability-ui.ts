@@ -1,4 +1,4 @@
-import type { ConvergenceAudit, ConvergenceAuditCase } from "@coeval/shared";
+import type { ConvergenceAudit, ConvergenceAuditCase } from "@rubrist/shared";
 
 export type ReliabilityHeroProjection = {
   agreementPercent: string | null;

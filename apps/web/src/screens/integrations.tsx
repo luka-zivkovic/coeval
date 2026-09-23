@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plug, Plus, RefreshCcw, Trash2, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Chip, Eyebrow, SectionHead } from "@/components/coeval";
+import { Chip, Eyebrow, SectionHead } from "@/components/rubrist";
 import {
   createIronsideIntegration,
   createLangfuseIntegration,
@@ -27,7 +27,7 @@ import { useDashboard } from "@/lib/dashboard-context";
 import { dashboardSkillVersionId } from "@/lib/criterion-scope";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/use-dialog-focus";
-import type { IronsideIntegration, LangfuseIntegration, LangSmithIntegration } from "@coeval/shared";
+import type { IronsideIntegration, LangfuseIntegration, LangSmithIntegration } from "@rubrist/shared";
 
 type TraceIntegration = IronsideIntegration | LangSmithIntegration | LangfuseIntegration;
 type Provider = TraceIntegration["provider"];
@@ -83,7 +83,7 @@ export function IntegrationsScreen() {
       <SectionHead
         eyebrow="Trace connections"
         title="Integrations"
-        sub="Connect the tracing platform that already records your runs. Coeval imports those traces for evaluation and can send recorded verdicts back as feedback."
+        sub="Connect the tracing platform that already records your runs. Rubrist imports those traces for evaluation and can send recorded verdicts back as feedback."
         right={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => void load()} disabled={loading}>
@@ -120,7 +120,7 @@ export function IntegrationsScreen() {
               No integrations connected yet.
             </div>
             <div className="mt-1 max-w-[60ch] mx-auto text-[12px] text-ink-3">
-              Connect Ironside, LangSmith, or Langfuse to import runs for evaluation. Coeval keeps its review
+              Connect Ironside, LangSmith, or Langfuse to import runs for evaluation. Rubrist keeps its review
               records here and can send recorded verdicts back to the tracing platform as feedback.
             </div>
             <Button variant="primary" size="sm" className="mt-4" onClick={() => setShowAdd("ironside")}>
@@ -509,7 +509,7 @@ function AddIntegrationModal({
               {isIronside
                 ? "In Ironside, create an Integration credential, then paste the deployment URL and one-time token here."
                 : `Add ${isLangfuse ? "the Langfuse API keys" : "a LangSmith API key"} for the project you want to review.`}
-              {" "}Coeval verifies the remote project before importing settled trace versions and sending assessments.
+              {" "}Rubrist verifies the remote project before importing settled trace versions and sending assessments.
             </CardDescription>
           </div>
         </CardHeader>

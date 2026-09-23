@@ -50,10 +50,10 @@ export async function closePool() {
   pool = null;
 }
 
-export const API_BASE = process.env.COEVAL_API ?? "http://localhost:8787";
+export const API_BASE = process.env.RUBRIST_API ?? "http://localhost:8787";
 // better-auth rejects requests without a trusted Origin; impersonate the web
 // app's origin (must be in the API's TRUSTED_ORIGINS).
-export const WEB_ORIGIN = process.env.COEVAL_WEB ?? "http://localhost:5175";
+export const WEB_ORIGIN = process.env.RUBRIST_WEB ?? "http://localhost:5175";
 
 // Minimal cookie jar: better-auth emits session cookies on setup/sign-in;
 // session-authenticated routes (key minting) need them replayed.

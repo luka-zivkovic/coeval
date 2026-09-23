@@ -13,8 +13,8 @@ export default defineConfig({
   server: {
     port: Number(process.env.WEB_PORT) || 5173,
     proxy: {
-      "/api": process.env.COEVAL_API_ORIGIN || "http://localhost:8787",
-      "/health": process.env.COEVAL_API_ORIGIN || "http://localhost:8787"
+      "/api": process.env.RUBRIST_API_ORIGIN || "http://localhost:8787",
+      "/health": process.env.RUBRIST_API_ORIGIN || "http://localhost:8787"
     }
   }
 });

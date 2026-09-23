@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { runMigrations } from "@coeval/db";
-import { CreateSkillVersionInputSchema } from "@coeval/shared";
+import { runMigrations } from "@rubrist/db";
+import { CreateSkillVersionInputSchema } from "@rubrist/shared";
 import {
   parseCanonicalBinaryCalibrationArtifactBytes,
   verifyBinaryCalibrationPrivateLedgerForArtifact

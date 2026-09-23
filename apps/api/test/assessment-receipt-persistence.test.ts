@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AssessmentReceiptSchema, type AssessmentReceipt } from "@coeval/shared";
+import { AssessmentReceiptSchema, type AssessmentReceipt } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import {
   canonicalJson,

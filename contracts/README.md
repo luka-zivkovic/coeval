@@ -1,4 +1,4 @@
-# Coeval evidence contracts
+# Rubrist evidence contracts
 
 ## Binary calibration artifact v1
 
@@ -46,17 +46,17 @@ canonicalization, digest, mutation, and pinned-file rules are in
 
 ## Version policy
 
-- Coeval owns the canonical contract; consumers vendor a reviewed copy and
+- Rubrist owns the canonical contract; consumers vendor a reviewed copy and
   independently verify it. See
   [ADR-0001](../docs/decisions/0001-evidence-contract-ownership-and-versioning.md).
 - Receipt v1 is frozen. Its parsers are intentionally strict at every object
   boundary, so adding, removing, or renaming a field is a breaking change.
 - A breaking change requires a new schema version, new fixtures, and a
   coordinated consumer release. Do not add optional fields to v1.
-- Coeval emits governed assessment evidence only. Thresholds and release
+- Rubrist emits governed assessment evidence only. Thresholds and release
   decisions are forbidden from the receipt.
 - Calibration does not extend receipt v1. ADR-0009 accepts the separate
-  `coeval/binary-calibration/v1` aggregate artifact; its Batch 5B persistence,
+  `rubrist/binary-calibration/v1` aggregate artifact; its Batch 5B persistence,
   API, sealed execution, and revocation lookup remain runtime work.
 - The JSON Schema documents the structural contract. Runtime verifiers must
   additionally recompute the canonical evidence and dataset digests and check

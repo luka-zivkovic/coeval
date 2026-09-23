@@ -1,9 +1,9 @@
 import { expect, it } from "vitest";
 
-import { runMigrations } from "@coeval/db";
-import type { TraceLinkResolution } from "@coeval/shared";
+import { runMigrations } from "@rubrist/db";
+import type { TraceLinkResolution } from "@rubrist/shared";
 
-import { createApp, type CoevalApi } from "../src/app.js";
+import { createApp, type RubristApi } from "../src/app.js";
 import { createAuth } from "../src/lib/auth.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
@@ -145,7 +145,7 @@ runPgSmoke("PgRepository trace links", () => {
 
       const inBeta = await repo.importTrace(beta, "ironside", traceInput, context);
       // A pinned project header must not narrow or widen the membership-wide lookup.
-      const both = await (await app.request(link, { headers: { cookie, "x-coeval-project": "proj_foreign" } })).json() as TraceLinkResolution;
+      const both = await (await app.request(link, { headers: { cookie, "x-rubrist-project": "proj_foreign" } })).json() as TraceLinkResolution;
       expect(both.status).toBe("ambiguous");
       expect(both.matches.map((match) => [match.projectName, match.caseId])).toEqual([
         ["Alpha", inAlpha.caseId],
@@ -160,7 +160,7 @@ runPgSmoke("PgRepository trace links", () => {
   });
 });
 
-async function signIn(app: CoevalApi, email: string, password: string): Promise<string> {
+async function signIn(app: RubristApi, email: string, password: string): Promise<string> {
   const response = await app.request("/api/auth/sign-in/email", {
     method: "POST",
     headers: { "content-type": "application/json" },

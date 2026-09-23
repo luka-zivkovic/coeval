@@ -30,5 +30,5 @@ export type CreateBinaryCalibrationRunRequest = z.infer<
 >;
 
 export const BINARY_CALIBRATION_STATUS_CONTRACT =
-  "coeval/binary-calibration-artifact-status/v1" as const;
+  "rubrist/binary-calibration-artifact-status/v1" as const;
 

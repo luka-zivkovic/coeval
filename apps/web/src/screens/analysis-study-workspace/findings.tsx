@@ -5,7 +5,7 @@ import type {
   AnalysisTaxonomyCoverage,
   AnalysisTaxonomyDetail,
   AnalysisTaxonomyRevisionCodeInput
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -60,7 +60,7 @@ export function TaxonomyCard({ taxonomy, editable, onChanged }: { taxonomy: Anal
       createAnalysisTaxonomyRevision(taxonomy.taxonomy.id, { ...input, idempotencyKey })
     );
   };
-  return <Card><CardHeader><div><CardTitle>3. Organize findings into failure types</CardTitle><p className="mt-1 text-[10.5px] leading-5 text-ink-3">You name this flat list and assign observations yourself. Coeval does not cluster, merge, split, or generate categories.</p></div></CardHeader><CardContent>
+  return <Card><CardHeader><div><CardTitle>3. Organize findings into failure types</CardTitle><p className="mt-1 text-[10.5px] leading-5 text-ink-3">You name this flat list and assign observations yourself. Rubrist does not cluster, merge, split, or generate categories.</p></div></CardHeader><CardContent>
     {error ? <p role="alert" className="mb-2 text-[11px] text-signal">{error}</p> : null}
     {taxonomy ? <div className="space-y-2">
       <div className="text-[11px] text-ink-3">{taxonomy.revision.codes.filter((code) => code.status === "active").length} current failure type{taxonomy.revision.codes.filter((code) => code.status === "active").length === 1 ? "" : "s"}</div>

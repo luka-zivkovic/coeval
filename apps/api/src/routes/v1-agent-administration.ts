@@ -21,8 +21,8 @@ import {
   type V1FindingsResponse,
   type V1GoldenResponse,
   type V1ProjectResponse
-} from "@coeval/shared";
-import type { CoevalAuth } from "../lib/auth.js";
+} from "@rubrist/shared";
+import type { RubristAuth } from "../lib/auth.js";
 import {
   bootstrapOwnerUserByEmail,
   claimAgentSetupPairing,
@@ -50,7 +50,7 @@ import {
   NoCurrentSkillError,
   RegressionGateJudgeError,
   RegressionGateUnavailableError,
-  type CoevalRepository
+  type RubristRepository
 } from "../repository.js";
 import type { AppVariables } from "../request-services/index.js";
 
@@ -59,8 +59,8 @@ const AGENT_BOOTSTRAP_PROMPT = defaultJudgePromptTemplate("captured agent-skill 
 type V1AgentAdministrationApp = Hono<{ Variables: AppVariables }>;
 
 export interface V1AgentAdministrationRouteOptions {
-  repository: CoevalRepository;
-  auth?: CoevalAuth | undefined;
+  repository: RubristRepository;
+  auth?: RubristAuth | undefined;
   pool?: Pool | undefined;
   publicApiBaseUrl(c: Context<{ Variables: AppVariables }>): string;
 }

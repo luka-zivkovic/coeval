@@ -7,7 +7,7 @@ import {
   type TraceDeepLinkQuery,
   type TraceLinkConnection,
   type TraceLinkResolution
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { API_BASE, apiError, apiErrorFromResponse, apiFetch, queryPath } from "./api/transport.js";
 
 // Clients for the cross-product trace links. The deep-link resolver spans the
@@ -40,7 +40,7 @@ export async function syncIronsideConnection(connection: TraceLinkConnection): P
   const response = await fetch(`${API_BASE}/api/integrations/ironside/${encodeURIComponent(connection.integrationId)}/import`, {
     method: "POST",
     credentials: "include",
-    headers: { "content-type": "application/json", "x-coeval-project": connection.projectId },
+    headers: { "content-type": "application/json", "x-rubrist-project": connection.projectId },
     body: JSON.stringify({ limit: connection.pollLimit, skillVersionId: connection.skillVersionId })
   });
   const payload = await response.json().catch(() => null) as unknown;

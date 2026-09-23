@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AnalysisWorkflowMeasurementReportSchema, type BinaryCalibrationArtifact } from "@coeval/shared";
+import { AnalysisWorkflowMeasurementReportSchema, type BinaryCalibrationArtifact } from "@rubrist/shared";
 import {
   analysisCalibrationTrialMeasurements,
   analysisWorkflowMeasurementReportDigest,
@@ -65,7 +65,7 @@ describe("analysis workflow component measurements", () => {
 
   it("binds report semantics while excluding read time from its digest", () => {
     const content = {
-      contractVersion: "coeval/analysis-workflow-measurement/v1" as const,
+      contractVersion: "rubrist/analysis-workflow-measurement/v1" as const,
       calculationVersion: "analysis-workflow-components/v1" as const,
       projectId: "project",
       studyId: "study",

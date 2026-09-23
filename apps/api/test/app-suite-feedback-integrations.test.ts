@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CreateSkillVersionInputSchema, type FeedbackSyncJob } from "@coeval/shared";
+import { CreateSkillVersionInputSchema, type FeedbackSyncJob } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 import { processFeedbackSyncJob } from "../src/workers/feedback-sync.js";
@@ -73,7 +73,7 @@ describe("feedback sync worker", () => {
     expect(feedbackPayload).toMatchObject({
       feedbackId: (queue.jobs[0]!.data as FeedbackSyncJob).feedbackSyncJobId,
       runId: "ls_run_feedback",
-      key: "coeval_verdict",
+      key: "rubrist_verdict",
       score: 0.92,
       value: "pass",
       comment: "good support answer",
@@ -86,7 +86,7 @@ describe("feedback sync worker", () => {
           temperature: 0
         },
         judgeRunId: run.id,
-        provider: "coeval"
+        provider: "rubrist"
       }
     });
 
@@ -175,7 +175,7 @@ describe("feedback sync worker", () => {
     expect(feedbackPayload).toMatchObject({
       feedbackId: (queue.jobs[0]!.data as FeedbackSyncJob).feedbackSyncJobId,
       runId: "lf_trace_feedback",
-      key: "coeval_verdict",
+      key: "rubrist_verdict",
       score: 0.2,
       value: "fail",
       comment: "not grounded"

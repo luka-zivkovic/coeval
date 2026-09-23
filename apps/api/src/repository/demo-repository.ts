@@ -1,5 +1,5 @@
-import { MockJudgeProvider, type JudgeProvider, type Trace } from "@coeval/audit/runtime";
-import { demoProject } from "@coeval/db";
+import { MockJudgeProvider, type JudgeProvider, type Trace } from "@rubrist/audit/runtime";
+import { demoProject } from "@rubrist/db";
 import {
   type Criterion,
   type CriterionDetail,
@@ -81,8 +81,8 @@ import {
   UpdateLangSmithIntegrationInput,
   UpdateProjectSettingsInput,
   VerdictRecord
-} from "@coeval/shared";
-import type { CoevalRepository } from "../repository.js";
+} from "@rubrist/shared";
+import type { RubristRepository } from "../repository.js";
 import type {
   CreateSkillVersionContext,
   ConvergenceAuditPageInput,
@@ -148,7 +148,7 @@ import type {
 import { createDemoRepositoryComposition, type DemoRepositoryComposition } from "./demo-composition.js";
 import { DemoRepositoryStore } from "./demo-store.js";
 
-export class DemoRepository implements CoevalRepository {
+export class DemoRepository implements RubristRepository {
   private readonly caseEvidenceRepository!: DemoRepositoryComposition["caseEvidenceRepository"];
   private readonly credentialRepository!: DemoRepositoryComposition["credentialRepository"];
   private readonly criterionSuiteRepository!: DemoRepositoryComposition["criterionSuiteRepository"];

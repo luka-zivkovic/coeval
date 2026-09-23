@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Trace } from "@coeval/audit/runtime";
+import type { Trace } from "@rubrist/audit/runtime";
 import {
   effectiveHumanLabel,
   type ExceptionDetail,
@@ -7,7 +7,7 @@ import {
   type GoldenSetHealthSummary,
   type SkillFormatExample,
   type VerdictRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import { redactNormalizedTracePayload, type NormalizedTraceStep } from "../lib/redaction.js";
 import type {

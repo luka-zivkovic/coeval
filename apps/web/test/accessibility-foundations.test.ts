@@ -39,8 +39,8 @@ describe("accessibility foundations", () => {
 
   it("uses native controls for linked KPIs, references, personas, and disclosures", async () => {
     const [kpi, ref, sidebar, exceptions] = await Promise.all([
-      source("components/coeval/kpi.tsx"),
-      source("components/coeval/ref.tsx"),
+      source("components/rubrist/kpi.tsx"),
+      source("components/rubrist/ref.tsx"),
       source("components/layout/sidebar.tsx"),
       source("screens/exceptions.tsx")
     ]);
@@ -83,7 +83,7 @@ describe("accessibility foundations", () => {
 
   it("gives every pointer-clickable data row a native primary action", async () => {
     const rowFiles = [
-      "components/coeval/regression-diff-table.tsx",
+      "components/rubrist/regression-diff-table.tsx",
       "screens/dashboard.tsx",
       "screens/traces.tsx",
       "screens/exceptions.tsx",

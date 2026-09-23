@@ -19,7 +19,7 @@ import {
   type AnalysisPopulationOverlapsPage,
   type AnalysisPopulationSelectedItemsPage,
   type AnalysisPopulationSummariesPage
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { randomBytes, randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import {
@@ -287,8 +287,8 @@ export class PgAnalysisPopulationRepository implements AnalysisPopulationReposit
             draw_executor,seed,rng_version,algorithm_version,fixed_budget,population_size,
             inclusion_numerator,inclusion_denominator,draw_digest,content_digest,
             executed_by_subject_id,executed_at)
-         values ($1,$2,$3,$4,'simple_random','fixed','coeval_server',$5,
-                 'sha256-rank/v1','coeval-analysis-draw/v1',$6,$7,$6,$7,$8,$9,$10,
+         values ($1,$2,$3,$4,'simple_random','fixed','rubrist_server',$5,
+                 'sha256-rank/v1','rubrist-analysis-draw/v1',$6,$7,$6,$7,$8,$9,$10,
                  transaction_timestamp())`,
         [
           drawId,
@@ -573,7 +573,7 @@ export class PgAnalysisPopulationRepository implements AnalysisPopulationReposit
           subjectId,
           access.userId,
           populationId,
-          JSON.stringify({ contract: "coeval/analysis-population-content-view/v1", populationId }),
+          JSON.stringify({ contract: "rubrist/analysis-population-content-view/v1", populationId }),
           `analysis-content-view:${row.dataset_revision_id}:${subjectId}`
         ]
       );

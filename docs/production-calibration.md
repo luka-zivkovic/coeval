@@ -4,7 +4,7 @@ Status: **CURRENT shared contract, pure analysis, a compute-only preview route, 
 
 Production calibration reports whether a classifier's stated probabilities held
 up against the outcomes that arrived later on the customer's own traffic. It
-lives in `@coeval/shared`: `packages/shared/src/production-calibration.ts`
+lives in `@rubrist/shared`: `packages/shared/src/production-calibration.ts`
 holds the two zod contracts and
 `packages/shared/src/production-calibration-analysis.ts` the pure functions
 that turn an array of decision, action, and outcome records into one report
@@ -16,7 +16,7 @@ validated there against 3,742 live decisions on two public datasets on
 2026-09-20; the ledgers, reports, and write-up are in the experiments
 repository under
 [`luka-zivkovic/experiments/jev-decision-ledger`](https://github.com/luka-zivkovic/experiments/tree/main/jev-decision-ledger).
-The Coeval tests carry a small fixture copied from that run's live check: two
+The Rubrist tests carry a small fixture copied from that run's live check: two
 decision lines and their outcomes, which contain only digests, probabilities,
 and option names.
 
@@ -29,7 +29,7 @@ to the other session-only analysis surfaces and applies the same checks: it
 answers 501 without database-backed session mode, 401 without a project-member
 session or with an API key, and 403 when the resolved project has no
 membership for the user. The project comes from the session and the
-`x-coeval-project` header exactly as for the neighbouring routes. The body is
+`x-rubrist-project` header exactly as for the neighbouring routes. The body is
 capped at 4 MiB (the batch ceiling) and is checked inside the router.
 
 Request body (strict; unknown fields are rejected):
@@ -42,12 +42,12 @@ Request body (strict; unknown fields are rejected):
 | `costs?` | `{ falsePositive, falseNegative, humanReview? }` for the advisor; `null` or omitted means no advice. |
 
 The response is `{ artifact, summary, projectRole }`: the
-`coeval/production-calibration/v1` artifact, and a summary with record counts
+`rubrist/production-calibration/v1` artifact, and a summary with record counts
 (total, decisions, actions, outcomes), each question with its answer types and
 its decision and outcome counts, the model identities seen, and the
 question-set digests. The route is the fourth import shape after Ironside,
 LangSmith, and Langfuse in the sense that a decision-record ledger is another
-way evidence about an agent's work reaches Coeval, but unlike those importers
+way evidence about an agent's work reaches Rubrist, but unlike those importers
 this first slice stores nothing: closing the browser tab discards the reading.
 
 The web view lives at `/production-calibration`, under "Ungoverned
@@ -76,7 +76,7 @@ it.
 
 ## How it differs from sealed binary calibration
 
-[Sealed binary calibration](../contracts/binary-calibration-v1.md) is Coeval's
+[Sealed binary calibration](../contracts/binary-calibration-v1.md) is Rubrist's
 governed evidence: one exact evaluator version, one governed-blind
 sealed-validation revision, independent human truth, a private salted ledger,
 and a digest-pinned aggregate artifact. Production calibration is none of
@@ -100,9 +100,9 @@ provider identity. Production intervals use the same pinned z constant,
 binary64 operation order, and exact 0/1 endpoint bounds as the sealed contract;
 only the bound encoding differs. Production calibration is a measurement of
 your traffic, not a governed calibration claim, and it does not extend or replace the
-`coeval/binary-calibration/v1` contract.
+`rubrist/binary-calibration/v1` contract.
 
-## Input records: `coeval/production-decision-record/v1`
+## Input records: `rubrist/production-decision-record/v1`
 
 `ProductionDecisionLedgerRecordSchema` accepts three strict record kinds with
 the field names of the jevkit ledger, so one of its JSON Lines entries
@@ -133,7 +133,7 @@ winner are counted as conflicts. Actions
 and outcomes whose decision is not in the input are dropped from the join and
 counted as orphans in the artifact.
 
-## Output artifact: `coeval/production-calibration/v1`
+## Output artifact: `rubrist/production-calibration/v1`
 
 `buildProductionCalibrationArtifact(records, { now, ... })` produces one
 `ProductionCalibrationArtifact`. `now` is a required parameter because the
@@ -216,7 +216,7 @@ visible. With fewer than 30 outcomes the advice carries
 and no recommendation. The advisor is an empirical sweep over past traffic,
 not a model of it: it assumes tomorrow looks like the outcomes you already
 have. It recommends; it does not decide. Release thresholds and
-`promote`/`block` decisions stay outside Coeval.
+`promote`/`block` decisions stay outside Rubrist.
 
 ## Not implemented
 
@@ -238,4 +238,4 @@ have. It recommends; it does not decide. Release thresholds and
   as given; the analysis ignores values of the wrong type for a question.
 - **Governed evidence.** The artifact is not digest-pinned, has no private
   ledger commitment, and is not admissible where a sealed
-  `coeval/binary-calibration/v1` artifact is required.
+  `rubrist/binary-calibration/v1` artifact is required.

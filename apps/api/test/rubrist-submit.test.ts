@@ -5,13 +5,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { buildAgentConnectSnippets } from "@coeval/shared";
+import { buildAgentConnectSnippets } from "@rubrist/shared";
 
-const SCRIPT = fileURLToPath(new URL("../../../plugins/coeval/skills/coeval-audit/scripts/coeval-submit.mjs", import.meta.url));
+const SCRIPT = fileURLToPath(new URL("../../../plugins/rubrist/skills/rubrist-audit/scripts/rubrist-submit.mjs", import.meta.url));
 
-describe("coeval-audit setup client", () => {
+describe("rubrist-audit setup client", () => {
   it("refuses to connect before the setup plan names the approved Check", async () => {
-    const cwd = await mkdtemp(join(tmpdir(), "coeval-audit-missing-check-"));
+    const cwd = await mkdtemp(join(tmpdir(), "rubrist-audit-missing-check-"));
     const setupPath = join(cwd, "setup.json");
     await writeFile(setupPath, JSON.stringify({
       owner: { email: "owner@example.com" },
@@ -24,8 +24,8 @@ describe("coeval-audit setup client", () => {
 
     const result = await runScript(["setup", setupPath], cwd, {
       ...process.env,
-      COEVAL_URL: "http://127.0.0.1:9",
-      COEVAL_PAIRING_TOKEN: "coeval_pair_must-not-be-used"
+      RUBRIST_URL: "http://127.0.0.1:9",
+      RUBRIST_PAIRING_TOKEN: "rubrist_pair_must-not-be-used"
     });
 
     expect(result.code).toBe(2);
@@ -34,7 +34,7 @@ describe("coeval-audit setup client", () => {
   });
 
   it("injects setup secrets from env and stores the one-time project key without printing it", async () => {
-    const cwd = await mkdtemp(join(tmpdir(), "coeval-audit-setup-"));
+    const cwd = await mkdtemp(join(tmpdir(), "rubrist-audit-setup-"));
     const setupPath = join(cwd, "setup.json");
     const firstBatchPath = join(cwd, "first-batch.jsonl");
     await writeFile(setupPath, JSON.stringify({
@@ -92,8 +92,8 @@ describe("coeval-audit setup client", () => {
             id: "apikey_bootstrap",
             projectId: "proj_bootstrap",
             name: "Agent bootstrap",
-            keyPrefix: "coeval_sk_abcdef…",
-            key: "coeval_sk_abcdef-one-time-project-key",
+            keyPrefix: "rubrist_sk_abcdef…",
+            key: "rubrist_sk_abcdef-one-time-project-key",
             createdAt: "2026-08-14T00:00:00.000Z",
             lastUsedAt: null,
             revokedAt: null
@@ -101,8 +101,8 @@ describe("coeval-audit setup client", () => {
           // Key-pre-filled wiring snippets, as the real bootstrap endpoint
           // returns them — the script must print them with the key MASKED.
           connect: buildAgentConnectSnippets({
-            apiBaseUrl: "https://coeval.example",
-            apiKey: "coeval_sk_abcdef-one-time-project-key"
+            apiBaseUrl: "https://rubrist.example",
+            apiKey: "rubrist_sk_abcdef-one-time-project-key"
           }),
           next: {
             judgeBatchPath: "/api/v1/judge/batch",
@@ -155,30 +155,30 @@ describe("coeval-audit setup client", () => {
 
     try {
       const env = { ...process.env };
-      delete env.COEVAL_KEY_TEST;
+      delete env.RUBRIST_KEY_TEST;
       const result = await runScript([
         "setup",
         setupPath,
         "--first-batch", firstBatchPath,
         "--owner-password-env-var", "TEST_OWNER_PASSWORD",
         "--provider-key-env-var", "TEST_PROVIDER_KEY",
-        "--env-var", "COEVAL_KEY_TEST"
+        "--env-var", "RUBRIST_KEY_TEST"
       ], cwd, {
         ...env,
-        COEVAL_URL: `http://127.0.0.1:${address.port}`,
-        COEVAL_PAIRING_TOKEN: "coeval_pair_secret-that-must-not-be-printed",
+        RUBRIST_URL: `http://127.0.0.1:${address.port}`,
+        RUBRIST_PAIRING_TOKEN: "rubrist_pair_secret-that-must-not-be-printed",
         TEST_OWNER_PASSWORD: "owner-password-that-must-not-be-printed",
         TEST_PROVIDER_KEY: "provider-key-that-must-not-be-printed"
       });
 
       expect(result.code).toBe(0);
-      expect(receivedAuthorization).toBe("Bearer coeval_pair_secret-that-must-not-be-printed");
+      expect(receivedAuthorization).toBe("Bearer rubrist_pair_secret-that-must-not-be-printed");
       expect(receivedBody).toMatchObject({
         owner: { email: "owner@example.com", password: "owner-password-that-must-not-be-printed" },
         check: { question: "Did this Run follow the external skill contract?" },
         providerApiKey: "provider-key-that-must-not-be-printed"
       });
-      expect(receivedBatchAuthorization).toBe("Bearer coeval_sk_abcdef-one-time-project-key");
+      expect(receivedBatchAuthorization).toBe("Bearer rubrist_sk_abcdef-one-time-project-key");
       expect(receivedBatch).toMatchObject({
         skillVersionId: "skillv_bootstrap",
         items: [{
@@ -188,17 +188,17 @@ describe("coeval-audit setup client", () => {
         }]
       });
       for (const secret of [
-        "coeval_pair_secret-that-must-not-be-printed",
+        "rubrist_pair_secret-that-must-not-be-printed",
         "owner-password-that-must-not-be-printed",
         "provider-key-that-must-not-be-printed",
-        "coeval_sk_abcdef-one-time-project-key"
+        "rubrist_sk_abcdef-one-time-project-key"
       ]) {
         expect(`${result.stdout}\n${result.stderr}`).not.toContain(secret);
       }
       expect(await readFile(join(cwd, ".env"), "utf8")).toBe(
-        "COEVAL_KEY_TEST=coeval_sk_abcdef-one-time-project-key\n"
+        "RUBRIST_KEY_TEST=rubrist_sk_abcdef-one-time-project-key\n"
       );
-      expect(await readFile(join(cwd, ".coeval/.gitignore"), "utf8")).toBe("*\n");
+      expect(await readFile(join(cwd, ".rubrist/.gitignore"), "utf8")).toBe("*\n");
       expect(result.stdout).toContain("human must label exceptions and promote golden cases");
       expect(result.stdout).toContain('Check "Did this Run follow the external skill contract?"');
       expect(result.stdout).toContain("criterionv_bootstrap");
@@ -206,13 +206,13 @@ describe("coeval-audit setup client", () => {
       // Next-steps wiring is printed with the saved env-var name standing in
       // for the one-time key (the not-toContain loop above proves the key
       // itself never reached stdout/stderr).
-      expect(result.stdout).toContain("claude mcp add coeval");
+      expect(result.stdout).toContain("claude mcp add rubrist");
       // Shell forms keep the builder's quoting, so the masked var still
       // expands when pasted into a shell that has sourced ./.env.
-      expect(result.stdout).toContain('COEVAL_API_KEY="$COEVAL_KEY_TEST"');
+      expect(result.stdout).toContain('RUBRIST_API_KEY="$RUBRIST_KEY_TEST"');
       expect(result.stdout).toContain("substitute it from ./.env");
-      expect(result.stdout).toContain("\"COEVAL_API_KEY\": \"$COEVAL_KEY_TEST\"");
-      expect(result.stdout).toContain("coeval-submit.mjs findings");
+      expect(result.stdout).toContain("\"RUBRIST_API_KEY\": \"$RUBRIST_KEY_TEST\"");
+      expect(result.stdout).toContain("rubrist-submit.mjs findings");
       expect(result.stdout).toContain("first batch completed — exceptions are ready for human review");
 
       terminalSkillVersionId = "skillv_changed-after-submit";
@@ -220,10 +220,10 @@ describe("coeval-audit setup client", () => {
         "submit",
         firstBatchPath,
         "--skill-version", "skillv_bootstrap",
-        "--env-var", "COEVAL_KEY_TEST"
+        "--env-var", "RUBRIST_KEY_TEST"
       ], cwd, {
         ...env,
-        COEVAL_URL: `http://127.0.0.1:${address.port}`
+        RUBRIST_URL: `http://127.0.0.1:${address.port}`
       });
       expect(mismatched.code).toBe(1);
       expect(mismatched.stderr).toContain(
@@ -235,10 +235,10 @@ describe("coeval-audit setup client", () => {
   });
 
   // The "already exists" guard protects a real one-time key from being
-  // clobbered. A template-style empty line (COEVAL_KEY_TEST=) holds nothing
+  // clobbered. A template-style empty line (RUBRIST_KEY_TEST=) holds nothing
   // worth protecting and used to dead-end setup with a misleading error.
   it("treats an empty .env placeholder as unset, but still protects a real key", async () => {
-    const cwd = await mkdtemp(join(tmpdir(), "coeval-audit-envguard-"));
+    const cwd = await mkdtemp(join(tmpdir(), "rubrist-audit-envguard-"));
     const setupPath = join(cwd, "setup.json");
     await writeFile(setupPath, JSON.stringify({
       owner: { email: "owner@example.com" },
@@ -250,22 +250,22 @@ describe("coeval-audit setup client", () => {
       }
     }), "utf8");
     const env = { ...process.env };
-    delete env.COEVAL_KEY_TEST;
+    delete env.RUBRIST_KEY_TEST;
     const baseEnv = {
       ...env,
       // Unreachable on purpose: the placeholder case must get PAST the guard
       // and fail on the network step instead.
-      COEVAL_URL: "http://127.0.0.1:9",
-      COEVAL_PAIRING_TOKEN: "coeval_pair_test-token"
+      RUBRIST_URL: "http://127.0.0.1:9",
+      RUBRIST_PAIRING_TOKEN: "rubrist_pair_test-token"
     };
-    const args = ["setup", setupPath, "--env-var", "COEVAL_KEY_TEST"];
+    const args = ["setup", setupPath, "--env-var", "RUBRIST_KEY_TEST"];
 
-    await writeFile(join(cwd, ".env"), "COEVAL_KEY_TEST=\n", "utf8");
+    await writeFile(join(cwd, ".env"), "RUBRIST_KEY_TEST=\n", "utf8");
     const placeholder = await runScript(args, cwd, baseEnv);
     expect(placeholder.code).not.toBe(0);
     expect(`${placeholder.stdout}\n${placeholder.stderr}`).not.toContain("already exists");
 
-    await writeFile(join(cwd, ".env"), "COEVAL_KEY_TEST=coeval_sk_real-key\n", "utf8");
+    await writeFile(join(cwd, ".env"), "RUBRIST_KEY_TEST=rubrist_sk_real-key\n", "utf8");
     const guarded = await runScript(args, cwd, baseEnv);
     expect(guarded.code).toBe(2);
     expect(guarded.stderr).toContain("already exists");

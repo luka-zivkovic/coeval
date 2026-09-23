@@ -1,9 +1,9 @@
 import { ArrowLeft, Check, LoaderCircle, Pencil, Sparkles } from "lucide-react";
-import type { JudgeProviderId, OnboardingEvidenceInventory } from "@coeval/shared";
+import type { JudgeProviderId, OnboardingEvidenceInventory } from "@rubrist/shared";
 import { MarkdownPreview } from "./markdown-preview.js";
 import { Button } from "./ui/button.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card.js";
-import { Chip, Eyebrow, MarginNote, SectionHead } from "./coeval/index.js";
+import { Chip, Eyebrow, MarginNote, SectionHead } from "./rubrist/index.js";
 import { evidenceLimitDescription, evidenceReadDescription, type OnboardingCheckDraft } from "../lib/onboarding-check.js";
 import type { StarterSkill } from "../lib/starter-skills.js";
 import { cn } from "../lib/utils.js";
@@ -106,7 +106,7 @@ export function FirstRunCheckSetup({
             <div>
               <Eyebrow>Want the shortest path?</Eyebrow>
               <p className="mt-1 text-[12.5px] text-ink-2">
-                Coeval can choose a starting point from “{projectName}” and explain the choice before creating it.
+                Rubrist can choose a starting point from “{projectName}” and explain the choice before creating it.
               </p>
             </div>
             <Button variant="primary" onClick={onDecide} disabled={submitting}><Sparkles /> Decide for me</Button>
@@ -127,8 +127,8 @@ export function FirstRunCheckSetup({
         sub="This is a usable starting point, not a claim that the Check is accurate. Read it, refine it if useful, then create it."
       />
 
-      {draft.decisionSource === "coeval" && draft.decisionReason ? (
-        <MarginNote tone="neutral" who="Coeval decided" className="mb-4">
+      {draft.decisionSource === "rubrist" && draft.decisionReason ? (
+        <MarginNote tone="neutral" who="Rubrist decided" className="mb-4">
           {draft.decisionReason}
         </MarginNote>
       ) : null}

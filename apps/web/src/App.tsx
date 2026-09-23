@@ -4,7 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { RootLayout } from "@/components/layout/root-layout";
 import { BlindReviewLayout } from "@/layouts/blind-review-layout";
 import { LoginScreen } from "@/screens/login";
-import { CoevalBrand } from "@/components/coeval-brand";
+import { RubristBrand } from "@/components/rubrist-brand";
 import { SetupScreen } from "@/screens/setup";
 import { DashboardScreen } from "@/screens/dashboard";
 import { ExceptionsScreen } from "@/screens/exceptions";
@@ -123,7 +123,7 @@ export function App() {
   if (!setupState) {
     return (
       <ThemeProvider>
-        <FullScreen title="Loading Coeval" description="Checking setup state." />
+        <FullScreen title="Loading Rubrist" description="Checking setup state." />
       </ThemeProvider>
     );
   }
@@ -157,7 +157,7 @@ export function App() {
 function AuthGate({ children }: { children: React.ReactNode }) {
   const session = useSession();
   if (session.isPending) {
-    return <FullScreen title="Loading session" description="Checking your Coeval session." />;
+    return <FullScreen title="Loading session" description="Checking your Rubrist session." />;
   }
   if (!session.data) {
     return <LoginScreen />;
@@ -169,7 +169,7 @@ function FullScreen({ title, description }: { title: string; description: string
   return (
     <div className="min-h-screen grid place-items-center px-6">
       <div className="text-center">
-        <CoevalBrand
+        <RubristBrand
           className="justify-center"
           markClassName="size-5"
           nameClassName="font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-3"

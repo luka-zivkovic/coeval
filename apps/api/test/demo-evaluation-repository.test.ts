@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { demoProject, demoSkill } from "@coeval/db";
-import { AssessmentReceiptSchema } from "@coeval/shared";
+import { demoProject, demoSkill } from "@rubrist/db";
+import { AssessmentReceiptSchema } from "@rubrist/shared";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { contentDigest } from "../src/lib/assessment-receipt.js";

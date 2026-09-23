@@ -10,7 +10,7 @@ import {
   type SelfConsistencyReport,
   type Skill,
   type VerdictRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import { EXCEPTION_LIST_LIMIT } from "../lib/exception-rows.js";
 import {

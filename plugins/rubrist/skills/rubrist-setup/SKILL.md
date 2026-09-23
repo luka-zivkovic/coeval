@@ -1,9 +1,9 @@
 ---
-name: coeval-setup
-description: Guide a beginner through setting up Coeval for an AI agent, workflow, prompt, or skill. Inspect safe project text, identify the target and recorded evidence, ask a short context-aware question, propose one plain-language Check, then connect and create it as Starter · unvalidated. Use when the user asks to initialize, set up, configure, connect, onboard, or get started with Coeval, especially when they do not know eval terminology or say "use your best judgment" or "decide for me". Do not use it to adjudicate Results, promote Golden examples, or make release decisions.
+name: rubrist-setup
+description: Guide a beginner through setting up Rubrist for an AI agent, workflow, prompt, or skill. Inspect safe project text, identify the target and recorded evidence, ask a short context-aware question, propose one plain-language Check, then connect and create it as Starter · unvalidated. Use when the user asks to initialize, set up, configure, connect, onboard, or get started with Rubrist, especially when they do not know eval terminology or say "use your best judgment" or "decide for me". Do not use it to adjudicate Results, promote Golden examples, or make release decisions.
 ---
 
-# Coeval setup
+# Rubrist setup
 
 Help the user create one useful first Check without requiring them to know eval
 terminology. A **Run** is a record of what their AI did. A **Check** asks one
@@ -96,11 +96,11 @@ available during refinement so the user is never trapped in an interview.
 
 ### 4. Save a resumable non-secret draft
 
-Before connecting to Coeval, write the agreed working draft to
-`.coeval/<slug>.setup-draft.json`. This file may contain the reflected target,
+Before connecting to Rubrist, write the agreed working draft to
+`.rubrist/<slug>.setup-draft.json`. This file may contain the reflected target,
 evidence inventory, proposal, assumptions, and their origins. It must not
 contain passwords, API keys, pairing tokens, provider keys, or copied customer
-data. Keep `.coeval/` local by ensuring `.coeval/.gitignore` contains `*`;
+data. Keep `.rubrist/` local by ensuring `.rubrist/.gitignore` contains `*`;
 preserve an existing stricter ignore rule.
 
 Read [references/setup-artifacts.md](references/setup-artifacts.md) before
@@ -110,15 +110,15 @@ invalidated.
 
 ### 5. Connect only after approval
 
-After the user chooses **Finish setup**, ask them to open Coeval and choose
+After the user chooses **Finish setup**, ask them to open Rubrist and choose
 **Create agent connection**. Keep the returned one-time token only in the
-`COEVAL_PAIRING_TOKEN` environment variable. Never write it to a file, repeat
+`RUBRIST_PAIRING_TOKEN` environment variable. Never write it to a file, repeat
 it in chat, or include it in the setup JSON.
 
-Finalize `.coeval/<slug>.setup.json` from the exact proposal the user saw. Use
-the bundled transport in the sibling `coeval-audit` skill to apply it. If that
+Finalize `.rubrist/<slug>.setup.json` from the exact proposal the user saw. Use
+the bundled transport in the sibling `rubrist-audit` skill to apply it. If that
 skill is unavailable, tell the user to install both bundled skills or finish
-in the Coeval app; do not invent an API contract.
+in the Rubrist app; do not invent an API contract.
 
 Submit a first batch only when at least one real Run is already available and
 the user has authorized its use. Never invent a demonstration Run. If no Run
@@ -135,7 +135,7 @@ State:
 - the non-secret setup and draft file paths;
 - the next source-specific action.
 
-For an Agent Skill, hand ongoing capture and submission to `coeval-audit`.
+For an Agent Skill, hand ongoing capture and submission to `rubrist-audit`.
 For supplied examples, use the bench batch flow. For production Runs, use the
 selected trace integration or manual import. Automatic capture is currently a
 Claude Code-only option; do not claim that Codex, Gemini, Cursor, or a generic

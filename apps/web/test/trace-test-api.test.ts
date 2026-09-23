@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CreateTraceTestInput, TraceTestDetail, TraceTestRunResult, TraceTestValidation } from "@coeval/shared";
+import type { CreateTraceTestInput, TraceTestDetail, TraceTestRunResult, TraceTestValidation } from "@rubrist/shared";
 import {
   assistTraceTestDraft,
   createTraceTest,

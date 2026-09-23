@@ -17,7 +17,7 @@ import {
   productionDriftByWindow,
   productionScoreCalibration,
   type ProductionDecisionLedgerRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 const digest = `sha256:${"b".repeat(64)}`;
 const day = 24 * 3600 * 1000;
@@ -73,7 +73,7 @@ const fixtureLines = readFileSync(new URL("./fixtures/production-decision-ledger
 
 describe("production decision record contract", () => {
   it("validates a live jevkit ledger line unchanged and round-trips it", () => {
-    expect(PRODUCTION_DECISION_RECORD_CONTRACT).toBe("coeval/production-decision-record/v1");
+    expect(PRODUCTION_DECISION_RECORD_CONTRACT).toBe("rubrist/production-decision-record/v1");
     expect(fixtureLines).toHaveLength(6);
     const records = fixtureLines.map((line) => ProductionDecisionLedgerRecordSchema.parse(JSON.parse(line)));
     expect(records.map((record) => record.kind)).toEqual(["decision", "decision", "outcome", "outcome", "outcome", "outcome"]);

@@ -72,7 +72,7 @@ export const HttpUrlSchema = z
 
 // Contract-facing model bindings intentionally mirror the frozen receipt-v1
 // and skill-format/v1 schemas, where provider and sampling values are not
-// restricted to Coeval's current runtime provider catalog.
+// restricted to Rubrist's current runtime provider catalog.
 export const ModelBindingSchema = z.object({
   provider: z.string(),
   modelId: z.string(),

@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { DashboardSummary } from "@coeval/shared";
+import type { DashboardSummary } from "@rubrist/shared";
 
 const Element = ({ children, ...props }: { children?: unknown }) =>
   createElement("div", props, children as never);
@@ -10,7 +10,7 @@ vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
 vi.mock("@/components/ui/button", () => ({ Button: Element }));
 vi.mock("@/components/first-project-key", () => ({ FirstProjectKeyCard: () => null }));
 vi.mock("@/components/first-verdict", () => ({ FirstVerdictCard: () => null }));
-vi.mock("@/components/coeval", () => ({
+vi.mock("@/components/rubrist", () => ({
   SectionHead: Element,
   KPI: Element,
   KPIRow: Element,

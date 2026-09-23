@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { FeedbackSyncJobSchema, type FeedbackSyncJob } from "@coeval/shared";
-import type { Queue } from "@coeval/queue";
-import type { CoevalRepository, FeedbackSyncContext } from "../repository.js";
+import { FeedbackSyncJobSchema, type FeedbackSyncJob } from "@rubrist/shared";
+import type { Queue } from "@rubrist/queue";
+import type { RubristRepository, FeedbackSyncContext } from "../repository.js";
 import {
   FeedbackSyncCredentialsMissingError,
   FeedbackSyncJobNotFoundError,
@@ -16,7 +16,7 @@ export type LangSmithFeedbackWriterFactory = FeedbackWriterFactory;
 
 export async function registerFeedbackSyncWorker(
   queue: Queue,
-  repository: CoevalRepository,
+  repository: RubristRepository,
   createWriter: FeedbackWriterFactory = defaultFeedbackWriterFactory
 ): Promise<void> {
   await queue.work<FeedbackSyncJob>("feedback.sync", async ({ id, data }) => {
@@ -37,7 +37,7 @@ export async function registerFeedbackSyncWorker(
 }
 
 export async function processFeedbackSyncJob(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   job: FeedbackSyncJob,
   createWriter: FeedbackWriterFactory = defaultFeedbackWriterFactory
 ): Promise<void> {
@@ -87,8 +87,8 @@ export async function processFeedbackSyncJob(
       feedbackId: context.id,
       runId: context.sourceTraceId,
       key: context.provider === "ironside"
-        ? `coeval_assessment/${context.criterionStableKey}`
-        : "coeval_verdict",
+        ? `rubrist_assessment/${context.criterionStableKey}`
+        : "rubrist_verdict",
       score: context.judgeRun.score,
       value: context.judgeRun.verdict,
       comment: context.judgeRun.reasoning,
@@ -98,7 +98,7 @@ export async function processFeedbackSyncJob(
         sourceTraceVersion: context.sourceTraceVersion,
         modelBinding: context.judgeRun.modelBinding,
         judgeRunId: context.judgeRun.id,
-        provider: "coeval"
+        provider: "rubrist"
       }
     });
     await repository.markFeedbackSyncSucceeded(parsed);

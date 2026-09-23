@@ -2,7 +2,7 @@ import { ChevronRight, Layers3, RefreshCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Eyebrow, SectionHead } from "@/components/coeval";
+import { Eyebrow, SectionHead } from "@/components/rubrist";
 import { CriterionPickerList } from "@/components/criterion-picker-list";
 import { DatabaseModeRequired } from "@/components/database-mode-required";
 import { useAppMode } from "@/lib/app-mode";

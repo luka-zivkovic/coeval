@@ -12,7 +12,7 @@ import {
   AnalysisCriterionPromotionSupportsPageSchema,
   type AnalysisCriterionPromotionCreateInput,
   type AnalysisCriterionPromotionCreateResult
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   AnalysisPromotionRepositoryError,
   type AnalysisPromotionAccess,

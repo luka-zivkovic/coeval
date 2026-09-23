@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { IronsideImportJobSchema, type IronsideImportJob } from "@coeval/shared";
-import type { Queue } from "@coeval/queue";
-import type { CoevalRepository, IronsideImportContext } from "../repository.js";
+import { IronsideImportJobSchema, type IronsideImportJob } from "@rubrist/shared";
+import type { Queue } from "@rubrist/queue";
+import type { RubristRepository, IronsideImportContext } from "../repository.js";
 import {
   ImportSkillVersionBindingError,
   IronsideCredentialsMissingError,
@@ -37,7 +37,7 @@ const IRONSIDE_TRACE_PAGE_SIZE = 1;
 
 export async function registerIronsideImportWorker(
   queue: Queue,
-  repository: CoevalRepository,
+  repository: RubristRepository,
   createClient: IronsideClientFactory = defaultIronsideClientFactory
 ): Promise<void> {
   await queue.work<IronsideImportJob>("ironside.import", async ({ id, data }) => {
@@ -54,7 +54,7 @@ export async function registerIronsideImportWorker(
 }
 
 export async function processIronsideImportJob(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   queue: Queue,
   job: IronsideImportJob,
   createClient: IronsideClientFactory = defaultIronsideClientFactory,

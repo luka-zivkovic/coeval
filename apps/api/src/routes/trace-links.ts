@@ -6,19 +6,19 @@ import {
   type TraceLinkConnection,
   type TraceLinkMatch,
   type TraceLinkResolution
-} from "@coeval/shared";
-import type { CoevalRepository, ImportedIronsideTraceMatch } from "../repository.js";
+} from "@rubrist/shared";
+import type { RubristRepository, ImportedIronsideTraceMatch } from "../repository.js";
 import type { AppVariables } from "../request-services/index.js";
 
 type TraceLinkApp = Hono<{ Variables: AppVariables }>;
 
 export interface TraceLinkRouteOptions {
-  repository: CoevalRepository;
+  repository: RubristRepository;
   // Database-backed auth mode: membership comes from the session user.
   authMode: boolean;
 }
 
-// Session-only, read-only navigation between Coeval and Ironside. These
+// Session-only, read-only navigation between Rubrist and Ironside. These
 // routes resolve identities that already exist; they never import, write
 // back, or create evidence. The deep-link resolver deliberately spans the
 // caller's project memberships, so it is exempt from the single-project pin

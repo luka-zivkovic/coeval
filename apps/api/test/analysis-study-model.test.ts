@@ -28,7 +28,7 @@ import {
   type AnalysisTaxonomyRevisionArtifact,
   type AnalysisTaxonomyRevisionCodeArtifact,
   type AnalysisTaxonomyRevisionProjection
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   ANALYSIS_ASSIGNMENT_EVENT_DIGEST_BASIS,
   ANALYSIS_ASSIGNMENT_REQUEST_DIGEST_BASIS,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AgentBootstrapModelInputSchema, AgentBootstrapRequestSchema } from "@coeval/shared";
+import { AgentBootstrapModelInputSchema, AgentBootstrapRequestSchema } from "@rubrist/shared";
 
 // Issue #150: the runtime hint for missing provider credentials says to pin
 // provider "mock" explicitly, but the bootstrap input schema rejected it —

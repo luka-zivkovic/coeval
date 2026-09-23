@@ -58,7 +58,7 @@ describe("LangSmith client", () => {
     await client.createFeedback({
       feedbackId: "fsync_123",
       runId: "run_123",
-      key: "coeval_verdict",
+      key: "rubrist_verdict",
       score: 0.8,
       value: "pass",
       comment: "accepted",
@@ -74,7 +74,7 @@ describe("LangSmith client", () => {
     expect(JSON.parse(String(captured?.init?.body))).toEqual({
       id: "fsync_123",
       run_id: "run_123",
-      key: "coeval_verdict",
+      key: "rubrist_verdict",
       score: 0.8,
       value: "pass",
       comment: "accepted",
@@ -91,7 +91,7 @@ describe("LangSmith client", () => {
     await expect(client.createFeedback({
       feedbackId: "fsync_existing",
       runId: "run_123",
-      key: "coeval_verdict",
+      key: "rubrist_verdict",
       score: 0.8,
       value: "pass",
       comment: "already posted"
@@ -110,7 +110,7 @@ describe("LangSmith client", () => {
     });
     await expect(client.createFeedback({
       runId: "run_missing",
-      key: "coeval_verdict",
+      key: "rubrist_verdict",
       score: 0,
       value: "fail",
       comment: "missing"

@@ -5,7 +5,7 @@ import {
   normalizeJudgeProviderId,
   StoredModelBindingSchema,
   SkillVersionSchema
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 describe("model binding contract boundaries", () => {
   const outOfRuntimeContractBinding = {

@@ -22,7 +22,7 @@ import {
   RunComparisonSchema,
   type SelfConsistencyReport,
   SelfConsistencyReportSchema
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   API_BASE,
   apiError,

@@ -38,7 +38,7 @@ vi.mock("@/components/ui/card", () => ({
 vi.mock("@/components/ui/input", () => ({
   Input: (props: object) => createElement("input", props)
 }));
-vi.mock("@/components/coeval", () => ({
+vi.mock("@/components/rubrist", () => ({
   Eyebrow: Element,
   SectionHead: ({ title, sub }: { title: string; sub?: string }) =>
     createElement("header", null, title, sub)

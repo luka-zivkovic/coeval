@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Pool } from "pg";
-import { runMigrations } from "@coeval/db";
-import type { CreateTraceTestInput, TraceTestDetail, TraceTestValidation } from "@coeval/shared";
-import { createApp, type CoevalApi } from "../src/app.js";
+import { runMigrations } from "@rubrist/db";
+import type { CreateTraceTestInput, TraceTestDetail, TraceTestValidation } from "@rubrist/shared";
+import { createApp, type RubristApi } from "../src/app.js";
 import { createAuth } from "../src/lib/auth.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { TraceTestNotFoundError, TraceTestSourceNotFoundError } from "../src/repository.js";
@@ -89,7 +89,7 @@ run("trace-derived test Postgres persistence", () => {
         headers: {
           "content-type": "application/json",
           cookie: ownerCookie,
-          "x-coeval-project": setupBody.projectId
+          "x-rubrist-project": setupBody.projectId
         },
         body: JSON.stringify(draft(imported.caseId))
       });
@@ -138,7 +138,7 @@ run("trace-derived test Postgres persistence", () => {
       const ownerUserId = String(actorRows.rows.find((row) => row.email === "trace-owner@example.com")?.id);
       const memberUserId = String(actorRows.rows.find((row) => row.email === "trace-member@example.com")?.id);
       const memberRead = await app.request(`/api/trace-tests/${created.test.id}`, {
-        headers: { cookie: memberCookie, "x-coeval-project": setupBody.projectId }
+        headers: { cookie: memberCookie, "x-rubrist-project": setupBody.projectId }
       });
       expect(memberRead.status).toBe(200);
       const memberRevisionRequest = { ...draft(imported.caseId), expectedRevision: 1 } as Record<string, unknown>;
@@ -150,7 +150,7 @@ run("trace-derived test Postgres persistence", () => {
         headers: {
           "content-type": "application/json",
           cookie: memberCookie,
-          "x-coeval-project": setupBody.projectId
+          "x-rubrist-project": setupBody.projectId
         },
         body: JSON.stringify(memberRevisionRequest)
       });
@@ -169,14 +169,14 @@ run("trace-derived test Postgres persistence", () => {
         headers: {
           "content-type": "application/json",
           cookie: memberCookie,
-          "x-coeval-project": setupBody.projectId
+          "x-rubrist-project": setupBody.projectId
         },
         body: JSON.stringify({ expectedRevision: 2, validationId: "missing" })
       });
       expect(memberEnable.status).toBe(403);
 
       const crossProjectRead = await app.request(`/api/trace-tests/${created.test.id}`, {
-        headers: { cookie: ownerCookie, "x-coeval-project": secondProjectBody.projectId }
+        headers: { cookie: ownerCookie, "x-rubrist-project": secondProjectBody.projectId }
       });
       expect(crossProjectRead.status).toBe(404);
       const crossProjectWrite = await app.request(`/api/trace-tests/${created.test.id}/revisions`, {
@@ -184,7 +184,7 @@ run("trace-derived test Postgres persistence", () => {
         headers: {
           "content-type": "application/json",
           cookie: ownerCookie,
-          "x-coeval-project": secondProjectBody.projectId
+          "x-rubrist-project": secondProjectBody.projectId
         },
         body: JSON.stringify({ ...draft(imported.caseId), expectedRevision: 1 })
       });
@@ -206,7 +206,7 @@ run("trace-derived test Postgres persistence", () => {
         headers: {
           "content-type": "application/json",
           cookie: ownerCookie,
-          "x-coeval-project": setupBody.projectId
+          "x-rubrist-project": setupBody.projectId
         },
         body: JSON.stringify({ revision: 2 })
       });
@@ -218,7 +218,7 @@ run("trace-derived test Postgres persistence", () => {
         headers: {
           "content-type": "application/json",
           cookie: ownerCookie,
-          "x-coeval-project": setupBody.projectId
+          "x-rubrist-project": setupBody.projectId
         },
         body: JSON.stringify({ expectedRevision: 2, validationId: "missing" })
       });
@@ -229,7 +229,7 @@ run("trace-derived test Postgres persistence", () => {
         headers: {
           "content-type": "application/json",
           cookie: ownerCookie,
-          "x-coeval-project": setupBody.projectId
+          "x-rubrist-project": setupBody.projectId
         },
         body: JSON.stringify({
           revision: 2,
@@ -246,7 +246,7 @@ run("trace-derived test Postgres persistence", () => {
         headers: {
           "content-type": "application/json",
           cookie: ownerCookie,
-          "x-coeval-project": setupBody.projectId
+          "x-rubrist-project": setupBody.projectId
         },
         body: JSON.stringify({ expectedRevision: 2, validationId: passedBody.validation.id })
       });
@@ -265,7 +265,7 @@ run("trace-derived test Postgres persistence", () => {
         headers: {
           "content-type": "application/json",
           cookie: memberCookie,
-          "x-coeval-project": setupBody.projectId
+          "x-rubrist-project": setupBody.projectId
         },
         body: "{}"
       });
@@ -276,7 +276,7 @@ run("trace-derived test Postgres persistence", () => {
         headers: {
           "content-type": "application/json",
           cookie: ownerCookie,
-          "x-coeval-project": setupBody.projectId
+          "x-rubrist-project": setupBody.projectId
         },
         body: "{}"
       });
@@ -315,7 +315,7 @@ run("trace-derived test Postgres persistence", () => {
         headers: {
           "content-type": "application/json",
           cookie: ownerCookie,
-          "x-coeval-project": setupBody.projectId
+          "x-rubrist-project": setupBody.projectId
         },
         body: JSON.stringify(revisionRequest)
       });
@@ -375,7 +375,7 @@ run("trace-derived test Postgres persistence", () => {
           headers: {
             "content-type": "application/json",
             cookie: ownerCookie,
-            "x-coeval-project": setupBody.projectId
+            "x-rubrist-project": setupBody.projectId
           },
           body: JSON.stringify(funnelEvent)
         });
@@ -413,7 +413,7 @@ run("trace-derived test Postgres persistence", () => {
   });
 });
 
-async function signIn(app: CoevalApi, email: string, password: string): Promise<string> {
+async function signIn(app: RubristApi, email: string, password: string): Promise<string> {
   const response = await app.request("/api/auth/sign-in/email", {
     method: "POST",
     headers: { "content-type": "application/json" },

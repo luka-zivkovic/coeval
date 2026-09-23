@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Eyebrow, SectionHead, KPI, KPIRow, DistBar, Legend, VerdictChip, Chip, JourneyPipeline, Receipt, Ref } from "@/components/coeval";
+import { Eyebrow, SectionHead, KPI, KPIRow, DistBar, Legend, VerdictChip, Chip, JourneyPipeline, Receipt, Ref } from "@/components/rubrist";
 import { DashboardWelcome } from "@/screens/dashboard-welcome";
 import { DashboardBenchWelcome } from "@/screens/dashboard-bench-welcome";
 import { DashboardProvisional } from "@/screens/dashboard-provisional";
@@ -18,7 +18,7 @@ import { useDashboard } from "@/lib/dashboard-context";
 import { useMode } from "@/hooks/use-mode";
 import { isBench, journeyStage, takeSetupReceipt, clearSetupReceipt } from "@/lib/journey";
 import { skillVersionStateLabel } from "../lib/skill-presentation.js";
-import type { CapabilityGap } from "@coeval/shared";
+import type { CapabilityGap } from "@rubrist/shared";
 
 const QUEUE_VOLUME: Record<CapabilityGap["severity"], string> = {
   high:   "High unresolved volume",
@@ -87,7 +87,7 @@ export function DashboardScreen() {
   if (error || !dashboard || !totals) {
     return (
       <div className="fadeUp">
-        <SectionHead eyebrow="Coeval" title="API unavailable" />
+        <SectionHead eyebrow="Rubrist" title="API unavailable" />
         <Card>
           <CardContent>
             <p className="text-[13px] text-ink-2">{error ?? "Start the API with `pnpm dev:api` and refresh."}</p>
@@ -345,7 +345,7 @@ export function DashboardScreen() {
                 <tr>
                   <td colSpan={3} className="text-center text-ink-3">
                     No judge categories yet. Categories appear when evaluator outputs include a
-                    failure category; Coeval does not group cases by semantic similarity.
+                    failure category; Rubrist does not group cases by semantic similarity.
                   </td>
                 </tr>
               ) : null}

@@ -3,7 +3,7 @@ import type {
   CaseSource,
   ImportJobRecord,
   ManualTraceImportInput
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import type {
   CaseSourceIdentity,

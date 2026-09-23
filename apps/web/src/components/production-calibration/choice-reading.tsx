@@ -1,4 +1,4 @@
-import type { ProductionCalibrationQuestion } from "@coeval/shared";
+import type { ProductionCalibrationQuestion } from "@rubrist/shared";
 import { ReliabilityDiagram } from "./reliability-diagram.js";
 import { RateStat, Stat } from "./boolean-reading.js";
 import {

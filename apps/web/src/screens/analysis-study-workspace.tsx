@@ -8,7 +8,7 @@ import type {
   AnalysisStudySummary,
   AnalysisTaxonomyCoverage,
   AnalysisTaxonomyDetail
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnalysisMeasurementCard } from "@/components/analysis-measurement-card";

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Clock, Pencil, RefreshCcw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eyebrow, MarginNote, SectionHead, Chip } from "@/components/coeval";
+import { Eyebrow, MarginNote, SectionHead, Chip } from "@/components/rubrist";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { fetchCurrentSkill } from "@/lib/api";
 import { useCriterion } from "@/lib/criterion-context";
@@ -11,7 +11,7 @@ import { useDashboard } from "@/lib/dashboard-context";
 import { skillEditConsequence, skillVersionStateLabel } from "../lib/skill-presentation.js";
 import { cn } from "@/lib/utils";
 import { verdictKindDescription } from "@/lib/verdict-kind";
-import { compileJudgePrompt, type Skill } from "@coeval/shared";
+import { compileJudgePrompt, type Skill } from "@rubrist/shared";
 
 type Tab = "rubric" | "prompt" | "binding" | "schema";
 
@@ -292,7 +292,7 @@ function SchemaView({ schema }: { schema: unknown }) {
     <div>
       <Eyebrow>Result format · exact JSON schema</Eyebrow>
       <p className="mt-2 max-w-[80ch] text-[12.5px] leading-5 text-ink-2">
-        Defines the fields and allowed values the judge must return. Coeval validates each result
+        Defines the fields and allowed values the judge must return. Rubrist validates each result
         against this exact contract, so it remains formatted as source rather than Markdown.
       </p>
       <pre className="mt-3 max-h-[640px] overflow-auto whitespace-pre-wrap break-words rounded-sm border border-rule-soft bg-card-2 px-3 py-3 font-mono text-[12px] leading-[1.6] text-ink">

@@ -3,16 +3,16 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = resolve(import.meta.dirname, "../../..");
-const setupSkill = readFileSync(resolve(root, "plugins/coeval/skills/coeval-setup/SKILL.md"), "utf8");
+const setupSkill = readFileSync(resolve(root, "plugins/rubrist/skills/rubrist-setup/SKILL.md"), "utf8");
 const setupReference = readFileSync(
-  resolve(root, "plugins/coeval/skills/coeval-setup/references/setup-artifacts.md"),
+  resolve(root, "plugins/rubrist/skills/rubrist-setup/references/setup-artifacts.md"),
   "utf8"
 );
-const auditSkill = readFileSync(resolve(root, "plugins/coeval/skills/coeval-audit/SKILL.md"), "utf8");
+const auditSkill = readFileSync(resolve(root, "plugins/rubrist/skills/rubrist-audit/SKILL.md"), "utf8");
 const normalizedAuditSkill = auditSkill.replace(/\s+/g, " ");
 const readme = readFileSync(resolve(root, "README.md"), "utf8");
 
-describe("coeval-setup skill contract", () => {
+describe("rubrist-setup skill contract", () => {
   it("uses a short context-first proposal instead of a one-shot guess", () => {
     expect(setupSkill).toContain("Discover before asking");
     expect(setupSkill).toContain("one short question per message");
@@ -31,11 +31,11 @@ describe("coeval-setup skill contract", () => {
     expect(setupReference).toContain("Do not advertise automatic capture");
   });
 
-  it("hands ongoing runs to coeval-audit and documents both skills", () => {
-    expect(setupSkill).toContain("hand ongoing capture and submission to `coeval-audit`");
-    expect(auditSkill).toContain("use the sibling `coeval-setup` skill first");
+  it("hands ongoing runs to rubrist-audit and documents both skills", () => {
+    expect(setupSkill).toContain("hand ongoing capture and submission to `rubrist-audit`");
+    expect(auditSkill).toContain("use the sibling `rubrist-setup` skill first");
     expect(normalizedAuditSkill).toContain("Do not replace that flow with a one-shot rubric guess");
-    expect(readme).toContain("skills/coeval-setup/");
+    expect(readme).toContain("skills/rubrist-setup/");
     expect(readme).toContain("copy both folders");
   });
 });

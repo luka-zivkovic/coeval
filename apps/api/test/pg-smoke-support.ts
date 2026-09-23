@@ -1,10 +1,10 @@
 import type { Pool } from "pg";
-import type { Queue, QueueName } from "@coeval/queue";
-import { MinimumVerdictOutputSchema } from "@coeval/shared";
+import type { Queue, QueueName } from "@rubrist/queue";
+import { MinimumVerdictOutputSchema } from "@rubrist/shared";
 import { describe } from "vitest";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
-process.env.BETTER_AUTH_SECRET ??= "coeval-postgres-test-secret-at-least-32-bytes";
+process.env.BETTER_AUTH_SECRET ??= "rubrist-postgres-test-secret-at-least-32-bytes";
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {
   throw new Error("CI must set PG_SMOKE_DATABASE_URL; Postgres smoke tests may not be skipped.");
 }

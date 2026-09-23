@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
-import type { DashboardSummary, ExceptionDetail } from "@coeval/shared";
+import type { DashboardSummary, ExceptionDetail } from "@rubrist/shared";
 import { fetchCaseDetail, fetchProjectVerdicts } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eyebrow, VerdictChip } from "@/components/coeval";
+import { Eyebrow, VerdictChip } from "@/components/rubrist";
 import { cn } from "@/lib/utils";
 
 export function FirstVerdictCard({

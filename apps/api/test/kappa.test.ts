@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { interpretKappa, type VerdictPayload, type VerdictRecord } from "@coeval/shared";
+import { interpretKappa, type VerdictPayload, type VerdictRecord } from "@rubrist/shared";
 import { computeConvergenceAudit, computeDisagreementSummary, computeJudgeHumanCalibration, computeJudgeHumanDisagreement, computeKappaSummary, computeSelfConsistency, isJudgeActorId } from "../src/lib/kappa.js";
 
 describe("interpretKappa (Landis & Koch bands)", () => {

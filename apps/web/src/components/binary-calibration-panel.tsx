@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { BinaryCalibrationArtifact, BinaryCalibrationWilsonRate } from "@coeval/shared";
+import type { BinaryCalibrationArtifact, BinaryCalibrationWilsonRate } from "@rubrist/shared";
 import { Activity, Download, Play, RefreshCcw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {

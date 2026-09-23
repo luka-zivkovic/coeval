@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { GOLDEN_GATE_RECOMMENDED, type DashboardSummary } from "@coeval/shared";
+import { GOLDEN_GATE_RECOMMENDED, type DashboardSummary } from "@rubrist/shared";
 import { Button } from "@/components/ui/button";
 import { firstResultPath, firstRunEditorPath, journeyActStates, isBench, type JourneyActState } from "@/lib/journey";
 import { skillVersionStateLabel } from "../../lib/skill-presentation.js";

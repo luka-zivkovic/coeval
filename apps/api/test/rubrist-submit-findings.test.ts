@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-const SCRIPT = fileURLToPath(new URL("../../../plugins/coeval/skills/coeval-audit/scripts/coeval-submit.mjs", import.meta.url));
+const SCRIPT = fileURLToPath(new URL("../../../plugins/rubrist/skills/rubrist-audit/scripts/rubrist-submit.mjs", import.meta.url));
 
 const FINDINGS = {
   generatedAt: "2026-09-01T00:00:00.000Z",
@@ -49,7 +49,7 @@ function runScript(
   });
 }
 
-describe("coeval-submit findings command", () => {
+describe("rubrist-submit findings command", () => {
   const requests: Array<{ url: string; authorization: string }> = [];
   let baseUrl = "";
   let cwd = "";
@@ -74,7 +74,7 @@ describe("coeval-submit findings command", () => {
   });
 
   beforeAll(async () => {
-    cwd = await mkdtemp(join(tmpdir(), "coeval-findings-"));
+    cwd = await mkdtemp(join(tmpdir(), "rubrist-findings-"));
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const address = server.address();
     if (!address || typeof address === "string") throw new Error("mock server did not bind");
@@ -85,8 +85,8 @@ describe("coeval-submit findings command", () => {
 
   const env = () => ({
     ...process.env,
-    COEVAL_URL: baseUrl,
-    COEVAL_API_KEY: "coeval_sk_findings-test-key"
+    RUBRIST_URL: baseUrl,
+    RUBRIST_API_KEY: "rubrist_sk_findings-test-key"
   });
 
   it("prints the findings JSON without leaking the API key", async () => {
@@ -96,8 +96,8 @@ describe("coeval-submit findings command", () => {
     const parsed = JSON.parse(result.stdout) as typeof FINDINGS;
     expect(parsed.goldenSet.size).toBe(4);
     expect(parsed.failureClusters[0]!.key).toBe("missing citation");
-    expect(result.stdout).not.toContain("coeval_sk_findings-test-key");
-    expect(requests.at(-1)!.authorization).toBe("Bearer coeval_sk_findings-test-key");
+    expect(result.stdout).not.toContain("rubrist_sk_findings-test-key");
+    expect(requests.at(-1)!.authorization).toBe("Bearer rubrist_sk_findings-test-key");
   });
 
   it("forwards --since as the cursor query parameter", async () => {
@@ -111,19 +111,19 @@ describe("coeval-submit findings command", () => {
   it("renders a compact markdown brief with --md", async () => {
     const result = await runScript(["findings", "--md"], cwd, env());
     expect(result.code).toBe(0);
-    expect(result.stdout).toContain("# Coeval findings");
+    expect(result.stdout).toContain("# Rubrist findings");
     expect(result.stdout).toContain("golden set: 4");
     expect(result.stdout).toContain("missing citation");
     expect(result.stdout).toContain("billing");
     expect(result.stdout).toContain("case_a");
-    expect(result.stdout).not.toContain("coeval_sk_findings-test-key");
+    expect(result.stdout).not.toContain("rubrist_sk_findings-test-key");
   });
 
   it("exits 2 when the key is missing", async () => {
-    const bare: NodeJS.ProcessEnv = { ...process.env, COEVAL_URL: baseUrl };
-    delete bare.COEVAL_API_KEY;
+    const bare: NodeJS.ProcessEnv = { ...process.env, RUBRIST_URL: baseUrl };
+    delete bare.RUBRIST_API_KEY;
     const result = await runScript(["findings"], cwd, bare);
     expect(result.code).toBe(2);
-    expect(result.stderr).toContain("COEVAL_API_KEY");
+    expect(result.stderr).toContain("RUBRIST_API_KEY");
   });
 });

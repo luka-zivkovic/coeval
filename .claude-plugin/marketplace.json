@@ -1,15 +1,15 @@
 {
-  "name": "coeval",
-  "description": "Coeval — turn examples of your AI failing into evaluators you can check against human judgment, and keep the evidence.",
+  "name": "rubrist",
+  "description": "Rubrist — turn examples of your AI failing into evaluators you can check against human judgment, and keep the evidence.",
   "owner": {
     "name": "Luka Zivkovic"
   },
   "plugins": [
     {
-      "name": "coeval",
-      "source": "./plugins/coeval",
-      "description": "Set up and use a Coeval evaluator project from a coding agent. The coeval-setup skill inspects safe project text, asks one short question, proposes a plain-language Check, and connects it as Starter · unvalidated after you choose Finish setup. The coeval-audit skill captures real input/output examples, submits them for judging, and reports Results as counts with the human-label boundary stated plainly. Both need a running Coeval instance; credentials stay out of chat and Git.",
-      "version": "0.2.0",
+      "name": "rubrist",
+      "source": "./plugins/rubrist",
+      "description": "Set up and use a Rubrist evaluator project from a coding agent. The rubrist-setup skill inspects safe project text, asks one short question, proposes a plain-language Check, and connects it as Starter · unvalidated after you choose Finish setup. The rubrist-audit skill captures real input/output examples, submits them for judging, and reports Results as counts with the human-label boundary stated plainly. Both need a running Rubrist instance; credentials stay out of chat and Git.",
+      "version": "0.3.0",
       "category": "development",
       "keywords": [
         "evaluation",

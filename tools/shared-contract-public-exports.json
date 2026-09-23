@@ -294,7 +294,7 @@
     "BinaryCalibrationWilsonRateSchema",
     "BinaryClassifiedVerdictPayloadSchema",
     "BinaryVerdictPayloadSchema",
-    "COEVAL_INTERNAL_METADATA_KEY",
+    "RUBRIST_INTERNAL_METADATA_KEY",
     "CONVERGENCE_CASE_PAGE_DEFAULT_LIMIT",
     "CONVERGENCE_CASE_PAGE_MAX_LIMIT",
     "CapabilityGap",

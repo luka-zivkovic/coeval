@@ -10,19 +10,19 @@ Last reviewed: 2026-08-27
 > your own words, organize those observations into failure types you name, and
 > turn one important type into a criterion.
 
-Analyze is the discovery and authoring stage of Coeval. It does not cluster
+Analyze is the discovery and authoring stage of Rubrist. It does not cluster
 findings automatically, create human truth, approve an evaluator, calibrate an
 evaluator, or decide whether a release ships.
 
 ## Beginner journey
 
 1. **Choose runs to review.** Pick a recent time window and a sample size.
-   Coeval freezes the eligible frame and performs the reproducible draw.
+   Rubrist freezes the eligible frame and performs the reproducible draw.
 2. **Review the sample.** Open each selected run, record one or more exact
    failure observations with a rationale and evidence anchor, or record that
    no failure was observed. Unfinished items stay visible.
 3. **Organize findings.** Create a flat list of human-authored failure types
-   and assign each observation to one type. Coeval does not infer, cluster,
+   and assign each observation to one type. Rubrist does not infer, cluster,
    merge, or split types.
 4. **Create a criterion.** After the study is closed, choose one failure type
    and supporting observations. Promotion creates one immutable criterion and
@@ -41,7 +41,7 @@ a criterion. It is not a generated cluster, score, prevalence estimate, or
 | Internal or expert term | Beginner language | Consequence to explain |
 | --- | --- | --- |
 | population / frame | eligible runs in this time window | The result can apply only to this frozen set. |
-| draw / fixed K | review sample / sample size | Coeval chooses the sample; the caller cannot choose rows or the seed. |
+| draw / fixed K | review sample / sample size | Rubrist chooses the sample; the caller cannot choose rows or the seed. |
 | study | analysis | One append-only review of one exact sample. |
 | open coding | review runs | Observations are human-authored and remain attributable. |
 | taxonomy / code | failure types / failure type | The list is flat and human-authored. |

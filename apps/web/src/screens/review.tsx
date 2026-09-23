@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eyebrow, KPI, KPIRow, MarginNote, SectionHead } from "@/components/coeval";
+import { Eyebrow, KPI, KPIRow, MarginNote, SectionHead } from "@/components/rubrist";
 import { ReviewPlayer } from "@/components/review-player";
 import { useDashboard } from "@/lib/dashboard-context";
 import { selectReviewCaseIds } from "@/lib/exception-queue";

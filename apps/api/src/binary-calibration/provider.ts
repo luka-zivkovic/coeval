@@ -4,7 +4,7 @@ import {
   type JudgeProvider,
   type JudgePrompt,
   type Trace
-} from "@coeval/audit/runtime";
+} from "@rubrist/audit/runtime";
 import {
   GovernedReviewPayloadSnapshotSchema,
   normalizeJudgeProviderId,
@@ -13,7 +13,7 @@ import {
   type BinaryCalibrationPrivateProviderObservation,
   type JudgeProviderId,
   type ModelBinding
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   judgeProviderEnvironmentKey,
   type JudgeProviderOptions

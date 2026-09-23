@@ -125,10 +125,10 @@ input to `frameDigest` or sampling rank.
 
 The draw uses one 32-byte server seed and `sha256-rank/v1` without replacement.
 The exact rank is
-`sha256({basis:"coeval-analysis-rank/v1", seed, caseId,
+`sha256({basis:"rubrist-analysis-rank/v1", seed, caseId,
 frameMemberDigest})`, with `(frameMemberDigest, caseId)` as the deterministic
 tie-break. Duplicate payloads are therefore legal sampling units. The
-persisted algorithm envelope is `coeval-analysis-draw/v1`. Inclusion
+persisted algorithm envelope is `rubrist-analysis-draw/v1`. Inclusion
 probability is stored as the exact integer fraction `K/N`; floating-point
 display is derived only at read time.
 
@@ -398,7 +398,7 @@ a separate cross-cutting count, `cannot_determine` takes precedence over mixed
 pass/fail, and `single_rater` remains explicit. Calibration durations are the
 two accepted artifact durations, never `timeToTrustedEvaluator`.
 
-The implemented `coeval/analysis-workflow-measurement/v1` report binds the
+The implemented `rubrist/analysis-workflow-measurement/v1` report binds the
 project, study, population, draw, frozen dataset revision, calculation version,
 and a semantic report digest. Coding completion is always present. A named
 taxonomy revision adds exact coverage and successor churn; an exact evaluator

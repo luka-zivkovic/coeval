@@ -1,6 +1,6 @@
 # Architecture
 
-Coeval is a TypeScript monorepo with a React web application, a Hono API, Postgres persistence, and pg-boss workers. It can also run against deterministic in-memory fixtures for local exploration.
+Rubrist is a TypeScript monorepo with a React web application, a Hono API, Postgres persistence, and pg-boss workers. It can also run against deterministic in-memory fixtures for local exploration.
 
 ## Documentation authority
 
@@ -35,7 +35,7 @@ Without `DATABASE_URL`, the API uses `DemoRepository`. It contains representativ
 
 ### Trace ingestion
 
-1. A trace arrives through the manual endpoint, the judge API, LangSmith, Langfuse, or Ironside with an exact evaluator-version pin. Ironside supplies a settled remote trace-version identity and an opaque continuation cursor; Coeval does not reproduce Ironside's settlement policy. Singleton projects may resolve the evaluator pin when the request is accepted; multi-criterion projects require it explicitly.
+1. A trace arrives through the manual endpoint, the judge API, LangSmith, Langfuse, or Ironside with an exact evaluator-version pin. Ironside supplies a settled remote trace-version identity and an opaque continuation cursor; Rubrist does not reproduce Ironside's settlement policy. Singleton projects may resolve the evaluator pin when the request is accepted; multi-criterion projects require it explicitly.
 2. The raw provider payload is retained for auditability.
 3. A normalized case is created with configured exclusions and sensitive-key redaction.
 4. A `judge.run` job is queued.
@@ -65,7 +65,7 @@ policy. Assessment receipt v1 remains a separate artifact per criterion.
 
 ### Human review
 
-Coeval has two non-interchangeable review paths.
+Rubrist has two non-interchangeable review paths.
 
 The governed path uses a dedicated session-authenticated repository and API.
 Immutable instruction versions bind one criterion version. Server-selected
@@ -285,7 +285,7 @@ Session-authenticated `/api/*` routes resolve a project membership before access
 
 ## Database migrations
 
-Coeval currently supports clean installations only. PostgreSQL 17 is the
+Rubrist currently supports clean installations only. PostgreSQL 17 is the
 development and CI target, and `packages/db/migrations/0001_baseline.sql`
 contains the complete current schema. The API serializes baseline application
 under a database advisory lock, records its SHA-256 checksum, and rejects any

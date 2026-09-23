@@ -1,11 +1,11 @@
 {
-  "name": "@coeval/mcp",
+  "name": "@rubrist/mcp",
   "version": "0.1.0",
   "private": true,
-  "description": "MCP stdio server exposing Coeval's /api/v1 machine surface: findings, cases, golden set, project check, batch submission, and gate checks.",
+  "description": "MCP stdio server exposing Rubrist's /api/v1 machine surface: findings, cases, golden set, project check, batch submission, and gate checks.",
   "type": "module",
   "bin": {
-    "coeval-mcp": "./index.mjs"
+    "rubrist-mcp": "./index.mjs"
   },
   "scripts": {
     "test": "node --test *.test.mjs"

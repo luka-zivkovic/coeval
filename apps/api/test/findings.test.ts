@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { VerdictPayload, VerdictRecord } from "@coeval/shared";
+import type { VerdictPayload, VerdictRecord } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 import { buildFindings, normalizeFirstSentence } from "../src/lib/findings.js";

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { isVerdictLabel, type VerdictLabel } from "@coeval/shared";
+import { isVerdictLabel, type VerdictLabel } from "@rubrist/shared";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 
 const verdictMap: Record<VerdictLabel, { variant: BadgeProps["variant"]; label: string }> = {

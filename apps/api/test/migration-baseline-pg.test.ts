@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runMigrations } from "@coeval/db";
+import { runMigrations } from "@rubrist/db";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
@@ -15,12 +15,12 @@ run("clean-install database baseline", () => {
       await runMigrations(pool);
       await runMigrations(pool);
       const applied = await pool.query<{ id: string; checksum: string }>(
-        "select id, checksum from coeval_migrations order by id",
+        "select id, checksum from rubrist_migrations order by id",
       );
       expect(applied.rows).toEqual([
         {
           id: "0001_baseline",
-          checksum: "f76b232dffdf9868da9b9d2a2a52cffd4b1642b9f36b4925548849d6fba1925c",
+          checksum: "96369c2992b0bab32355c2e547273e97f9cffd575607c0ed861fc1d239982bd9",
         }
       ]);
     } finally {
@@ -95,12 +95,12 @@ run("clean-install database baseline", () => {
       // poisoning the ledger with an upgrade-era identifier.
       await runMigrations(pool);
       await pool.query(
-        "insert into coeval_migrations (id, checksum) values ('0055_evaluator_lifecycle', 'unknown')",
+        "insert into rubrist_migrations (id, checksum) values ('0055_evaluator_lifecycle', 'unknown')",
       );
       await expect(runMigrations(pool)).rejects.toThrow(
         /migration history is newer than or incompatible.*0055_evaluator_lifecycle.*recreate the disposable database/s,
       );
-      const applied = await pool.query<{ id: string }>("select id from coeval_migrations order by id");
+      const applied = await pool.query<{ id: string }>("select id from rubrist_migrations order by id");
       expect(applied.rows).toEqual([
         { id: "0001_baseline" },
         { id: "0055_evaluator_lifecycle" },
@@ -114,8 +114,8 @@ run("clean-install database baseline", () => {
     const { pool, cleanup } = await openPostgresTestDatabase("baseline_checksum_required");
     try {
       await runMigrations(pool);
-      await pool.query("alter table coeval_migrations alter column checksum drop not null");
-      await pool.query("update coeval_migrations set checksum = null where id = '0001_baseline'");
+      await pool.query("alter table rubrist_migrations alter column checksum drop not null");
+      await pool.query("update rubrist_migrations set checksum = null where id = '0001_baseline'");
 
       await expect(runMigrations(pool)).rejects.toThrow(
         /Applied migration 0001_baseline checksum does not match.*recreate the disposable database/s,

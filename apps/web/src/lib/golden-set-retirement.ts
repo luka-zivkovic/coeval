@@ -1,4 +1,4 @@
-import { GoldenSetRetirementContextSchema, type GoldenSetRetirementContext } from "@coeval/shared";
+import { GoldenSetRetirementContextSchema, type GoldenSetRetirementContext } from "@rubrist/shared";
 import type { ApiError } from "./api";
 import { formatTimestamp, isPlainRecord } from "./utils";
 

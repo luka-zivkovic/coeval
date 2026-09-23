@@ -20,13 +20,13 @@ fragile.
 
 ## Decision
 
-Accept the separate closed `coeval/binary-calibration/v1` artifact specified in
+Accept the separate closed `rubrist/binary-calibration/v1` artifact specified in
 `contracts/binary-calibration-v1.md`.
 
 The public artifact is aggregate-only. It exposes no item, label, payload,
 rationale, provider request/response ID, or observation commitment. It commits
 holistically to a protected, non-readable
-`coeval/binary-calibration-private-ledger/v1`; that ledger has no public or
+`rubrist/binary-calibration-private-ledger/v1`; that ledger has no public or
 project-key read surface. Any later ledger read or export is development
 exposure. Its commitment covers exact canonical records ordered by trial and
 revision item digest, including truth, terminal evaluator outcome, attempt

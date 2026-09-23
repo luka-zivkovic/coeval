@@ -3,8 +3,8 @@
 Status: **accepted Batch 1A storage contract**
 
 The receipt body remains the closed
-[`coeval/assessment-receipt/v1`](../contracts/assessment-receipt-v1.md) wire
-contract. This document specifies how Coeval preserves and serves those exact
+[`rubrist/assessment-receipt/v1`](../contracts/assessment-receipt-v1.md) wire
+contract. This document specifies how Rubrist preserves and serves those exact
 bytes; it does not add fields to receipt v1.
 
 ## Stored artifact

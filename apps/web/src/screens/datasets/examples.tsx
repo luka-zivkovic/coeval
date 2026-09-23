@@ -28,7 +28,7 @@ import {
 import {
   type Dataset,
   type DatasetExampleInput
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 // --- Add examples: forgiving JSONL/JSON parse + import -----------------------
 

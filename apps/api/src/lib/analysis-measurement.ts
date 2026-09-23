@@ -10,7 +10,7 @@ import {
   type AnalysisTaxonomyChurn,
   type AnalysisWorkflowMeasurementReport,
   type BinaryCalibrationArtifact
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { canonicalGovernedJsonV1 } from "./governed-content-digest.js";
 
 export const ANALYSIS_WORKFLOW_MEASUREMENT_REPORT_DIGEST_BASIS =

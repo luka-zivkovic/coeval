@@ -114,14 +114,14 @@ function loadRepositoryTypes(): {
   const repositoryModule = checker.getSymbolAtLocation(repositorySource);
   if (!portsSymbol || !repositoryModule) throw new Error("Repository module symbols were not resolved");
   const repositorySymbol = checker.getExportsOfModule(repositoryModule)
-    .find((symbol) => symbol.name === "CoevalRepository");
-  if (!repositorySymbol) throw new Error("CoevalRepository export was not resolved");
+    .find((symbol) => symbol.name === "RubristRepository");
+  if (!repositorySymbol) throw new Error("RubristRepository export was not resolved");
   const repositoryDeclarations = repositorySymbol.declarations?.filter(ts.isInterfaceDeclaration) ?? [];
   if (repositoryDeclarations.length !== 1) {
-    throw new Error(`Expected one CoevalRepository interface declaration, found ${repositoryDeclarations.length}`);
+    throw new Error(`Expected one RubristRepository interface declaration, found ${repositoryDeclarations.length}`);
   }
   const repositoryDeclaration = repositoryDeclarations[0];
-  if (!repositoryDeclaration) throw new Error("CoevalRepository interface declaration was not resolved");
+  if (!repositoryDeclaration) throw new Error("RubristRepository interface declaration was not resolved");
   return { checker, portsSource, portsSymbol, repositoryDeclaration, repositorySymbol };
 }
 

@@ -5,7 +5,7 @@ import type {
   ReviewQueueItem,
   ReviewQueueStatus,
   Skill
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { AddQueueItemsInputDb, CreateReviewQueueInputDb } from "./contracts.js";
 import type { DemoRepositoryStore } from "./demo-store.js";
 import { AmbiguousProjectSkillError, DatasetRevisionConflictError } from "./errors.js";

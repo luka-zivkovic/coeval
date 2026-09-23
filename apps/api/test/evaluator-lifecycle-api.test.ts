@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   MinimumVerdictOutputSchema,
   type EvaluatorCandidateCreateResult
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { EvaluatorLifecycleRepository } from "../src/evaluator-lifecycle/repository.js";
 import { createEvaluatorLifecycleRouter } from "../src/evaluator-lifecycle/routes.js";
 import { evaluatorCandidateRequestDigest } from "../src/lib/evaluator-lifecycle.js";
@@ -43,7 +43,7 @@ function candidateResult(replayed: boolean): EvaluatorCandidateCreateResult {
     createdAt: "2026-08-24T00:00:00.000Z", approvedAt: null
   };
   const lifecycle = {
-    id: "lifecycle", contractVersion: "coeval/evaluator-lifecycle/v1" as const,
+    id: "lifecycle", contractVersion: "rubrist/evaluator-lifecycle/v1" as const,
     projectId: "project", criterionId: "criterion", criterionVersionId: "criterion-version",
     skillId: "skill", skillVersionId: "skill-version", promotionId: "promotion",
     governedBatchId: "batch", governedBatchDigest: DIGEST,
@@ -64,7 +64,7 @@ function candidateResult(replayed: boolean): EvaluatorCandidateCreateResult {
     projection: {
       lifecycle,
       currentEvent: {
-        id: "event", contractVersion: "coeval/evaluator-lifecycle-event/v1", lifecycleId: "lifecycle",
+        id: "event", contractVersion: "rubrist/evaluator-lifecycle-event/v1", lifecycleId: "lifecycle",
         projectId: "project", criterionId: "criterion", skillVersionId: "skill-version",
         sequence: "1", transition: "candidate_created", state: "candidate",
         predecessorEventId: null, predecessorEventDigest: null, activationBundleId: null,

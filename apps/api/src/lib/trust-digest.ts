@@ -1,4 +1,4 @@
-import { KAPPA_MIN_SHARED_CASES } from "@coeval/shared";
+import { KAPPA_MIN_SHARED_CASES } from "@rubrist/shared";
 import type {
   GoldenSetHealthSummary,
   KappaSummary,
@@ -7,7 +7,7 @@ import type {
   TrustDigest,
   TrustDigestSpend,
   TrustNudge
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 // assemble the trust digest from RECORDED evidence only. Nudges fire
 // exclusively on the locked thresholds; absent signals become explicit

@@ -6,8 +6,8 @@ import { displayModeFromStorage, type DisplayMode } from "@/lib/display-mode";
 //   dev  — Technical (same work surfaces plus .dev-only evidence)
 //   exec — Summary (compact status navigation; never an authorization mode)
 
-const STORAGE_KEY = "coeval.mode";
-const DISPLAY_MODE_EVENT = "coeval:display-mode-change";
+const STORAGE_KEY = "rubrist.mode";
+const DISPLAY_MODE_EVENT = "rubrist:display-mode-change";
 
 export function useMode(): [DisplayMode, (mode: DisplayMode) => void] {
   const [mode, setModeState] = useState<DisplayMode>(() => {

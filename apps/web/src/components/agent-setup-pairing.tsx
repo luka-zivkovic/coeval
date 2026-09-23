@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { Bot, Check, Copy, Link2, RefreshCcw, X } from "lucide-react";
-import type { AgentSetupPairing, CreatedAgentSetupPairing } from "@coeval/shared";
-import { Eyebrow } from "@/components/coeval";
+import type { AgentSetupPairing, CreatedAgentSetupPairing } from "@rubrist/shared";
+import { Eyebrow } from "@/components/rubrist";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {

@@ -6,14 +6,14 @@ Date: 2026-08-22
 
 ## Context
 
-Coeval's target job includes validating evaluators against reviewed human
+Rubrist's target job includes validating evaluators against reviewed human
 truth. Current datasets are mutable collections, so they cannot prove exactly
 which cases and labels supported a calibration result or whether those cases
 also shaped the evaluator.
 
 ## Decision
 
-Coeval owns the human-review, adjudication, and calibration workflow while
+Rubrist owns the human-review, adjudication, and calibration workflow while
 also supporting import of externally reviewed truth. Imported truth keeps its
 source, rater/adjudication, instructions, and content provenance rather than
 becoming an anonymous label.
@@ -30,7 +30,7 @@ labels that exposed disagreement.
 Review batches record how cases were selected and the population they came
 from. Random or declared stratified sampling supports representative estimates;
 uncertainty sampling and failure hunting support discovery and rubric
-improvement. Coeval does not present a convenience or uncertainty-selected
+improvement. Rubrist does not present a convenience or uncertainty-selected
 queue as an unbiased prevalence sample.
 
 A calibration references an immutable, content-identified dataset revision.
@@ -49,7 +49,7 @@ Every revision has one declared exposure role:
   prevent known behavior from returning, without claiming representative
   production accuracy.
 
-Coeval records dataset exposure to people, evaluator versions, and development
+Rubrist records dataset exposure to people, evaluator versions, and development
 activities. Running a sealed revision for final validation is recorded. If its
 cases then influence a later evaluator version, that revision is exposed and
 cannot support the same sealed claim for the later version; a new protected

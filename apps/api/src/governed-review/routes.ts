@@ -154,9 +154,9 @@ export function createGovernedReviewRouter(dependencies: GovernedReviewRouteDepe
     const stored = await repository(dependencies).getOrCreateBlindTaskView(actor(c), routeId(c, "taskId"));
     const artifact = verifyExactBlindTaskViewArtifact(stored);
     c.header("content-type", "application/json; charset=utf-8");
-    c.header("x-coeval-view-digest", artifact.viewDigest);
-    c.header("x-coeval-canonicalization", "coeval-canonical-json/v1");
-    c.header("access-control-expose-headers", "X-Coeval-View-Digest, X-Coeval-Canonicalization");
+    c.header("x-rubrist-view-digest", artifact.viewDigest);
+    c.header("x-rubrist-canonicalization", "rubrist-canonical-json/v1");
+    c.header("access-control-expose-headers", "X-Rubrist-View-Digest, X-Rubrist-Canonicalization");
     return c.body(Uint8Array.from(artifact.canonicalBytes).buffer);
   });
 
@@ -309,7 +309,7 @@ function parseQuery<T>(c: Context, schema: ZodType<T>): T {
 
 function setGovernedReviewHeaders(c: Context): void {
   c.header("cache-control", "private, no-store");
-  c.header("vary", "Cookie, x-coeval-project");
+  c.header("vary", "Cookie, x-rubrist-project");
   c.header("x-content-type-options", "nosniff");
 }
 

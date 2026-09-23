@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 async function sectionHeadSource(): Promise<string> {
-  return readFile(new URL("../src/components/coeval/section-head.tsx", import.meta.url), "utf8");
+  return readFile(new URL("../src/components/rubrist/section-head.tsx", import.meta.url), "utf8");
 }
 
 describe("SectionHead", () => {

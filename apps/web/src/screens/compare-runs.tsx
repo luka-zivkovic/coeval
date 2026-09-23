@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table } from "@/components/ui/table";
 import { RowButton, RowLink } from "@/components/row-action";
-import { Chip, Eyebrow, KPI, KPIRow, LabelChip, SectionHead, VerdictChip } from "@/components/coeval";
+import { Chip, Eyebrow, KPI, KPIRow, LabelChip, SectionHead, VerdictChip } from "@/components/rubrist";
 import {
   createRunComparison,
   fetchCurrentSkill,
@@ -24,7 +24,7 @@ import type {
   RunComparisonCase,
   RunComparisonDetail,
   SkillVersion
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 const COMPARISON_POLL_MS = 4000;
 

@@ -8,11 +8,11 @@ import type {
   AnalysisPopulationOverlapSummary,
   AnalysisPopulationSummary,
   AnalysisPopulationDrawSelection
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { SectionHead } from "@/components/coeval";
+import { SectionHead } from "@/components/rubrist";
 import {
   createAnalysisPopulation,
   fetchAnalysisPopulation,
@@ -295,7 +295,7 @@ function FreezePopulationForm({ onCreated }: { onCreated: (populationId: string)
       <CardHeader className="justify-between">
         <div>
           <CardTitle>1. Choose runs to review</CardTitle>
-          <p className="mt-1 max-w-[72ch] text-[11px] leading-5 text-ink-3">Pick a recent window and how many runs you can review. Coeval chooses the rows reproducibly and keeps the exact scope.</p>
+          <p className="mt-1 max-w-[72ch] text-[11px] leading-5 text-ink-3">Pick a recent window and how many runs you can review. Rubrist chooses the rows reproducibly and keeps the exact scope.</p>
         </div>
       </CardHeader>
       <CardContent>

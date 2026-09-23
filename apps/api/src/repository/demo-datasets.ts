@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import type { Trace } from "@coeval/audit/runtime";
-import { demoExceptions, demoGoldenSet } from "@coeval/db";
-import { verdictLabelFromPayload } from "@coeval/shared";
+import type { Trace } from "@rubrist/audit/runtime";
+import { demoExceptions, demoGoldenSet } from "@rubrist/db";
+import { verdictLabelFromPayload } from "@rubrist/shared";
 import type {
   Dataset,
   DatasetDetail,
@@ -14,7 +14,7 @@ import type {
   DatasetRevisionItem,
   DatasetRevisionPayloadSnapshot,
   GoldenSetEntry
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   datasetRevisionContentDigest,
   datasetRevisionDigest,

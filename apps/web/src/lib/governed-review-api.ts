@@ -4,10 +4,10 @@ import {
   type GovernedReviewLabelValue,
   type GovernedReviewRoleIntent,
   type GovernedReviewSelectionMethod
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
-const PROJECT_KEY = "coeval.project";
+const PROJECT_KEY = "rubrist.project";
 const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const MAX_BLIND_VIEW_BYTES = 2 * 1024 * 1024;
 
@@ -293,7 +293,7 @@ export async function fetchGovernedTasks(): Promise<GovernedTaskSummary[]> {
 export async function fetchGovernedBlindTaskView(taskId: string): Promise<GovernedBlindTaskArtifact> {
   const response = await governedRequest(`/api/governed-review/tasks/${pathId(taskId)}/view`);
   if (!response.ok) throw await errorFromResponse(response, "Blind review task request failed");
-  const headerDigest = response.headers.get("x-coeval-view-digest");
+  const headerDigest = response.headers.get("x-rubrist-view-digest");
   if (!headerDigest || !DIGEST_PATTERN.test(headerDigest)) {
     throw new Error("Blind review response omitted its exact view digest");
   }
@@ -613,7 +613,7 @@ async function governedJson(path: string, init?: RequestInit): Promise<JsonRecor
 function governedRequest(path: string, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers);
   const projectId = selectedProjectId();
-  if (projectId) headers.set("x-coeval-project", projectId);
+  if (projectId) headers.set("x-rubrist-project", projectId);
   return fetch(`${API_BASE}${path}`, { ...init, headers, credentials: "include", cache: "no-store" });
 }
 

@@ -1,4 +1,4 @@
-import type { EvalRunDetail } from "@coeval/shared";
+import type { EvalRunDetail } from "@rubrist/shared";
 import type { PoolClient } from "pg";
 import {
   buildAssessmentReceipt,

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Trace } from "@coeval/audit/runtime";
+import type { Trace } from "@rubrist/audit/runtime";
 import {
   MinimumVerdictOutputSchema,
   regressionDirectionCounts,
@@ -11,7 +11,7 @@ import {
   type Skill,
   type SkillVersion,
   type CreateSkillVersionInput
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import { PgEvaluatorLifecycleRepository } from "../evaluator-lifecycle/repository.pg.js";
 import { evaluatorSuiteCriterionDigest } from "../lib/evaluator-suite.js";

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { demoProject, demoSkill } from "@coeval/db";
+import { demoProject, demoSkill } from "@rubrist/db";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import * as repositoryModule from "../src/repository.js";
@@ -361,7 +361,7 @@ describe("Demo trace-import repository slice", () => {
       sourceTraceId: "trace-import-slice-recursive",
       input: {},
       output: {},
-      metadata: { coeval: { internal: true } }
+      metadata: { rubrist: { internal: true } }
     }, { ingestionPurpose: "analysis_eligible_manual" }))
       .rejects.toBeInstanceOf(RecursiveTraceSkippedError);
     expect({

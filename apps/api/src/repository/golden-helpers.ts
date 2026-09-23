@@ -6,7 +6,7 @@ import {
   type JudgeProvider,
   type JudgeVerdict,
   type Trace
-} from "@coeval/audit/runtime";
+} from "@rubrist/audit/runtime";
 import {
   GOLDEN_SET_STALE_AFTER_DAYS,
   REGRESSION_RATIONALE_MAX_LENGTH,
@@ -17,7 +17,7 @@ import {
   type SkillVersion,
   type VerdictLabel,
   renderJudgePromptContent
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { RegressionGateJudgeError } from "./errors.js";
 
 // Subset of JudgeProvider needed by the binary golden-set regression gate. A

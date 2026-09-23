@@ -1,9 +1,9 @@
 {
-  "name": "@coeval/db",
+  "name": "@rubrist/db",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Coeval database migrations, schema support, and demo fixtures.",
+  "description": "Rubrist database migrations, schema support, and demo fixtures.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,7 +17,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@coeval/shared": "workspace:*",
+    "@rubrist/shared": "workspace:*",
     "pg": "^8.20.0"
   },
   "devDependencies": {

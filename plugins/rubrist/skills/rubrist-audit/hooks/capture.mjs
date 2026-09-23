@@ -1,34 +1,34 @@
 #!/usr/bin/env node
-// coeval-audit capture hook — a Claude Code Stop hook that records
+// rubrist-audit capture hook — a Claude Code Stop hook that records
 // user-request → final-assistant-message pairs for turns in which an
-// allowlisted skill ran, appending them to .coeval/<skillName>.jsonl for
-// later submission via scripts/coeval-submit.mjs.
+// allowlisted skill ran, appending them to .rubrist/<skillName>.jsonl for
+// later submission via scripts/rubrist-submit.mjs.
 //
 // Install (Claude Code only, in .claude/settings.local.json — never the
 // committed shared settings without explicit consent):
 //   { "hooks": { "Stop": [ { "hooks": [ { "type": "command",
 //     "command": "node <repo-relative-path>/hooks/capture.mjs" } ] } ] } }
 //
-// Allowlist: the `capture: true` skills in .coeval/config.json —
+// Allowlist: the `capture: true` skills in .rubrist/config.json —
 //   { "skills": { "<skillName>": { "keyEnvVar"?, "url"?, "capture"? } } }
-// `coeval-audit` itself is NEVER captured, regardless of config — the
-// server's anti-recursion guard only covers coeval-internal metadata, not
+// `rubrist-audit` itself is NEVER captured, regardless of config — the
+// server's anti-recursion guard only covers rubrist-internal metadata, not
 // this skill's own turns.
 //
 // Honest scope: this captures the turn's last plain user message and last
 // assistant text. File-edit deliverables and subagent-internal work are not
 // fully represented; a turn with no final assistant text is skipped with a
-// note in .coeval/submit.log.
+// note in .rubrist/submit.log.
 //
 // FAIL-SOFT EVERYWHERE. The transcript JSONL is an internal, unversioned
-// format — any parse or IO problem is logged to .coeval/submit.log and the
+// format — any parse or IO problem is logged to .rubrist/submit.log and the
 // hook exits 0. A capture hook must never break the end of a turn.
 //
-// Auto-submit: only when COEVAL_AUTO_SUBMIT=1, via a detached/unref'd child
-// running coeval-submit.mjs (which POSTs /api/v1/judge/batch — NEVER the
+// Auto-submit: only when RUBRIST_AUTO_SUBMIT=1, via a detached/unref'd child
+// running rubrist-submit.mjs (which POSTs /api/v1/judge/batch — NEVER the
 // synchronous single /api/v1/judge — with ci_ content hashes as
 // sourceTraceId, so retries and rate-limited turns are idempotent). All
-// outcomes land in .coeval/submit.log; a 429 is just logged and the content
+// outcomes land in .rubrist/submit.log; a 429 is just logged and the content
 // is retried on a later turn.
 //
 // Zero dependencies; Node >= 18.
@@ -45,12 +45,12 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-let coevalDir = join(process.cwd(), ".coeval");
+let rubristDir = join(process.cwd(), ".rubrist");
 
 function log(message) {
   try {
-    mkdirSync(coevalDir, { recursive: true });
-    appendFileSync(join(coevalDir, "submit.log"), `[${new Date().toISOString()}] capture: ${message}\n`);
+    mkdirSync(rubristDir, { recursive: true });
+    appendFileSync(join(rubristDir, "submit.log"), `[${new Date().toISOString()}] capture: ${message}\n`);
   } catch {
     // Logging must never throw — there is nothing left to report to.
   }
@@ -85,7 +85,7 @@ async function main() {
   // continuation must not capture (or spawn) again.
   if (payload.stop_hook_active) return;
   const cwd = typeof payload.cwd === "string" && payload.cwd ? payload.cwd : process.cwd();
-  coevalDir = join(cwd, ".coeval");
+  rubristDir = join(cwd, ".rubrist");
   const sessionId = payload.session_id;
   const transcriptPath = payload.transcript_path;
   if (typeof sessionId !== "string" || !sessionId || typeof transcriptPath !== "string" || !transcriptPath) {
@@ -97,7 +97,7 @@ async function main() {
   // capture is off — silence, not an error.
   let config;
   try {
-    config = JSON.parse(readFileSync(join(coevalDir, "config.json"), "utf8"));
+    config = JSON.parse(readFileSync(join(rubristDir, "config.json"), "utf8"));
   } catch {
     return;
   }
@@ -106,7 +106,7 @@ async function main() {
     : {};
   const allowlist = new Set(
     Object.keys(skills).filter((name) =>
-      name !== "coeval-audit" && skills[name] && skills[name].capture === true
+      name !== "rubrist-audit" && skills[name] && skills[name].capture === true
     )
   );
   if (allowlist.size === 0) return;
@@ -114,7 +114,7 @@ async function main() {
   // Per-session cursor: byte offset into the transcript, so each turn's
   // lines are processed exactly once across Stop firings.
   const safeSession = sessionId.replace(/[^A-Za-z0-9_-]/g, "_");
-  const cursorPath = join(coevalDir, `.cursor-${safeSession}`);
+  const cursorPath = join(rubristDir, `.cursor-${safeSession}`);
   let offset = 0;
   try {
     offset = Number(readFileSync(cursorPath, "utf8").trim());
@@ -168,9 +168,9 @@ async function main() {
           const invoked = typeof block.input?.skill === "string" ? block.input.skill : "";
           if (!invoked) continue;
           // Plugin-namespaced invocations ("plugin:name") match a config key
-          // of either the full or the short form; coeval-audit never matches.
+          // of either the full or the short form; rubrist-audit never matches.
           const short = invoked.split(":").pop();
-          if (invoked === "coeval-audit" || short === "coeval-audit") continue;
+          if (invoked === "rubrist-audit" || short === "rubrist-audit") continue;
           if (allowlist.has(invoked)) skillsRan.add(invoked);
           else if (allowlist.has(short)) skillsRan.add(short);
         }
@@ -182,7 +182,7 @@ async function main() {
 
   // Advance the cursor even when nothing was captured — these lines are done.
   try {
-    mkdirSync(coevalDir, { recursive: true });
+    mkdirSync(rubristDir, { recursive: true });
     writeFileSync(cursorPath, String(newOffset));
   } catch (error) {
     log(`cannot write cursor ${cursorPath}: ${error instanceof Error ? error.message : error}`);
@@ -202,12 +202,12 @@ async function main() {
   }
 
   // Self-ignoring directory: results, cursors, and logs never enter git.
-  const gitignorePath = join(coevalDir, ".gitignore");
+  const gitignorePath = join(rubristDir, ".gitignore");
   if (!existsSync(gitignorePath)) writeFileSync(gitignorePath, "*\n");
 
   const captured = [];
   for (const skillName of skillsRan) {
-    const file = join(coevalDir, `${skillName.replace(/[^A-Za-z0-9._-]/g, "_")}.jsonl`);
+    const file = join(rubristDir, `${skillName.replace(/[^A-Za-z0-9._-]/g, "_")}.jsonl`);
     appendFileSync(file, JSON.stringify({
       input: userText,
       output: assistantText,
@@ -219,21 +219,21 @@ async function main() {
 
   // Full auto mode is an explicit opt-in. The child is detached and unref'd
   // so turn end is never delayed by network or judging time.
-  if (process.env.COEVAL_AUTO_SUBMIT === "1") {
-    const submitScript = fileURLToPath(new URL("../scripts/coeval-submit.mjs", import.meta.url));
+  if (process.env.RUBRIST_AUTO_SUBMIT === "1") {
+    const submitScript = fileURLToPath(new URL("../scripts/rubrist-submit.mjs", import.meta.url));
     for (const { skillName, file } of captured) {
       const entry = skills[skillName] ?? {};
       const args = [submitScript, "submit", file];
       if (typeof entry.keyEnvVar === "string" && entry.keyEnvVar) args.push("--env-var", entry.keyEnvVar);
       try {
-        const out = openSync(join(coevalDir, "submit.log"), "a");
+        const out = openSync(join(rubristDir, "submit.log"), "a");
         const child = spawn(process.execPath, args, {
           cwd,
           detached: true,
           stdio: ["ignore", out, out],
           env: {
             ...process.env,
-            ...(typeof entry.url === "string" && entry.url ? { COEVAL_URL: entry.url } : {})
+            ...(typeof entry.url === "string" && entry.url ? { RUBRIST_URL: entry.url } : {})
           }
         });
         child.unref();

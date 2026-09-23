@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CreatedApiKey, DashboardSummary } from "@coeval/shared";
+import type { CreatedApiKey, DashboardSummary } from "@rubrist/shared";
 import {
   firstRunSetupStepStates,
   firstResultPath,
@@ -47,11 +47,11 @@ const apiKey: CreatedApiKey = {
   id: "apikey_first",
   projectId: "proj_first",
   name: "First verdict",
-  keyPrefix: "coeval_sk_first…",
+  keyPrefix: "rubrist_sk_first…",
   createdAt: "2026-08-14T00:00:00.000Z",
   lastUsedAt: null,
   revokedAt: null,
-  key: "coeval_sk_first-project-secret"
+  key: "rubrist_sk_first-project-secret"
 };
 
 describe("journey state", () => {

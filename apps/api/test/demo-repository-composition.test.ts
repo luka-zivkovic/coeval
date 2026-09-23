@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { MockJudgeProvider } from "@coeval/audit/runtime";
-import { demoExceptions, demoGoldenSet, demoSkill, demoSkillPrevVersion, demoVerdicts } from "@coeval/db";
+import { MockJudgeProvider } from "@rubrist/audit/runtime";
+import { demoExceptions, demoGoldenSet, demoSkill, demoSkillPrevVersion, demoVerdicts } from "@rubrist/db";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { datasetInputIdentity } from "../src/lib/dataset-revision.js";

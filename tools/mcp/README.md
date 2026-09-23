@@ -1,83 +1,83 @@
-# Coeval MCP server
+# Rubrist MCP server
 
 [← README](../../README.md) · [Agent setup](../../docs/agent-setup.md)
 
-Connect Coeval to Claude Code, Codex, or another harness that supports local
+Connect Rubrist to Claude Code, Codex, or another harness that supports local
 **stdio MCP servers**. MCP—the Model Context Protocol—lets the agent call
 named tools to read findings, inspect examples, and submit evaluation runs.
 
 ```text
-Your harness  ← stdio MCP →  local Node process  →  Coeval HTTP API
+Your harness  ← stdio MCP →  local Node process  →  Rubrist HTTP API
                               tools/mcp/              localhost:8787
                                                       or your host
 ```
 
 The harness launches the Node process. You do not need to run another HTTP
-server or expose a new port. `COEVAL_URL` points to the Coeval API, not to an
+server or expose a new port. `RUBRIST_URL` points to the Rubrist API, not to an
 MCP endpoint. Registering `http://localhost:8787` as an HTTP MCP server will
 not work.
 
 ## Prerequisites
 
-1. A running Coeval instance and a project. See the [ten-minute start](../../README.md#ten-minute-start).
+1. A running Rubrist instance and a project. See the [ten-minute start](../../README.md#ten-minute-start).
 2. A local checkout with dependencies installed using `pnpm install` from
-   its root. `@coeval/mcp` is a private workspace package, not a published
+   its root. `@rubrist/mcp` is a private workspace package, not a published
    `npx` installer.
-3. A project-scoped `coeval_sk_` key from onboarding or **Settings → API keys**.
+3. A project-scoped `rubrist_sk_` key from onboarding or **Settings → API keys**.
 
-Set `COEVAL_API_KEY` in your shell using your local secret workflow before
-running the registration commands. It is the Coeval project key, not an
-Anthropic/OpenAI key or `COEVAL_BOOTSTRAP_TOKEN`.
+Set `RUBRIST_API_KEY` in your shell using your local secret workflow before
+running the registration commands. It is the Rubrist project key, not an
+Anthropic/OpenAI key or `RUBRIST_BOOTSTRAP_TOKEN`.
 
 ## Connect your harness
 
-Run the examples from the Coeval repository root. They record an absolute
+Run the examples from the Rubrist repository root. They record an absolute
 server path, so the checkout must remain at that location.
 
 ### Claude Code
 
 ```sh
 claude mcp add --scope user \
-  --env "COEVAL_URL=http://localhost:8787" \
-  --env "COEVAL_API_KEY=${COEVAL_API_KEY:?Set COEVAL_API_KEY in this shell first}" \
-  --transport stdio coeval -- node "$PWD/tools/mcp/index.mjs"
+  --env "RUBRIST_URL=http://localhost:8787" \
+  --env "RUBRIST_API_KEY=${RUBRIST_API_KEY:?Set RUBRIST_API_KEY in this shell first}" \
+  --transport stdio rubrist -- node "$PWD/tools/mcp/index.mjs"
 
 claude mcp list
 ```
 
 This registers the server for your user account. For a single project, use
 `--scope local` while working in that project and supply the absolute path to
-the Coeval checkout. The key is stored in Claude Code's private local
+the Rubrist checkout. The key is stored in Claude Code's private local
 configuration; do not copy it into a committed `.mcp.json`.
 
-Open Claude Code, inspect `/mcp`, and ask it to call Coeval's `get_project`.
+Open Claude Code, inspect `/mcp`, and ask it to call Rubrist's `get_project`.
 See [Claude Code's MCP documentation](https://code.claude.com/docs/en/mcp).
 
 ### Codex
 
 ```sh
-codex mcp add coeval \
-  --env "COEVAL_URL=http://localhost:8787" \
-  --env "COEVAL_API_KEY=${COEVAL_API_KEY:?Set COEVAL_API_KEY in this shell first}" \
+codex mcp add rubrist \
+  --env "RUBRIST_URL=http://localhost:8787" \
+  --env "RUBRIST_API_KEY=${RUBRIST_API_KEY:?Set RUBRIST_API_KEY in this shell first}" \
   -- node "$PWD/tools/mcp/index.mjs"
 
 codex mcp list
 ```
 
 The CLI stores this in your local Codex configuration. Keep it private.
-Start a new Codex session and ask it to call Coeval's `get_project`.
+Start a new Codex session and ask it to call Rubrist's `get_project`.
 
 If you prefer to supply the key through the environment inherited by Codex,
 configure the server manually in `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.coeval]
+[mcp_servers.rubrist]
 command = "node"
-args = ["/absolute/path/to/coeval/tools/mcp/index.mjs"]
-env_vars = ["COEVAL_API_KEY"]
+args = ["/absolute/path/to/rubrist/tools/mcp/index.mjs"]
+env_vars = ["RUBRIST_API_KEY"]
 
-[mcp_servers.coeval.env]
-COEVAL_URL = "http://localhost:8787"
+[mcp_servers.rubrist.env]
+RUBRIST_URL = "http://localhost:8787"
 ```
 
 Use either method, keeping one server entry. With `env_vars`, the key must be
@@ -92,21 +92,21 @@ Choose a local/stdio server in your client's MCP settings and supply:
 | Setting | Value |
 | --- | --- |
 | Command | `node`, or its absolute path if the host cannot find it |
-| Arguments | `/absolute/path/to/coeval/tools/mcp/index.mjs` |
-| Environment: `COEVAL_URL` | `http://localhost:8787` or your deployed API origin |
-| Environment: `COEVAL_API_KEY` | Your Coeval project key |
+| Arguments | `/absolute/path/to/rubrist/tools/mcp/index.mjs` |
+| Environment: `RUBRIST_URL` | `http://localhost:8787` or your deployed API origin |
+| Environment: `RUBRIST_API_KEY` | Your Rubrist project key |
 
 Clients that use an `mcpServers` JSON configuration can adapt this example:
 
 ```json
 {
   "mcpServers": {
-    "coeval": {
+    "rubrist": {
       "command": "node",
-      "args": ["/absolute/path/to/coeval/tools/mcp/index.mjs"],
+      "args": ["/absolute/path/to/rubrist/tools/mcp/index.mjs"],
       "env": {
-        "COEVAL_URL": "http://localhost:8787",
-        "COEVAL_API_KEY": "REPLACE_WITH_YOUR_PROJECT_KEY"
+        "RUBRIST_URL": "http://localhost:8787",
+        "RUBRIST_API_KEY": "REPLACE_WITH_YOUR_PROJECT_KEY"
       }
     }
   }
@@ -122,7 +122,7 @@ support cannot run this stdio server directly.
 Ask the agent:
 
 ```text
-Use Coeval's get_project tool to check which project is connected.
+Use Rubrist's get_project tool to check which project is connected.
 Do not submit any examples yet.
 ```
 
@@ -149,7 +149,7 @@ timeout is 300 seconds, with a `timeoutSeconds` override on submission tools.
 ## Current boundaries
 
 - Submission tools do not accept `skillVersionId` or a suite manifest. Use
-  them where Coeval can select an eligible evaluator unambiguously. For
+  them where Rubrist can select an eligible evaluator unambiguously. For
   multi-criterion or pinned execution, use the HTTP batch API with
   `skillVersionId` instead. A newly created unvalidated Check may also need
   owner review before ordinary judging is allowed.
@@ -172,4 +172,4 @@ node --test tools/mcp/*.test.mjs
 ```
 
 Run from the repository root. These tests exercise the SDK-free client core
-with an injected HTTP client; no live Coeval service or provider key is needed.
+with an injected HTTP client; no live Rubrist service or provider key is needed.

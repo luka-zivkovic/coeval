@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { LangfuseImportJobSchema, type LangfuseImportJob } from "@coeval/shared";
-import type { Queue } from "@coeval/queue";
-import type { CoevalRepository, LangfuseImportContext } from "../repository.js";
+import { LangfuseImportJobSchema, type LangfuseImportJob } from "@rubrist/shared";
+import type { Queue } from "@rubrist/queue";
+import type { RubristRepository, LangfuseImportContext } from "../repository.js";
 import { ImportSkillVersionBindingError, LangfuseCredentialsMissingError, LangfuseIntegrationNotFoundError, NoCurrentSkillError, RecursiveTraceSkippedError } from "../repository.js";
 import { LangfuseClient, type LangfuseTraceFetcher } from "../lib/langfuse.js";
 import { assertImportJudgingAllowed, scheduleImportedCaseJudging } from "./import-judging.js";
@@ -15,7 +15,7 @@ export type LangfuseClientFactory = (context: LangfuseImportContext) => Langfuse
 
 export async function registerLangfuseImportWorker(
   queue: Queue,
-  repository: CoevalRepository,
+  repository: RubristRepository,
   createClient: LangfuseClientFactory = defaultLangfuseClientFactory
 ): Promise<void> {
   await queue.work<LangfuseImportJob>("langfuse.import", async ({ id, data }) => {
@@ -32,7 +32,7 @@ export async function registerLangfuseImportWorker(
 }
 
 export async function processLangfuseImportJob(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   queue: Queue,
   job: LangfuseImportJob,
   createClient: LangfuseClientFactory = defaultLangfuseClientFactory

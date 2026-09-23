@@ -11,8 +11,8 @@ import {
   type EvalRun,
   type RunComparison,
   type TraceTestRunSource
-} from "@coeval/shared";
-import type { Queue } from "@coeval/queue";
+} from "@rubrist/shared";
+import type { Queue } from "@rubrist/queue";
 import { computeRunComparisonDiff, runComparisonAgreement, runComparisonStatus } from "../lib/run-comparison.js";
 import {
   DatasetNameTakenError,
@@ -20,7 +20,7 @@ import {
   DatasetRevisionNotFoundError,
   ImportSkillVersionBindingError,
   SealedValidationUnavailableError,
-  type CoevalRepository
+  type RubristRepository
 } from "../repository.js";
 import type { AppVariables, RequestServices } from "../request-services/index.js";
 import { runExistingCaseBackfill } from "../workers/gate.js";
@@ -43,7 +43,7 @@ const TraceTestSourceSnapshotSchema = z.object({
 type EvaluationAdministrationApp = Hono<{ Variables: AppVariables }>;
 
 export interface EvaluationAdministrationRouteOptions {
-  repository: CoevalRepository;
+  repository: RubristRepository;
   requestServices: RequestServices;
   queue?: Queue | undefined;
 }
@@ -134,7 +134,7 @@ export function registerEvaluationAdministrationRoutes(
         input: source.data.input,
         output: source.data.output,
         metadata: {
-          ...Object.fromEntries(Object.entries(source.data.metadata ?? {}).filter(([key]) => key !== "coeval")),
+          ...Object.fromEntries(Object.entries(source.data.metadata ?? {}).filter(([key]) => key !== "rubrist")),
           traceTest: { id: traceTestId, revision: revision.revision, validationId: revision.validationId }
         },
         ...(source.data.steps ? { steps: source.data.steps } : {}),

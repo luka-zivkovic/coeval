@@ -1,10 +1,10 @@
 import {
   AnalysisWorkflowMeasurementReportSchema,
   type AnalysisWorkflowMeasurementReport
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
-const PROJECT_KEY = "coeval.project";
+const PROJECT_KEY = "rubrist.project";
 
 export class AnalysisMeasurementApiError extends Error {
   constructor(message: string, readonly status: number, readonly code: string | null) {
@@ -53,7 +53,7 @@ function projectFetch(input: string): Promise<Response> {
   const headers = new Headers();
   try {
     const projectId = localStorage.getItem(PROJECT_KEY);
-    if (projectId) headers.set("x-coeval-project", projectId);
+    if (projectId) headers.set("x-rubrist-project", projectId);
   } catch {
     // The authenticated server default remains authoritative.
   }

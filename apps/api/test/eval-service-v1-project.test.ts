@@ -37,7 +37,7 @@ describe("GET /api/v1/project — connection check", () => {
   it("rejects an invalid Bearer key", async () => {
     const app = createApp(new DemoRepository());
     const res = await app.request("/api/v1/project", {
-      headers: { authorization: "Bearer coeval_sk_bogus" }
+      headers: { authorization: "Bearer rubrist_sk_bogus" }
     });
     expect(res.status).toBe(401);
   });

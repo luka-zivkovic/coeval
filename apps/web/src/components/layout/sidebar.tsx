@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { NewProjectModal } from "@/components/project-create";
-import { CoevalBrand } from "@/components/coeval-brand";
+import { RubristBrand } from "@/components/rubrist-brand";
 import { fetchProjects, selectProject, selectedProjectId } from "@/lib/api";
 import { useSession } from "@/lib/auth-client";
 import { useAppMode } from "@/lib/app-mode";
@@ -30,7 +30,7 @@ import { useMode } from "@/hooks/use-mode";
 import { DISPLAY_MODE_BY_VALUE, DISPLAY_MODE_OPTIONS, workspaceRouteVisible } from "@/lib/display-mode";
 import { cn } from "@/lib/utils";
 import type { JourneyActState, JourneyActStates } from "@/lib/journey";
-import { GOLDEN_GATE_RECOMMENDED, type Project } from "@coeval/shared";
+import { GOLDEN_GATE_RECOMMENDED, type Project } from "@rubrist/shared";
 
 interface JourneyNavItem {
   to: string;
@@ -138,7 +138,7 @@ export interface SidebarProps {
 }
 
 export function Sidebar({
-  projectName = "Coeval",
+  projectName = "Rubrist",
   projectSource = "—",
   exceptionsCount = 0,
   bench = false,
@@ -176,7 +176,7 @@ export function Sidebar({
       tabIndex={-1}
     >
       <div className="flex items-center gap-2.5 border-b border-rule-soft px-[22px] pt-1 pb-[18px] mb-3.5">
-        <CoevalBrand
+        <RubristBrand
           markClassName="size-5"
           nameClassName="font-serif text-[17px] font-semibold tracking-[-0.025em] text-ink"
         />
@@ -271,7 +271,7 @@ export function Sidebar({
 }
 
 // P0-2: a switcher that actually switches. Projects load when the popover
-// opens; picking one pins it (x-coeval-project on every call) and reloads so
+// opens; picking one pins it (x-rubrist-project on every call) and reloads so
 // every cached surface re-resolves. In demo mode the popover still lists the
 // single seeded project — the affordance is real either way.
 function ProjectSwitcher({ projectName, projectSource }: { projectName: string; projectSource: string }) {

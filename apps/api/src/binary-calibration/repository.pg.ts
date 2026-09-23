@@ -4,7 +4,7 @@ import {
   type BinaryCalibrationArtifact,
   type BinaryCalibrationErrorCode,
   type BinaryCalibrationPrivateLedger
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 import { sha256Digest } from "../lib/assessment-receipt.js";
 import {
@@ -222,7 +222,7 @@ export class PgBinaryCalibrationRepository implements
       throw new Error("binary calibration current-status evidence is internally inconsistent");
     }
     return {
-      contract: "coeval/binary-calibration-artifact-status/v1",
+      contract: "rubrist/binary-calibration-artifact-status/v1",
       schemaVersion: 1,
       artifactId: String(row.id),
       calibrationRunId: String(row.run_id),
@@ -568,9 +568,9 @@ export class PgBinaryCalibrationRepository implements
         commitmentSalt: String(row.commitment_salt)
       }));
       const ledger: BinaryCalibrationPrivateLedger = {
-        contract: "coeval/binary-calibration-private-ledger/v1",
+        contract: "rubrist/binary-calibration-private-ledger/v1",
         schemaVersion: 1,
-        canonicalizationVersion: "coeval-canonical-json/v1",
+        canonicalizationVersion: "rubrist-canonical-json/v1",
         artifactId,
         calibrationRunId: run.id,
         projectId: run.project_id,
@@ -680,14 +680,14 @@ export class PgBinaryCalibrationRepository implements
       await client.query(
         `insert into binary_calibration_private_ledgers
            (id,run_id,project_id,artifact_id,contract,canonical_bytes,commitment_digest,created_at)
-         values ($1,$2,$3,$4,'coeval/binary-calibration-private-ledger/v1',$5,$6,$7::timestamptz)`,
+         values ($1,$2,$3,$4,'rubrist/binary-calibration-private-ledger/v1',$5,$6,$7::timestamptz)`,
         [ledgerId, run.id, run.project_id, artifactId, ledgerBytes, ledgerCommitment, artifactCreatedAt]
       );
       const artifactRow = (await client.query(
         `insert into binary_calibration_artifacts
            (id,run_id,project_id,private_ledger_id,artifact_revision,predecessor_artifact_id,
             correction_reason,status,contract,canonical_bytes,artifact_digest,evidence_digest,created_at)
-         values ($1,$2,$3,$4,1,null,null,$5,'coeval/binary-calibration/v1',$6,$7,$8,$9::timestamptz)
+         values ($1,$2,$3,$4,1,null,null,$5,'rubrist/binary-calibration/v1',$6,$7,$8,$9::timestamptz)
          returning id,run_id,canonical_bytes,artifact_digest,evidence_digest,created_at`,
         [artifactId, run.id, run.project_id, ledgerId, artifact.status, artifactBytes,
           artifactDigest, artifact.evidenceDigest, artifactCreatedAt]

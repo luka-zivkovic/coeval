@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { Queue } from "@coeval/queue";
-import { type GateRunJob } from "@coeval/shared";
+import type { Queue } from "@rubrist/queue";
+import { type GateRunJob } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 
@@ -11,7 +11,7 @@ import { scheduleImportedCaseJudging } from "../src/workers/import-judging.js";
 
 import { CapturingQueue, EmptySkillRepository } from "./app-test-support.js";
 
-describe("Coeval Hono API", () => {
+describe("Rubrist Hono API", () => {
   it("PR #56/C5a: timeScope='new' (default) — async gate approves, no backfill", async () => {
     const queue = new CapturingQueue();
     const repository = new DemoRepository();
@@ -573,7 +573,7 @@ describe("Coeval Hono API", () => {
     const response = await localApp.request("/api/projects/verdicts/export");
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toMatch(/application\/x-ndjson/);
-    expect(response.headers.get("content-disposition")).toMatch(/attachment; filename="coeval-verdicts-\d{4}-\d{2}-\d{2}\.jsonl"/);
+    expect(response.headers.get("content-disposition")).toMatch(/attachment; filename="rubrist-verdicts-\d{4}-\d{2}-\d{2}\.jsonl"/);
     const text = await response.text();
     const lines = text.split("\n").filter(Boolean);
     expect(lines).toHaveLength(2);

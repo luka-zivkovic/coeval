@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { regressionDirectionCounts, type RegressionCaseDiff } from "@coeval/shared";
+import { regressionDirectionCounts, type RegressionCaseDiff } from "@rubrist/shared";
 
 function diff(partial: Pick<RegressionCaseDiff, "agreedLabel" | "newLabel" | "change">, index: number): RegressionCaseDiff {
   return {

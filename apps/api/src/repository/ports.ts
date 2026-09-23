@@ -1,4 +1,4 @@
-import type { Trace } from "@coeval/audit/runtime";
+import type { Trace } from "@rubrist/audit/runtime";
 import type {
   ApiKey,
   CaseSource,
@@ -80,7 +80,7 @@ import type {
   UpdateLangfuseIntegrationInput,
   UpdateProjectSettingsInput,
   VerdictRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type {
   AddDatasetItemsInputDb,
   AddQueueItemsInputDb,
@@ -559,7 +559,7 @@ export interface RunComparisonRepositoryPort {
 }
 
 export interface HistoricalGateEvidenceRepositoryPort {
-  // CURRENT compatibility ledger for deprecated product-gate evidence. Coeval
+  // CURRENT compatibility ledger for deprecated product-gate evidence. Rubrist
   // preserves these historical artifacts but does not decide releases.
   createGateCheck(input: CreateGateCheckInputDb): Promise<GateCheckDetail>;
   getGateCheckDetail(projectId: string, gateCheckId: string): Promise<GateCheckDetail | null>;

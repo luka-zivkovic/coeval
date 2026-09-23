@@ -11,7 +11,7 @@ export const ANALYSIS_POPULATION_MIN_WINDOW_LAG_SECONDS = 60 as const;
 export const ANALYSIS_POPULATION_CANONICALIZATION_VERSION = "governed-content-json/v1" as const;
 export const ANALYSIS_POPULATION_ORDERING_VERSION = "cases-created-at-id/v1" as const;
 export const ANALYSIS_POPULATION_RNG_VERSION = "sha256-rank/v1" as const;
-export const ANALYSIS_POPULATION_DRAW_ALGORITHM_VERSION = "coeval-analysis-draw/v1" as const;
+export const ANALYSIS_POPULATION_DRAW_ALGORITHM_VERSION = "rubrist-analysis-draw/v1" as const;
 export const ANALYSIS_POPULATION_MAX_SNAPSHOT_XID8_BYTES = 1_048_576 as const;
 
 export const ANALYSIS_POPULATION_ELIGIBLE_SOURCES = [
@@ -229,7 +229,7 @@ const AnalysisPopulationDrawBaseSchema = z.object({
   datasetRevisionId: AnalysisPopulationIdSchema,
   method: z.literal("simple_random"),
   stoppingRule: z.literal("fixed"),
-  drawExecutor: z.literal("coeval_server"),
+  drawExecutor: z.literal("rubrist_server"),
   seed: z.string().regex(/^[0-9a-f]{64}$/),
   rngVersion: z.literal(ANALYSIS_POPULATION_RNG_VERSION),
   algorithmVersion: z.literal(ANALYSIS_POPULATION_DRAW_ALGORITHM_VERSION),

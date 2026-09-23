@@ -77,7 +77,6 @@ const EXPECTED_TYPE_ONLY_EXPORTS = [
   "ClaimIronsideImportTargetsInput",
   "ClaimLangSmithImportTargetsInput",
   "ClaimLangfuseImportTargetsInput",
-  "CoevalRepository",
   "CompareAssessmentReceiptCopyInput",
   "CompleteEvalRunItemInputDb",
   "CompleteImportJobInput",
@@ -132,6 +131,7 @@ const EXPECTED_TYPE_ONLY_EXPORTS = [
   "RecordVerdictInput",
   "RetireGoldenSetEntryInput",
   "ReviseTraceTestInputDb",
+  "RubristRepository",
   "StaleEvalRunItemExecution",
   "TraceImportContext",
   "TraceImportResult"

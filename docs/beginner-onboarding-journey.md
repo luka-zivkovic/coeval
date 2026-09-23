@@ -4,7 +4,7 @@ Status: **product-language contract for implementation**
 
 Last reviewed: 2026-08-28
 
-This contract defines Coeval's first-run experience for people who care about
+This contract defines Rubrist's first-run experience for people who care about
 AI quality but may not know what an eval, rubric, judging skill, calibration
 set, or model binding is. It is subordinate to `PRODUCT.md` and accepted ADRs.
 It simplifies how the evaluator lifecycle is introduced; it does not weaken or
@@ -12,7 +12,7 @@ rename the evidence stored underneath it.
 
 ## Outcome
 
-> Show Coeval what your AI did, choose one thing that matters, and get a
+> Show Rubrist what your AI did, choose one thing that matters, and get a
 > reusable Check you can improve over time.
 
 The first-value moment is seeing the first understandable result from a Check
@@ -50,14 +50,14 @@ The default journey teaches six concepts through use:
 The first session needs to answer only:
 
 - What is being checked?
-- What recorded information can Coeval see?
+- What recorded information can Rubrist see?
 - Is this only the Check's result, or has a person judged the run separately?
 
 ## Product language
 
 | Beginner language | Technical meaning | Consequence to explain |
 | --- | --- | --- |
-| Run | case, trace, or ordered recorded trajectory | Coeval reads the record; it does not replay the AI system or its tools. |
+| Run | case, trace, or ordered recorded trajectory | Rubrist reads the record; it does not replay the AI system or its tools. |
 | Check | one criterion and its evaluator | A Check should answer one independently judgeable quality question. |
 | Review guide | evaluator rubric | It defines pass, fail, and insufficient-evidence behavior. |
 | Result | evaluator assessment | This is the Check's output, not human truth or a release decision. |
@@ -70,7 +70,7 @@ The first session needs to answer only:
 In Guided display, prefer **Check** before introducing **Evaluator**. Explain
 the relationship once in context:
 
-> Coeval calls this reusable automated Check an evaluator.
+> Rubrist calls this reusable automated Check an evaluator.
 
 Do not lead first-run screens with `eval`, `criterion`, `rubric`, `judging
 skill`, `golden`, `model binding`, `output schema`, `calibration`, or revision
@@ -121,7 +121,7 @@ available without competing visually with it.
 3. Reflect what was found and name material uncertainty.
 4. Ask only the first decision-changing question, using concrete options.
 5. Show the proposed Check and offer **Create** or **Refine**.
-6. Ask the user to mint the short-lived Coeval connection only after the
+6. Ask the user to mint the short-lived Rubrist connection only after the
    non-secret setup draft is ready.
 7. Apply the draft through the mode-appropriate setup path and submit one real
    run when one is already available. Never invent a run to demonstrate
@@ -270,7 +270,7 @@ Low friction may defer assurance, but it must not falsify state or authority:
 
 - Human truth and evaluator output remain different evidence classes.
 - A successful run is not called calibration, accuracy, approval, or trust.
-- Coeval never implies that it executed the AI system, replayed tools, or
+- Rubrist never implies that it executed the AI system, replayed tools, or
   verified side effects absent from the record.
 - Secrets are not inspected, copied, persisted, or displayed by setup logic.
 - Sensitive content is not sent for draft generation without a visible scope
@@ -337,7 +337,7 @@ Release the first-run path only when:
 - at least four of five reach a Check proposal without moderator intervention;
 - at least four of five create one criterion that is supported by recorded
   evidence and can explain the Run, Check, and Result in their own words;
-- all five understand after completion that Coeval did not replay the AI
+- all five understand after completion that Rubrist did not replay the AI
   system, that the starter is not governed human truth or calibrated, and that
   the Result cannot decide whether a release ships;
 - no session sends or retains sensitive fields outside the person's visible
@@ -350,12 +350,12 @@ whether participants can:
 
 - explain a Run, Check, and Result in their own words;
 - create one Check that uses evidence actually present in the run;
-- identify what Coeval could and could not see;
-- understand that Coeval did not replay the AI system or its tools;
+- identify what Rubrist could and could not see;
+- understand that Rubrist did not replay the AI system or its tools;
 - recognize that the starter result is not human-verified;
 - reach the first result without intervention;
 - resume after leaving the flow.
 
 Speed and completion are secondary when a person finishes with a materially
 wrong Check or mental model. Public product patterns are design precedents,
-not evidence that the journey works for Coeval's users.
+not evidence that the journey works for Rubrist's users.

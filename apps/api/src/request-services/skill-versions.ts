@@ -1,8 +1,8 @@
-import type { EvaluatorExecutionContext } from "@coeval/shared";
+import type { EvaluatorExecutionContext } from "@rubrist/shared";
 import {
   AmbiguousProjectSkillError,
   NoCurrentSkillError,
-  type CoevalRepository
+  type RubristRepository
 } from "../repository.js";
 
 export interface SkillVersionAuthorization {
@@ -30,7 +30,7 @@ const DEFAULT_AUTHORIZATION: SkillVersionAuthorization = {
 // typo or cross-project id cannot become a late FK/item failure. Route modules
 // may choose a version differently, but they must all converge here before
 // judging or creating a provider-spending run.
-export function createSkillVersionResolver(repository: CoevalRepository): ResolveSkillVersionId {
+export function createSkillVersionResolver(repository: RubristRepository): ResolveSkillVersionId {
   return async (projectId, requested, authorization = DEFAULT_AUTHORIZATION) => {
     let resolvedId: string;
     if (requested) {

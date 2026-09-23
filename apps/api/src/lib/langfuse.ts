@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { z } from "zod";
-import type { ManualTraceImportInput } from "@coeval/shared";
+import type { ManualTraceImportInput } from "@rubrist/shared";
 import type { CreateLangSmithFeedbackInput, LangSmithFeedbackWriter } from "./langsmith.js";
 
 export interface LangfuseClientOptions {

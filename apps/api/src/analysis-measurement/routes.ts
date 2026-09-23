@@ -1,6 +1,6 @@
 import { Hono, type Context } from "hono";
 import { z } from "zod";
-import { AnalysisWorkflowMeasurementReportSchema } from "@coeval/shared";
+import { AnalysisWorkflowMeasurementReportSchema } from "@rubrist/shared";
 import { verifyAnalysisWorkflowMeasurementReport } from "../lib/analysis-measurement.js";
 import {
   AnalysisMeasurementRepositoryError,

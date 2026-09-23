@@ -1,15 +1,15 @@
 export const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
 export function publicApiBaseUrl(): string {
-  if (typeof window === "undefined") return API_BASE || "https://your-coeval.example";
+  if (typeof window === "undefined") return API_BASE || "https://your-rubrist.example";
   const resolved = API_BASE ? new URL(API_BASE, window.location.origin).toString() : window.location.origin;
   return resolved.replace(/\/$/, "");
 }
 
 // P0-2: project switching. The selected project pins every request via the
-// x-coeval-project header; the server checks membership, not trust. No
+// x-rubrist-project header; the server checks membership, not trust. No
 // selection = the server's default (oldest membership).
-const PROJECT_KEY = "coeval.project";
+const PROJECT_KEY = "rubrist.project";
 
 export function selectedProjectId(): string | null {
   try {
@@ -32,7 +32,7 @@ export function selectProject(projectId: string | null): void {
 export function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   const projectId = selectedProjectId();
   const headers = new Headers(init?.headers);
-  if (projectId) headers.set("x-coeval-project", projectId);
+  if (projectId) headers.set("x-rubrist-project", projectId);
   return fetch(input, { ...init, headers, credentials: "include" });
 }
 

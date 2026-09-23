@@ -4,7 +4,7 @@ import { ArrowLeft, Check, Clock, LoaderCircle, RefreshCcw, Sparkles } from "luc
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarkdownPreview } from "@/components/markdown-preview";
-import { Chip, Eyebrow, GateStrip, MarginNote, SectionHead } from "@/components/coeval";
+import { Chip, Eyebrow, GateStrip, MarginNote, SectionHead } from "@/components/rubrist";
 import { SkillChangeReview, SkillEditFlow, type SkillEditPhase } from "@/components/skill-edit-flow";
 import type {
   CreateSkillVersionInput,
@@ -15,7 +15,7 @@ import type {
   SkillVersion,
   SkillVersionTimeScope,
   VerdictKind
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { STARTER_SKILLS, type StarterSkill } from "@/lib/starter-skills";
 import { cn } from "@/lib/utils";
 import { verdictKindDescription } from "@/lib/verdict-kind";
@@ -179,7 +179,7 @@ export function SkillVersionEditor({
       {appliedStarter ? (
         <MarginNote tone="neutral" who={`Template · ${appliedStarter.name}`} className="mb-5">
           Use this template as a starting point. Edit the review guide and prompt for your task,
-          then save. Coeval checks the new version against the active Golden references.
+          then save. Rubrist checks the new version against the active Golden references.
         </MarginNote>
       ) : null}
 
@@ -264,7 +264,7 @@ export function SkillVersionEditor({
 
       {prompt.trim() && usesImplicitRubric ? (
         <MarginNote tone="signal" who="Judge prompt template" className="mb-5">
-          This prompt does not include {"{{rubric_markdown}}"}, so Coeval adds the review guide
+          This prompt does not include {"{{rubric_markdown}}"}, so Rubrist adds the review guide
           before the prompt. Add {"{{rubric_markdown}}"} where you want the guide to appear in the
           compiled instructions.
         </MarginNote>
@@ -404,7 +404,7 @@ export function SkillVersionEditor({
           </Field>
 
           <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2 text-[11.5px] leading-5 text-ink-2 sm:col-span-2">
-            <span className="font-medium text-ink">Result format.</span> Coeval generates the exact
+            <span className="font-medium text-ink">Result format.</span> Rubrist generates the exact
             JSON schema from the <span className="font-mono">{verdictKind}</span> result type and
             validates every judge response against it. {verdictKindDescription(verdictKind, {
               scalarRange,

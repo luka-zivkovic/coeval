@@ -1,9 +1,9 @@
 {
-  "name": "@coeval/audit",
+  "name": "@rubrist/audit",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Judge runtime for Coeval: LLM providers + structured verdict spec consumed by the platform.",
+  "description": "Judge runtime for Rubrist: LLM providers + structured verdict spec consumed by the platform.",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run"

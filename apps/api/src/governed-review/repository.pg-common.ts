@@ -30,7 +30,7 @@ export const MAX_BLIND_VIEW_BYTES = 2 * 1024 * 1024;
 // Public idempotency keys are bounded to 200 bytes by contracts.ts. Keeping
 // internal stream keys outside that length domain makes collisions impossible
 // even when a caller deliberately chooses the old `view:<taskId>` shape.
-export const INTERNAL_VIEW_IDEMPOTENCY_KEY = `coeval-internal/view/v1/${"0".repeat(200)}`;
+export const INTERNAL_VIEW_IDEMPOTENCY_KEY = `rubrist-internal/view/v1/${"0".repeat(200)}`;
 export const COVERED_CAPABILITIES = [
   "criterion_authoring", "instruction_authoring", "evaluator_authoring",
   "rubric_authoring", "prompt_authoring", "example_selection", "development_exposure"

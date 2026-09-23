@@ -21,7 +21,7 @@ import {
   Eyebrow,
   LabelChip,
   VerdictChip
-} from "@/components/coeval";
+} from "@/components/rubrist";
 import {
   type RunDelta
 } from "@/lib/run-delta";
@@ -36,7 +36,7 @@ import {
   type EvalRunDetail,
   traceTestRunOutcome,
   type TraceTestRunOutcome
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 // Agreement is only meaningful over items that carried an expectedLabel AND
 // were actually judged — a failed item was never judged, and counting it in
@@ -457,7 +457,7 @@ function TraceTestOutcomeBanner({ outcome }: { outcome: TraceTestRunOutcome }) {
         ? { title: "Needs review", body: "The evaluator could not make a clear behavior decision from this case." }
         : outcome === "could_not_run"
           ? { title: "Could not run", body: "A runtime or provider problem stopped this check. This is not a behavior regression." }
-          : { title: "Running", body: "Coeval is checking this test now. This report will update automatically." };
+          : { title: "Running", body: "Rubrist is checking this test now. This report will update automatically." };
   return (
     <div className="mb-3 rounded-sm border border-rule-soft bg-paper-2 px-3 py-2.5" role="status">
       <div className="text-[12px] font-medium text-ink">{copy.title}</div>

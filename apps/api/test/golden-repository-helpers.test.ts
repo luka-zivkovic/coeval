@@ -107,8 +107,8 @@ describe("golden repository helpers", () => {
       (declaration.moduleSpecifier as ts.StringLiteral).text
     )).toEqual([
       "node:crypto",
-      "@coeval/audit/runtime",
-      "@coeval/shared",
+      "@rubrist/audit/runtime",
+      "@rubrist/shared",
       "./errors.js"
     ]);
     expect(repositorySource.statements.filter((statement) =>

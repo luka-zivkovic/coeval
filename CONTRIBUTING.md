@@ -1,6 +1,6 @@
-# Contributing to Coeval
+# Contributing to Rubrist
 
-Thanks for helping improve Coeval. Focused fixes, tests, documentation improvements, and narrowly scoped features are welcome.
+Thanks for helping improve Rubrist. Focused fixes, tests, documentation improvements, and narrowly scoped features are welcome.
 
 ## Development setup
 
@@ -23,11 +23,11 @@ pnpm typecheck
 pnpm shared-contracts
 pnpm repository-boundaries
 pnpm test
-pnpm --filter @coeval/web build
+pnpm --filter @rubrist/web build
 git diff --check
 ```
 
-When an intentional `@coeval/shared` export change is authorized, regenerate
+When an intentional `@rubrist/shared` export change is authorized, regenerate
 its sorted public and runtime export fixtures with
 `pnpm shared-contracts -- --write`, inspect the full fixture diff, and explain
 every removed public name in the pull request. The default command is

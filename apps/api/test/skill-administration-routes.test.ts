@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import { JudgeCardSchema, SkillFormatV1Schema } from "@coeval/shared";
+import { JudgeCardSchema, SkillFormatV1Schema } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 import { createRequestServices, type AppVariables } from "../src/request-services/index.js";
@@ -330,7 +330,7 @@ describe("Judge Card (M1 E5)", () => {
     expect(dl.status).toBe(200);
     const disp = dl.headers.get("content-disposition");
     expect(disp).toContain("attachment");
-    expect(disp).toMatch(/filename="coeval-judge-card-\d{4}-\d{2}-\d{2}\.md"/);
+    expect(disp).toMatch(/filename="rubrist-judge-card-\d{4}-\d{2}-\d{2}\.md"/);
     // Same renderer as the inline path (the only per-request difference is the
     // generatedAt timestamp) — assert the download carries the real card body.
     const dlText = await dl.text();
@@ -389,7 +389,7 @@ describe("SkillFormat v1 export (M4 C3)", () => {
     const localApp = createApp(repository);
     const dl = await localApp.request("/api/skills/skill_support_quality/versions/skillv_1_2_0/skill-format?download=1");
     expect(dl.status).toBe(200);
-    expect(dl.headers.get("content-disposition")).toMatch(/attachment; filename="coeval-skill-format-\d{4}-\d{2}-\d{2}\.json"/);
+    expect(dl.headers.get("content-disposition")).toMatch(/attachment; filename="rubrist-skill-format-\d{4}-\d{2}-\d{2}\.json"/);
     expect((await localApp.request("/api/skills/skill_support_quality/versions/skillv_missing/skill-format")).status).toBe(404);
   });
 });

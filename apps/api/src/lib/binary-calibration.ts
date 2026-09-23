@@ -14,14 +14,14 @@ import {
   type BinaryCalibrationProviderIdentityStrength,
   type BinaryCalibrationTrial,
   type BinaryCalibrationWilsonRate
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { canonicalJson } from "./assessment-receipt.js";
 
 // Public v1 contract constants and artifact-construction inputs.
-export const BINARY_CALIBRATION_CONTRACT = "coeval/binary-calibration/v1" as const;
+export const BINARY_CALIBRATION_CONTRACT = "rubrist/binary-calibration/v1" as const;
 export const BINARY_CALIBRATION_PRIVATE_LEDGER_CONTRACT =
-  "coeval/binary-calibration-private-ledger/v1" as const;
-export const BINARY_CALIBRATION_CANONICALIZATION_VERSION = "coeval-canonical-json/v1" as const;
+  "rubrist/binary-calibration-private-ledger/v1" as const;
+export const BINARY_CALIBRATION_CANONICALIZATION_VERSION = "rubrist-canonical-json/v1" as const;
 export const BINARY_CALIBRATION_METRIC_DEFINITION_VERSION = "binary-classification/v1" as const;
 export const BINARY_CALIBRATION_INTERVAL_DEFINITION_VERSION = "wilson-score/v1" as const;
 export const BINARY_CALIBRATION_MAX_ITEMS = 5_000;

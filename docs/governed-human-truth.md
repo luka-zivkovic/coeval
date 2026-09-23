@@ -2,7 +2,7 @@
 
 Status: Batch 4 implementation contract
 
-Coeval has two deliberately separate human-review paths. They must not be
+Rubrist has two deliberately separate human-review paths. They must not be
 combined in queries, exports, UI claims, or migrations.
 
 ## Governed review
@@ -32,11 +32,11 @@ so the application rejects those values before it computes governed evidence.
 `governedReviewInstructionDigest` is aligned to the relational
 `review-instruction/v1` trigger projection. Other closed shared-model helpers
 are explicitly named `...DomainArtifactDigest` and use distinct full
-`coeval/...-domain-artifact/v1` kinds because those models do not contain every
+`rubrist/...-domain-artifact/v1` kinds because those models do not contain every
 field in the relational evidence row. Persisted rows are verified by supplying
 the migration's exact kind and content projection to the generic verifier;
 unlike row shapes are never treated as the same digest artifact.
-The exact first-view byte contract above remains `coeval-canonical-json/v1`;
+The exact first-view byte contract above remains `rubrist-canonical-json/v1`;
 its locked receipt-style canonicalization is intentionally unchanged.
 
 Sealed intake is case-less. Protected payload snapshots never enter ordinary
@@ -63,7 +63,7 @@ adjudications remain `ungoverned_legacy`. They are useful for unblinded
 exception triage and evaluator development, but they do not prove independent
 assignment, blindness, representativeness, governed instructions, or governed
 adjudication. The legacy HTTP surfaces emit
-`X-Coeval-Governance-Class: ungoverned_legacy` without changing their existing
+`X-Rubrist-Governance-Class: ungoverned_legacy` without changing their existing
 JSON, CSV, or JSONL shapes.
 
 The clean baseline creates no governed rows from unblinded triage. No

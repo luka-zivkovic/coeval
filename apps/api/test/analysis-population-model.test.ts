@@ -24,7 +24,7 @@ import {
   AnalysisPopulationSummarySchema,
   AnalysisPopulationSelectedItemsPageSchema,
   DatasetRevisionSourceKindSchema
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   ANALYSIS_POPULATION_CONTENT_DIGEST_BASIS,
   ANALYSIS_POPULATION_DRAW_CONTENT_DIGEST_BASIS,
@@ -115,7 +115,7 @@ function populationSummaryFixture() {
   } as const;
   const draw = {
     id: "apd_1", projectId: "proj_1", populationId: "ap_1", datasetRevisionId: "dsr_1",
-    method: "simple_random", stoppingRule: "fixed", drawExecutor: "coeval_server",
+    method: "simple_random", stoppingRule: "fixed", drawExecutor: "rubrist_server",
     seed: SEED, rngVersion: ANALYSIS_POPULATION_RNG_VERSION,
     algorithmVersion: ANALYSIS_POPULATION_DRAW_ALGORITHM_VERSION,
     fixedBudget: 1, populationSize: 2, inclusionProbability: { numerator: 1, denominator: 2 },
@@ -174,7 +174,7 @@ describe("analysis population strict contracts", () => {
     expect(ANALYSIS_POPULATION_CANONICALIZATION_VERSION).toBe("governed-content-json/v1");
     expect(ANALYSIS_POPULATION_ORDERING_VERSION).toBe("cases-created-at-id/v1");
     expect(ANALYSIS_POPULATION_RNG_VERSION).toBe("sha256-rank/v1");
-    expect(ANALYSIS_POPULATION_DRAW_ALGORITHM_VERSION).toBe("coeval-analysis-draw/v1");
+    expect(ANALYSIS_POPULATION_DRAW_ALGORITHM_VERSION).toBe("rubrist-analysis-draw/v1");
   });
 
   it("adds the internal analysis source kind without opening public source-kind selection", () => {
@@ -323,10 +323,10 @@ describe("analysis population canonical digests", () => {
       exclusion: "analysis-population-exclusion/v1",
       content: "analysis-population-content/v1",
       frame: "analysis-population-frame/v1",
-      rank: "coeval-analysis-rank/v1",
+      rank: "rubrist-analysis-rank/v1",
       drawItem: "analysis-population-draw-item/v1",
       drawContent: "analysis-population-draw-content/v1",
-      draw: "coeval-analysis-draw/v1",
+      draw: "rubrist-analysis-draw/v1",
       reference: "Analysis population member; no reference label."
     });
 
@@ -497,20 +497,20 @@ describe("sha256-rank/v1 server draw", () => {
       caseId, rankDigest, contentDigest, position
     }))).toEqual([
       {
-        caseId: "case_alpha",
-        rankDigest: "sha256:1756367608de1ef15a1085d9955a47c2770817a9ad24203a35bb67d405183554",
-        contentDigest: "sha256:2999546342e814f990c28551e52e77625a5658bf9ecdcb36fa80ef3e8e0a34fa",
+        caseId: "case_gamma",
+        rankDigest: "sha256:246ae634767d431ce22b22f8491fbe04e7f7b5f8c37ddde5722c4cbb374b7542",
+        contentDigest: "sha256:ad5b392b4111c6c3474ff3e8233cf7233dd9e5b28c94a270bec21fd5aa904701",
         position: 0
       },
       {
-        caseId: "case_beta",
-        rankDigest: "sha256:b5d790139689bac510f844fc5cd828bc472c97beac303749866f9394f71de819",
-        contentDigest: "sha256:20e24c8ff3f88657033f9d7922b5079c28c56baa59c9b74d98d0993787cd167e",
+        caseId: "case_alpha",
+        rankDigest: "sha256:2df0d9b2c6564c9066d1b1e514bc9fec66494f54056caf5175805efb808c7a69",
+        contentDigest: "sha256:cee0359594a81779b450c05cff10fdc46ff333cb9f15fcfa8f6b3db3816ec6f5",
         position: 1
       }
     ]);
-    expect(draw.contentDigest).toBe("sha256:d721c0410ad760f7f91103ab7936b09767cc4474e5eaf88f1fd6d7a7dc492200");
-    expect(draw.drawDigest).toBe("sha256:d2541a6d63f50d2d4c3df44a3f4d9c46dbb75d445f2a2f6baf776d41eb9ea502");
+    expect(draw.contentDigest).toBe("sha256:86b5f668156c4584859a9880a99c8052fdd14bd06a643e8985912e17caa983d9");
+    expect(draw.drawDigest).toBe("sha256:c776c414ed9a0fffa39aa581da8813a33f359b303981c6213b1090adc2c88487");
     expect(drawAnalysisPopulationSample({
       populationId: "ap_1",
       datasetRevisionId: "dsr_1",
@@ -632,8 +632,8 @@ describe("analysis population bounds and persisted draw shape", () => {
     };
     const persisted = {
       id: "apd_1", projectId: "proj_1", populationId: "ap_1", datasetRevisionId: "dsr_1",
-      method: "simple_random", stoppingRule: "fixed", drawExecutor: "coeval_server",
-      seed: SEED, rngVersion: "sha256-rank/v1", algorithmVersion: "coeval-analysis-draw/v1",
+      method: "simple_random", stoppingRule: "fixed", drawExecutor: "rubrist_server",
+      seed: SEED, rngVersion: "sha256-rank/v1", algorithmVersion: "rubrist-analysis-draw/v1",
       fixedBudget: 1, populationSize: 2, inclusionProbability: { numerator: 1, denominator: 2 },
       drawDigest: DIGEST_A, contentDigest: DIGEST_B, executedBySubjectId: "subject_1",
       executedAt: "2026-08-03T00:00:00.000Z", selections: [selection]

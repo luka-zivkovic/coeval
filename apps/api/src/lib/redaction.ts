@@ -1,5 +1,5 @@
-import type { TraceRedactionConfig } from "@coeval/shared";
-import type { Trace } from "@coeval/audit/runtime";
+import type { TraceRedactionConfig } from "@rubrist/shared";
+import type { Trace } from "@rubrist/audit/runtime";
 
 export const REDACTED_VALUE = "[REDACTED]";
 export const EXCLUDED_VALUE = "[EXCLUDED]";

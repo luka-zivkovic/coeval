@@ -10,7 +10,7 @@
 // whenever onboarding is under test).
 //
 // Credentials come from SIM_EMAIL / SIM_PASSWORD (no committed defaults).
-// Requires: the API running at COEVAL_API (default localhost:8787) for
+// Requires: the API running at RUBRIST_API (default localhost:8787) for
 // everything except --reset/--dump, and a built packages/db for --reset.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -39,7 +39,7 @@ const jar = new CookieJar();
 
 if (step("--reset")) {
   const { runMigrations } = await import("../../packages/db/dist/index.js").catch(() => {
-    fail("packages/db is not built — run: pnpm --filter @coeval/db build");
+    fail("packages/db is not built — run: pnpm --filter @rubrist/db build");
   });
   log("dropping public schema and re-running migrations…");
   await getPool().query("drop schema public cascade; create schema public;");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { JudgeProvider } from "@coeval/audit/runtime";
+import type { JudgeProvider } from "@rubrist/audit/runtime";
 import {
   BinaryCalibrationProviderError,
   createBinaryCalibrationProviderExecutor,

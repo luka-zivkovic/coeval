@@ -28,7 +28,7 @@ describe("trust-aligned frontend flows", () => {
 
   it("describes dashboard completion as legacy operational progress", async () => {
     const [journey, dashboard] = await Promise.all([
-      source("../src/components/coeval/journey-pipeline.tsx"),
+      source("../src/components/rubrist/journey-pipeline.tsx"),
       source("../src/screens/dashboard.tsx")
     ]);
 

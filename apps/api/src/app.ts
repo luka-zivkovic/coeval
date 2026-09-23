@@ -13,10 +13,10 @@ import {
   PROJECT_NAME_MAX_LENGTH,
   ProjectModeSchema,
   SetJudgeProviderKeyInputSchema
-} from "@coeval/shared";
-import type { Queue } from "@coeval/queue";
+} from "@rubrist/shared";
+import type { Queue } from "@rubrist/queue";
 import {
-  CoevalRepository,
+  RubristRepository,
   DemoRepository,
   ImportSkillVersionBindingError,
   RecursiveTraceSkippedError,
@@ -24,7 +24,7 @@ import {
   type LangfuseImportContext,
   type LangSmithImportContext
 } from "./repository.js";
-import type { CoevalAuth } from "./lib/auth.js";
+import type { RubristAuth } from "./lib/auth.js";
 import {
   createInvitation,
   ensureWorkspaceForUser,
@@ -124,7 +124,7 @@ const TRACE_TEST_DRAFT_TIMEOUT_MS = guardrailFromEnv("TRACE_TEST_DRAFT_TIMEOUT_M
 const TRACE_TEST_VALIDATION_TIMEOUT_MS = guardrailFromEnv("TRACE_TEST_VALIDATION_TIMEOUT_MS", 30_000);
 
 function bootstrapTokenMatches(presented: string): boolean {
-  const configured = process.env.COEVAL_BOOTSTRAP_TOKEN?.trim() ?? "";
+  const configured = process.env.RUBRIST_BOOTSTRAP_TOKEN?.trim() ?? "";
   if (configured.length < 32 || presented.length === 0) return false;
   const configuredHash = createHash("sha256").update(configured).digest();
   const presentedHash = createHash("sha256").update(presented).digest();
@@ -151,7 +151,7 @@ function publicApiBaseUrl(c: Context): string {
 export function bootstrapRateLimitIdentity(c: Context): string {
   // Forwarded addresses are authoritative only when the operator explicitly
   // declares that direct traffic cannot bypass their trusted reverse proxy.
-  if (process.env.COEVAL_TRUST_PROXY === "1") {
+  if (process.env.RUBRIST_TRUST_PROXY === "1") {
     const forwarded = c.req.header("cf-connecting-ip")
       ?? c.req.header("x-real-ip")
       ?? c.req.header("x-forwarded-for")?.split(",")[0];
@@ -167,7 +167,7 @@ export function bootstrapRateLimitIdentity(c: Context): string {
 }
 
 export interface CreateAppOptions {
-  auth?: CoevalAuth | undefined;
+  auth?: RubristAuth | undefined;
   pool?: Pool | undefined;
   queue?: Queue | undefined;
   langSmithClientFactory?: ((context: LangSmithImportContext) => LangSmithTraceFetcher) | undefined;
@@ -184,7 +184,7 @@ export interface CreateAppOptions {
   analysisMeasurementRepository?: AnalysisMeasurementRepository | null | undefined;
 }
 
-export function createApp(repository: CoevalRepository = new DemoRepository(), options: CreateAppOptions = {}) {
+export function createApp(repository: RubristRepository = new DemoRepository(), options: CreateAppOptions = {}) {
   const app = new Hono<{ Variables: AppVariables }>();
   const trustedOrigins = parseTrustedOrigins(process.env.TRUSTED_ORIGINS);
   const governedReviewRepository = options.governedReviewRepository === undefined
@@ -227,13 +227,13 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
     "*",
     cors({
       origin: (origin) => (trustedOrigins.includes(origin) ? origin : trustedOrigins[0] ?? "http://localhost:5173"),
-      allowHeaders: ["Content-Type", "Authorization", "X-Coeval-Project"],
+      allowHeaders: ["Content-Type", "Authorization", "X-Rubrist-Project"],
       exposeHeaders: [
-        "X-Coeval-View-Digest",
-        "X-Coeval-Canonicalization",
-        "X-Coeval-Governance-Class",
-        "X-Coeval-Artifact-Digest",
-        "X-Coeval-Evidence-Digest",
+        "X-Rubrist-View-Digest",
+        "X-Rubrist-Canonicalization",
+        "X-Rubrist-Governance-Class",
+        "X-Rubrist-Artifact-Digest",
+        "X-Rubrist-Evidence-Digest",
         "Retry-After",
         "ETag",
         "Digest"
@@ -260,7 +260,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
   });
 
   app.get("/health", (c) => {
-    return c.json({ ok: true, service: "coeval-api" });
+    return c.json({ ok: true, service: "rubrist-api" });
   });
 
   app.get("/api/auth/setup-required", async (c) => {
@@ -408,7 +408,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
           code: "owner_session_required"
         }, 403);
       }
-      const requestedProject = c.req.header("x-coeval-project");
+      const requestedProject = c.req.header("x-rubrist-project");
       const projectId = requestedProject ?? await firstProjectForUser(options.pool, user.id);
       if (!projectId) return c.json({ error: "No project membership" }, 403);
       const role = await userProjectRole(options.pool, { userId: user.id, projectId });
@@ -441,7 +441,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       // Pre-auth attempts are isolated by network client. A single invalid
       // caller can no longer drain one global bucket and starve every valid
       // onboarding connection. Proxy-derived client IPs require the explicit
-      // COEVAL_TRUST_PROXY opt-in above.
+      // RUBRIST_TRUST_PROXY opt-in above.
       const bootstrapRateKey = `agent-bootstrap:${bootstrapRateLimitIdentity(c)}`;
       if (!takeRateTokens(bootstrapRateKey, 1)) {
         return c.json({
@@ -449,7 +449,7 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
           code: "bootstrap_rate_limited"
         }, 429);
       }
-      if (token.startsWith("coeval_pair_")) {
+      if (token.startsWith("rubrist_pair_")) {
         const pairing = await resolveAgentSetupPairing(options.pool, token);
         if (!pairing) {
           return c.json({
@@ -463,12 +463,12 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
         await next();
         return;
       }
-      const configured = process.env.COEVAL_BOOTSTRAP_TOKEN?.trim() ?? "";
+      const configured = process.env.RUBRIST_BOOTSTRAP_TOKEN?.trim() ?? "";
       if (configured.length < 32) {
         return c.json({
           error: "No valid agent setup connection was provided and headless bootstrap is not enabled.",
           code: "bootstrap_unavailable",
-          hint: "Create a one-time agent connection from Coeval onboarding, or set COEVAL_BOOTSTRAP_TOKEN for headless administration."
+          hint: "Create a one-time agent connection from Rubrist onboarding, or set RUBRIST_BOOTSTRAP_TOKEN for headless administration."
         }, 503);
       }
       if (!bootstrapTokenMatches(token)) {
@@ -526,9 +526,9 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       return;
     }
 
-    // Project switching: the client pins a project with x-coeval-project;
+    // Project switching: the client pins a project with x-rubrist-project;
     // membership is checked, not trusted. No header = oldest membership.
-    const requestedProject = c.req.header("x-coeval-project");
+    const requestedProject = c.req.header("x-rubrist-project");
     if (requestedProject) {
       const role = await userProjectRole(options.pool, { userId: user.id, projectId: requestedProject });
       if (!role) return c.json({ error: "Not a member of this project" }, 403);
@@ -712,11 +712,11 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
       });
     } catch (error) {
       if (error instanceof RecursiveTraceSkippedError) {
-        // Anti-recursion guard (PR #46): trace is tagged coeval-internal,
-        // probably a Coeval-judge LLM call re-ingested by the upstream tracer.
+        // Anti-recursion guard (PR #46): trace is tagged rubrist-internal,
+        // probably a Rubrist-judge LLM call re-ingested by the upstream tracer.
         // Return 200 + skipped marker so the caller can distinguish from
         // success without surfacing a scary 5xx.
-        return c.json({ skipped: true, reason: "coeval_internal" }, 200);
+        return c.json({ skipped: true, reason: "rubrist_internal" }, 200);
       }
       throw error;
     }
@@ -919,4 +919,4 @@ export function createApp(repository: CoevalRepository = new DemoRepository(), o
   return app;
 }
 
-export type CoevalApi = ReturnType<typeof createApp>;
+export type RubristApi = ReturnType<typeof createApp>;

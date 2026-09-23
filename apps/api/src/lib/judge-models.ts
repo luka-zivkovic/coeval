@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { JudgeModel, JudgeModelCatalog, JudgeProviderId } from "@coeval/shared";
+import type { JudgeModel, JudgeModelCatalog, JudgeProviderId } from "@rubrist/shared";
 
 interface ModelsResponse {
   ok: boolean;

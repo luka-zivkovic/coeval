@@ -16,7 +16,7 @@ You should receive an acknowledgement within seven days. A fix and disclosure ti
 
 ## Supported versions
 
-Until Coeval reaches a stable release, security fixes target the latest revision of `main`. Older revisions are not maintained as separate supported release lines.
+Until Rubrist reaches a stable release, security fixes target the latest revision of `main`. Older revisions are not maintained as separate supported release lines.
 
 ## Deployment guidance
 
@@ -26,10 +26,10 @@ For a networked deployment:
 - generate a strong, unique `BETTER_AUTH_SECRET` and protect it as encryption key material;
 - prefer the UI's new-project-only, project-scoped, single-use 15-minute agent connections;
   revoke and regenerate one if its copied instructions may have leaked;
-- set `COEVAL_TRUST_PROXY=1` only when direct API access is blocked and the
+- set `RUBRIST_TRUST_PROXY=1` only when direct API access is blocked and the
   trusted reverse proxy sanitizes forwarded client-IP headers;
 - leave headless bootstrap disabled unless needed; when enabled, generate a
-  separate strong `COEVAL_BOOTSTRAP_TOKEN`, share it only with trusted
+  separate strong `RUBRIST_BOOTSTRAP_TOKEN`, share it only with trusted
   administrators, and rotate it after suspected exposure;
 - restrict `TRUSTED_ORIGINS` to the exact web origins you operate;
 - keep Postgres on a private network and maintain tested backups;

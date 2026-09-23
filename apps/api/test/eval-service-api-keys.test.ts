@@ -14,7 +14,7 @@ describe("API keys", () => {
     });
     expect(createRes.status).toBe(201);
     const created = await createRes.json() as { id: string; key: string; keyPrefix: string };
-    expect(created.key).toMatch(/^coeval_sk_/);
+    expect(created.key).toMatch(/^rubrist_sk_/);
 
     const listRes = await app.request("/api/api-keys");
     const list = await listRes.json() as { apiKeys: Array<{ id: string; key?: string; keyPrefix: string }> };

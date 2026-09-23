@@ -1,7 +1,7 @@
 # Trace to test — beginner journey contract
 
-Status: product contract for milestone [#157](https://github.com/luka-zivkovic/coeval/issues/157),
-defined in journey batch [#158](https://github.com/luka-zivkovic/coeval/issues/158).
+Status: product contract for milestone [#157](https://github.com/luka-zivkovic/rubrist/issues/157),
+defined in journey batch [#158](https://github.com/luka-zivkovic/rubrist/issues/158).
 This document fixes the user journey and language before persistence or
 model-assisted drafting is added.
 
@@ -21,10 +21,10 @@ distinguishes the response that prompted it from the behavior the person wants.
 | Conversation | The complete source evidence | trace, case, steps, input/output |
 | Test | One scenario with expected behavior | eval case, dataset item |
 | Test suite | A named collection of enabled tests | dataset, immutable run snapshot |
-| Check | How Coeval decides whether behavior matches the expectation | deterministic assertion, judging skill, manual review |
+| Check | How Rubrist decides whether behavior matches the expectation | deterministic assertion, judging skill, manual review |
 | Run | Check enabled tests with the project's current setup | eval run against the current approved skill version |
 | Needs review | The evidence supports more than one reasonable judgment | ambiguous verdict, human review |
-| Could not run | Coeval could not complete the check | missing evidence, provider/runtime/queue/parsing error |
+| Could not run | Rubrist could not complete the check | missing evidence, provider/runtime/queue/parsing error |
 
 Do not use `eval`, `golden`, `rubric`, `skill version`, or `model binding` in
 the default journey. Those concepts remain available on existing expert
@@ -39,7 +39,7 @@ screen determines the copy; it does not change the underlying flow.
 - Good response worth preserving: **Protect this behavior**
 - Unclassified response: **Make this a test**
 
-The action never implies that Coeval already knows the truth.
+The action never implies that Rubrist already knows the truth.
 
 ## Journey states
 
@@ -75,7 +75,7 @@ Rules:
 Choices:
 
 1. **The AI response** — create a product-behavior test.
-2. **Coeval's verdict** — record evaluator calibration evidence; do not create
+2. **Rubrist's verdict** — record evaluator calibration evidence; do not create
    a product-behavior test.
 3. **Nothing is wrong; this is worth preserving** — create a product-behavior
    test anchored on the observed good outcome.
@@ -100,7 +100,7 @@ Rules:
 - Empty input does not advance.
 - Saving is not implicit when leaving this state.
 
-If the person chooses **Coeval's verdict**, replace the product-behavior
+If the person chooses **Rubrist's verdict**, replace the product-behavior
 question with two required fields:
 
 - **Correct result:** Pass, Fail, or Needs review.
@@ -145,7 +145,7 @@ Rules:
 - Every generated field is editable and visually marked as a suggestion until
   the person confirms it.
 - The source output is preclassified according to the confirmed job: bad for
-  **The AI response**, good for **Nothing is wrong**. Coeval suggests the
+  **The AI response**, good for **Nothing is wrong**. Rubrist suggests the
   contrasting example from the person's desired behavior; the person must edit
   or confirm it. If assistance is unavailable, they can write or paste the
   contrasting example manually.
@@ -182,7 +182,7 @@ Rules:
   **Could not run**, never as behavioral Pass or Fail.
 - Ambiguity renders as **Needs review** and cannot silently enable the test.
 - The default beginner destination is the project's **Regression tests** suite.
-  Coeval creates it on first use and reuses it thereafter; suite selection and
+  Rubrist creates it on first use and reuses it thereafter; suite selection and
   creation controls stay off the first-run path.
 - A manual override is an advanced escape hatch and requires a recorded
   reason. It is not shown in the first-run path.
@@ -201,7 +201,7 @@ Secondary actions: **Open test suite**, **Return to conversation**
 **Run it now** checks the newly enabled test immediately with the project's
 current setup. It does not run the whole suite or configure a release gate.
 
-If the primary job was correcting Coeval's verdict, the receipt instead says
+If the primary job was correcting Rubrist's verdict, the receipt instead says
 **Correction recorded** and offers **Review evaluator accuracy**. It never
 claims that a product test was created.
 
@@ -250,16 +250,16 @@ Person's desired behavior:
 
 > Keep verifying account ownership before giving recovery instructions.
 
-The observed response serves as the initial known-good example. Coeval suggests
+The observed response serves as the initial known-good example. Rubrist suggests
 a contrasting unsafe output for the person to edit or confirm; if assistance is
 unavailable, the person writes or pastes one. Both examples are required before
 normal enablement.
 
-### Correct Coeval
+### Correct Rubrist
 
-Source: Coeval marked a correct policy-qualified refund response as failing.
+Source: Rubrist marked a correct policy-qualified refund response as failing.
 
-The person chooses **Coeval's verdict**, selects the correct result, records a
+The person chooses **Rubrist's verdict**, selects the correct result, records a
 reason, and chooses **Record correction**. They reach the correction receipt and
 return to evaluator calibration. No product test is created implicitly.
 
@@ -268,7 +268,7 @@ return to evaluator calibration. No product test is created implicitly.
 Use a moderated clickable prototype with fixture-backed, explicitly mocked
 drafting and check results; production persistence, generation, and runtime are
 not prerequisites. Include at least three redacted conversations: one harmful
-response, one good response worth preserving, and one incorrect Coeval verdict.
+response, one good response worth preserving, and one incorrect Rubrist verdict.
 Ask at least three participants to complete all three journeys without product
 documentation.
 
@@ -284,7 +284,7 @@ Record:
 Before the implementation contract is locked, participants must reach the
 correct receipt without assistance and must not mistake a generated draft for
 trusted ground truth. Timing is a product target, not a reason to skip human
-confirmation. Batch [#164](https://github.com/luka-zivkovic/coeval/issues/164)
+confirmation. Batch [#164](https://github.com/luka-zivkovic/rubrist/issues/164)
 records the production pilot separately from this prototype check.
 
 ## Deferred decisions

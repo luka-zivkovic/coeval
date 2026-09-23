@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { SetupLedger } from "@/components/coeval";
+import { SetupLedger } from "@/components/rubrist";
 import { firstResultPath, firstRunEditorPath, firstRunSetupStepStates, isBench } from "@/lib/journey";
-import type { DashboardSummary } from "@coeval/shared";
+import type { DashboardSummary } from "@rubrist/shared";
 
 export function FirstRunSetupLedger({
   dashboard,
@@ -34,7 +34,7 @@ export function FirstRunSetupLedger({
             : {
                 detail: bench
                   ? "A run is one input and the output your AI produced. An expected result is optional."
-                  : "Connect LangSmith or Langfuse, or paste one run. Coeval reads the record; it does not replay your AI.",
+                  : "Connect LangSmith or Langfuse, or paste one run. Rubrist reads the record; it does not replay your AI.",
                 cta: bench ? "Add an example" : "Add a recorded run",
                 onCta: () => navigate(bench ? "/datasets?add=1" : "/traces"),
                 secondaryCta: "Set up without a run",
@@ -48,7 +48,7 @@ export function FirstRunSetupLedger({
             ? { foot: `Check v${skill.currentVersion.version} ready` }
             : {
                 detail: owner
-                  ? "Tell Coeval one quality that matters. Technical settings stay out of the first-run path."
+                  ? "Tell Rubrist one quality that matters. Technical settings stay out of the first-run path."
                   : "An owner needs to choose the project's first Check. You can still inspect the current starter.",
                 ...(states.chooseCheck === "now" && owner
                   ? { cta: "Review the Check", onCta: () => navigate(editPath) }
@@ -63,7 +63,7 @@ export function FirstRunSetupLedger({
           ...(states.seeResult === "done"
             ? { foot: `${judged.toLocaleString()} result${judged === 1 ? "" : "s"}` }
             : {
-                detail: "Coeval applies the Check to recorded evidence. This is the Check's opinion until a person reviews it separately.",
+                detail: "Rubrist applies the Check to recorded evidence. This is the Check's opinion until a person reviews it separately.",
                 ...(states.seeResult === "now"
                   ? dashboard.viewerRole === "owner" ? {
                       cta: "Continue to first Result",

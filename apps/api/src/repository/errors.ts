@@ -1,4 +1,4 @@
-import type { GoldenSetRetirementContext } from "@coeval/shared";
+import type { GoldenSetRetirementContext } from "@rubrist/shared";
 
 // Stable typed failures shared by repository implementations and route
 // adapters. Keeping one constructor identity preserves instanceof checks.
@@ -64,8 +64,8 @@ export class GateRunBindingMismatchError extends Error {
 export class RecursiveTraceSkippedError extends Error {
   constructor(sourceTraceId?: string) {
     super(sourceTraceId
-      ? `Trace marked coeval-internal was skipped on ingest: ${sourceTraceId}`
-      : "Trace marked coeval-internal was skipped on ingest");
+      ? `Trace marked rubrist-internal was skipped on ingest: ${sourceTraceId}`
+      : "Trace marked rubrist-internal was skipped on ingest");
     this.name = "RecursiveTraceSkippedError";
   }
 }

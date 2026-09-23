@@ -3,7 +3,7 @@ import { Ban, Star } from "lucide-react";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { GOLDEN_GATE_RECOMMENDED, type SkillVersion } from "@coeval/shared";
+import { GOLDEN_GATE_RECOMMENDED, type SkillVersion } from "@rubrist/shared";
 
 // P1-2 · one vocabulary for evaluator-version regression, used in Versions,
 // the editor, and run comparisons.

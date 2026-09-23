@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { JudgeProvider, Trace } from "@coeval/audit/runtime";
-import { demoProject, demoSkill, demoSkillPrevVersion } from "@coeval/db";
+import type { JudgeProvider, Trace } from "@rubrist/audit/runtime";
+import { demoProject, demoSkill, demoSkillPrevVersion } from "@rubrist/db";
 import {
   type CriterionVersion,
   type CreateSkillVersionInput,
@@ -14,7 +14,7 @@ import {
   type SkillVersion,
   type VerdictLabel,
   regressionDirectionCounts
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { evaluatorSuiteCriterionDigest } from "../lib/evaluator-suite.js";
 import type { CreateSkillVersionContext } from "./contracts.js";
 import type { DemoRepositoryStore } from "./demo-store.js";

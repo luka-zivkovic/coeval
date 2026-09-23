@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { RunComparison } from "@coeval/shared";
+import type { RunComparison } from "@rubrist/shared";
 import type { CreateRunComparisonInputDb } from "./contracts.js";
 import type { DemoRepositoryStore } from "./demo-store.js";
 import { DatasetRevisionConflictError } from "./errors.js";

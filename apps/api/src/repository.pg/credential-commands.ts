@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { JudgeKeyProvider, JudgeProviderKey } from "@coeval/shared";
+import type { JudgeKeyProvider, JudgeProviderKey } from "@rubrist/shared";
 import type { PoolClient } from "pg";
 import { encryptJson } from "../lib/encryption.js";
 import { judgeKeyDisplay } from "../repository/helpers.js";

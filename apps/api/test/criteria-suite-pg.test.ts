@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { describe, expect, it } from "vitest";
-import { runMigrations } from "@coeval/db";
+import { runMigrations } from "@rubrist/db";
 import {
   datasetRevisionContentDigest,
   datasetRevisionDigest,
@@ -623,7 +623,7 @@ run("Batch 3 criteria and evaluator suite PostgreSQL invariants", () => {
         applicability: { kind: "all_items" as const },
       }));
       const unsignedManifest = {
-        contract: "coeval/evaluator-suite-manifest/v1" as const,
+        contract: "rubrist/evaluator-suite-manifest/v1" as const,
         schemaVersion: 1 as const,
         manifestId: "manifest_batch3_1",
         suiteId: "suite_batch3",
@@ -652,7 +652,7 @@ run("Batch 3 criteria and evaluator suite PostgreSQL invariants", () => {
             (id, suite_id, project_id, idempotency_key, request_digest, revision, contract, schema_version, member_count,
              trial_plan, canonical_bytes, artifact_digest, manifest_digest)
           values ('manifest_batch3_1', 'suite_batch3', 'proj_batch3', 'create-suite-request-1', $5, 1,
-                  'coeval/evaluator-suite-manifest/v1', 1, $1, 'null'::jsonb, $2, $3, $4)
+                  'rubrist/evaluator-suite-manifest/v1', 1, $1, 'null'::jsonb, $2, $3, $4)
         `, [members.length, canonicalBytes, sha256Bytes(canonicalBytes), manifest.manifestDigest, createRequestDigest]);
         for (const member of members) {
           await suiteClient.query(`
@@ -708,7 +708,7 @@ run("Batch 3 criteria and evaluator suite PostgreSQL invariants", () => {
           (id, suite_id, project_id, idempotency_key, request_digest, revision, contract, schema_version, member_count,
            trial_plan, canonical_bytes, artifact_digest, manifest_digest)
         values ('manifest_noncanonical', 'suite_batch3', 'proj_batch3', 'noncanonical-request', $4, 7,
-                'coeval/evaluator-suite-manifest/v1', 1, $1, 'null'::jsonb, $2, $3, $5)
+                'rubrist/evaluator-suite-manifest/v1', 1, $1, 'null'::jsonb, $2, $3, $5)
       `, [
         members.length,
         noncanonicalBytes,
@@ -732,7 +732,7 @@ run("Batch 3 criteria and evaluator suite PostgreSQL invariants", () => {
           (id, suite_id, project_id, idempotency_key, request_digest, revision, contract, schema_version, member_count,
            trial_plan, canonical_bytes, artifact_digest, manifest_digest)
         values ('manifest_forged_digest', 'suite_batch3', 'proj_batch3', 'forged-digest-request', $4, 8,
-                'coeval/evaluator-suite-manifest/v1', 1, $1, 'null'::jsonb, $2, $3, $5)
+                'rubrist/evaluator-suite-manifest/v1', 1, $1, 'null'::jsonb, $2, $3, $5)
       `, [
         members.length,
         forgedBytes,
@@ -759,7 +759,7 @@ run("Batch 3 criteria and evaluator suite PostgreSQL invariants", () => {
           (id, suite_id, project_id, idempotency_key, request_digest, revision, contract, schema_version, member_count,
            trial_plan, canonical_bytes, artifact_digest, manifest_digest)
         values ('manifest_batch3_replay', 'suite_batch3', 'proj_batch3', 'create-suite-request-1', $5, 2,
-                'coeval/evaluator-suite-manifest/v1', 1, $1, 'null'::jsonb, $2, $3, $4)
+                'rubrist/evaluator-suite-manifest/v1', 1, $1, 'null'::jsonb, $2, $3, $4)
         on conflict (project_id, idempotency_key) do nothing
         returning id
       `, [members.length, replayBytes, sha256Bytes(replayBytes), replayManifest.manifestDigest, createRequestDigest]);
@@ -796,7 +796,7 @@ run("Batch 3 criteria and evaluator suite PostgreSQL invariants", () => {
           (id, suite_id, project_id, idempotency_key, request_digest, revision, contract, schema_version, member_count,
            trial_plan, canonical_bytes, artifact_digest, manifest_digest)
         values ('manifest_batch3_conflict', 'suite_batch3', 'proj_batch3', 'create-suite-request-1', $6, 2,
-                'coeval/evaluator-suite-manifest/v1', 1, $1, $2, $3, $4, $5)
+                'rubrist/evaluator-suite-manifest/v1', 1, $1, $2, $3, $4, $5)
       `, [
         members.length,
         JSON.stringify(conflictingManifest.trialPlan),
@@ -822,7 +822,7 @@ run("Batch 3 criteria and evaluator suite PostgreSQL invariants", () => {
           (id, suite_id, project_id, idempotency_key, request_digest, revision, contract, schema_version, member_count,
            trial_plan, canonical_bytes, artifact_digest, manifest_digest)
         values ('manifest_policy_leak', 'suite_batch3', 'proj_batch3', 'policy-leak-request', $4, 4,
-                'coeval/evaluator-suite-manifest/v1', 1, 2, 'null'::jsonb, $1, $2, $3)
+                'rubrist/evaluator-suite-manifest/v1', 1, 2, 'null'::jsonb, $1, $2, $3)
       `, [policyLeakBytes, sha256Bytes(policyLeakBytes), policyLeak.manifestDigest, createRequestDigest]))
         .rejects.toMatchObject({ code: "23514" });
       await expect(pool.query(`
@@ -895,7 +895,7 @@ run("Batch 3 criteria and evaluator suite PostgreSQL invariants", () => {
             (id, suite_id, project_id, idempotency_key, request_digest, revision, contract, schema_version, member_count,
              trial_plan, canonical_bytes, artifact_digest, manifest_digest)
           values ('manifest_incomplete', 'suite_batch3', 'proj_batch3', 'incomplete-request', $4, 2,
-                  'coeval/evaluator-suite-manifest/v1', 1, 2, 'null'::jsonb, $1, $2, $3)
+                  'rubrist/evaluator-suite-manifest/v1', 1, 2, 'null'::jsonb, $1, $2, $3)
         `, [incompleteBytes, sha256Bytes(incompleteBytes), incompleteManifest.manifestDigest, createRequestDigest]);
         await expect(incomplete.query("commit")).rejects.toMatchObject({ code: "23514" });
       } finally {

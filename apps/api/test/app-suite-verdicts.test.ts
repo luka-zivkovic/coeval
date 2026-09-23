@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { verdictLabelFromPayload } from "@coeval/shared";
+import { verdictLabelFromPayload } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 
@@ -8,7 +8,7 @@ import { processLangSmithImportJob } from "../src/workers/langsmith-import.js";
 
 import { CapturingQueue, FailingOnceQueue } from "./app-test-support.js";
 
-describe("Coeval Hono API", () => {
+describe("Rubrist Hono API", () => {
   it("seeds demo verdicts when opted in, populating κ + both disagreement feeds", async () => {
     const seeded = new DemoRepository(undefined, { seedVerdicts: true });
     const projectId = "proj_langsmith_support";
@@ -331,7 +331,7 @@ describe("Coeval Hono API", () => {
     expect(queue.jobs).toHaveLength(1);
   });
 
-  it("skips coeval-internal traces on manual import (anti-recursion guard)", async () => {
+  it("skips rubrist-internal traces on manual import (anti-recursion guard)", async () => {
     const repository = new DemoRepository();
     const localApp = createApp(repository);
     const before = (await (await localApp.request("/api/dashboard")).json()) as { project: { importedTraceCount: number } };
@@ -343,17 +343,17 @@ describe("Coeval Hono API", () => {
         sourceTraceId: "internal_judge_call_123",
         input: { question: "internal probe" },
         output: { answer: "internal response" },
-        metadata: { coeval: { internal: true } }
+        metadata: { rubrist: { internal: true } }
       })
     });
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ skipped: true, reason: "coeval_internal" });
+    await expect(response.json()).resolves.toEqual({ skipped: true, reason: "rubrist_internal" });
 
     const after = (await (await localApp.request("/api/dashboard")).json()) as { project: { importedTraceCount: number } };
     expect(after.project.importedTraceCount).toBe(before.project.importedTraceCount);
   });
 
-  it("skips coeval-internal traces in the LangSmith import worker", async () => {
+  it("skips rubrist-internal traces in the LangSmith import worker", async () => {
     const repository = new DemoRepository();
     const queue = new CapturingQueue();
     const integration = await repository.createLangSmithIntegration("proj_langsmith_support", {
@@ -373,7 +373,7 @@ describe("Coeval Hono API", () => {
             sourceTraceId: "ls_run_internal",
             input: { question: "internal probe" },
             output: { answer: "internal" },
-            metadata: { coeval: { internal: true } }
+            metadata: { rubrist: { internal: true } }
           },
           {
             sourceTraceId: "ls_run_real",
@@ -385,7 +385,7 @@ describe("Coeval Hono API", () => {
       }
     }));
 
-    // Only one trace was actually imported; the coeval-internal one was skipped
+    // Only one trace was actually imported; the rubrist-internal one was skipped
     // without creating another tracked evaluation.
     expect(result.imported).toBe(1);
     expect(result.queued).toBe(1);

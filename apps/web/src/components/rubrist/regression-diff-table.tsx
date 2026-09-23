@@ -5,7 +5,7 @@ import { RowLink } from "@/components/row-action";
 import { Chip } from "./chip";
 import { VerdictChip } from "./chip";
 import { cn } from "@/lib/utils";
-import type { RegressionCaseDiff } from "@coeval/shared";
+import type { RegressionCaseDiff } from "@rubrist/shared";
 
 const CHANGE_LABEL: Record<RegressionCaseDiff["change"], string> = {
   regress: "regressed",

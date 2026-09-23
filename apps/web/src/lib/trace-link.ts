@@ -1,4 +1,4 @@
-import type { TraceLinkConnection, TraceLinkMatch, TraceLinkResolution } from "@coeval/shared";
+import type { TraceLinkConnection, TraceLinkMatch, TraceLinkResolution } from "@rubrist/shared";
 
 // Pure decision for the /links/trace page, kept apart from the screen so the
 // redirect/pick/not-imported branching is testable without a browser.

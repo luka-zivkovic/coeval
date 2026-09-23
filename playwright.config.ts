@@ -5,14 +5,14 @@ import { defineConfig } from "@playwright/test";
 // they are read-only invariant checks, not CI tests: most specs skip
 // themselves when the data they assert about doesn't exist yet.
 //
-// Env: COEVAL_WEB (default http://localhost:5175), SIM_EMAIL, SIM_PASSWORD.
+// Env: RUBRIST_WEB (default http://localhost:5175), SIM_EMAIL, SIM_PASSWORD.
 export default defineConfig({
   testDir: "./e2e",
   workers: 1,
   retries: 0,
   timeout: 30_000,
   use: {
-    baseURL: process.env.COEVAL_WEB ?? "http://localhost:5175",
+    baseURL: process.env.RUBRIST_WEB ?? "http://localhost:5175",
     trace: "retain-on-failure"
   },
   projects: [

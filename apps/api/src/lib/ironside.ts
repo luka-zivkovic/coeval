@@ -10,7 +10,7 @@ import {
   type IronsideEvaluatorTraceFeed,
   type ManualTraceImportInput,
   type TraceStep
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { CreateLangSmithFeedbackInput, LangSmithFeedbackWriter } from "./langsmith.js";
 
 export interface IronsideClientOptions {
@@ -56,7 +56,7 @@ export class IronsideTraceTooLargeError extends Error {
   ) {
     super(
       `Ironside trace ${traceId} has ${observationCount} observations; ` +
-      `Coeval accepts at most ${maximumObservationCount} without truncation`
+      `Rubrist accepts at most ${maximumObservationCount} without truncation`
     );
     this.name = "IronsideTraceTooLargeError";
   }
@@ -140,7 +140,7 @@ export class IronsideClient implements IronsideTraceSource, LangSmithFeedbackWri
         value: input.score,
         assessmentLabel: input.value,
         comment: boundedIronsideScoreComment(input.comment),
-        evaluator: { provider: "coeval", versionId, criterionKey },
+        evaluator: { provider: "rubrist", versionId, criterionKey },
         metadata: {
           judgeRunId: input.sourceInfo?.judgeRunId,
           sourceTraceVersion: input.sourceInfo?.sourceTraceVersion,

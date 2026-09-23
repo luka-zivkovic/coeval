@@ -6,7 +6,7 @@ import {
   STARTER_RUBRIC_MARKER,
   type CreatedApiKey,
   type ProjectMode
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { betterAuth } from "better-auth";
 import { generateApiKey } from "./api-keys.js";
 import { evaluatorSuiteCriterionDigest } from "./evaluator-suite.js";
@@ -86,7 +86,7 @@ export function createAuth(pool: Pool) {
   });
 }
 
-export type CoevalAuth = ReturnType<typeof createAuth>;
+export type RubristAuth = ReturnType<typeof createAuth>;
 
 export async function countUsers(pool: Pool): Promise<number> {
   const result = await pool.query(`select count(*)::int as count from "user"`);
@@ -161,7 +161,7 @@ export async function createAgentSetupPairing(
   pool: Pool,
   input: { projectId: string; createdByUserId: string }
 ): Promise<AgentSetupPairingRecord & { token: string }> {
-  const token = `coeval_pair_${randomBytes(32).toString("base64url")}`;
+  const token = `rubrist_pair_${randomBytes(32).toString("base64url")}`;
   const id = `pair_${randomUUID()}`;
   const expiresAt = new Date(Date.now() + AGENT_SETUP_PAIRING_TTL_MS);
   const client = await pool.connect();

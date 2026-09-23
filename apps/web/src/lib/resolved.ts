@@ -2,7 +2,7 @@ import {
   verdictLabelFromPayload,
   type GoldenSetEntry,
   type VerdictRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 // P0-3 — "reviewing resolves": a case leaves the exceptions queue the moment
 // a human (or an adjudication, or a golden promotion) decides it. Resolved

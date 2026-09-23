@@ -1,7 +1,7 @@
-import type { TraceTestFunnelEventInput, TraceTestFunnelEventName } from "@coeval/shared";
+import type { TraceTestFunnelEventInput, TraceTestFunnelEventName } from "@rubrist/shared";
 import { recordTraceTestFunnelEvent } from "./api.js";
 
-const PROMPT_DISMISSAL_PREFIX = "coeval.trace-test-prompt-dismissed:";
+const PROMPT_DISMISSAL_PREFIX = "rubrist.trace-test-prompt-dismissed:";
 
 export function traceTestPromptDismissed(sourceCaseId: string): boolean {
   try {

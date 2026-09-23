@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// coeval-submit — the coeval-audit skill's bundled client: connection check +
+// rubrist-submit — the rubrist-audit skill's bundled client: connection check +
 // results submission for auditing a developer's own agent skill.
 //
 // Adapted from tools/ci/gate.mjs (the CI skill gate). DRIFT GUARD: the JSONL
@@ -10,22 +10,22 @@
 // gate: auditing a skill submits examples, never golden-set candidates.
 //
 // Usage:
-//   node coeval-submit.mjs setup <setup.json> [--first-batch results.jsonl]
+//   node rubrist-submit.mjs setup <setup.json> [--first-batch results.jsonl]
 //     [--pairing-env-var NAME]
 //     [--bootstrap-env-var NAME]
 //     [--owner-password-env-var NAME] [--provider-key-env-var NAME]
 //     [--env-var NAME]
-//   node coeval-submit.mjs check [--allow-inactive] [--env-var NAME]
-//   node coeval-submit.mjs submit <results.jsonl> [--min-agreement 0.9]
+//   node rubrist-submit.mjs check [--allow-inactive] [--env-var NAME]
+//   node rubrist-submit.mjs submit <results.jsonl> [--min-agreement 0.9]
 //     [--timeout 300] [--env-var NAME]
-//   node coeval-submit.mjs findings [--since ISO-8601] [--md] [--env-var NAME]
+//   node rubrist-submit.mjs findings [--since ISO-8601] [--md] [--env-var NAME]
 //
-// COEVAL_URL and the API key come from the environment, falling back to a
+// RUBRIST_URL and the API key come from the environment, falling back to a
 // ./.env file that THIS SCRIPT parses itself — the calling agent must never
 // read .env directly (unrelated secrets live there). Real environment
 // variables win over .env. --env-var NAME reads the key from $NAME instead of
-// COEVAL_API_KEY (multi-skill repos map one key per skill in
-// .coeval/config.json). The API key is never printed.
+// RUBRIST_API_KEY (multi-skill repos map one key per skill in
+// .rubrist/config.json). The API key is never printed.
 //
 // Results file: one JSON object per line —
 //   { "name"?, "input", "output", "expected"? ("pass"|"fail"),
@@ -55,7 +55,7 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 
 function fail(code, message) {
-  console.error(`coeval-submit: ${message}`);
+  console.error(`rubrist-submit: ${message}`);
   process.exit(code);
 }
 
@@ -107,10 +107,10 @@ function flag(name, fallback) {
   return value;
 }
 
-const USAGE = "usage: node coeval-submit.mjs setup <setup.json> [--first-batch results.jsonl] [--pairing-env-var NAME] [--bootstrap-env-var NAME] [--owner-password-env-var NAME] [--provider-key-env-var NAME] [--env-var NAME] [--min-agreement 0.9] [--timeout 300] | check [--allow-inactive] [--env-var NAME] | submit <results.jsonl> [--skill-version ID] [--min-agreement 0.9] [--timeout 300] [--env-var NAME] | findings [--since ISO-8601] [--md] [--env-var NAME]";
+const USAGE = "usage: node rubrist-submit.mjs setup <setup.json> [--first-batch results.jsonl] [--pairing-env-var NAME] [--bootstrap-env-var NAME] [--owner-password-env-var NAME] [--provider-key-env-var NAME] [--env-var NAME] [--min-agreement 0.9] [--timeout 300] | check [--allow-inactive] [--env-var NAME] | submit <results.jsonl> [--skill-version ID] [--min-agreement 0.9] [--timeout 300] [--env-var NAME] | findings [--since ISO-8601] [--md] [--env-var NAME]";
 if (command !== "setup" && command !== "check" && command !== "submit" && command !== "findings") fail(2, USAGE);
 
-const keyVarName = flag("env-var", "COEVAL_API_KEY");
+const keyVarName = flag("env-var", "RUBRIST_API_KEY");
 const pinnedSkillVersionId = flag("skill-version", null);
 if (pinnedSkillVersionId !== null && !pinnedSkillVersionId.trim()) {
   fail(2, "--skill-version must be a non-empty evaluator version id");
@@ -118,9 +118,9 @@ if (pinnedSkillVersionId !== null && !pinnedSkillVersionId.trim()) {
 if (command !== "submit" && pinnedSkillVersionId !== null) {
   fail(2, "--skill-version is valid only for submit");
 }
-const baseUrl = envVal("COEVAL_URL").replace(/\/$/, "");
+const baseUrl = envVal("RUBRIST_URL").replace(/\/$/, "");
 const apiKey = envVal(keyVarName);
-if (!baseUrl) fail(2, "COEVAL_URL is not set (environment or ./.env)");
+if (!baseUrl) fail(2, "RUBRIST_URL is not set (environment or ./.env)");
 if (command !== "setup" && !apiKey) fail(2, `${keyVarName} is not set (environment or ./.env) — run the setup command or mint one in Settings → API keys`);
 
 const timeoutSeconds = Number(flag("timeout", "300"));
@@ -169,7 +169,7 @@ async function apiWithToken(path, token, init = {}, httpFailCode = 1) {
 const api = (path, init = {}, httpFailCode = 1) => apiWithToken(path, apiKey, init, httpFailCode);
 
 function hasEnvValue(name) {
-  // Value truthiness, not key presence: a template-style `COEVAL_API_KEY=`
+  // Value truthiness, not key presence: a template-style `RUBRIST_API_KEY=`
   // line (or an exported-empty variable) holds nothing worth protecting, and
   // treating it as "already exists" dead-ends setup on a key that could never
   // have worked. This mirrors envVal, which already treats empty as unset.
@@ -192,9 +192,9 @@ function saveProjectKey(name, key) {
   }
   const prefix = existing.length > 0 && !existing.endsWith("\n") ? "\n" : "";
   appendFileSync(".env", `${prefix}${name}=${key}\n`, { mode: 0o600 });
-  mkdirSync(".coeval", { recursive: true });
+  mkdirSync(".rubrist", { recursive: true });
   try {
-    writeFileSync(".coeval/.gitignore", "*\n", { flag: "wx" });
+    writeFileSync(".rubrist/.gitignore", "*\n", { flag: "wx" });
   } catch (error) {
     if (!error || typeof error !== "object" || error.code !== "EEXIST") throw error;
   }
@@ -205,9 +205,9 @@ if (command === "setup") {
   if (!fileArg) fail(2, USAGE);
   const firstBatch = flag("first-batch", "");
   const pairingVarName = flag("pairing-env-var", "");
-  const bootstrapVarName = flag("bootstrap-env-var", "COEVAL_BOOTSTRAP_TOKEN");
-  const defaultPairingToken = envVal("COEVAL_PAIRING_TOKEN");
-  const setupTokenVarName = pairingVarName || (defaultPairingToken ? "COEVAL_PAIRING_TOKEN" : bootstrapVarName);
+  const bootstrapVarName = flag("bootstrap-env-var", "RUBRIST_BOOTSTRAP_TOKEN");
+  const defaultPairingToken = envVal("RUBRIST_PAIRING_TOKEN");
+  const setupTokenVarName = pairingVarName || (defaultPairingToken ? "RUBRIST_PAIRING_TOKEN" : bootstrapVarName);
   const setupToken = pairingVarName ? envVal(pairingVarName) : defaultPairingToken || envVal(bootstrapVarName);
   if (!setupToken) fail(2, `${setupTokenVarName} is not set (environment or ./.env)`);
   if (hasEnvValue(keyVarName)) {
@@ -233,7 +233,7 @@ if (command === "setup") {
     fail(2, `${fileArg} must not contain owner.password or providerApiKey; pass their environment variable names as flags`);
   }
 
-  const ownerPasswordVar = flag("owner-password-env-var", "COEVAL_OWNER_PASSWORD");
+  const ownerPasswordVar = flag("owner-password-env-var", "RUBRIST_OWNER_PASSWORD");
   const ownerPassword = envVal(ownerPasswordVar);
   const providerKeyVar = flag("provider-key-env-var", "");
   const providerApiKey = providerKeyVar ? envVal(providerKeyVar) : "";
@@ -259,16 +259,16 @@ if (command === "setup") {
   }
   saveProjectKey(keyVarName, minted);
   console.log(
-    `coeval-submit: configured ${result.mode ?? "bench"} project "${result.projectId}" · ` +
+    `rubrist-submit: configured ${result.mode ?? "bench"} project "${result.projectId}" · ` +
     `Check "${result.check?.question ?? "unknown quality question"}" · ` +
     `agent-drafted version ${result.skillVersionId} · saved project key as ${keyVarName} in ./.env`
   );
   if (result.check?.criterionVersionId) {
     console.log(
-      `coeval-submit: exact Check binding ${result.check.criterionVersionId} · ${result.check.digest ?? "digest unavailable"} · Starter · unvalidated`
+      `rubrist-submit: exact Check binding ${result.check.criterionVersionId} · ${result.check.digest ?? "digest unavailable"} · Starter · unvalidated`
     );
   }
-  console.log("coeval-submit: setup stops before adjudication — submit runs next; a human must label exceptions and promote golden cases");
+  console.log("rubrist-submit: setup stops before adjudication — submit runs next; a human must label exceptions and promote golden cases");
   // The server's `connect` block carries the same wiring snippets the app
   // shows at the key-mint moment, PRE-FILLED with the one-time key. "The API
   // key is never printed" holds here too: every occurrence is replaced with
@@ -284,7 +284,7 @@ if (command === "setup") {
       ["plain CLI", masked(connect.cli)]
     ].filter(([, snippet]) => snippet !== null);
     if (wiring.length > 0) {
-      console.log(`coeval-submit: wire your agent next — the key is saved in ./.env and shown below as $${keyVarName}; where your client needs the literal key (mcp.json, or a shell without ./.env sourced), substitute it from ./.env:`);
+      console.log(`rubrist-submit: wire your agent next — the key is saved in ./.env and shown below as $${keyVarName}; where your client needs the literal key (mcp.json, or a shell without ./.env sourced), substitute it from ./.env:`);
       for (const [label, snippet] of wiring) {
         console.log(`--- ${label} ---`);
         console.log(snippet);
@@ -319,10 +319,10 @@ if (command === "setup") {
       fail(2, `project setup succeeded, but the first batch could not start: ${child.error.message}`);
     }
     if (child.status !== 0) {
-      console.error(`coeval-submit: project setup succeeded, but the first batch exited ${child.status ?? 1}; the saved project key can be used to retry`);
+      console.error(`rubrist-submit: project setup succeeded, but the first batch exited ${child.status ?? 1}; the saved project key can be used to retry`);
       process.exit(child.status ?? 1);
     }
-    console.log("coeval-submit: first batch completed — exceptions are ready for human review");
+    console.log("rubrist-submit: first batch completed — exceptions are ready for human review");
   }
   process.exit(0);
 }
@@ -332,21 +332,21 @@ if (command === "setup") {
 if (command === "check") {
   const project = await api("/api/v1/project", {}, 2);
   if (project === null || typeof project !== "object" || typeof project.projectId !== "string") {
-    fail(2, "/api/v1/project returned an unexpected response shape — check COEVAL_URL points at the Coeval API");
+    fail(2, "/api/v1/project returned an unexpected response shape — check RUBRIST_URL points at the Rubrist API");
   }
   console.log(
-    `coeval-submit: connected — project "${project.name}" (${project.projectId}) · ` +
+    `rubrist-submit: connected — project "${project.name}" (${project.projectId}) · ` +
     `mode ${project.mode} · active skill version ${project.currentSkillVersionId ?? "none"}`
   );
   if (project.mode !== "bench") {
     // Warning only: tracing-mode projects can still take batch submissions,
     // but the recommended setup is one bench-mode project per audited skill.
-    console.error(`coeval-submit: warning — project mode is "${project.mode}", not "bench"; the recommended setup is one bench-mode coeval project per audited skill`);
+    console.error(`rubrist-submit: warning — project mode is "${project.mode}", not "bench"; the recommended setup is one bench-mode rubrist project per audited skill`);
   }
   if (project.currentSkillVersionId === null) {
     const message = "no active judging skill version — author and activate one in the dashboard before submitting (the batch endpoint refuses to judge without it)";
     if (rest.includes("--allow-inactive")) {
-      console.error(`coeval-submit: warning — ${message}`);
+      console.error(`rubrist-submit: warning — ${message}`);
     } else {
       fail(2, `${message}; pass --allow-inactive to downgrade this to a warning`);
     }
@@ -371,7 +371,7 @@ if (command === "findings") {
     process.exit(0);
   }
   const lines = [];
-  lines.push(`# Coeval findings — ${findings.generatedAt}`);
+  lines.push(`# Rubrist findings — ${findings.generatedAt}`);
   const golden = findings.goldenSet ?? {};
   lines.push("");
   lines.push(`- golden set: ${golden.size ?? 0} entries` +
@@ -495,7 +495,7 @@ const submitted = await api("/api/v1/judge/batch", {
   body: JSON.stringify({ items, ...(pinnedSkillVersionId ? { skillVersionId: pinnedSkillVersionId } : {}) })
 });
 console.log(
-  `coeval-submit: submitted ${submitted.totalItems} case(s) ` +
+  `rubrist-submit: submitted ${submitted.totalItems} case(s) ` +
   `(${submitted.cachedItems} cached, ${submitted.skippedItems} skipped) → run ${submitted.evalRunId}`
 );
 
@@ -535,7 +535,7 @@ for (const item of run.items) {
 const stepLabeled = run.items.filter((item) => item.expectedFailStep !== null && item.expectedFailStep !== undefined && item.status === "completed").length;
 const stepAgreed = run.items.filter((item) => item.stepAgreement === true).length;
 if (stepLabeled > 0) {
-  console.log(`\ncoeval-submit: judge named the expected failing step on ${stepAgreed} of ${stepLabeled} step-labeled case(s) (informational — does not affect the exit code)`);
+  console.log(`\nrubrist-submit: judge named the expected failing step on ${stepAgreed} of ${stepLabeled} step-labeled case(s) (informational — does not affect the exit code)`);
 }
 
 // Informational spend (tokens + counts, never dollars; no exit-code effect).
@@ -545,7 +545,7 @@ if (run.spend) {
     ? "usage unavailable"
     : `${s.inputTokens ?? 0} in / ${s.outputTokens ?? 0} out tokens`;
   console.log(
-    `coeval-submit: spend — ${s.freshItems} fresh, ${s.cachedItems} cached (no spend), ${tokens}` +
+    `rubrist-submit: spend — ${s.freshItems} fresh, ${s.cachedItems} cached (no spend), ${tokens}` +
     (s.usageMissingCount > 0 ? ` (usage unavailable for ${s.usageMissingCount} call(s))` : "")
   );
 }
@@ -554,7 +554,7 @@ const labeledCompleted = run.items.filter((item) => item.expectedLabel !== null 
 const failedItems = run.items.filter((item) => item.status === "failed").length;
 const completedItems = run.items.filter((item) => item.status === "completed").length;
 console.log(
-  `\ncoeval-submit: ${run.agreedItems}/${labeledCompleted} labeled case(s) agree ` +
+  `\nrubrist-submit: ${run.agreedItems}/${labeledCompleted} labeled case(s) agree ` +
   `· skill version ${run.skillVersionId}` +
   (failedItems > 0 ? ` · ${failedItems} item(s) FAILED (infrastructure)` : "")
 );
@@ -572,5 +572,5 @@ if (minAgreement !== null && agreement < minAgreement) {
   fail(1, `BLOCKED — agreement ${run.agreedItems}/${labeledCompleted} is below the --min-agreement ${minAgreement} threshold`);
 }
 console.log(minAgreement === null
-  ? "coeval-submit: done (no --min-agreement threshold set — agreement above is informational)"
-  : "coeval-submit: PASSED");
+  ? "rubrist-submit: done (no --min-agreement threshold set — agreement above is informational)"
+  : "rubrist-submit: PASSED");

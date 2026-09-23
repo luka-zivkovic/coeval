@@ -141,9 +141,9 @@ export type AgentBootstrapRequest = z.infer<typeof AgentBootstrapRequestSchema>;
 // "Connect your agent" wiring snippets (issue #15). One builder feeds three
 // surfaces — Settings → API keys (fresh key pre-filled at the mint moment,
 // placeholder afterwards), the bootstrap completion response, and the
-// coeval-audit setup script's printed next-steps — so the copy-paste forms
+// rubrist-audit setup script's printed next-steps — so the copy-paste forms
 // cannot drift from tools/mcp/README.md's contract. The paths keep the
-// README's /path/to/coeval placeholder: no surface knows the user's checkout.
+// README's /path/to/rubrist placeholder: no surface knows the user's checkout.
 export const AGENT_CONNECT_KEY_PLACEHOLDER = "<your key>";
 
 // The governance boundary, said where it is felt: the project-key surface is
@@ -151,8 +151,8 @@ export const AGENT_CONNECT_KEY_PLACEHOLDER = "<your key>";
 export const AGENT_CONNECT_BOUNDARY_LINE =
   "Your agent can read findings and submit runs; it can never adjudicate or promote — that stays here, with you.";
 
-const AGENT_CONNECT_MCP_SERVER_PATH = "/path/to/coeval/tools/mcp/index.mjs";
-const AGENT_CONNECT_CLI_PATH = "/path/to/coeval/plugins/coeval/skills/coeval-audit/scripts/coeval-submit.mjs";
+const AGENT_CONNECT_MCP_SERVER_PATH = "/path/to/rubrist/tools/mcp/index.mjs";
+const AGENT_CONNECT_CLI_PATH = "/path/to/rubrist/plugins/rubrist/skills/rubrist-audit/scripts/rubrist-submit.mjs";
 
 export const AgentConnectSnippetsSchema = z.object({
   claudeCode: z.string(),
@@ -166,20 +166,20 @@ export function buildAgentConnectSnippets(input: { apiBaseUrl: string; apiKey?: 
   const key = input.apiKey ?? AGENT_CONNECT_KEY_PLACEHOLDER;
   // The shell forms double-quote the key slot so the placeholder's angle
   // brackets can never reach the shell as redirection when pasted unedited.
-  // A real key is coeval_sk_ + base64url, so the quotes are inert — and
-  // coeval-submit's masked echo becomes "$VAR", which still expands.
+  // A real key is rubrist_sk_ + base64url, so the quotes are inert — and
+  // rubrist-submit's masked echo becomes "$VAR", which still expands.
   const shellKey = `"${key}"`;
   return {
-    claudeCode: `claude mcp add coeval --env COEVAL_URL=${url} --env COEVAL_API_KEY=${shellKey} -- node ${AGENT_CONNECT_MCP_SERVER_PATH}`,
+    claudeCode: `claude mcp add rubrist --env RUBRIST_URL=${url} --env RUBRIST_API_KEY=${shellKey} -- node ${AGENT_CONNECT_MCP_SERVER_PATH}`,
     // Built through JSON.stringify so the pasted block is always valid JSON,
     // whatever characters the key or URL contain.
     mcpJson: JSON.stringify(
       {
         mcpServers: {
-          coeval: {
+          rubrist: {
             command: "node",
             args: [AGENT_CONNECT_MCP_SERVER_PATH],
-            env: { COEVAL_URL: url, COEVAL_API_KEY: key }
+            env: { RUBRIST_URL: url, RUBRIST_API_KEY: key }
           }
         }
       },
@@ -187,8 +187,8 @@ export function buildAgentConnectSnippets(input: { apiBaseUrl: string; apiKey?: 
       2
     ),
     cli: [
-      `export COEVAL_URL=${url}`,
-      `export COEVAL_API_KEY=${shellKey}`,
+      `export RUBRIST_URL=${url}`,
+      `export RUBRIST_API_KEY=${shellKey}`,
       `node ${AGENT_CONNECT_CLI_PATH} findings`,
       `node ${AGENT_CONNECT_CLI_PATH} submit results.jsonl`
     ].join("\n")
@@ -212,7 +212,7 @@ export const AgentBootstrapResponseSchema = z.object({
   apiKey: CreatedApiKeySchema,
   // Ready-to-paste wiring with the one-time key pre-filled — the same plaintext
   // already travels in `apiKey.key`, so headless setups end wired, not just
-  // keyed. Clients that PRINT these must mask the key first (coeval-submit
+  // keyed. Clients that PRINT these must mask the key first (rubrist-submit
   // substitutes the saved env-var name).
   connect: AgentConnectSnippetsSchema,
   next: z.object({
@@ -241,7 +241,7 @@ export type AgentSetupPairing = z.infer<typeof AgentSetupPairingSchema>;
 // The plaintext pairing token is returned exactly once when the signed-in
 // project owner creates it. Status reads expose metadata only.
 export const CreatedAgentSetupPairingSchema = AgentSetupPairingSchema.extend({
-  token: z.string().startsWith("coeval_pair_")
+  token: z.string().startsWith("rubrist_pair_")
 });
 export type CreatedAgentSetupPairing = z.infer<typeof CreatedAgentSetupPairingSchema>;
 

@@ -5,7 +5,7 @@ import type {
   AnalysisCriterionPromotionDetail,
   AnalysisCriterionPromotionSummariesPage,
   AnalysisCriterionPromotionSupportsPage
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 export type AnalysisPromotionProjectRole = "owner" | "member";
 

@@ -9,7 +9,7 @@ import type {
   RetentionPruneResult,
   Skill,
   UpdateProjectSettingsInput
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import { capabilityGapsFromExceptions } from "../lib/capability-gaps.js";
 import type { ProjectRepositoryPort } from "../repository/ports.js";

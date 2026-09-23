@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CreateTraceTestInput, TraceTestDetail, TraceTestValidation } from "@coeval/shared";
+import type { CreateTraceTestInput, TraceTestDetail, TraceTestValidation } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import type { TraceTestValidationRunner } from "../src/lib/trace-test-validator.js";
 import { DemoRepository } from "../src/repository.js";

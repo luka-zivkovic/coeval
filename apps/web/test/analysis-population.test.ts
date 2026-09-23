@@ -23,7 +23,7 @@ vi.mock("@/components/ui/card", () => ({
   CardTitle: ({ children, ...props }: { children?: unknown }) => createElement("div", props, children as never)
 }));
 vi.mock("@/components/ui/input", () => ({ Input: (props: object) => createElement("input", props) }));
-vi.mock("@/components/coeval", () => ({
+vi.mock("@/components/rubrist", () => ({
   SectionHead: ({ title, sub }: { title: string; sub: string }) => createElement("header", null, title, sub)
 }));
 vi.mock("@/components/database-mode-required", () => ({
@@ -86,10 +86,10 @@ const draw = {
   datasetRevisionId: "revision_1",
   method: "simple_random",
   stoppingRule: "fixed",
-  drawExecutor: "coeval_server",
+  drawExecutor: "rubrist_server",
   seed: "0".repeat(64),
   rngVersion: "sha256-rank/v1",
-  algorithmVersion: "coeval-analysis-draw/v1",
+  algorithmVersion: "rubrist-analysis-draw/v1",
   fixedBudget: 1,
   populationSize: 1,
   inclusionProbability: { numerator: 1, denominator: 1 },

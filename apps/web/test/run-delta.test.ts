@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeRunDelta, orderRuns } from "../src/lib/run-delta.js";
-import type { EvalRunDetail, EvalRunItem } from "@coeval/shared";
+import type { EvalRunDetail, EvalRunItem } from "@rubrist/shared";
 
 function item(overrides: Partial<EvalRunItem> & { caseId: string }): EvalRunItem {
   return {
