@@ -7,7 +7,7 @@ import type {
   EvaluatorLifecycleRetireInput,
   EvaluatorLifecycleTransitionResult,
   EvaluatorExecutionContext
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 export type EvaluatorLifecycleProjectRole = "owner" | "member";
 

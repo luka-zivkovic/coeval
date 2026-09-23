@@ -401,7 +401,7 @@ allocates exactly one store per facade instance; the store is an internal
 composition seam and is not re-exported by the public repository module. The
 facade implementation lives in `repository/demo-repository.ts`, while
 `repository.ts` remains the stable compatibility barrel for `DemoRepository`,
-`CoevalRepository`, public errors, contracts, and pure helpers. The root
+`RubristRepository`, public errors, contracts, and pure helpers. The root
 re-export preserves the exact class binding and public import path. The
 CURRENT domain slices are `DemoProjectRepository`, which implements the seven
 `ProjectRepositoryPort` methods; `DemoCriterionSuiteRepository`, which
@@ -476,7 +476,7 @@ The historical-gate-evidence slice keeps deprecated compatibility rows on the
 exact shared store and projects them through the facade's eval-run reads. It
 preserves item status/agreement/error snapshots, historical decision
 derivation, project isolation, deterministic newest-first ordering, bounded
-reads, and same-port facade dispatch without giving Coeval any release-policy
+reads, and same-port facade dispatch without giving Rubrist any release-policy
 ownership.
 The trace-test slice keeps retained source snapshots, append-only draft and
 enabled revisions, validation evidence, and content-free funnel idempotency on
@@ -597,7 +597,7 @@ The shared store has these rules:
 - append-only evidence arrays, immutable revision histories, idempotency maps,
   in-flight promise maps, dispatch leases, and counters keep their current
   lifetime and ordering;
-- the public `DemoRepository` remains the single `CoevalRepository` facade and
+- the public `DemoRepository` remains the single `RubristRepository` facade and
   delegates its one-time fixture seeding and fifteen-slice construction to the
   composition factory, never constructing a slice per request;
   and
@@ -632,7 +632,7 @@ into partial recovery.
 
 Repository modules should follow this order:
 
-1. retain `CoevalRepository`, public errors, and the two facade classes at
+1. retain `RubristRepository`, public errors, and the two facade classes at
    their stable import path;
 2. introduce the internal client-scoped PostgreSQL command layer and the named
    demo shared store;

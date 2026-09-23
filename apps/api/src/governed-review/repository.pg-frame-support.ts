@@ -30,9 +30,9 @@ export function buildBlindTaskViewArtifact(row: Record<string, unknown>): Govern
   const payloadSnapshot = parseJson(row.review_payload_snapshot);
   assertBlindProjectionSafe(payloadSnapshot);
   const view = {
-    contract: "coeval/governed-blind-task-view/v1",
+    contract: "rubrist/governed-blind-task-view/v1",
     schemaVersion: 1,
-    canonicalizationVersion: "coeval-canonical-json/v1",
+    canonicalizationVersion: "rubrist-canonical-json/v1",
     taskId: String(row.task_id ?? row.id),
     batchId: String(row.batch_id),
     servePosition: Number(row.serve_order),
@@ -131,7 +131,7 @@ export async function prepareRevisionFrame(
     );
   }
   const redactionProvenance = {
-    contract: "coeval/governed-review-projection/v1",
+    contract: "rubrist/governed-review-projection/v1",
     source: "immutable_dataset_revision",
     copiedFields: ["input", "output", "steps"],
     metadataAccepted: false
@@ -291,7 +291,7 @@ async function materializeRevisionReviewItems(
   sourceRows: Array<Record<string, unknown>>
 ): Promise<Pick<PreparedFrame, "items" | "sourceToReviewItemId">> {
   const redactionProvenance = {
-    contract: "coeval/governed-review-projection/v1",
+    contract: "rubrist/governed-review-projection/v1",
     source: "immutable_dataset_revision",
     copiedFields: ["input", "output", "steps"],
     metadataAccepted: false

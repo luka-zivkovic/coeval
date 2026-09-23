@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { CaseSource, ManualTraceImportInput } from "@coeval/shared";
-import { isInternalTraceMetadata } from "@coeval/shared";
+import type { CaseSource, ManualTraceImportInput } from "@rubrist/shared";
+import { isInternalTraceMetadata } from "@rubrist/shared";
 import type { PoolClient } from "pg";
 import { datasetInputIdentity } from "../lib/dataset-revision.js";
 import { normalizeTracePayload, redactNormalizedTracePayload } from "../lib/redaction.js";

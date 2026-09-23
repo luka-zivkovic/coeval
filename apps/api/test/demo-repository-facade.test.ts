@@ -65,7 +65,7 @@ describe("DemoRepository facade module", () => {
       !ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)
     ).map((statement) => `${ts.SyntaxKind[statement.kind]}:${
       ts.isInterfaceDeclaration(statement) ? statement.name.text : "<anonymous>"
-    }`)).toEqual(["InterfaceDeclaration:CoevalRepository"]);
+    }`)).toEqual(["InterfaceDeclaration:RubristRepository"]);
 
     expect(demoSource.statements.filter((statement) => !ts.isImportDeclaration(statement)).map((statement) =>
       `${ts.SyntaxKind[statement.kind]}:${ts.isClassDeclaration(statement) ? statement.name?.text : "<anonymous>"}`
@@ -79,7 +79,7 @@ describe("DemoRepository facade module", () => {
     expect(rootTypeImports[0]?.importClause?.isTypeOnly).toBe(true);
     expect(rootTypeImports[0]?.importClause?.namedBindings && ts.isNamedImports(rootTypeImports[0].importClause.namedBindings)
       ? rootTypeImports[0].importClause.namedBindings.elements.map((element) => element.name.text)
-      : []).toEqual(["CoevalRepository"]);
+      : []).toEqual(["RubristRepository"]);
 
     const facade = demoSource.statements.find((statement): statement is ts.ClassDeclaration =>
       ts.isClassDeclaration(statement) && statement.name?.text === "DemoRepository"
@@ -87,7 +87,7 @@ describe("DemoRepository facade module", () => {
     if (!facade) throw new Error("DemoRepository declaration not found");
     expect(facade.heritageClauses?.flatMap((clause) =>
       clause.types.map((type) => type.expression.getText(demoSource))
-    )).toEqual(["CoevalRepository"]);
-    expect(facade.members.filter(ts.isMethodDeclaration)).toHaveLength(161);
+    )).toEqual(["RubristRepository"]);
+    expect(facade.members.filter(ts.isMethodDeclaration)).toHaveLength(163);
   }, 30_000);
 });

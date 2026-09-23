@@ -12,10 +12,10 @@ import {
   type EvaluatorLifecycleProjection,
   type EvaluatorLifecycleRetireInput,
   type EvaluatorLifecycleTransitionResult
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
-const PROJECT_KEY = "coeval.project";
+const PROJECT_KEY = "rubrist.project";
 
 export class EvaluatorLifecycleApiError extends Error {
   constructor(message: string, readonly status: number, readonly code: string | null) {
@@ -122,7 +122,7 @@ function projectFetch(input:string,init?:RequestInit):Promise<Response> {
   const headers = new Headers(init?.headers);
   try {
     const projectId = localStorage.getItem(PROJECT_KEY);
-    if (projectId) headers.set("x-coeval-project",projectId);
+    if (projectId) headers.set("x-rubrist-project",projectId);
   } catch {
     // Authenticated server default remains available when storage is blocked.
   }

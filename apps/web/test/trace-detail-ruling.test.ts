@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFile } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
-import type { ExceptionDetail, VerdictRecord } from "@coeval/shared";
+import type { ExceptionDetail, VerdictRecord } from "@rubrist/shared";
 import { TraceDetail } from "../src/components/trace-detail.js";
 
 vi.mock("@/components/ui/card", () => ({
@@ -18,7 +18,7 @@ vi.mock("@/components/ui/button", () => ({
 vi.mock("@/components/ui/separator", () => ({
   Separator: (props: Record<string, unknown>) => createElement("hr", props)
 }));
-vi.mock("@/components/coeval", () => ({
+vi.mock("@/components/rubrist", () => ({
   Eyebrow: ({ children, ...props }: { children?: unknown }) => createElement("span", props, children as never),
   SectionHead: ({ eyebrow, title, sub }: { eyebrow: string; title: string; sub?: string }) =>
     createElement("header", null, `${eyebrow} ${title} ${sub ?? ""}`),

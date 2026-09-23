@@ -1,7 +1,7 @@
 import { Pool, type PoolClient } from "pg";
 import { describe, expect, it } from "vitest";
-import { runMigrations } from "@coeval/db";
-import { IngestionPurposeSchema } from "@coeval/shared";
+import { runMigrations } from "@rubrist/db";
+import { IngestionPurposeSchema } from "@rubrist/shared";
 import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 

@@ -45,7 +45,7 @@ import {
   type AnalysisTaxonomyRevisionProjection,
   type AnalysisTaxonomyRevisionResult,
   type AnalysisTaxonomyRevisionsPage
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import {
@@ -500,7 +500,7 @@ export class PgAnalysisStudyRepository implements AnalysisStudyRepository {
          on conflict (project_id,idempotency_key) do nothing`,
         [`dse_${randomUUID()}`, access.projectId, row.dataset_revision_id, subjectId,
           access.userId, row.population_id,
-          JSON.stringify({ contract: "coeval/analysis-study-item-content-view/v1", studyId, studyItemId }),
+          JSON.stringify({ contract: "rubrist/analysis-study-item-content-view/v1", studyId, studyItemId }),
           exposureKey]
       );
       const exposure = await client.query(

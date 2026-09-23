@@ -41,7 +41,7 @@ describe("Langfuse client", () => {
     await expect(listTracesFrom({ traces: [trace] })).resolves.toHaveLength(1);
   });
 
-  it("posts Coeval verdicts as Langfuse scores", async () => {
+  it("posts Rubrist verdicts as Langfuse scores", async () => {
     let captured: { url: string; init?: RequestInit | undefined } | undefined;
     const client = new LangfuseClient({
       publicKey: "pk-lf-test",
@@ -56,7 +56,7 @@ describe("Langfuse client", () => {
     await client.createFeedback({
       feedbackId: "fsync_123",
       runId: "trace_123",
-      key: "coeval_verdict",
+      key: "rubrist_verdict",
       score: 0.8,
       value: "pass",
       comment: "accepted",
@@ -72,7 +72,7 @@ describe("Langfuse client", () => {
     expect(JSON.parse(String(captured?.init?.body))).toEqual({
       id: "fsync_123",
       traceId: "trace_123",
-      name: "coeval_verdict",
+      name: "rubrist_verdict",
       value: 0.8,
       comment: "pass: accepted",
       metadata: {

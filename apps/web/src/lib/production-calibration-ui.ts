@@ -5,7 +5,7 @@ import type {
   ProductionCalibrationReliabilityBin,
   ProductionCalibrationThresholdAdvice,
   ProductionCalibrationWilsonRate
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 // Pure presentation helpers for the production calibration view. Nothing here
 // touches React or the network, so the text every rate is rendered with can be

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AssistTraceTestDraftResult } from "@coeval/shared";
+import type { AssistTraceTestDraftResult } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import type { TraceTestDraftGeneratorInput } from "../src/lib/trace-test-drafter.js";
 import { DemoRepository } from "../src/repository.js";

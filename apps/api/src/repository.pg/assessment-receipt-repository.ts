@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { AssessmentReceipt } from "@coeval/shared";
+import type { AssessmentReceipt } from "@rubrist/shared";
 import type { Pool } from "pg";
 import {
   canonicalReceiptBytes,

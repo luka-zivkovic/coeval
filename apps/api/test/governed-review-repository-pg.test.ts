@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { runMigrations } from "@coeval/db";
-import { CreateSkillVersionInputSchema } from "@coeval/shared";
+import { runMigrations } from "@rubrist/db";
+import { CreateSkillVersionInputSchema } from "@rubrist/shared";
 import { canonicalJson } from "../src/lib/assessment-receipt.js";
 import { datasetInputIdentity } from "../src/lib/dataset-revision.js";
 import { createApp } from "../src/app.js";
@@ -833,7 +833,7 @@ run("PgGovernedReviewRepository", () => {
       .join("; ");
     const sessionRead = await app.request(
       `/api/governed-review/instructions?criterionVersionId=${nonsealedCriterionVersionId}`,
-      { headers: { cookie: sessionCookie, "x-coeval-project": PROJECT_ID } }
+      { headers: { cookie: sessionCookie, "x-rubrist-project": PROJECT_ID } }
     );
     expect(sessionRead.status).toBe(200);
     const sessionBody = await sessionRead.json() as { instructions: unknown[] };
@@ -849,7 +849,7 @@ run("PgGovernedReviewRepository", () => {
       createdByUserId: signedUp.user!.id
     });
     const keyRead = await app.request("/api/governed-review/instructions", {
-      headers: { authorization: `Bearer ${key.key}`, "x-coeval-project": PROJECT_ID }
+      headers: { authorization: `Bearer ${key.key}`, "x-rubrist-project": PROJECT_ID }
     });
     expect(keyRead.status).toBe(401);
 

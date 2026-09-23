@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { verdictOutputSchema } from "@coeval/shared";
+import { verdictOutputSchema } from "@rubrist/shared";
 
 vi.mock("../src/components/markdown-preview.js", () => ({
   MarkdownPreview: ({ markdown }: { markdown: string }) => markdown
@@ -16,7 +16,7 @@ vi.mock("../src/components/ui/card.js", () => ({
   CardHeader: ({ children }: { children?: unknown }) => children,
   CardTitle: ({ children }: { children?: unknown }) => children
 }));
-vi.mock("../src/components/coeval/index.js", () => ({
+vi.mock("../src/components/rubrist/index.js", () => ({
   Chip: ({ children }: { children?: unknown }) => children,
   Eyebrow: ({ children }: { children?: unknown }) => children,
   MarginNote: ({ children, who }: { children?: unknown; who?: string }) => [who, children],
@@ -97,7 +97,7 @@ describe("guided first Check", () => {
       projectId: "proj_1",
       skillId: "skill_1",
       starter: taskStarter,
-      decisionSource: "coeval",
+      decisionSource: "rubrist",
       decisionReason: "A broad first Check fits this project."
     });
     const html = renderToStaticMarkup(createElement(FirstRunCheckSetup, {

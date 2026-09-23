@@ -407,7 +407,7 @@ export * from "./production-calibration-analysis.js";
 // Product deploy gate (gate checks): the regression-gate idea pointed at the
 // CUSTOMER'S product instead of the judge skill. Before deploying a new
 // prompt/model/agent, the customer re-runs their product against the golden
-// cases' inputs and submits the candidate outputs; Coeval judges each with the
+// cases' inputs and submits the candidate outputs; Rubrist judges each with the
 // APPROVED skill version and compares the judged label against the golden
 // set's historical human-approved label. A gate check persists identity + config and
 // points at a regular eval run — its status is DERIVED from that run's
@@ -523,6 +523,7 @@ export function deriveGateCheckDecision(input: {
 
 
 export * from "./integrations.js";
+export * from "./trace-links.js";
 
 
 export * from "./machine-reads.js";

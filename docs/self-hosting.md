@@ -2,15 +2,20 @@
 
 ## Status and support boundary
 
-- **TARGET:** a Coeval release is an exact semantic version published as
-  `ghcr.io/luka-zivkovic/coeval-{api,web}:X.Y.Z`, plus matching generic
+- **TARGET:** a Rubrist release is an exact semantic version published as
+  `ghcr.io/luka-zivkovic/rubrist-{api,web}:X.Y.Z`, plus matching generic
   single-host and Coolify Compose bundles.
 - **CURRENT:** the container workflow, `deploy/self-host/compose.yaml`, and
   `deploy/coolify.yaml` are present in the repository. `v0.2.0` is the first
-  installable release: `ghcr.io/luka-zivkovic/coeval-api:0.2.0` and
-  `ghcr.io/luka-zivkovic/coeval-web:0.2.0` are published as anonymously
+  installable release: `ghcr.io/luka-zivkovic/rubrist-api:0.2.0` and
+  `ghcr.io/luka-zivkovic/rubrist-web:0.2.0` are published as anonymously
   pullable GHCR packages. The earlier `v0.1.0` predates these artifacts and
   must not be selected.
+- **CURRENT:** the product was renamed to Rubrist after `v0.2.0`
+  ([ADR-0012](decisions/0012-rename-coeval-to-rubrist.md)). The `0.2.0` images
+  and bundle were published under the former product name and variable
+  prefix; the next release is the first published under the `rubrist-{api,web}`
+  image names and `RUBRIST_*` variables.
 - **CURRENT:** founder-only deployments are disposable test instances. This
   pre-launch release supports clean database installs only; recreate the
   instance when the current baseline changes.
@@ -20,7 +25,7 @@
 ## Generic single-host bundle
 
 `deploy/self-host/compose.yaml` is the platform-neutral, release-owned bundle
-for a Linux host with Docker Engine and Compose v2. It pins one exact Coeval
+for a Linux host with Docker Engine and Compose v2. It pins one exact Rubrist
 application version, exposes only the web service on loopback by default, and
 persists Postgres in a named volume. `compose.yaml.sha256` is validated by the
 release workflow so a tag cannot publish with a stale bundle checksum.
@@ -28,7 +33,7 @@ release workflow so a tag cannot publish with a stale bundle checksum.
 The separate pre-release `trustctl` CLI installs this bundle, generates the
 required secrets, preserves operator additions in `compose.override.yaml`,
 and provides `status`, `doctor`, update checking, and explicit updates. It is
-not part of Coeval's runtime and receives no Docker or hosting credentials.
+not part of Rubrist's runtime and receives no Docker or hosting credentials.
 Its one-line bootstrap must not be advertised until the trustctl repository,
 this bundle, and anonymously pullable images are all public.
 
@@ -43,7 +48,7 @@ and a template that can be pasted into **Docker Compose Empty** today.
 
 1. Create a Docker Compose Empty Service in the target project/environment.
 2. Paste `deploy/coolify.yaml` and save it.
-3. Set `COEVAL_VERSION` to an exact published release such as `0.2.0`. Do not
+3. Set `RUBRIST_VERSION` to an exact published release such as `0.2.0`. Do not
    use `latest`, `main`, or another floating value.
 4. Confirm Coolify generated the `SERVICE_URL_WEB`, Postgres password, auth
    secret, and bootstrap token. Do not replace those values during an update.
@@ -95,11 +100,11 @@ Every pre-launch release note must declare one of:
    old Postgres volume.
 3. If the baseline is unchanged, record the current Compose, exact image
    version, generated secrets, domain, and scheduled tasks.
-4. Change both Coeval image references by changing the
-   single `COEVAL_VERSION` value. Merge any release-specific Compose changes.
+4. Change both Rubrist image references by changing the
+   single `RUBRIST_VERSION` value. Merge any release-specific Compose changes.
 5. Deploy and verify `/health`, sign-in, project reads, and a background job.
 
-Do not use Coolify's **Pull Latest Images & Restart** for Coeval. An exact
+Do not use Coolify's **Pull Latest Images & Restart** for Rubrist. An exact
 semantic-version tag is immutable, so a normal redeploy is sufficient. A
 floating tag can silently combine a new application and a changed baseline.
 
@@ -117,19 +122,19 @@ Preserve it in a separate secret-manager/instance-recovery record; do not put
 it in the database backup itself.
 
 Persistent volumes survive ordinary container replacement but are not
-backups. Never delete or rename `coeval_postgres_data` as part of an update.
+backups. Never delete or rename `rubrist_postgres_data` as part of an update.
 
 ## Local image smoke test
 
 Before publishing a release:
 
 ```sh
-docker build -f apps/api/Dockerfile -t coeval-api:smoke .
-docker build -f apps/web/Dockerfile -t coeval-web:smoke .
-COEVAL_VERSION=0.2.0 docker compose -f deploy/coolify.yaml config >/dev/null
-COEVAL_VERSION=0.2.0 \
-  COEVAL_POSTGRES_PASSWORD=render-only \
-  COEVAL_AUTH_SECRET=render-only-secret-at-least-32-bytes \
+docker build -f apps/api/Dockerfile -t rubrist-api:smoke .
+docker build -f apps/web/Dockerfile -t rubrist-web:smoke .
+RUBRIST_VERSION=0.2.0 docker compose -f deploy/coolify.yaml config >/dev/null
+RUBRIST_VERSION=0.2.0 \
+  RUBRIST_POSTGRES_PASSWORD=render-only \
+  RUBRIST_AUTH_SECRET=render-only-secret-at-least-32-bytes \
   docker compose -f deploy/self-host/compose.yaml config >/dev/null
 ```
 

@@ -13,7 +13,7 @@ const VITEST_CLI = path.join(REPOSITORY_DIRECTORY, "node_modules/vitest/vitest.m
 const EXPECTED_SHARDS = {
   "app-suite-core.test.ts": {
     "suites": [
-      "Coeval Hono API"
+      "Rubrist Hono API"
     ],
     "suiteSetup": [["const app = createApp();"]],
     "tests": [
@@ -36,7 +36,7 @@ const EXPECTED_SHARDS = {
   },
   "app-suite-verdicts.test.ts": {
     "suites": [
-      "Coeval Hono API"
+      "Rubrist Hono API"
     ],
     "tests": [
       "seeds demo verdicts when opted in, populating κ + both disagreement feeds",
@@ -49,13 +49,13 @@ const EXPECTED_SHARDS = {
       "runs the pinned evaluator on the server-selected uncovered adjudicated case",
       "deduplicates concurrent coverage-run requests before provider dispatch",
       "releases a failed coverage dispatch claim and durably records the successful retry",
-      "skips coeval-internal traces on manual import (anti-recursion guard)",
-      "skips coeval-internal traces in the LangSmith import worker"
+      "skips rubrist-internal traces on manual import (anti-recursion guard)",
+      "skips rubrist-internal traces in the LangSmith import worker"
     ]
   },
   "app-suite-review-queues.test.ts": {
     "suites": [
-      "Coeval Hono API"
+      "Rubrist Hono API"
     ],
     "tests": [
       "creates and lists annotation queues with counters + per-item ordering",
@@ -78,7 +78,7 @@ const EXPECTED_SHARDS = {
   },
   "app-suite-run-lifecycle.test.ts": {
     "suites": [
-      "Coeval Hono API"
+      "Rubrist Hono API"
     ],
     "tests": [
       "PR #56/C5a: timeScope='new' (default) — async gate approves, no backfill",
@@ -106,7 +106,7 @@ const EXPECTED_SHARDS = {
   },
   "app-suite-golden-regression.test.ts": {
     "suites": [
-      "Coeval Hono API",
+      "Rubrist Hono API",
       "golden-set regression"
     ],
     "suiteTestCounts": [4, 5],
@@ -359,7 +359,7 @@ describe("large API test shards", () => {
         ...process.env,
         // Collection never runs a test or opens a pool; a nonempty placeholder
         // makes the smoke suites visible when a developer has no local PG URL.
-        PG_SMOKE_DATABASE_URL: process.env.PG_SMOKE_DATABASE_URL ?? "postgresql://collection.invalid/coeval"
+        PG_SMOKE_DATABASE_URL: process.env.PG_SMOKE_DATABASE_URL ?? "postgresql://collection.invalid/rubrist"
       },
       maxBuffer: 4 * 1024 * 1024
     });

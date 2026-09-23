@@ -1,4 +1,4 @@
-import type { SkillVersion } from "@coeval/shared";
+import type { SkillVersion } from "@rubrist/shared";
 
 export function skillEditConsequence(goldenSetSize: number | null): string {
   if (goldenSetSize === null) {

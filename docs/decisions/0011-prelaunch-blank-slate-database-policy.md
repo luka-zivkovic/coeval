@@ -12,7 +12,7 @@ test instances are recreated when it changes.
 
 ## Context
 
-Coeval has no external users, production data, or deployed database that must
+Rubrist has no external users, production data, or deployed database that must
 survive an upgrade. The current PostgreSQL implementation nevertheless carries
 55 ordered migrations, historical-row backfills, rolling-writer compatibility,
 late pinning, and runtime read branches for shapes that can only exist after an
@@ -24,7 +24,7 @@ to see which constraints describe the current product. They also preserve
 sentinel values and nullable shapes that no clean-install writer can create.
 
 This decision is deliberately narrower than a general license to weaken
-compatibility. Coeval's published evidence contracts and the evidence created
+compatibility. Rubrist's published evidence contracts and the evidence created
 by a running clean installation still require strict versioning, append-only
 history, immutability, idempotency, concurrency safety, crash recovery, and
 governed separation.
@@ -35,7 +35,7 @@ governed separation.
 
 Until the exit condition below is met, the PostgreSQL database is disposable.
 Every schema change targets one clean current-schema baseline. Development and
-test databases are recreated instead of upgraded from an earlier Coeval
+test databases are recreated instead of upgraded from an earlier Rubrist
 development schema.
 
 The migration runner remains idempotent and serialized so clean installations
@@ -92,7 +92,7 @@ changes them:
 - the exposure event emitted when such a visible golden snapshot is frozen;
 - `historical_freeze`, the idempotent receipt-artifact source used when a
   terminal run has no root artifact;
-- deprecated product-gate reads, the `410 Gone` write behavior, and Coeval's
+- deprecated product-gate reads, the `410 Gone` write behavior, and Rubrist's
   distinct evaluator `regression_gate` behavior;
 - the lifecycle compatibility projection required by ADR-0010; and
 - live prompt, judge-message, and ungoverned-review concepts whose names contain
@@ -140,7 +140,7 @@ updated separately to create only current native shapes.
 This policy ends at the earlier of:
 
 1. the first external user or customer data is stored in a non-disposable
-   Coeval database;
+   Rubrist database;
 2. the first external deployment is declared production or persistent; or
 3. an accepted decision explicitly freezes the database baseline.
 

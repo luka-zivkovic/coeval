@@ -1,17 +1,17 @@
 {
-  "name": "coeval",
+  "name": "rubrist",
   "version": "0.2.0",
   "private": true,
   "description": "Governed evaluators and verifiable assessment evidence for AI systems.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/luka-zivkovic/coeval.git"
+    "url": "https://github.com/luka-zivkovic/rubrist.git"
   },
   "bugs": {
-    "url": "https://github.com/luka-zivkovic/coeval/issues"
+    "url": "https://github.com/luka-zivkovic/rubrist/issues"
   },
-  "homepage": "https://coeval.io",
+  "homepage": "https://github.com/luka-zivkovic/rubrist",
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -26,8 +26,8 @@
     "shared-contracts": "tsc -b packages/shared/tsconfig.json --force && node tools/shared-contracts.mjs",
     "large-files": "node tools/large-files.mjs",
     "clean": "rm -rf apps/*/dist apps/*/dist-ts packages/*/dist packages/*/*.tsbuildinfo apps/*/*.tsbuildinfo .turbo coverage out",
-    "dev:api": "pnpm --filter @coeval/api dev",
-    "dev:web": "pnpm --filter @coeval/web dev",
+    "dev:api": "pnpm --filter @rubrist/api dev",
+    "dev:web": "pnpm --filter @rubrist/web dev",
     "sim:prelude": "node tools/sim/prelude.mjs",
     "sim:checks": "playwright test"
   },

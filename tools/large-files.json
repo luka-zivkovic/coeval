@@ -48,7 +48,7 @@
     },
     "tools/shared-contract-public-exports.json": {
       "classification": "generated",
-      "reason": "pnpm shared-contracts -- --write owns this sorted @coeval/shared public export fixture; CI checks it and never updates it.",
+      "reason": "pnpm shared-contracts -- --write owns this sorted @rubrist/shared public export fixture; CI checks it and never updates it.",
       "revisit": "Never hand-split; regenerate with the shared-contracts tool after an authorized export change."
     }
   }

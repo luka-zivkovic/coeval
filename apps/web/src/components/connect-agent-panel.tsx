@@ -5,7 +5,7 @@ import {
   AGENT_CONNECT_KEY_PLACEHOLDER,
   buildAgentConnectSnippets,
   type AgentConnectSnippets
-} from "@coeval/shared";
+} from "@rubrist/shared";
 // Relative .js imports (not the @/ alias) so the root vitest run can resolve
 // this component the same way markdown-preview.tsx is tested.
 import { Button } from "./ui/button.js";
@@ -47,7 +47,7 @@ export function ConnectAgentPanel({ apiKey }: { apiKey: string | null }) {
       <div className="mt-3 flex flex-col gap-3">
         <Snippet
           label="Claude Code"
-          detail="One line; point node at your Coeval checkout."
+          detail="One line; point node at your Rubrist checkout."
           value={snippets.claudeCode}
           copied={copied === "claudeCode"}
           onCopy={() => void copy("claudeCode")}
@@ -61,7 +61,7 @@ export function ConnectAgentPanel({ apiKey }: { apiKey: string | null }) {
         />
         <Snippet
           label="Plain CLI"
-          detail="No MCP harness — the bundled coeval-submit script reads findings and submits runs."
+          detail="No MCP harness — the bundled rubrist-submit script reads findings and submits runs."
           value={snippets.cli}
           copied={copied === "cli"}
           onCopy={() => void copy("cli")}

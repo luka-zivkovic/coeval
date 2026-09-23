@@ -1,4 +1,4 @@
-import type { OnboardingEvidenceInventory, ProjectMode } from "@coeval/shared";
+import type { OnboardingEvidenceInventory, ProjectMode } from "@rubrist/shared";
 import { findStarterSkill, STARTER_SKILLS, type StarterSkill } from "./starter-skills.js";
 
 export interface OnboardingCheckDraft {
@@ -10,11 +10,11 @@ export interface OnboardingCheckDraft {
   criterionName: string;
   qualityQuestion: string;
   rubricMarkdown: string;
-  decisionSource: "user" | "coeval";
+  decisionSource: "user" | "rubrist";
   decisionReason: string | null;
 }
 
-const STORAGE_PREFIX = "coeval.onboarding-check";
+const STORAGE_PREFIX = "rubrist.onboarding-check";
 
 export function newOnboardingCheckRequestId(): string {
   const suffix = globalThis.crypto?.randomUUID?.()
@@ -57,7 +57,7 @@ export function recommendationReason(starter: StarterSkill, projectName: string)
 
 export function evidenceReadDescription(inventory: OnboardingEvidenceInventory | null): string {
   if (!inventory) {
-    return "Coeval could not inspect the saved Run fields right now. The Check will only read fields that are actually stored.";
+    return "Rubrist could not inspect the saved Run fields right now. The Check will only read fields that are actually stored.";
   }
   if (inventory.runCount === 0) {
     return "No Run is saved yet. The Check will read only the input, output, steps, and metadata you record later.";
@@ -108,7 +108,7 @@ function isDraft(value: unknown, projectId: string, skillId: string): value is O
     typeof draft.criterionName === "string" &&
     typeof draft.qualityQuestion === "string" &&
     typeof draft.rubricMarkdown === "string" &&
-    (draft.decisionSource === "user" || draft.decisionSource === "coeval") &&
+    (draft.decisionSource === "user" || draft.decisionSource === "rubrist") &&
     (draft.decisionReason === null || typeof draft.decisionReason === "string");
 }
 

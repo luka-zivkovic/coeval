@@ -1,4 +1,4 @@
-import type { VerdictKind } from "@coeval/shared";
+import type { VerdictKind } from "@rubrist/shared";
 
 export function verdictKindDescription(
   kind: VerdictKind,

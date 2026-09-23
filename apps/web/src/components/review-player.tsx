@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, ChevronLeft, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eyebrow, MarginNote } from "@/components/coeval";
+import { Eyebrow, MarginNote } from "@/components/rubrist";
 import { TraceDetail, type TraceDecisionKind } from "@/components/trace-detail";
 import { fetchCaseDetail } from "@/lib/api";
 import { useDashboard } from "@/lib/dashboard-context";
 import { dashboardSkillVersionId } from "@/lib/criterion-scope";
 import { cn } from "@/lib/utils";
-import type { ExceptionDetail } from "@coeval/shared";
+import type { ExceptionDetail } from "@rubrist/shared";
 
 export interface ReviewPlayerItem {
   // Stable identity for the strip dots (queue item id, or the caseId itself

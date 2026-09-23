@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderJudgeCardMarkdown } from "../src/lib/judge-card.js";
-import type { JudgeCard } from "@coeval/shared";
+import type { JudgeCard } from "@rubrist/shared";
 
 // Every string field a user can control on the card. C1's job is to neutralize
 // each of these so a crafted value can't inject markdown/HTML/newlines.

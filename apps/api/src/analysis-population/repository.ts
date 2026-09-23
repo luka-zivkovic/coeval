@@ -8,7 +8,7 @@ import type {
   AnalysisPopulationSelectedItemsPage,
   AnalysisPopulationSummariesPage,
   DatasetRevisionPayloadSnapshot
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 export type AnalysisPopulationProjectRole = "owner" | "member";
 

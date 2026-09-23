@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { JudgeProviderAvailabilityItem } from "@coeval/shared";
+import type { JudgeProviderAvailabilityItem } from "@rubrist/shared";
 import { resolveJudgeProviderSelection } from "../src/lib/judge-provider-selection.js";
 
 const providers: JudgeProviderAvailabilityItem[] = [

@@ -12,7 +12,7 @@ setup("sign in", async ({ page }) => {
 
   await page.goto("/");
   // Either an existing session (sidebar visible) or the login form.
-  const loginForm = page.getByText("Log in to Coeval");
+  const loginForm = page.getByText("Log in to Rubrist");
   const sidebar = page.getByText("Workspace", { exact: true });
   await expect(loginForm.or(sidebar).first()).toBeVisible({ timeout: 10_000 });
 

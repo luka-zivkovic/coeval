@@ -1,4 +1,4 @@
-import type { Queue } from "@coeval/queue";
+import type { Queue } from "@rubrist/queue";
 import type { BinaryCalibrationMintResult } from "./repository.js";
 import type {
   BinaryCalibrationExecutionClaim,

@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, Copy, Database, KeyRound, Plug, Terminal, X } from "lucide-react";
-import type { Project } from "@coeval/shared";
+import type { Project } from "@rubrist/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eyebrow } from "@/components/coeval";
+import { Eyebrow } from "@/components/rubrist";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { firstProjectKey, forgetFirstProjectKey, isBench } from "@/lib/journey";
 import { cn } from "@/lib/utils";
@@ -55,7 +55,7 @@ export function FirstProjectKeyCard({ project, className }: { project: Project; 
           </Button>
         </div>
         <CardDescription>
-          Coeval minted this with the project. Copy it now: the database stores only its hash and prefix, so the full key cannot be shown again.
+          Rubrist minted this with the project. Copy it now: the database stores only its hash and prefix, so the full key cannot be shown again.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -93,7 +93,7 @@ export function FirstProjectKeyCard({ project, className }: { project: Project; 
 
         {copyError ? <p className="mt-2 text-[11.5px] text-signal">{copyError}</p> : null}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-[10.5px] leading-[1.5] text-ink-4">
-          <span>Use the key only with this Coeval instance. It can submit judge runs, but cannot adjudicate or promote golden cases.</span>
+          <span>Use the key only with this Rubrist instance. It can submit judge runs, but cannot adjudicate or promote golden cases.</span>
           <button type="button" className="inline-flex min-h-6 shrink-0 cursor-pointer items-center underline" onClick={dismiss}>I saved it</button>
         </div>
       </CardContent>

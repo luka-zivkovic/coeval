@@ -3,7 +3,7 @@ import type {
   TraceTestDetail,
   TraceTestSummary,
   TraceTestValidation
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import { redactNormalizedTracePayload, type NormalizedTracePayload } from "../lib/redaction.js";
 import {

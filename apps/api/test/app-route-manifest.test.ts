@@ -1,14 +1,14 @@
 import type { Pool } from "pg";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.js";
-import type { CoevalAuth } from "../src/lib/auth.js";
+import type { RubristAuth } from "../src/lib/auth.js";
 
 const fakeAuth = {
   api: { getSession: async () => null },
   handler: async () => new Response(null, { status: 404 })
-} as unknown as CoevalAuth;
+} as unknown as RubristAuth;
 
-function routeManifest(options: { auth?: CoevalAuth; pool?: Pool } = {}): string[] {
+function routeManifest(options: { auth?: RubristAuth; pool?: Pool } = {}): string[] {
   const app = createApp(undefined, options);
   return app.routes.map(({ method, path }) => `${method} ${path}`);
 }
@@ -23,11 +23,11 @@ describe("app route registration contract", () => {
     const authenticated = routeManifest({ auth: fakeAuth });
     const authenticatedWithPool = routeManifest({ auth: fakeAuth, pool: {} as Pool });
 
-    expect(demo).toHaveLength(227);
+    expect(demo).toHaveLength(229);
     // This snapshot intentionally follows Hono's route registry. A Hono upgrade
     // must show reviewers the complete ordered route-table diff, not a new hash.
     expect(demo).toMatchSnapshot("demo route manifest");
-    expect(authenticated).toHaveLength(229);
+    expect(authenticated).toHaveLength(231);
     expect(authenticated).toMatchSnapshot("authenticated route manifest");
     // Pool-backed auth changes runtime behavior, but not route registration.
     // Real auth behavior is characterized in pg-auth.test.ts.

@@ -1,5 +1,5 @@
-import type { Queue } from "@coeval/queue";
-import type { CoevalRepository } from "../repository.js";
+import type { Queue } from "@rubrist/queue";
+import type { RubristRepository } from "../repository.js";
 
 // Reconcile-first scheduling for ironside sources (issue #153): the poller
 // only enqueues sweep jobs; the import worker owns the settlement window +
@@ -29,7 +29,7 @@ const DEFAULT_IMPORT_LIMIT = 25;
 
 export function registerIronsidePoller(
   queue: Queue,
-  repository: CoevalRepository,
+  repository: RubristRepository,
   options: IronsidePollerOptions = {}
 ): IronsidePollerHandle {
   const intervalMs = options.intervalMs ?? DEFAULT_INTERVAL_MS;
@@ -58,7 +58,7 @@ export function registerIronsidePoller(
 }
 
 export async function enqueueDueIronsideImports(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   queue: Queue,
   options: IronsidePollerOptions & { now?: Date | undefined } = {}
 ): Promise<IronsidePollingResult> {

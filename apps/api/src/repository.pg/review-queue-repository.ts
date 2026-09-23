@@ -5,7 +5,7 @@ import type {
   ReviewQueueItem,
   ReviewQueueStatus,
   Skill
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import {
   AmbiguousProjectSkillError,

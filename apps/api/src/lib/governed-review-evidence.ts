@@ -10,7 +10,7 @@ import {
   type GovernedReviewItem,
   type GovernedReviewTask,
   type ImportedHumanTruth
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { canonicalJson, sha256Digest } from "./assessment-receipt.js";
 import { evaluatorSuiteCriterionDigest } from "./evaluator-suite.js";
 import { governedContentV1Digest } from "./governed-content-digest.js";
@@ -44,7 +44,7 @@ const NORMALIZED_FORBIDDEN_BLIND_KEYS = new Set(
 const MAX_IMPORTED_SOURCE_ARTIFACT_BYTES = 10 * 1024 * 1024;
 
 export function governedReviewRequestDigest(value: unknown): string {
-  return governedContentV1Digest("coeval/governed-review-request/v1", value);
+  return governedContentV1Digest("rubrist/governed-review-request/v1", value);
 }
 
 export function decideGovernedReviewIdempotency(
@@ -81,8 +81,8 @@ export function buildGovernedBlindTaskView(input: {
   if (input.criterion.criterionDigest !== expectedCriterionDigest) throw new Error("blind view criterion digest mismatch");
   assertNoForbiddenBlindKeys(item.payloadSnapshot);
   return GovernedBlindTaskViewSchema.parse({
-    contract: "coeval/governed-blind-task-view/v1", schemaVersion: 1,
-    canonicalizationVersion: "coeval-canonical-json/v1", taskId: task.taskId,
+    contract: "rubrist/governed-blind-task-view/v1", schemaVersion: 1,
+    canonicalizationVersion: "rubrist-canonical-json/v1", taskId: task.taskId,
     batchId: task.batchId, servePosition: task.servePosition,
     criterion: {
       criterionId: input.criterion.criterionId, criterionVersionId: input.criterion.id,
@@ -117,7 +117,7 @@ export function importedHumanTruthDomainArtifactDigest(
   input: Omit<ImportedHumanTruth, "importDigest"> | ImportedHumanTruth
 ): string {
   const { importDigest: _excluded, ...unsigned } = input as ImportedHumanTruth;
-  return governedContentV1Digest("coeval/imported-human-truth-domain-artifact/v1", unsigned);
+  return governedContentV1Digest("rubrist/imported-human-truth-domain-artifact/v1", unsigned);
 }
 
 export function classifyImportedHumanTruth(
@@ -178,7 +178,7 @@ export function governedDatasetReferenceProvenanceDomainArtifactDigest(
   input: Omit<GovernedDatasetReferenceProvenance, "provenanceDigest"> | GovernedDatasetReferenceProvenance
 ): string {
   const { provenanceDigest: _excluded, ...unsigned } = input as GovernedDatasetReferenceProvenance;
-  return governedContentV1Digest("coeval/governed-dataset-reference-provenance-domain-artifact/v1", unsigned);
+  return governedContentV1Digest("rubrist/governed-dataset-reference-provenance-domain-artifact/v1", unsigned);
 }
 
 export function verifyGovernedDatasetReferenceProvenance(raw: unknown): GovernedDatasetReferenceProvenance {

@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { runMigrations } from "@coeval/db";
+import { runMigrations } from "@rubrist/db";
 import {
   canonicalGovernedJsonV1,
   governedContentV1CanonicalBytes,
@@ -112,7 +112,7 @@ runPg("governed content digest JavaScript/PostgreSQL interoperability", () => {
 
   it("aligns the exported instruction helper to the persisted row projection", async () => {
     const instruction = {
-      contract: "coeval/governed-review-instruction/v1" as const,
+      contract: "rubrist/governed-review-instruction/v1" as const,
       schemaVersion: 1 as const,
       instructionVersionId: "instruction_interop",
       projectId: "project_context_is_relational",

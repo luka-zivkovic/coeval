@@ -1,9 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Eyebrow, SectionHead } from "@/components/coeval";
+import { Eyebrow, SectionHead } from "@/components/rubrist";
 import { AgentSetupPairingCard } from "@/components/agent-setup-pairing";
 import { FirstRunSetupLedger } from "@/components/first-run-setup-ledger";
 import { FirstProjectKeyCard } from "@/components/first-project-key";
-import type { DashboardSummary } from "@coeval/shared";
+import type { DashboardSummary } from "@rubrist/shared";
 
 interface DashboardBenchWelcomeProps {
   dashboard: DashboardSummary;
@@ -21,7 +21,7 @@ export function DashboardBenchWelcome({ dashboard, canPairAgent }: DashboardBenc
       <SectionHead
         eyebrow="New project · no runs yet"
         title="Get your first Check result"
-        sub="Start with one example of what your AI received and produced. Choose one thing that matters, then Coeval will apply that Check to the recorded run."
+        sub="Start with one example of what your AI received and produced. Choose one thing that matters, then Rubrist will apply that Check to the recorded run."
       />
 
       <div className="mt-2 grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,1fr)]">
@@ -43,9 +43,9 @@ export function DashboardBenchWelcome({ dashboard, canPairAgent }: DashboardBenc
 
           <Card className="border-dashed">
             <CardContent className="py-4">
-              <Eyebrow>What Coeval can see</Eyebrow>
+              <Eyebrow>What Rubrist can see</Eyebrow>
               <div className="mt-2 font-serif text-[13.5px] leading-[1.55] tracking-[-0.005em] text-ink-2">
-                Coeval can read the input, output, and recorded steps or tool calls you include. It
+                Rubrist can read the input, output, and recorded steps or tool calls you include. It
                 does not execute the AI, replay tools, or verify side effects outside that record.
               </div>
             </CardContent>

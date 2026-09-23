@@ -1,5 +1,5 @@
-import type { GoldenSetRetirementContext } from "@coeval/shared";
-import { GoldenSetRetirementContextSchema } from "@coeval/shared";
+import type { GoldenSetRetirementContext } from "@rubrist/shared";
+import { GoldenSetRetirementContextSchema } from "@rubrist/shared";
 import type { PoolClient } from "pg";
 import { parseJson, toIso } from "./mappers.js";
 

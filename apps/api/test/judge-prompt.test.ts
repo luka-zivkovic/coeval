@@ -4,7 +4,7 @@ import {
   promptReferencesRubric,
   renderJudgePromptContent,
   RUBRIC_TEMPLATE_VARIABLE
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 describe("renderJudgePromptContent", () => {
   it("substitutes {{rubric_markdown}} in place", () => {

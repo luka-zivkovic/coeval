@@ -1,7 +1,7 @@
-// coeval MCP server — SDK-free client core (issue #10).
+// rubrist MCP server — SDK-free client core (issue #10).
 //
 // Every tool is a thin wrapper over the existing HTTP API: the six functions
-// returned by createCoevalClient map 1:1 onto the six MCP tools registered in
+// returned by createRubristClient map 1:1 onto the six MCP tools registered in
 // index.mjs. Keeping them here (plain functions, injectable fetch) means the
 // contract is testable with `node --test` and reusable against localhost or a
 // hosted instance — the MCP layer is deliberately hosting-agnostic.
@@ -17,8 +17,8 @@ const DEFAULT_POLL_INTERVAL_MS = 2000;
  * Validate one example row and mint its batch item.
  *
  * DRIFT GUARD: the validation rules and the `ci_` content-hash recipe are
- * shared with tools/ci/gate.mjs and plugins/coeval/skills/coeval-audit/scripts/
- * coeval-submit.mjs (and the server's ex_ hash) — identical content must keep
+ * shared with tools/ci/gate.mjs and plugins/rubrist/skills/rubrist-audit/scripts/
+ * rubrist-submit.mjs (and the server's ex_ hash) — identical content must keep
  * minting identical sourceTraceIds across all three clients, or idempotency
  * breaks (unchanged examples would re-judge and re-spend). steps join the
  * hash ONLY when present; metadata never joins.
@@ -80,10 +80,10 @@ function buildQuery(params) {
   return rendered ? `?${rendered}` : "";
 }
 
-export function createCoevalClient({ baseUrl, apiKey, fetchImpl = fetch, sleep } = {}) {
+export function createRubristClient({ baseUrl, apiKey, fetchImpl = fetch, sleep } = {}) {
   const url = (baseUrl ?? "").replace(/\/$/, "");
-  if (!url) throw new Error("COEVAL_URL is not set — point it at the Coeval API (e.g. http://localhost:3001)");
-  if (!apiKey) throw new Error("COEVAL_API_KEY is not set — mint a project key in Settings → API keys");
+  if (!url) throw new Error("RUBRIST_URL is not set — point it at the Rubrist API (e.g. http://localhost:3001)");
+  if (!apiKey) throw new Error("RUBRIST_API_KEY is not set — mint a project key in Settings → API keys");
   const wait = sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
 
   async function api(path, init = {}) {

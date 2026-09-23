@@ -9,7 +9,7 @@ import {
   type TraceTestValidation,
   type TraceTestValidationDiagnostic,
   type TraceTestValidationStatus
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { ConvergenceCursor } from "./contracts.js";
 import { InvalidConvergenceCursorError } from "./errors.js";
 

@@ -5,7 +5,7 @@ import type {
   RunComparisonBucket,
   RunComparisonBucketCounts,
   RunComparisonCase
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 // Incident-bisect diff: join two eval runs' items on caseId and bucket every
 // case explicitly. Pure — the route loads both run details and delegates

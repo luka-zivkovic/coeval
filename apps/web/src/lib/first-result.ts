@@ -1,4 +1,4 @@
-import type { EvalRun, VerdictRecord } from "@coeval/shared";
+import type { EvalRun, VerdictRecord } from "@rubrist/shared";
 
 export function backfillRunForVersion(runs: EvalRun[], skillVersionId: string): EvalRun | null {
   return runs.find((run) =>

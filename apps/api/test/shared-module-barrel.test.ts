@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import * as shared from "@coeval/shared";
+import * as shared from "@rubrist/shared";
 import * as agentAccess from "../../../packages/shared/dist/agent-access.js";
 import * as analysisMeasurement from "../../../packages/shared/dist/analysis-measurement.js";
 import * as analysisPopulation from "../../../packages/shared/dist/analysis-population.js";

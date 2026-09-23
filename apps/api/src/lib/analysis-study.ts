@@ -27,7 +27,7 @@ import {
   type AnalysisTaxonomyRevisionCodeArtifact,
   type AnalysisTaxonomyRevisionCreateInput,
   type AnalysisTaxonomyRevisionProjection
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { canonicalGovernedJsonV1 } from "./governed-content-digest.js";
 import { compareCodeUnits, normalizeAnalysisPopulationTimestamp } from "./analysis-population.js";
 

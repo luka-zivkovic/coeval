@@ -1,4 +1,4 @@
-import type { VerdictSource } from "@coeval/shared";
+import type { VerdictSource } from "@rubrist/shared";
 import { buildVerdictExportUrl } from "./api.js";
 
 export type TraceSourceFilter = "all" | VerdictSource;

@@ -177,10 +177,10 @@ export class PgGovernedReviewAdministrationRepository {
         const intakeId = stableId("grsip", actor.projectId, input.idempotencyKey);
         const populationDefinition = { definition: input.populationDefinition };
         const collectionProvenance = {
-          contract: "coeval/sealed-intake-collection/v1",
+          contract: "rubrist/sealed-intake-collection/v1",
           collectedBySubjectId: custodian.id,
           payloadContract: "input-output-steps-only",
-          drawExecutor: "coeval_server"
+          drawExecutor: "rubrist_server"
         };
         const predecessorItems = new Map<string, string>();
         if (input.predecessorRevisionId) {
@@ -250,7 +250,7 @@ export class PgGovernedReviewAdministrationRepository {
             input.predecessorRevisionId ?? null, contentDigest, input.idempotencyKey, requestDigest]
         );
         const redactionProvenance = {
-          contract: "coeval/governed-review-projection/v1",
+          contract: "rubrist/governed-review-projection/v1",
           source: "sealed_session_intake",
           copiedFields: ["input", "output", "steps"],
           metadataAccepted: false
@@ -413,7 +413,7 @@ export class PgGovernedReviewAdministrationRepository {
           custodianRoleAtReview: frame.custodianRole,
           custodianSubjectId: frame.custodianSubjectId,
           drawDigest,
-          drawExecutedBy: "coeval_server",
+          drawExecutedBy: "rubrist_server",
           evaluatorBlind: true,
           fixedBudget: selection.selected.length,
           instructionVersionId: input.instructionVersionId,
@@ -451,7 +451,7 @@ export class PgGovernedReviewAdministrationRepository {
               custodian_subject_id,custodian_role_at_review,state_machine_version,content_digest,
               idempotency_key,request_digest,created_by_subject_id)
            values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11,$12,$13,$14,$15,$16,$17,$18,
-                   'coeval_server',$19,'fixed',$20,$21,$22::jsonb,$23,true,true,$24,$25,$26,
+                   'rubrist_server',$19,'fixed',$20,$21,$22::jsonb,$23,true,true,$24,$25,$26,
                    'governed-review-state/v1',$27,$28,$29,$30)`,
           [batchId, actor.projectId, instruction.criterion_version_id, input.instructionVersionId,
             input.roleIntent, frame.sourcePopulationKind, frame.sourcePopulationId, frame.populationId,

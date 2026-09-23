@@ -99,7 +99,7 @@ function testIdentifier(prefix: string): string {
   const safePrefix = prefix.toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 24) || "test";
   const runId = (process.env.PG_TEST_RUN_ID ?? "manual").replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
   const unique = `${process.pid}_${randomUUID().replaceAll("-", "").slice(0, 10)}_${runId}`;
-  return `coeval_${safePrefix}_${unique}`.slice(0, 63);
+  return `rubrist_${safePrefix}_${unique}`.slice(0, 63);
 }
 
 function quoteIdentifier(identifier: string): string {

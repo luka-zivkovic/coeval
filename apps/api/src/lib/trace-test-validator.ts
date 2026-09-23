@@ -7,7 +7,7 @@ import {
   type TraceTestValidationEvidenceInput,
   type TraceTestValidationOutcome,
   type TraceTestValidationStatus
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { traceTestValidationDiagnostic, traceTestValidationStatus } from "../repository.js";
 
 type TraceTestExample = TraceTestRevision["goodExample"];

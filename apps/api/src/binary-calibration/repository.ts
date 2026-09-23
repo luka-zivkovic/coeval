@@ -5,7 +5,7 @@ import type {
   BinaryCalibrationErrorCode,
   BinaryCalibrationPrivateProviderObservation,
   ModelBinding
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 export type BinaryCalibrationProjectRole = "owner" | "member";
 
@@ -88,7 +88,7 @@ export interface BinaryCalibrationArtifactCopy {
 }
 
 export interface BinaryCalibrationArtifactStatusProjection {
-  contract: "coeval/binary-calibration-artifact-status/v1";
+  contract: "rubrist/binary-calibration-artifact-status/v1";
   schemaVersion: 1;
   artifactId: string;
   calibrationRunId: string;
@@ -104,7 +104,7 @@ export interface BinaryCalibrationArtifactStatusProjection {
  */
 export function binaryCalibrationBaseUrlDigest(baseUrl: string): string {
   return `sha256:${createHash("sha256")
-    .update("coeval/binary-calibration-base-url/v1\0", "utf8")
+    .update("rubrist/binary-calibration-base-url/v1\0", "utf8")
     .update(baseUrl, "utf8")
     .digest("hex")}`;
 }

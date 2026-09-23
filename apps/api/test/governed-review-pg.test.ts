@@ -1,6 +1,6 @@
 import { Pool, type PoolClient } from "pg";
 import { describe, expect, it } from "vitest";
-import { runMigrations } from "@coeval/db";
+import { runMigrations } from "@rubrist/db";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
@@ -213,7 +213,7 @@ async function createFixture(client: Pool): Promise<Fixture> {
     custodianRoleAtReview: null,
     custodianSubjectId: null,
     drawDigest,
-    drawExecutedBy: "coeval_server",
+    drawExecutedBy: "rubrist_server",
     evaluatorBlind: true,
     fixedBudget: 1,
     instructionVersionId: instructionId,
@@ -251,7 +251,7 @@ async function createFixture(client: Pool): Promise<Fixture> {
        idempotency_key, request_digest, created_by_subject_id)
     values ($1,'proj_gov',$2,$3,'analysis_authoring','dataset_revision',$4,$5,$6::jsonb,
             $7::jsonb,1,$8,'simple_random','seed-1','sha256-order/v1','simple-random/v1',
-            'coeval_server',1,'fixed','2099-01-01T00:00:00Z',$9,'[]',2,true,true,false,
+            'rubrist_server',1,'fixed','2099-01-01T00:00:00Z',$9,'[]',2,true,true,false,
             'governed-review-state/v1',$10,'batch-once',$11,'subject_dev')
   `, [batchId, criterionVersionId, instructionId, revisionId, populationId,
     JSON.stringify({ revisionId }), JSON.stringify({ source: "immutable_revision" }),

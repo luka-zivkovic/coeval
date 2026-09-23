@@ -17,7 +17,7 @@ export async function runMigrations(pool: Pool): Promise<void> {
     const migrationsDir = join(__dirname, "..", "migrations");
     const files = (await readdir(migrationsDir)).filter((file) => file.endsWith(".sql")).sort();
     const knownIds = new Set(files.map((file) => file.replace(/\.sql$/, "")));
-    const applied = await client.query<{ id: string }>("select id from coeval_migrations order by id");
+    const applied = await client.query<{ id: string }>("select id from rubrist_migrations order by id");
     const unknownIds = applied.rows.map((row) => row.id).filter((id) => !knownIds.has(id));
     if (unknownIds.length > 0) {
       throw new Error(
@@ -33,7 +33,7 @@ export async function runMigrations(pool: Pool): Promise<void> {
       const checksum = createHash("sha256").update(sql).digest("hex");
 
       const existing = await client.query<{ checksum: string | null }>(
-        "select checksum from coeval_migrations where id = $1",
+        "select checksum from rubrist_migrations where id = $1",
         [id],
       );
       if (existing.rows[0]) {
@@ -48,10 +48,10 @@ export async function runMigrations(pool: Pool): Promise<void> {
       }
 
       await client.query(sql);
-      await client.query("insert into coeval_migrations (id, checksum) values ($1, $2)", [id, checksum]);
+      await client.query("insert into rubrist_migrations (id, checksum) values ($1, $2)", [id, checksum]);
     }
 
-    await client.query("alter table coeval_migrations alter column checksum set not null");
+    await client.query("alter table rubrist_migrations alter column checksum set not null");
 
     await client.query("commit");
   } catch (error) {
@@ -64,11 +64,11 @@ export async function runMigrations(pool: Pool): Promise<void> {
 
 async function ensureMigrationsTable(client: PoolClient): Promise<void> {
   await client.query(`
-    create table if not exists coeval_migrations (
+    create table if not exists rubrist_migrations (
       id text primary key,
       checksum text,
       applied_at timestamptz not null default now()
     )
   `);
-  await client.query("alter table coeval_migrations add column if not exists checksum text");
+  await client.query("alter table rubrist_migrations add column if not exists checksum text");
 }

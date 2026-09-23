@@ -155,8 +155,8 @@ export class PgGovernedReviewEvidenceRepository {
           previousEventDigest: null,
           canonicalViewBytesBase64: base64,
           viewDigest,
-          viewContractVersion: "coeval/governed-blind-task-view/v1",
-          canonicalizationVersion: "coeval-canonical-json/v1",
+          viewContractVersion: "rubrist/governed-blind-task-view/v1",
+          canonicalizationVersion: "rubrist-canonical-json/v1",
           exposureClass: "provenance",
           activity: "governed_review"
         });
@@ -170,7 +170,7 @@ export class PgGovernedReviewEvidenceRepository {
            values ($1,$2,$3,1,1,0,'viewed',$4,$5,$6,$7,$8,$9,'provenance','governed_review',null,
                    null,$10,$11,$12)`,
           [eventId, actor.projectId, taskId, subjectId, row.reviewer_role_at_review, base64,
-            viewDigest, "coeval/governed-blind-task-view/v1", "coeval-canonical-json/v1",
+            viewDigest, "rubrist/governed-blind-task-view/v1", "rubrist-canonical-json/v1",
             eventDigest, INTERNAL_VIEW_IDEMPOTENCY_KEY,
             governedReviewRequestDigest({ taskId, action: "view" })]
         );

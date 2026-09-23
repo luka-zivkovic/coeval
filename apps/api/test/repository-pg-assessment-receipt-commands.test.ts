@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { AssessmentReceiptSchema, MinimumVerdictOutputSchema } from "@coeval/shared";
+import { AssessmentReceiptSchema, MinimumVerdictOutputSchema } from "@rubrist/shared";
 import type { PoolClient } from "pg";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";

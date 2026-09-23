@@ -1,6 +1,6 @@
 # Code of conduct
 
-We want participation in Coeval to be respectful, constructive, and safe.
+We want participation in Rubrist to be respectful, constructive, and safe.
 
 Contributors are expected to:
 

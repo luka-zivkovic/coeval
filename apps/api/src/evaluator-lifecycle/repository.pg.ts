@@ -22,7 +22,7 @@ import {
   type EvaluatorLifecycleRetireInput,
   type EvaluatorLifecycleTransitionResult,
   type Skill
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   evaluatorCandidateRequestDigest,
   evaluatorExecutionAuthorizationDigest,

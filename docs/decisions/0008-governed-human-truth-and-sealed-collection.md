@@ -24,7 +24,7 @@ the review contract.
 
 ### Evidence boundary
 
-Coeval adds a distinct governed-review path. Legacy `verdicts`, review queues,
+Rubrist adds a distinct governed-review path. Legacy `verdicts`, review queues,
 golden promotions, and historical adjudications remain explicitly
 `ungoverned_legacy` or lower-provenance evidence. They are never inferred to
 have been blind, independently assigned, representative, or governed.
@@ -184,7 +184,7 @@ fixed budget and stopping rule, draw digest, and any declared strata,
 stratum definitions and frozen membership digests, frame counts, inclusion
 probabilities or weights, and per-stratum budgets and draws.
 
-Coeval executes the draw from the already frozen frame; caller-supplied method,
+Rubrist executes the draw from the already frozen frame; caller-supplied method,
 seed, or digest fields cannot earn a representative claim. Batch 4 supports
 only a fixed stopping rule. A derived `representativeOfPopulationId` is
 present only for a complete simple-random or declared-stratified draw whose
@@ -241,7 +241,7 @@ attestation when supplied. Evidence with a verified signature or independently
 verified transport may be `imported_verified_attested`; complete but
 unverifiable claims are `imported_self_attested`; missing required provenance
 is `unverified`. Field completeness alone never upgrades trust. Imports are
-never relabeled `governed_blind`, because Coeval did not enforce their
+never relabeled `governed_blind`, because Rubrist did not enforce their
 collection boundary.
 
 ### Compatibility and non-goals

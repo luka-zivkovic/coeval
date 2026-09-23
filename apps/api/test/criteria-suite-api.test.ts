@@ -5,11 +5,11 @@ import {
   type Criterion,
   type CreatedCriterion,
   type EvaluatorSuiteManifest
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { AmbiguousProjectSkillError, DatasetRevisionConflictError, DemoRepository } from "../src/repository.js";
 import { canonicalEvaluatorSuiteManifestBytes } from "../src/lib/evaluator-suite.js";
-import type { Queue, QueueJob, QueueName, QueueSendOptions } from "@coeval/queue";
+import type { Queue, QueueJob, QueueName, QueueSendOptions } from "@rubrist/queue";
 import { enqueueDueLangSmithImports } from "../src/workers/langsmith-poller.js";
 import { enqueueDueLangfuseImports } from "../src/workers/langfuse-poller.js";
 import { enqueueDueIronsideImports } from "../src/workers/ironside-poller.js";

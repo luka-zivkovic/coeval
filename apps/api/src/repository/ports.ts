@@ -1,4 +1,4 @@
-import type { Trace } from "@coeval/audit/runtime";
+import type { Trace } from "@rubrist/audit/runtime";
 import type {
   ApiKey,
   CaseSource,
@@ -80,7 +80,7 @@ import type {
   UpdateLangfuseIntegrationInput,
   UpdateProjectSettingsInput,
   VerdictRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type {
   AddDatasetItemsInputDb,
   AddQueueItemsInputDb,
@@ -138,7 +138,10 @@ import type {
   ReviseTraceTestInputDb,
   StaleEvalRunItemExecution,
   TraceImportContext,
-  TraceImportResult
+  TraceImportResult,
+  FindImportedIronsideTracesInput,
+  ImportedIronsideTraceMatch,
+  CaseSourceIdentity
 } from "./contracts.js";
 
 // Narrow consumer/type-composition ports. They organize the facade for callers;
@@ -270,6 +273,8 @@ export interface TraceImportRepositoryPort {
   markImportJobCompleted(projectId: string, importJobId: string, result: CompleteImportJobInput): Promise<void>;
   markImportJobFailed(projectId: string, importJobId: string, error: unknown): Promise<ImportJobRecord>;
   listImportJobs(input: ListImportJobsInput): Promise<ImportJobRecord[]>;
+  findImportedIronsideTraces(input: FindImportedIronsideTracesInput): Promise<ImportedIronsideTraceMatch[]>;
+  getCaseSourceIdentity(projectId: string, caseId: string): Promise<CaseSourceIdentity | null>;
 }
 
 export interface IntegrationRepositoryPort {
@@ -554,7 +559,7 @@ export interface RunComparisonRepositoryPort {
 }
 
 export interface HistoricalGateEvidenceRepositoryPort {
-  // CURRENT compatibility ledger for deprecated product-gate evidence. Coeval
+  // CURRENT compatibility ledger for deprecated product-gate evidence. Rubrist
   // preserves these historical artifacts but does not decide releases.
   createGateCheck(input: CreateGateCheckInputDb): Promise<GateCheckDetail>;
   getGateCheckDetail(projectId: string, gateCheckId: string): Promise<GateCheckDetail | null>;

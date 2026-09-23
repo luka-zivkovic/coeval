@@ -3,13 +3,13 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eyebrow } from "@/components/coeval";
+import { Eyebrow } from "@/components/rubrist";
 import { CHOOSE_TASK_ERROR, NAME_REQUIRED_ERROR, PROJECT_TASK_COPY, ProjectTaskFields } from "@/components/project-task";
 import { ApiError, createProject, selectProject } from "@/lib/api";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { rememberFirstProjectKey } from "@/lib/journey";
 import { useDialogFocus } from "@/hooks/use-dialog-focus";
-import type { CreatedApiKey, ProjectMode } from "@coeval/shared";
+import type { CreatedApiKey, ProjectMode } from "@rubrist/shared";
 
 // P0-2 — project creation. One agent, one stream of traces, one judging
 // skill. Used as a modal from the sidebar switcher and as the full-page
@@ -162,7 +162,7 @@ export function NewProjectModal({ onClose }: { onClose: () => void }) {
         <CardHeader>
           <div>
             <CardTitle id="new-project-title">Start another evaluation</CardTitle>
-            <CardDescription>Choose whether this project will evaluate live traces or supplied examples. Coeval configures the project for that workflow.</CardDescription>
+            <CardDescription>Choose whether this project will evaluate live traces or supplied examples. Rubrist configures the project for that workflow.</CardDescription>
           </div>
           <div className="flex-1" />
           {dismissible ? (
@@ -217,7 +217,7 @@ export function NoProjectLanding() {
         What are you evaluating?
       </div>
       <div className="mt-2.5 text-[13px] leading-[1.55] text-ink-3">
-        Start with recorded production Runs or a few examples. Coeval will help you create one reusable Check.
+        Start with recorded production Runs or a few examples. Rubrist will help you create one reusable Check.
       </div>
       <Card className="mt-5">
         <CardContent className="flex flex-col gap-3.5 py-4">

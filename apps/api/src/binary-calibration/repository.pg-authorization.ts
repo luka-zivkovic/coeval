@@ -3,7 +3,7 @@ import type { PoolClient } from "pg";
 import {
   type BinaryCalibrationCompletionEligibilityReason,
   type ModelBinding
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 import { canonicalJson, sha256Digest, skillDigest } from "../lib/assessment-receipt.js";
 
@@ -89,7 +89,7 @@ export async function deriveRunIdentity(
   const requestedBinding = requestedBindingFor(skillVersion.modelBinding);
   const providerPolicy = providerPolicyFor(requestedBinding);
   const providerPolicyBytes = Buffer.from(canonicalJson({
-    contract: "coeval/provider-data-handling-policy/v1",
+    contract: "rubrist/provider-data-handling-policy/v1",
     schemaVersion: 1,
     provider: requestedBinding.provider,
     endpointKind: requestedBinding.endpointKind,
@@ -202,7 +202,7 @@ async function deriveRepresentativeness(client: PoolClient, origin: FrozenOrigin
   if (isEmptyObject(origin.population_collection_provenance)) {
     reasons.push("collection_provenance_unverified");
   }
-  if (origin.draw_executed_by !== "coeval_server") reasons.push("draw_not_server_executed");
+  if (origin.draw_executed_by !== "rubrist_server") reasons.push("draw_not_server_executed");
   if (probabilityMethod && (!origin.selection_seed || !origin.rng_version || evidence.draw_matches !== true)) {
     reasons.push("draw_not_reproducible");
   }
@@ -297,7 +297,7 @@ export async function evaluateEligibility(
   }
   const sortedReasons = [...new Set(reasons)].sort() as BinaryCalibrationCompletionEligibilityReason[];
   const snapshot = {
-    contract: "coeval/binary-calibration-exposure-snapshot/v1",
+    contract: "rubrist/binary-calibration-exposure-snapshot/v1",
     schemaVersion: 1,
     phase,
     calibrationRunId: run.id,
@@ -360,7 +360,7 @@ async function appendFinalValidationChecks(
       [run.governed_review_batch_id, subjectId, run.skill_version_id]
     )).rows[0]?.sequence ?? 0) + 1;
     const evidence = {
-      contract: "coeval/sealed-separation-evidence/v1",
+      contract: "rubrist/sealed-separation-evidence/v1",
       criterionVersionId: run.criterion_version_id,
       evaluatedCapabilities: [...COVERED_CAPABILITIES],
       findings: evaluated.findings

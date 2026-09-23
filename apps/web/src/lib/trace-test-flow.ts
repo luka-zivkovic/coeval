@@ -5,7 +5,7 @@ import type {
   TraceTestSourceScope,
   VerdictLabel,
   VerdictPayload
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 export type TraceTestIntent = "prevent" | "protect" | "make";
 export type TraceTestJob = "response" | "verdict" | "preserve";

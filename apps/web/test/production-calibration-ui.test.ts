@@ -5,7 +5,7 @@ import {
   buildProductionCalibrationArtifact,
   type ProductionCalibrationArtifact,
   type ProductionCalibrationWilsonRate
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   PRODUCTION_CALIBRATION_PROVENANCE_LINE,
   adviceState,

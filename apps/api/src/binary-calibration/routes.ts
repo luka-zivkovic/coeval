@@ -178,9 +178,9 @@ export function createBinaryCalibrationArtifactRouter(
       throw new Error("Persisted binary calibration artifact identity mismatch");
     }
     c.header("content-type", "application/json; charset=utf-8");
-    c.header("x-coeval-artifact-digest", artifact.artifactDigest);
-    c.header("x-coeval-evidence-digest", artifact.evidenceDigest);
-    c.header("x-coeval-canonicalization", "coeval-canonical-json/v1");
+    c.header("x-rubrist-artifact-digest", artifact.artifactDigest);
+    c.header("x-rubrist-evidence-digest", artifact.evidenceDigest);
+    c.header("x-rubrist-canonicalization", "rubrist-canonical-json/v1");
     c.header("etag", `"${artifact.artifactDigest}"`);
     c.header("digest", digestHeader(artifact.artifactDigest));
     return c.body(Uint8Array.from(artifact.canonicalBytes).buffer);
@@ -264,7 +264,7 @@ async function parseBody<T>(c: Context, schema: ZodType<T>): Promise<T> {
 
 function setNoStoreHeaders(c: Context): void {
   c.header("cache-control", "no-store");
-  c.header("vary", "Origin, Cookie, x-coeval-project");
+  c.header("vary", "Origin, Cookie, x-rubrist-project");
   c.header("x-content-type-options", "nosniff");
 }
 
@@ -282,7 +282,7 @@ const ARTIFACT_STATUS_REASONS = new Set([
 ]);
 
 function verifyArtifactStatus(status: BinaryCalibrationArtifactStatusProjection): void {
-  if (status.contract !== "coeval/binary-calibration-artifact-status/v1" ||
+  if (status.contract !== "rubrist/binary-calibration-artifact-status/v1" ||
     status.schemaVersion !== 1 ||
     status.reasons.some((reason) => !ARTIFACT_STATUS_REASONS.has(reason)) ||
     new Set(status.reasons).size !== status.reasons.length ||

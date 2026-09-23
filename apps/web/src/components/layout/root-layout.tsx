@@ -73,7 +73,7 @@ function RootLayoutInner() {
   const navigationTriggerRef = useRef<HTMLButtonElement>(null);
 
   const bench = dashboard ? isBench(dashboard.project) : false;
-  const projectName = dashboard?.project.name ?? "Coeval";
+  const projectName = dashboard?.project.name ?? "Rubrist";
   // The bench subtitle doubles as the persistent honesty marker: no
   // production traces back these numbers, only supplied examples.
   const projectSource = dashboard

@@ -50,7 +50,7 @@ import {
   type VerdictRecord,
   VerdictRecordSchema,
   type VerdictSource
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   API_BASE,
   ApiError,

@@ -6,11 +6,11 @@ Date: 2026-08-23
 
 ## Context
 
-The product charter begins Coeval's lifecycle with representative traces, open
+The product charter begins Rubrist's lifecycle with representative traces, open
 coding, and a human-readable failure taxonomy. The current Traces screen is an
 exploratory client-selected preview over a capped result set. It does not
 freeze a population, time window, eligibility rule, server-recorded seed,
-draw, or digest, so it cannot support a representative claim. Coeval also has
+draw, or digest, so it cannot support a representative claim. Rubrist also has
 no append-only open-coding or taxonomy-revision model and no governed
 transition from a failure code to a criterion.
 
@@ -27,7 +27,7 @@ API, and UI implementation that satisfies the contract below.
 
 The first Analyze slice samples normalized imported trace cases. One eligible
 normalized case is one sampling unit, even when several cases share an
-upstream trace identifier. The population uses Coeval's server-recorded
+upstream trace identifier. The population uses Rubrist's server-recorded
 ingestion time rather than optional provider event time.
 
 An analysis population freezes:
@@ -233,7 +233,7 @@ the calibration identity and current-admissibility status that informed it.
 Analyze workflow measurements are versioned evidence bound to the applicable
 study, taxonomy revision, criterion, evaluator, and calibration identities.
 They define explicit start/end events, denominators, missing state, and a
-calculation version. Coeval reports components rather than a composite score:
+calculation version. Rubrist reports components rather than a composite score:
 
 - coding completion: selected, viewed, in-progress, completed,
   `no_failure_observed`, and missing counts;
@@ -260,7 +260,7 @@ The last two durations are named
 historical duration. The second is a read-time derivation over artifacts whose
 separate current-admissibility status is admissible at that read; it is absent
 when none qualify and may disappear after revocation without rewriting any
-artifact or prior response. Coeval does not report `time-to-trusted-evaluator`,
+artifact or prior response. Rubrist does not report `time-to-trusted-evaluator`,
 because “trusted” would hide a customer policy threshold. Missing,
 still-running, censored, incomplete, and later-revoked states remain explicit
 rather than becoming zero or success.
@@ -276,7 +276,7 @@ The `docs/implementation-batches.md` file is copied verbatim across the three
 product repositories. On acceptance, its earlier
 `time-to-trusted-evaluator` wording was replaced by the two explicit
 calibration-artifact durations in this decision, and the accepted gate was
-recorded identically in the Coeval, Dailies, and Casefile copies.
+recorded identically in the Rubrist, Dailies, and Casefile copies.
 
 This decision does not add:
 
@@ -313,7 +313,7 @@ The founder accepted all of the following contract choices on 2026-08-23.
 Changing one requires a superseding accepted ADR:
 
 1. One normalized imported case is the sampling unit; the finite frame uses
-   Coeval ingestion time and the four allowlisted trace sources.
+   Rubrist ingestion time and the four allowlisted trace sources.
 2. The first representative sampler is server-executed simple random sampling
    with a fixed budget, and its representative identifier additionally
    requires completed coding for every selected item; other methods remain
@@ -331,5 +331,5 @@ Changing one requires a superseding accepted ADR:
    non-current `candidate` lifecycle; calibration uses separately collected
    sealed truth and the named development subjects cannot perform its protected
    duties.
-6. Coeval reports component metrics and the two calibration-artifact durations
+6. Rubrist reports component metrics and the two calibration-artifact durations
    above; it does not define or report a universal “trusted evaluator” state.

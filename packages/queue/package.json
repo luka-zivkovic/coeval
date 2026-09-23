@@ -1,9 +1,9 @@
 {
-  "name": "@coeval/queue",
+  "name": "@rubrist/queue",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Coeval pg-boss queue wrapper.",
+  "description": "Rubrist pg-boss queue wrapper.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

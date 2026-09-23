@@ -13,7 +13,7 @@ import {
   type GovernedReviewSelectionPlan,
   type GovernedReviewTask,
   type GovernedReviewTaskEvent
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { sha256Digest } from "./assessment-receipt.js";
 import { governedContentV1Digest } from "./governed-content-digest.js";
 import {
@@ -65,7 +65,7 @@ export function governedReviewItemDomainArtifactDigest(
   input: Omit<GovernedReviewItem, "itemDigest"> | GovernedReviewItem
 ): string {
   const { itemDigest: _excluded, ...unsigned } = input as GovernedReviewItem;
-  return governedContentV1Digest("coeval/governed-review-item-domain-artifact/v1", unsigned);
+  return governedContentV1Digest("rubrist/governed-review-item-domain-artifact/v1", unsigned);
 }
 
 export function verifyGovernedReviewItem(raw: unknown): GovernedReviewItem {
@@ -81,7 +81,7 @@ export function governedReviewSelectionDrawDomainArtifactDigest(plan: Pick<
   GovernedReviewSelectionPlan,
   "method" | "seed" | "rngVersion" | "drawItemDigests"
 >): string {
-  return governedContentV1Digest("coeval/governed-review-selection-draw-domain-artifact/v1", {
+  return governedContentV1Digest("rubrist/governed-review-selection-draw-domain-artifact/v1", {
     method: plan.method,
     seed: plan.seed,
     rngVersion: plan.rngVersion,
@@ -94,7 +94,7 @@ export function governedReviewStratumDrawDomainArtifactDigest(input: {
   drawItemDigests: readonly string[];
 }): string {
   return governedContentV1Digest(
-    "coeval/governed-review-selection-stratum-draw-domain-artifact/v1",
+    "rubrist/governed-review-selection-stratum-draw-domain-artifact/v1",
     { key: input.key, drawItemDigests: input.drawItemDigests }
   );
 }
@@ -103,7 +103,7 @@ export function governedReviewSelectionPlanDomainArtifactDigest(
   input: Omit<GovernedReviewSelectionPlan, "selectionPlanDigest"> | GovernedReviewSelectionPlan
 ): string {
   const { selectionPlanDigest: _excluded, ...unsigned } = input as GovernedReviewSelectionPlan;
-  return governedContentV1Digest("coeval/governed-review-selection-domain-artifact/v1", unsigned);
+  return governedContentV1Digest("rubrist/governed-review-selection-domain-artifact/v1", unsigned);
 }
 
 export function verifyGovernedReviewSelectionPlan(raw: unknown): GovernedReviewSelectionPlan {
@@ -178,7 +178,7 @@ export function governedReviewBatchDomainArtifactDigest(
   input: Omit<GovernedReviewBatch, "batchDigest"> | GovernedReviewBatch
 ): string {
   const { batchDigest: _excluded, ...unsigned } = input as GovernedReviewBatch;
-  return governedContentV1Digest("coeval/governed-review-batch-domain-artifact/v1", unsigned);
+  return governedContentV1Digest("rubrist/governed-review-batch-domain-artifact/v1", unsigned);
 }
 
 export function verifyGovernedReviewBatch(
@@ -243,7 +243,7 @@ export function governedReviewTaskDomainArtifactDigest(
   input: Omit<GovernedReviewTask, "taskDigest"> | GovernedReviewTask
 ): string {
   const { taskDigest: _excluded, ...unsigned } = input as GovernedReviewTask;
-  return governedContentV1Digest("coeval/governed-review-task-domain-artifact/v1", unsigned);
+  return governedContentV1Digest("rubrist/governed-review-task-domain-artifact/v1", unsigned);
 }
 
 export function verifyGovernedReviewTask(raw: unknown, batch?: GovernedReviewBatch): GovernedReviewTask {
@@ -276,7 +276,7 @@ export function governedReviewLabelDomainArtifactDigest(
   input: Omit<GovernedReviewLabel, "labelDigest"> | GovernedReviewLabel
 ): string {
   const { labelDigest: _excluded, ...unsigned } = input as GovernedReviewLabel;
-  return governedContentV1Digest("coeval/governed-review-label-domain-artifact/v1", unsigned);
+  return governedContentV1Digest("rubrist/governed-review-label-domain-artifact/v1", unsigned);
 }
 
 export function verifyGovernedReviewLabel(raw: unknown, task?: GovernedReviewTask): GovernedReviewLabel {
@@ -303,5 +303,5 @@ export function governedReviewTaskEventDomainArtifactDigest(
   input: Omit<GovernedReviewTaskEvent, "eventDigest"> | GovernedReviewTaskEvent
 ): string {
   const { eventDigest: _excluded, ...unsigned } = input as GovernedReviewTaskEvent;
-  return governedContentV1Digest("coeval/governed-review-task-event-domain-artifact/v1", unsigned);
+  return governedContentV1Digest("rubrist/governed-review-task-event-domain-artifact/v1", unsigned);
 }

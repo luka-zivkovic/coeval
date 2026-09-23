@@ -9,7 +9,7 @@ import {
   type AnalysisCalibrationMeasurement,
   type AnalysisWorkflowMeasurementReport,
   type BinaryCalibrationArtifact
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { parseCanonicalBinaryCalibrationArtifactBytes } from "../lib/binary-calibration.js";
 import {
   analysisWorkflowMeasurementReportDigest,

@@ -3,10 +3,10 @@ import { ArrowLeft, Check, ShieldCheck } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Chip } from "@/components/coeval";
+import { Chip } from "@/components/rubrist";
 import { fetchTraceTest } from "@/lib/api";
 import { plainText } from "@/lib/trace-test-flow";
-import type { TraceTestDetail, TraceTestRevision, TraceTestValidation, TraceTestValidationOutcome } from "@coeval/shared";
+import type { TraceTestDetail, TraceTestRevision, TraceTestValidation, TraceTestValidationOutcome } from "@rubrist/shared";
 
 type Evidence = {
   test: TraceTestDetail;

@@ -1,5 +1,5 @@
 import { sha256Digest } from "./assessment-receipt.js";
-import type { DatasetRevisionRole as SharedDatasetRevisionRole } from "@coeval/shared";
+import type { DatasetRevisionRole as SharedDatasetRevisionRole } from "@rubrist/shared";
 
 export type DatasetRevisionRole = SharedDatasetRevisionRole;
 

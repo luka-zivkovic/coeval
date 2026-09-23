@@ -5,9 +5,9 @@ import {
   PRODUCTION_CALIBRATION_CONTRACT,
   ProductionCalibrationArtifactSchema,
   type ProductionCalibrationArtifact
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { createApp } from "../src/app.js";
-import type { CoevalAuth } from "../src/lib/auth.js";
+import type { RubristAuth } from "../src/lib/auth.js";
 import {
   PRODUCTION_CALIBRATION_PREVIEW_BODY_BYTES,
   createProductionCalibrationRouter,
@@ -77,11 +77,11 @@ describe("production calibration preview API boundary", () => {
     const fakeAuth = {
       api: { getSession: async () => null },
       handler: async () => new Response(null, { status: 404 })
-    } as unknown as CoevalAuth;
+    } as unknown as RubristAuth;
     const app = createApp(undefined, { auth: fakeAuth, pool: {} as Pool });
     const response = await app.request("/api/production-calibration/preview", {
       method: "POST",
-      headers: { "content-type": "application/json", "x-coeval-project": "project" },
+      headers: { "content-type": "application/json", "x-rubrist-project": "project" },
       body: JSON.stringify({ records: flakyTriage })
     });
     expect(response.status).toBe(401);

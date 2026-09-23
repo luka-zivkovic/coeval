@@ -25,7 +25,7 @@ import type {
   AnalysisTaxonomyRevisionResult,
   AnalysisTaxonomyRevisionsPage,
   DatasetRevisionPayloadSnapshot
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { AnalysisStudyDeadlineRepository } from "./deadline.js";
 
 export type AnalysisStudyProjectRole = "owner" | "member";

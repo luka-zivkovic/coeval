@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { isPermanentError } from "../src/workers/judge.js";
-import type { Queue, QueueJob, QueueJobState, QueueName, QueueSendOptions } from "@coeval/queue";
-import type { EvalItemJob } from "@coeval/shared";
+import type { Queue, QueueJob, QueueJobState, QueueName, QueueSendOptions } from "@rubrist/queue";
+import type { EvalItemJob } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { createStrictJudgeProvider } from "../src/lib/judge-provider.js";
 import { DemoRepository } from "../src/repository.js";

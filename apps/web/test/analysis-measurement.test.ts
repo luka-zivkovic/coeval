@@ -13,7 +13,7 @@ vi.mock("@/lib/analysis-measurement-api", () => ({ fetchAnalysisWorkflowMeasurem
 
 const digest = `sha256:${"a".repeat(64)}`;
 const report = {
-  contractVersion: "coeval/analysis-workflow-measurement/v1",
+  contractVersion: "rubrist/analysis-workflow-measurement/v1",
   calculationVersion: "analysis-workflow-components/v1",
   projectId: "project",
   studyId: "study",

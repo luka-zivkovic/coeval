@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EmptyGlyph, EmptyShell } from "@/components/coeval";
+import { EmptyGlyph, EmptyShell } from "@/components/rubrist";
 
 export function NotFoundScreen() {
   const navigate = useNavigate();
@@ -46,7 +46,7 @@ export function ApiUnavailableScreen({ retry, status, lastOkAt }: ApiUnavailable
   return (
     <EmptyShell
       eyebrow="Connection lost"
-      title="Coeval can't reach its backend right now."
+      title="Rubrist can't reach its backend right now."
       body={
         <>
           Existing records remain on the server. This page cannot load them or save new decisions

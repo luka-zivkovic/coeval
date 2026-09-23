@@ -77,7 +77,7 @@ describe("trust-aligned flow behavior", () => {
       sourceFilter,
       versionFilter
     });
-    const query = new URL(presentation.url, "http://coeval.test").searchParams;
+    const query = new URL(presentation.url, "http://rubrist.test").searchParams;
 
     expect({
       format: query.get("format"),

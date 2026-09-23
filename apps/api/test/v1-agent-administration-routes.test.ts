@@ -9,7 +9,7 @@ describe("v1 agent administration routes", () => {
     const app = new Hono<{ Variables: AppVariables }>();
     registerV1AgentAdministrationRoutes(app, {
       repository: new DemoRepository(),
-      publicApiBaseUrl: () => "https://coeval.example"
+      publicApiBaseUrl: () => "https://rubrist.example"
     });
 
     expect(app.routes.map(({ method, path }) => `${method} ${path}`)).toEqual([

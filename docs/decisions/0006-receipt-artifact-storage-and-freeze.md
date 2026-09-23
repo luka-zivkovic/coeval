@@ -13,7 +13,7 @@ projection on every read, so a later source-row change can silently change the
 bytes returned for the same receipt identity.
 
 Some terminal v1 runs predate artifact storage. Consumers may already hold a
-copy of a receipt generated from those rows. Coeval also retains deprecated
+copy of a receipt generated from those rows. Rubrist also retains deprecated
 product-release gate writes while Dailies migrates to the receipt boundary.
 
 ## Decision
@@ -68,7 +68,7 @@ and an operator may pre-freeze runs during rollout. Freeze provenance and the
 source-row snapshot digest are stored outside receipt v1.
 
 When a consumer-held canonical copy is available, the consumer may submit its
-exact bytes for comparison. Coeval stores that copy and its whole-byte digest
+exact bytes for comparison. Rubrist stores that copy and its whole-byte digest
 in an append-only comparison row, records `match` or `diverged`, and never uses
 the submitted copy to overwrite the server artifact. A divergence is evidence
 to investigate, not permission to rewrite either history.
@@ -78,7 +78,7 @@ to investigate, not permission to rewrite either history.
 `product_gate`, `POST /api/v1/gate-checks`, and `gate.mjs --product` accept no
 new integrations. Their write behavior remains compatibility-frozen through
 the Dailies report/config v4 migration. In Batch 2 the deprecated write paths
-will return `410 Gone`; historical gate reads remain available. Coeval's
+will return `410 Gone`; historical gate reads remain available. Rubrist's
 evaluator-version `regression_gate` is not part of this removal.
 
 ## Consequences

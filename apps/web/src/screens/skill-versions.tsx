@@ -7,11 +7,11 @@ import { MarkdownPreview } from "@/components/markdown-preview";
 import { regressionReceiptLabel, skillVersionChangeLabels } from "@/lib/skill-edit-flow";
 import { Table } from "@/components/ui/table";
 import { RowLink } from "@/components/row-action";
-import { Eyebrow, SectionHead, Chip, GateChip, gateStateForVersion, LabelChip, MarginNote, RegressionDiffTable, ConvergenceCard } from "@/components/coeval";
+import { Eyebrow, SectionHead, Chip, GateChip, gateStateForVersion, LabelChip, MarginNote, RegressionDiffTable, ConvergenceCard } from "@/components/rubrist";
 import { fetchCurrentSkill, fetchJudgeCard, fetchJudgeCardMarkdown, fetchSkillFormat, fetchSkillVersionHistory, fetchSkillVersions, fetchSkillVersionRegression, fetchSkillVersionConvergence, fetchSkillVersionSelfConsistency } from "@/lib/api";
 import { useCriterion } from "@/lib/criterion-context";
 import { verdictKindDescription } from "@/lib/verdict-kind";
-import { compileJudgePrompt, KAPPA_MIN_SHARED_CASES, type ConvergenceAudit, type JudgeCard, type RegressionRunResult, type SelfConsistencyReport, type Skill, type SkillStatus, type SkillVersion } from "@coeval/shared";
+import { compileJudgePrompt, KAPPA_MIN_SHARED_CASES, type ConvergenceAudit, type JudgeCard, type RegressionRunResult, type SelfConsistencyReport, type Skill, type SkillStatus, type SkillVersion } from "@rubrist/shared";
 
 // Explicit mapping for every SkillStatus value. Reviewer scanning a versions
 // ledger needs to distinguish approved (on-deck) from deprecated (end of life)
@@ -494,7 +494,7 @@ export function SkillVersionDetailScreen() {
             <CardContent className="py-4">
               <Eyebrow>Result format · exact JSON schema</Eyebrow>
               <p className="mt-2 text-[12px] leading-5 text-ink-2">
-                Fields and allowed values the judge must return. Coeval validates results against
+                Fields and allowed values the judge must return. Rubrist validates results against
                 this exact contract, so it remains source text rather than Markdown.
               </p>
               <pre className="mt-3 max-h-[300px] overflow-auto whitespace-pre-wrap break-words rounded-sm border border-rule-soft bg-card-2 px-3 py-2 font-mono text-[11.5px] leading-[1.55] text-ink">
@@ -570,7 +570,7 @@ function JudgeCardPanel({ card, skillId, versionId }: { card: JudgeCard; skillId
     }
   }, [skillId, versionId]);
   // Export via a fetch+blob download, NOT an anchor navigation: an anchor
-  // cannot send the x-coeval-project header, so the server would resolve the
+  // cannot send the x-rubrist-project header, so the server would resolve the
   // caller's oldest project and could export a DIFFERENT project's card than
   // the panel shows. fetchJudgeCardMarkdown sends the header → exported bytes
   // always match this panel's project.
@@ -582,7 +582,7 @@ function JudgeCardPanel({ card, skillId, versionId }: { card: JudgeCard; skillId
       const url = URL.createObjectURL(new Blob([md], { type: "text/markdown;charset=utf-8" }));
       const a = document.createElement("a");
       a.href = url;
-      a.download = `coeval-judge-card-${stamp}.md`;
+      a.download = `rubrist-judge-card-${stamp}.md`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -600,7 +600,7 @@ function JudgeCardPanel({ card, skillId, versionId }: { card: JudgeCard; skillId
       const url = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" }));
       const a = document.createElement("a");
       a.href = url;
-      a.download = `coeval-skill-format-${stamp}.json`;
+      a.download = `rubrist-skill-format-${stamp}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();

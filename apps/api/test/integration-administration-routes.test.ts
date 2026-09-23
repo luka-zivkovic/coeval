@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import type { Queue, QueueName } from "@coeval/queue";
+import type { Queue, QueueName } from "@rubrist/queue";
 import { createApp } from "../src/app.js";
 import { LangSmithHttpError } from "../src/lib/langsmith.js";
 import { DemoRepository } from "../src/repository.js";

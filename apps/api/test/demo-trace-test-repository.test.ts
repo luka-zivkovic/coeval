@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { demoProject } from "@coeval/db";
+import { demoProject } from "@rubrist/db";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import * as repositoryModule from "../src/repository.js";

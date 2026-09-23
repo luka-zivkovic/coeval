@@ -10,7 +10,7 @@ import {
   EvaluatorLifecycleRetireInputSchema,
   EvaluatorLifecycleTransitionResultSchema,
   type EvaluatorCandidateCreateResult
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   EvaluatorLifecycleRepositoryError,
   type EvaluatorLifecycleAccess,

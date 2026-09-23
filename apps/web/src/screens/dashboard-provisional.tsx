@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { FirstRunSetupLedger } from "@/components/first-run-setup-ledger";
 import { FirstProjectKeyCard } from "@/components/first-project-key";
 import { FirstVerdictCard } from "@/components/first-verdict";
-import { SectionHead, KPI, KPIRow, ProvBanner } from "@/components/coeval";
+import { SectionHead, KPI, KPIRow, ProvBanner } from "@/components/rubrist";
 import { signOffSkillVersion, ApiError } from "@/lib/api";
 import { firstRunEditorPath, isBench, markSetupReceipt } from "@/lib/journey";
-import type { DashboardSummary } from "@coeval/shared";
+import type { DashboardSummary } from "@rubrist/shared";
 
 interface DashboardProvisionalProps {
   dashboard: DashboardSummary;

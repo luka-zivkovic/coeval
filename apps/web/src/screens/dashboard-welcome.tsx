@@ -1,9 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Eyebrow, SectionHead, ProvChip, VerdictChip } from "@/components/coeval";
+import { Eyebrow, SectionHead, ProvChip, VerdictChip } from "@/components/rubrist";
 import { AgentSetupPairingCard } from "@/components/agent-setup-pairing";
 import { FirstRunSetupLedger } from "@/components/first-run-setup-ledger";
 import { FirstProjectKeyCard } from "@/components/first-project-key";
-import type { DashboardSummary } from "@coeval/shared";
+import type { DashboardSummary } from "@rubrist/shared";
 
 interface DashboardWelcomeProps {
   dashboard: DashboardSummary;
@@ -20,7 +20,7 @@ export function DashboardWelcome({ dashboard, canPairAgent }: DashboardWelcomePr
       <SectionHead
         eyebrow="New project · no runs yet"
         title="Get your first Check result"
-        sub="Connect a trace source or paste one recorded run. Choose one thing that matters, then Coeval will show what the Check concludes from that evidence."
+        sub="Connect a trace source or paste one recorded run. Choose one thing that matters, then Rubrist will show what the Check concludes from that evidence."
       />
 
       <div className="mt-2 grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,1fr)]">
@@ -34,7 +34,7 @@ export function DashboardWelcome({ dashboard, canPairAgent }: DashboardWelcomePr
             <CardContent className="py-4">
               <Eyebrow>What "starter" means</Eyebrow>
               <div className="mt-2 font-serif text-[14.5px] leading-[1.6] tracking-[-0.005em] text-ink-2">
-                Coeval includes a starter Check so you can see the workflow. Until an owner reviews
+                Rubrist includes a starter Check so you can see the workflow. Until an owner reviews
                 its guide, every Result is provisional—and even sign-off does not show that it agrees
                 with people.
               </div>
@@ -49,9 +49,9 @@ export function DashboardWelcome({ dashboard, canPairAgent }: DashboardWelcomePr
 
           <Card className="border-dashed">
             <CardContent className="py-4">
-              <Eyebrow>How Coeval uses your tracing platform</Eyebrow>
+              <Eyebrow>How Rubrist uses your tracing platform</Eyebrow>
               <div className="mt-2 font-serif text-[13.5px] leading-[1.55] tracking-[-0.005em] text-ink-2">
-                Coeval imports recorded runs for evaluation and can send Results back to LangSmith
+                Rubrist imports recorded runs for evaluation and can send Results back to LangSmith
                 or Langfuse. It does not run your AI or replace the tracing platform.
               </div>
             </CardContent>

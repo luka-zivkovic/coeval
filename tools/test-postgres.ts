@@ -7,8 +7,8 @@ import { runMigrations } from "../packages/db/src/migrate.js";
 
 const execFile = promisify(execFileCallback);
 const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
-const containerName = `coeval-pg-test-${suffix}`;
-const templateDatabase = `coeval_template_${suffix}`;
+const containerName = `rubrist-pg-test-${suffix}`;
+const templateDatabase = `rubrist_template_${suffix}`;
 let ownsContainer = false;
 let sourceUrl = process.env.PG_SMOKE_DATABASE_URL;
 
@@ -18,8 +18,8 @@ try {
       "run", "--detach", "--rm", "--name", containerName,
       "--shm-size=256m",
       "--tmpfs", "/var/lib/postgresql/data:rw,size=1g",
-      "-e", "POSTGRES_USER=coeval",
-      "-e", "POSTGRES_PASSWORD=coeval",
+      "-e", "POSTGRES_USER=rubrist",
+      "-e", "POSTGRES_PASSWORD=rubrist",
       "-e", "POSTGRES_DB=postgres",
       "-p", "127.0.0.1::5432",
       "postgres:17-alpine",
@@ -32,7 +32,7 @@ try {
     const { stdout } = await execFile("docker", ["port", containerName, "5432/tcp"]);
     const port = stdout.trim().split(":").at(-1);
     if (!port) throw new Error("Docker did not publish the PostgreSQL test port");
-    sourceUrl = `postgres://coeval:coeval@127.0.0.1:${port}/postgres`;
+    sourceUrl = `postgres://rubrist:rubrist@127.0.0.1:${port}/postgres`;
   }
 
   const adminUrl = replaceDatabase(sourceUrl, "postgres");
@@ -49,7 +49,7 @@ try {
     PG_SMOKE_DATABASE_URL: adminUrl,
     PG_TEST_TEMPLATE_DATABASE: templateDatabase,
     PG_TEST_RUN_ID: suffix,
-    BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? "coeval-postgres-test-secret-at-least-32-bytes",
+    BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? "rubrist-postgres-test-secret-at-least-32-bytes",
   });
   process.exitCode = exitCode;
 } finally {
@@ -58,7 +58,7 @@ try {
     try {
       const leftovers = await admin.query<{ datname: string }>(
         `select datname from pg_database where datname ~ $1`,
-        [`^coeval_[a-z0-9_]+_${suffix}$`],
+        [`^rubrist_[a-z0-9_]+_${suffix}$`],
       );
       for (const row of leftovers.rows) {
         await admin.query(`drop database if exists ${quoteIdentifier(row.datname)} with (force)`);
@@ -78,7 +78,7 @@ try {
 async function waitUntilReady(name: string): Promise<void> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
-      await execFile("docker", ["exec", name, "pg_isready", "-U", "coeval", "-d", "postgres"]);
+      await execFile("docker", ["exec", name, "pg_isready", "-U", "rubrist", "-d", "postgres"]);
       return;
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 250));

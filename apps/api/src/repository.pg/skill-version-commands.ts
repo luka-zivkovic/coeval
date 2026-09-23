@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { SkillVersion } from "@coeval/shared";
+import type { SkillVersion } from "@rubrist/shared";
 import type { PoolClient } from "pg";
 
 export async function insertSkillVersion(

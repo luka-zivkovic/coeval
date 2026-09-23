@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { demoProject } from "@coeval/db";
+import { demoProject } from "@rubrist/db";
 import type {
   ExceptionDetail,
   TraceTestDetail,
   TraceTestSummary,
   TraceTestValidation
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type {
   CreateTraceTestInputDb,
   EnableTraceTestInputDb,

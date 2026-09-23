@@ -1,4 +1,4 @@
-import type { EvalRunDetail } from "@coeval/shared";
+import type { EvalRunDetail } from "@rubrist/shared";
 
 // dataset cross-version delta, computed CLIENT-SIDE from two run
 // details the API already serves — no delta endpoint, no synthetic numbers.

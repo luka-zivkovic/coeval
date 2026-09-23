@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { LogOut, RefreshCcw, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Chip, Eyebrow, MarginNote, SectionHead } from "@/components/coeval";
+import { Chip, Eyebrow, MarginNote, SectionHead } from "@/components/rubrist";
 import { ConnectAgentPanel } from "@/components/connect-agent-panel";
 import {
   createApiKey,
@@ -23,7 +23,7 @@ import { authClient, useSession } from "@/lib/auth-client";
 import { forgetFirstProjectKey } from "@/lib/journey";
 import { useAppMode } from "@/lib/app-mode";
 import { useDialogFocus } from "@/hooks/use-dialog-focus";
-import type { ApiKey, CreatedApiKey, JudgeKeyProvider, JudgeProviderKey, ProjectSettings, RetentionPruneResult } from "@coeval/shared";
+import type { ApiKey, CreatedApiKey, JudgeKeyProvider, JudgeProviderKey, ProjectSettings, RetentionPruneResult } from "@rubrist/shared";
 
 export function SettingsScreen() {
   const navigate = useNavigate();
@@ -164,7 +164,7 @@ export function SettingsScreen() {
           <div>
             <CardTitle>Trace retention</CardTitle>
             <CardDescription>
-              Choose how long Coeval stores raw trace inputs and outputs. Verdicts and metadata are
+              Choose how long Rubrist stores raw trace inputs and outputs. Verdicts and metadata are
               retained after the raw content expires.
             </CardDescription>
           </div>
@@ -262,7 +262,7 @@ export function SettingsScreen() {
           </div>
           {demoMode ? (
             <div className="text-[12px] text-ink-3">
-              Demo mode — no authenticated account. Run Coeval with a Postgres
+              Demo mode — no authenticated account. Run Rubrist with a Postgres
               <span className="font-mono"> DATABASE_URL</span> for real sign-in and persistence.
             </div>
           ) : (
@@ -283,7 +283,7 @@ export function SettingsScreen() {
         <CardHeader className="border-signal-tint">
           <div>
             <CardTitle className="text-signal">Danger zone</CardTitle>
-            <CardDescription>Deleting a project permanently removes its Coeval data.</CardDescription>
+            <CardDescription>Deleting a project permanently removes its Rubrist data.</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="flex flex-wrap items-start justify-between gap-4 py-4">
@@ -292,7 +292,7 @@ export function SettingsScreen() {
               Delete this project
             </div>
             <div className="mt-1 text-[12.5px] leading-[1.55] text-ink-3">
-              This removes the project's traces, verdicts, queues, and Golden set from Coeval. It
+              This removes the project's traces, verdicts, queues, and Golden set from Rubrist. It
               does not delete raw runs from your tracing platform. You cannot undo this action.
             </div>
           </div>
@@ -408,7 +408,7 @@ function JudgeKeysCard() {
         <div>
           <CardTitle>Judge provider keys</CardTitle>
           <CardDescription>
-            Coeval uses these keys for evaluator calls in this project. If a saved key is invalid,
+            Rubrist uses these keys for evaluator calls in this project. If a saved key is invalid,
             the call fails instead of silently using another provider. Remove the key to use a
             configured platform key when one is available. Saved keys are encrypted and cannot be viewed again.
           </CardDescription>
@@ -527,7 +527,7 @@ function ApiKeysCard() {
           <CardDescription>
             Call this project's evaluator programmatically:{" "}
             <code className="text-[12px]">POST /api/v1/judge</code> with{" "}
-            <code className="text-[12px]">Authorization: Bearer &lt;key&gt;</code>. Coeval records each
+            <code className="text-[12px]">Authorization: Bearer &lt;key&gt;</code>. Rubrist records each
             result in the ungoverned verdict ledger used by legacy Reliability diagnostics.
           </CardDescription>
         </div>
@@ -681,7 +681,7 @@ function DeleteConfirm({
             className="h-9 rounded-sm border border-rule-soft bg-card-2 px-2 font-mono text-[12.5px] text-ink focus-visible:border-signal"
           />
           <MarginNote tone="signal" who="Irreversible">
-            Deleting removes this project's Coeval review data permanently. It does not delete
+            Deleting removes this project's Rubrist review data permanently. It does not delete
             the original runs from your tracing platform.
           </MarginNote>
           {error ? <div role="alert" className="text-[12px] text-signal">{error}</div> : null}

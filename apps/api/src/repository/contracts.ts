@@ -1,6 +1,7 @@
-import type { JudgeProvider, Trace } from "@coeval/audit/runtime";
+import type { JudgeProvider, Trace } from "@rubrist/audit/runtime";
 import type {
   AssessmentReceipt,
+  CaseSource,
   DatasetKind,
   DatasetReferenceProvenance,
   DatasetRevisionPayloadSnapshot,
@@ -31,7 +32,7 @@ import type {
   TraceTestValidationMethod,
   VerdictPayload,
   VerdictSource
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { NormalizedTraceStep } from "../lib/redaction.js";
 
 // Public shapes at the repository boundary. Implementations continue to own
@@ -420,6 +421,30 @@ export interface ListVerdictsInput {
 export type TraceImportResult = Omit<ManualTraceImportResult, "queued" | "queueJobId"> & {
   created: boolean;
 };
+
+// Deep-link lookup of imported native Ironside traces by source identity.
+// One entry per (project, trace version): the case the import dedupe returns.
+export interface FindImportedIronsideTracesInput {
+  projectIds: readonly string[];
+  remoteProjectId: string;
+  traceId: string;
+}
+
+export interface ImportedIronsideTraceMatch {
+  projectId: string;
+  caseId: string;
+  traceVersion: string | null;
+  importedAt: string;
+}
+
+// The upstream identity a case was imported under, when it has one.
+export interface CaseSourceIdentity {
+  source: CaseSource;
+  sourceTraceId: string;
+  sourceTraceVersion: string | null;
+  sourceRemoteProjectId: string | null;
+  sourceIntegrationId: string | null;
+}
 
 export interface JudgeRunContext {
   projectId: string;

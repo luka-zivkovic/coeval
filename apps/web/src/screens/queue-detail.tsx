@@ -3,10 +3,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MarginNote, SectionHead, Chip } from "@/components/coeval";
+import { MarginNote, SectionHead, Chip } from "@/components/rubrist";
 import { ReviewPlayer } from "@/components/review-player";
 import { fetchReviewQueueDetail } from "@/lib/api";
-import type { ReviewQueueDetail, ReviewQueueItem } from "@coeval/shared";
+import type { ReviewQueueDetail, ReviewQueueItem } from "@rubrist/shared";
 
 export function QueueDetailScreen() {
   const navigate = useNavigate();

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { StoredModelBinding, TraceTestRevision } from "@coeval/shared";
+import type { StoredModelBinding, TraceTestRevision } from "@rubrist/shared";
 import {
   buildTraceTestValidationPrompt,
   hasUsableTraceTestExample,

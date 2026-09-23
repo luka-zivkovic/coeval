@@ -81,8 +81,8 @@ import type {
   TraceTestDetail,
   TraceTestSummary,
   TraceTestValidation
-} from "@coeval/shared";
-import type { Trace } from "@coeval/audit/runtime";
+} from "@rubrist/shared";
+import type { Trace } from "@rubrist/audit/runtime";
 import { createJudgeProvider, type JudgeProviderFactory } from "./lib/judge-provider.js";
 import type {
   ConvergenceAuditPageInput,
@@ -100,7 +100,7 @@ import {
   type ClaimLangSmithImportTargetsInput,
   type CompleteEvalRunItemInputDb,
   type CompleteImportJobInput,
-  type CoevalRepository,
+  type RubristRepository,
   type CompareAssessmentReceiptCopyInput,
   type CreateApiKeyInputDb,
   type CreateAssessmentReceiptCorrectionInput,
@@ -146,7 +146,10 @@ import {
   type ImportDatasetExamplesDbInput,
   type ImportDatasetExamplesDbResult,
   type TraceImportContext,
-  type TraceImportResult
+  type TraceImportResult,
+  type CaseSourceIdentity,
+  type FindImportedIronsideTracesInput,
+  type ImportedIronsideTraceMatch
 } from "./repository.js";
 import { PgApiKeyRepository } from "./repository.pg/api-key-repository.js";
 import { PgAssessmentReceiptRepository } from "./repository.pg/assessment-receipt-repository.js";
@@ -168,9 +171,9 @@ import { PgTraceTestRepository } from "./repository.pg/trace-test-repository.js"
 
 // Explicit PostgreSQL compatibility facade over the 17 cohesive port
 // implementations below. Direct methods intentionally stay visible and in
-// CoevalRepository port order; only the three named cross-port resolvers own
+// RubristRepository port order; only the three named cross-port resolvers own
 // coordination logic in this file.
-export class PgRepository implements CoevalRepository {
+export class PgRepository implements RubristRepository {
   private readonly apiKeyRepository: PgApiKeyRepository;
   private readonly assessmentReceiptRepository: PgAssessmentReceiptRepository;
   private readonly caseEvidenceRepository: PgCaseEvidenceRepository;
@@ -539,6 +542,14 @@ export class PgRepository implements CoevalRepository {
 
   async listImportJobs(input: ListImportJobsInput): Promise<ImportJobRecord[]> {
     return this.traceImportRepository.listImportJobs(input);
+  }
+
+  async findImportedIronsideTraces(input: FindImportedIronsideTracesInput): Promise<ImportedIronsideTraceMatch[]> {
+    return this.traceImportRepository.findImportedIronsideTraces(input);
+  }
+
+  async getCaseSourceIdentity(projectId: string, caseId: string): Promise<CaseSourceIdentity | null> {
+    return this.traceImportRepository.getCaseSourceIdentity(projectId, caseId);
   }
 
   async createLangSmithIntegration(projectId: string, input: LangSmithIntegrationInput): Promise<LangSmithIntegration> {

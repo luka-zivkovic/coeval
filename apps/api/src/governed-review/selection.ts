@@ -27,7 +27,7 @@ export interface GovernedSelectionResult {
   selected: GovernedSelectionFrameItem[];
   seed: string | null;
   rngVersion: "sha256-rank/v1" | "sha256-systematic/v1" | null;
-  algorithmVersion: "coeval-governed-draw/v1";
+  algorithmVersion: "rubrist-governed-draw/v1";
   drawDigest: string;
   strata: Array<{
     key: string;
@@ -119,7 +119,7 @@ export function executeGovernedReviewSelection(input: {
     selected,
     seed,
     rngVersion,
-    algorithmVersion: "coeval-governed-draw/v1",
+    algorithmVersion: "rubrist-governed-draw/v1",
     drawDigest: sha256Digest({
       method,
       seed,

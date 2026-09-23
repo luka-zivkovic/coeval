@@ -12,7 +12,7 @@ import {
   type AnalysisPopulationExclusion,
   type AnalysisPopulationMember,
   type DatasetRevisionPayloadSnapshot
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import {
@@ -510,7 +510,7 @@ export async function insertCreationExposure(
       input.revisionId,
       input.subjectId,
       input.userId,
-      JSON.stringify({ contract: "coeval/analysis-population-lineage/v1", populationId: input.populationId }),
+      JSON.stringify({ contract: "rubrist/analysis-population-lineage/v1", populationId: input.populationId }),
       `analysis-population-created:${input.populationId}`
     ]
   );
@@ -577,10 +577,10 @@ export function rowToSummary(row: Record<string, unknown>) {
     datasetRevisionId: population.datasetRevisionId,
     method: "simple_random",
     stoppingRule: "fixed",
-    drawExecutor: "coeval_server",
+    drawExecutor: "rubrist_server",
     seed: String(row.seed),
     rngVersion: "sha256-rank/v1",
-    algorithmVersion: "coeval-analysis-draw/v1",
+    algorithmVersion: "rubrist-analysis-draw/v1",
     fixedBudget: Number(row.fixed_budget),
     populationSize: population.populationSize,
     inclusionProbability: {

@@ -274,7 +274,7 @@ describe("PostgreSQL API-key repository slice", () => {
               project_id: "project-1",
               name: "Agent",
               key_hash: "not-public",
-              key_prefix: "coeval_sk_abc123…",
+              key_prefix: "rubrist_sk_abc123…",
               created_at: createdAt,
               last_used_at: null,
               revoked_at: null
@@ -299,11 +299,11 @@ describe("PostgreSQL API-key repository slice", () => {
       id: expect.stringMatching(/^apikey_/),
       projectId: "project-1",
       name: "Agent",
-      keyPrefix: `${created.key.slice(0, "coeval_sk_".length + 6)}…`,
+      keyPrefix: `${created.key.slice(0, "rubrist_sk_".length + 6)}…`,
       createdAt: createdAt.toISOString(),
       lastUsedAt: null,
       revokedAt: null,
-      key: expect.stringMatching(/^coeval_sk_[A-Za-z0-9_-]{32}$/)
+      key: expect.stringMatching(/^rubrist_sk_[A-Za-z0-9_-]{32}$/)
     });
     expect(Object.keys(created)).toEqual([
       "id",
@@ -351,18 +351,18 @@ describe("PostgreSQL API-key repository slice", () => {
       id: "apikey-1",
       projectId: "project-1",
       name: "Agent",
-      keyPrefix: "coeval_sk_abc123…",
+      keyPrefix: "rubrist_sk_abc123…",
       createdAt: createdAt.toISOString(),
       lastUsedAt: null,
       revokedAt: null
     }]);
     await expect(repository.revokeApiKey("project-1", "apikey-1")).resolves.toBe(true);
     await expect(repository.revokeApiKey("project-1", "apikey-missing")).resolves.toBe(false);
-    await expect(repository.resolveApiKey("coeval_sk_presented")).resolves.toEqual({
+    await expect(repository.resolveApiKey("rubrist_sk_presented")).resolves.toEqual({
       projectId: "project-1",
       apiKeyId: "apikey-1"
     });
-    await expect(repository.resolveApiKey("coeval_sk_missing")).resolves.toBeNull();
+    await expect(repository.resolveApiKey("rubrist_sk_missing")).resolves.toBeNull();
 
     expect(calls[2]).toEqual({
       sql: "select * from api_keys where project_id = $1 order by created_at desc",
@@ -378,8 +378,8 @@ describe("PostgreSQL API-key repository slice", () => {
       sql: `update api_keys set last_used_at = now()
        where key_hash = $1 and revoked_at is null
        returning id, project_id`,
-      values: [hashApiKey("coeval_sk_presented")]
+      values: [hashApiKey("rubrist_sk_presented")]
     });
-    expect(calls[6]?.values).toEqual([hashApiKey("coeval_sk_missing")]);
+    expect(calls[6]?.values).toEqual([hashApiKey("rubrist_sk_missing")]);
   });
 });

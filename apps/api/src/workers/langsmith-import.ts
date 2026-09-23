@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { LangSmithImportJobSchema, type LangSmithImportJob } from "@coeval/shared";
-import type { Queue } from "@coeval/queue";
-import type { CoevalRepository, LangSmithImportContext } from "../repository.js";
+import { LangSmithImportJobSchema, type LangSmithImportJob } from "@rubrist/shared";
+import type { Queue } from "@rubrist/queue";
+import type { RubristRepository, LangSmithImportContext } from "../repository.js";
 import { ImportSkillVersionBindingError, LangSmithCredentialsMissingError, LangSmithIntegrationNotFoundError, NoCurrentSkillError, RecursiveTraceSkippedError } from "../repository.js";
 import { LangSmithClient, type LangSmithTraceFetcher } from "../lib/langsmith.js";
 import { assertImportJudgingAllowed, scheduleImportedCaseJudging } from "./import-judging.js";
@@ -15,7 +15,7 @@ export type LangSmithClientFactory = (context: LangSmithImportContext) => LangSm
 
 export async function registerLangSmithImportWorker(
   queue: Queue,
-  repository: CoevalRepository,
+  repository: RubristRepository,
   createClient: LangSmithClientFactory = defaultLangSmithClientFactory
 ): Promise<void> {
   await queue.work<LangSmithImportJob>("langsmith.import", async ({ id, data }) => {
@@ -32,7 +32,7 @@ export async function registerLangSmithImportWorker(
 }
 
 export async function processLangSmithImportJob(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   queue: Queue,
   job: LangSmithImportJob,
   createClient: LangSmithClientFactory = defaultLangSmithClientFactory
@@ -64,7 +64,7 @@ export async function processLangSmithImportJob(
       } catch (error) {
         if (error instanceof RecursiveTraceSkippedError) {
           // Anti-recursion guard (PR #46): upstream tagged this trace as
-          // coeval-internal. Don't import or evaluate it — just count it as
+          // rubrist-internal. Don't import or evaluate it — just count it as
           // skipped so the import-job counters stay honest.
           skipped += 1;
           continue;

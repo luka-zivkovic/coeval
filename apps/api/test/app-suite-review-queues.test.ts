@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 
-describe("Coeval Hono API", () => {
+describe("Rubrist Hono API", () => {
   it("creates and lists annotation queues with counters + per-item ordering", async () => {
     const repository = new DemoRepository();
     const localApp = createApp(repository);
@@ -519,7 +519,7 @@ describe("Coeval Hono API", () => {
     ];
     for (const path of reads) {
       const response = await localApp.request(path);
-      expect(response.headers.get("x-coeval-governance-class"), path).toBe(expected);
+      expect(response.headers.get("x-rubrist-governance-class"), path).toBe(expected);
     }
 
     const writes = [
@@ -536,7 +536,7 @@ describe("Coeval Hono API", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body)
       });
-      expect(response.headers.get("x-coeval-governance-class"), path).toBe(expected);
+      expect(response.headers.get("x-rubrist-governance-class"), path).toBe(expected);
     }
   });
 });

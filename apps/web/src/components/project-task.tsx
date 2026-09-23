@@ -1,8 +1,8 @@
 import { Activity, FlaskConical } from "lucide-react";
-import { Eyebrow } from "@/components/coeval";
+import { Eyebrow } from "@/components/rubrist";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { PROJECT_NAME_MAX_LENGTH, type ProjectMode } from "@coeval/shared";
+import { PROJECT_NAME_MAX_LENGTH, type ProjectMode } from "@rubrist/shared";
 
 // SINGLE source for first-run vocabulary. Three surfaces render this form
 // (new-project modal, no-project landing, owner setup) — labels, placeholders,
@@ -53,7 +53,7 @@ export function ProjectTaskFork({
         />
       </div>
       <div className="text-[11px] leading-[1.5] text-ink-3">
-        Coeval reads recorded Runs; it does not execute your AI. You can connect another source later
+        Rubrist reads recorded Runs; it does not execute your AI. You can connect another source later
         without losing Checks or Results.
       </div>
     </div>

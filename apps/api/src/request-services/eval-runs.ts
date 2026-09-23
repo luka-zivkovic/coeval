@@ -3,12 +3,12 @@ import type {
   DatasetRevisionDetail,
   EvalRun,
   TraceTestRunSource
-} from "@coeval/shared";
-import type { Queue, QueueSendOptions } from "@coeval/queue";
+} from "@rubrist/shared";
+import type { Queue, QueueSendOptions } from "@rubrist/queue";
 import {
   DatasetRevisionConflictError,
   SealedValidationUnavailableError,
-  type CoevalRepository
+  type RubristRepository
 } from "../repository.js";
 import { runEvalRunInline } from "../workers/eval-run.js";
 
@@ -39,7 +39,7 @@ export interface EvalRunRequestService {
 // dispatch is the only fan-out boundary and either queues the durable run or
 // executes the same run inline in demo mode.
 export function createEvalRunRequestService(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   queue: Queue | undefined
 ): EvalRunRequestService {
   const createDataset = async (input: DatasetEvalRunInput): Promise<EvalRun> =>

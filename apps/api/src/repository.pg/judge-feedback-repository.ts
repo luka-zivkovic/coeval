@@ -5,7 +5,7 @@ import {
   type FeedbackSyncJob,
   type JudgeRun,
   type JudgeRunJob
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import { decryptJson } from "../lib/encryption.js";
 import { redactNormalizedTracePayload, type NormalizedTraceStep } from "../lib/redaction.js";

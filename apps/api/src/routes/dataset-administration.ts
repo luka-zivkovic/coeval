@@ -7,21 +7,21 @@ import {
   CreateDatasetRevisionInputSchema,
   ImportDatasetExamplesInputSchema,
   type TraceStep
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   CaseNotFoundError,
   DatasetNameTakenError,
   DatasetNotFoundError,
   DatasetRevisionConflictError,
   SealedValidationUnavailableError,
-  type CoevalRepository
+  type RubristRepository
 } from "../repository.js";
 import type { AppVariables, RequestServices } from "../request-services/index.js";
 
 type DatasetAdministrationApp = Hono<{ Variables: AppVariables }>;
 
 export interface DatasetAdministrationRouteOptions {
-  repository: CoevalRepository;
+  repository: RubristRepository;
   requestServices: RequestServices;
 }
 
@@ -257,7 +257,7 @@ export function registerDatasetAdministrationRoutes(
         created: item.created
       })),
       reusedCount: collapsedDuplicates + imported.items.filter((item) => !item.created).length,
-      // Route-built metadata is never coeval-internal, so the anti-recursion
+      // Route-built metadata is never rubrist-internal, so the anti-recursion
       // skip can't fire on this path; the field stays for schema stability.
       skippedCount: 0
     }, 201);

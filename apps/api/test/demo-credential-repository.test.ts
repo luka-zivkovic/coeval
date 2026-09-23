@@ -318,9 +318,9 @@ describe("Demo credential repository slice", () => {
       }
     })();
 
-    expect(first.key).toMatch(/^coeval_sk_/);
-    expect(second.key).toMatch(/^coeval_sk_/);
-    expect(foreign.key).toMatch(/^coeval_sk_/);
+    expect(first.key).toMatch(/^rubrist_sk_/);
+    expect(second.key).toMatch(/^rubrist_sk_/);
+    expect(foreign.key).toMatch(/^rubrist_sk_/);
     expect(first.key).not.toBe(second.key);
     expect(first.key.startsWith(first.keyPrefix.slice(0, -1))).toBe(true);
     expect(JSON.stringify(store.apiKeys)).not.toContain(first.key);
@@ -342,7 +342,7 @@ describe("Demo credential repository slice", () => {
     });
     expect(store.apiKeys.find((entry) => entry.record.id === first.id)?.record.lastUsedAt)
       .toEqual(expect.any(String));
-    expect(await repository.resolveApiKey("coeval_sk_missing")).toBeNull();
+    expect(await repository.resolveApiKey("rubrist_sk_missing")).toBeNull();
     expect(await repository.revokeApiKey("project-b", first.id)).toBe(false);
     expect(await repository.revokeApiKey("project-a", first.id)).toBe(true);
     expect(await repository.revokeApiKey("project-a", first.id)).toBe(false);

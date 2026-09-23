@@ -1,4 +1,4 @@
-import type { ProductionCalibrationReliabilityBin } from "@coeval/shared";
+import type { ProductionCalibrationReliabilityBin } from "@rubrist/shared";
 import { formatPercent, reliabilityDiagramLayout } from "../../lib/production-calibration-ui.js";
 
 export interface ReliabilityDiagramProps {

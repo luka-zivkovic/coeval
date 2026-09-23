@@ -32,7 +32,7 @@ import {
 import {
   Eyebrow,
   SectionHead
-} from "@/components/coeval";
+} from "@/components/rubrist";
 import {
   createDatasetRevision,
   createDatasetRevisionEvalRun,
@@ -68,7 +68,7 @@ import {
   type DatasetRevision,
   type EvalRun,
   type EvalRunDetail
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { AddExamplesModal } from "./datasets/examples.js";
 import { DatasetCard, DatasetDetailCard, EvalRunDetailCard, RunDeltaCard } from "./datasets/cards.js";
 export { parseExamplesText } from "./datasets/examples.js";

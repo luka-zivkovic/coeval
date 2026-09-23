@@ -9,13 +9,13 @@ import {
   type JudgeHumanDisagreementSummary,
   type V1FindingsResponse,
   type VerdictRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { CaseListEntry } from "../repository.js";
 import { toDiscreteCategory } from "./kappa.js";
 
 /**
  * Findings aggregation (GET /api/v1/findings, issue #10): the judgment
- * intelligence that accumulates in Coeval — overrides, disagreements,
+ * intelligence that accumulates in Rubrist — overrides, disagreements,
  * per-stratum verdict shape, golden-set growth — as one bounded,
  * machine-readable snapshot for skill maintenance.
  *

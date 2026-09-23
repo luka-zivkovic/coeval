@@ -167,16 +167,16 @@ export const CreateReviewQueueInputSchema = z.object({
 });
 export type CreateReviewQueueInput = z.infer<typeof CreateReviewQueueInputSchema>;
 
-// Anti-recursion guard. When Coeval invokes a judge LLM, the trace platform
+// Anti-recursion guard. When Rubrist invokes a judge LLM, the trace platform
 // (LangSmith / Langfuse / etc.) may emit that LLM call as a trace, which can
-// then loop back into Coeval's ingest. Producers tag those internal calls under
-// the reserved `coeval` metadata namespace so Coeval refuses to ingest them.
+// then loop back into Rubrist's ingest. Producers tag those internal calls under
+// the reserved `rubrist` metadata namespace so Rubrist refuses to ingest them.
 // Inspired by Langfuse's `langfuse-internal-llm-judge` tag pattern (docs/08).
-export const COEVAL_INTERNAL_METADATA_KEY = "coeval";
+export const RUBRIST_INTERNAL_METADATA_KEY = "rubrist";
 
 export function isInternalTraceMetadata(metadata: Record<string, unknown> | null | undefined): boolean {
   if (!metadata) return false;
-  const namespace = metadata[COEVAL_INTERNAL_METADATA_KEY];
+  const namespace = metadata[RUBRIST_INTERNAL_METADATA_KEY];
   if (!namespace || typeof namespace !== "object" || Array.isArray(namespace)) return false;
   return (namespace as { internal?: unknown }).internal === true;
 }
@@ -255,7 +255,7 @@ export function effectiveHumanLabel(
   return best ? verdictLabelFromPayload(best.payload) : null;
 }
 
-// Inter-rater agreement (Landis & Koch 1977 interpretation bands). Coeval's
+// Inter-rater agreement (Landis & Koch 1977 interpretation bands). Rubrist's
 // flagship differentiator — none of the surveyed competitors compute this.
 export const KappaInterpretationSchema = z.enum([
   "poor",

@@ -1,8 +1,8 @@
 import { expect, it } from "vitest";
 
-import { runMigrations } from "@coeval/db";
+import { runMigrations } from "@rubrist/db";
 
-import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema, type JudgeProviderId } from "@coeval/shared";
+import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema, type JudgeProviderId } from "@rubrist/shared";
 import { RegressionGateJudgeError, RegressionGateUnavailableError } from "../src/repository.js";
 import { PgRepository } from "../src/repository.pg.js";
 

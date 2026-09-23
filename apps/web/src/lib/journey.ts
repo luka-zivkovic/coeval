@@ -4,7 +4,7 @@ import {
   type CreatedApiKey,
   type DashboardSummary,
   type Project
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 // Skill Bench: evidence comes from example datasets instead of a trace
 // stream. Branches IA/copy only — journey predicates below hold unchanged
@@ -100,7 +100,7 @@ export function firstResultPath(skillVersionId: string, skillId: string, criteri
   return `/first-result?version=${encodeURIComponent(skillVersionId)}&skill=${encodeURIComponent(skillId)}&criterionId=${encodeURIComponent(criterionId)}`;
 }
 
-const FIRST_PROJECT_KEY = "coeval.first-project-key";
+const FIRST_PROJECT_KEY = "rubrist.first-project-key";
 
 // Returns whether the plaintext key was actually persisted. A live bearer
 // credential was just minted server-side; if storage is unavailable (Safari
@@ -137,7 +137,7 @@ export function forgetFirstProjectKey(): void {
 
 // Session-scoped flag so the Overview can show the one-time setup receipt
 // right after sign-off without persisting UI state anywhere durable.
-const RECEIPT_KEY = "coeval.setup-receipt";
+const RECEIPT_KEY = "rubrist.setup-receipt";
 
 export function markSetupReceipt(text: string): void {
   try {

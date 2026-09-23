@@ -3,14 +3,15 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, FileCheck2, ShieldCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SectionHead } from "@/components/coeval";
+import { SectionHead } from "@/components/rubrist";
 import { TraceDetail } from "@/components/trace-detail";
+import { ViewInIronside } from "@/components/view-in-ironside";
 import { fetchCaseDetail, fetchTraceTests } from "@/lib/api";
 import { intentForVerdict, type TraceTestIntent } from "@/lib/trace-test-flow";
 import { dismissTraceTestPrompt, traceTestPromptDismissed } from "@/lib/trace-test-pilot";
 import { useDashboard } from "@/lib/dashboard-context";
 import { dashboardSkillVersionId } from "@/lib/criterion-scope";
-import { type ExceptionDetail, type TraceTestSummary } from "@coeval/shared";
+import { type ExceptionDetail, type TraceTestSummary } from "@rubrist/shared";
 
 interface TraceScreenProps {
   fetcher: (caseId: string) => Promise<ExceptionDetail>;
@@ -126,8 +127,11 @@ function TraceScreenBase({ fetcher, backTo, backLabel }: TraceScreenProps) {
         <Button variant="ghost" size="sm" onClick={() => navigate(backTo)}>
           <ArrowLeft /> {backLabel}
         </Button>
-        <div className="font-mono text-[11px] text-ink-3">
-          {detail.exception.id} · {detail.trace.id}
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <ViewInIronside caseId={caseId} />
+          <div className="font-mono text-[11px] text-ink-3">
+            {detail.exception.id} · {detail.trace.id}
+          </div>
         </div>
       </div>
 
@@ -258,7 +262,7 @@ function TraceTestEntry({ detail }: { detail: ExceptionDetail }) {
         <div className="mt-0.5 text-[12px] leading-[1.5] text-ink-3">
           {latestDraft
             ? `${drafts.length} saved draft${drafts.length === 1 ? "" : "s"} from this conversation. Resume the most recently updated one.`
-            : draftsError ? "Coeval could not check this conversation for saved drafts. Retry before starting another." : copy.body}
+            : draftsError ? "Rubrist could not check this conversation for saved drafts. Retry before starting another." : copy.body}
         </div>
       </div>
       <Button

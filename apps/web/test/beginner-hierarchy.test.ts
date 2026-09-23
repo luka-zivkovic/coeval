@@ -81,7 +81,7 @@ describe("beginner-first hierarchy", () => {
   it("synchronizes a display change across every mounted consumer", async () => {
     const modeHook = await source("../src/hooks/use-mode.ts");
 
-    expect(modeHook).toContain('DISPLAY_MODE_EVENT = "coeval:display-mode-change"');
+    expect(modeHook).toContain('DISPLAY_MODE_EVENT = "rubrist:display-mode-change"');
     expect(modeHook).toContain('window.addEventListener(DISPLAY_MODE_EVENT, syncMode)');
     expect(modeHook).toContain('window.dispatchEvent(new Event(DISPLAY_MODE_EVENT))');
   });

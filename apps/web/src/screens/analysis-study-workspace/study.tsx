@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { BookOpen, Check, LockKeyhole, Plus, X } from "lucide-react";
-import type { AnalysisPopulationSummary, AnalysisStudyDetail } from "@coeval/shared";
+import type { AnalysisPopulationSummary, AnalysisStudyDetail } from "@rubrist/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

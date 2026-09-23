@@ -15,7 +15,7 @@ vi.mock("@/components/ui/card", () => ({ Card: Element, CardContent: Element, Ca
 vi.mock("@/components/ui/textarea", () => ({
   Textarea: (props: object) => createElement("textarea", props)
 }));
-vi.mock("@/components/coeval", () => ({
+vi.mock("@/components/rubrist", () => ({
   SectionHead: ({ eyebrow, title, sub }: { eyebrow: string; title: string; sub?: string }) =>
     createElement("header", null, eyebrow, title, sub)
 }));
@@ -40,7 +40,7 @@ describe("production calibration screen", () => {
     expect(html).toContain("Load sample ledger");
     expect(html).toContain("Upload .jsonl");
     expect(html).toContain("Compute preview");
-    expect(html).toContain("coeval/production-decision-record/v1");
+    expect(html).toContain("rubrist/production-decision-record/v1");
     expect(html).not.toContain("data-demo");
   });
 

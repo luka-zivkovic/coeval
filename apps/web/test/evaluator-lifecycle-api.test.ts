@@ -20,7 +20,7 @@ describe("evaluator lifecycle web API",()=>{
     });
     const init=fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(init.credentials).toBe("include");
-    expect(new Headers(init.headers).get("x-coeval-project")).toBe("project_1");
+    expect(new Headers(init.headers).get("x-rubrist-project")).toBe("project_1");
   });
 
   it("fails closed when the server omits actor authority",async()=>{

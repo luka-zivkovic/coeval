@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveGateCheckDecision, type EvalRunStatus, type GateCheckDetail } from "@coeval/shared";
+import { deriveGateCheckDecision, type EvalRunStatus, type GateCheckDetail } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 

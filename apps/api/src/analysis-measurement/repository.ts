@@ -1,4 +1,4 @@
-import type { AnalysisWorkflowMeasurementReport } from "@coeval/shared";
+import type { AnalysisWorkflowMeasurementReport } from "@rubrist/shared";
 
 export type AnalysisMeasurementProjectRole = "owner" | "member";
 

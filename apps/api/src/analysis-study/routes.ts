@@ -29,7 +29,7 @@ import {
   AnalysisTaxonomyRevisionsPageSchema,
   DatasetEvidenceDigestSchema,
   DatasetRevisionPayloadSnapshotSchema
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   AnalysisStudyRepositoryError,
   type AnalysisStudyAccess,

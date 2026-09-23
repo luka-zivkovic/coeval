@@ -5,7 +5,7 @@ import {
   JudgeBatchRequestSchema,
   JudgeServiceRequestSchema,
   verdictLabelFromPayload
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { contentDigest, sha256Digest } from "../lib/assessment-receipt.js";
 import {
   createStrictJudgeProvider,
@@ -18,7 +18,7 @@ import {
   CaseNotFoundError,
   DatasetNotFoundError,
   RecursiveTraceSkippedError,
-  type CoevalRepository
+  type RubristRepository
 } from "../repository.js";
 import type { AppVariables, RequestServices } from "../request-services/index.js";
 import { judgeAndRecord } from "../workers/judge.js";
@@ -32,7 +32,7 @@ function decodeExactBase64(value: string): Buffer | null {
 type V1EvaluationAdministrationApp = Hono<{ Variables: AppVariables }>;
 
 export interface V1EvaluationAdministrationRouteOptions {
-  repository: CoevalRepository;
+  repository: RubristRepository;
   requestServices: RequestServices;
   pool?: Pool | undefined;
   judgeTimeoutMs: number;
@@ -88,7 +88,7 @@ export function registerV1EvaluationAdministrationRoutes(
       });
     } catch (error) {
       if (error instanceof RecursiveTraceSkippedError) {
-        return c.json({ skipped: true, reason: "coeval_internal" }, 200);
+        return c.json({ skipped: true, reason: "rubrist_internal" }, 200);
       }
       throw error;
     }
@@ -236,7 +236,7 @@ export function registerV1EvaluationAdministrationRoutes(
       } catch (error) {
         if (error instanceof RecursiveTraceSkippedError) {
           if (parsed.data.purpose === "release_evidence") {
-            return c.json({ error: "release_evidence items cannot contain Coeval internal trace metadata." }, 400);
+            return c.json({ error: "release_evidence items cannot contain Rubrist internal trace metadata." }, 400);
           }
           skippedItems += 1;
           continue;
@@ -378,7 +378,7 @@ export function registerV1EvaluationAdministrationRoutes(
         );
       }
       c.header("content-type", "application/json; charset=utf-8");
-      c.header("x-coeval-receipt-artifact-digest", artifact.artifactDigest);
+      c.header("x-rubrist-receipt-artifact-digest", artifact.artifactDigest);
       return c.body(artifact.canonicalBytes.toString("utf8"));
     } catch (error) {
       if (error instanceof AssessmentReceiptUnavailableError) {
@@ -395,7 +395,7 @@ export function registerV1EvaluationAdministrationRoutes(
     );
     if (!artifact) return c.json({ error: "Assessment receipt not found" }, 404);
     c.header("content-type", "application/json; charset=utf-8");
-    c.header("x-coeval-receipt-artifact-digest", artifact.artifactDigest);
+    c.header("x-rubrist-receipt-artifact-digest", artifact.artifactDigest);
     return c.body(artifact.canonicalBytes.toString("utf8"));
   });
 
@@ -433,7 +433,7 @@ export function registerV1EvaluationAdministrationRoutes(
     return c.json(detail);
   });
 
-  // Product-release writes are gone: Coeval emits policy-free release
+  // Product-release writes are gone: Rubrist emits policy-free release
   // evidence, while the release layer owns ship/hold thresholds. Historical
   // gate rows remain readable below for audit and migration purposes.
   app.post("/api/v1/gate-checks", async (c) => {
@@ -442,7 +442,7 @@ export function registerV1EvaluationAdministrationRoutes(
     return c.json({
       error: "Product gate creation has moved to the release layer.",
       code: "product_gate_writes_removed",
-      migration: "Submit /api/v1/judge/batch with purpose=release_evidence, then apply release policy outside Coeval."
+      migration: "Submit /api/v1/judge/batch with purpose=release_evidence, then apply release policy outside Rubrist."
     }, 410);
   });
 

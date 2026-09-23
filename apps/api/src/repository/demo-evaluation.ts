@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { AssessmentReceipt, EvalRun, EvalRunDetail, EvalRunItem, SkillVersion } from "@coeval/shared";
+import type { AssessmentReceipt, EvalRun, EvalRunDetail, EvalRunItem, SkillVersion } from "@rubrist/shared";
 import {
   buildAssessmentReceipt,
   canonicalReceiptBytes,

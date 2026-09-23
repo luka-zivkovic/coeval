@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { demoProject, demoSkill } from "@coeval/db";
-import type { EvalRun, GateCheckDetail } from "@coeval/shared";
+import { demoProject, demoSkill } from "@rubrist/db";
+import type { EvalRun, GateCheckDetail } from "@rubrist/shared";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import * as repositoryModule from "../src/repository.js";

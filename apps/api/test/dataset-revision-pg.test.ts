@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import { describe, expect, it } from "vitest";
-import { runMigrations } from "@coeval/db";
-import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema } from "@coeval/shared";
+import { runMigrations } from "@rubrist/db";
+import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema } from "@rubrist/shared";
 import { datasetInputIdentity } from "../src/lib/dataset-revision.js";
 import { DatasetRevisionConflictError, SealedValidationUnavailableError } from "../src/repository.js";
 import { PgRepository } from "../src/repository.pg.js";

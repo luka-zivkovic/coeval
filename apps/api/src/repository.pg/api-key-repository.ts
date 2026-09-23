@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type {
   ApiKey,
   CreatedApiKey
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import { generateApiKey, hashApiKey } from "../lib/api-keys.js";
 import type { CreateApiKeyInputDb } from "../repository.js";

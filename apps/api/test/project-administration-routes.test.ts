@@ -18,7 +18,7 @@ describe("project administration routes", () => {
         rateLimitPerMinute: 60,
         batchMaxItems: 100
       }),
-      publicApiBaseUrl: () => "https://coeval.example"
+      publicApiBaseUrl: () => "https://rubrist.example"
     });
 
     expect(app.routes.map(({ method, path }) => `${method} ${path}`)).toEqual([

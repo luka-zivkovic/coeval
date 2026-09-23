@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, CheckCircle2, RefreshCcw, ShieldAlert } from "lucide-react";
-import { MinimumVerdictOutputSchema, type EvaluatorLifecycleProjection } from "@coeval/shared";
+import { MinimumVerdictOutputSchema, type EvaluatorLifecycleProjection } from "@rubrist/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

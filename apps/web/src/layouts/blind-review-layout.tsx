@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";
 import { SkipLink } from "../components/skip-link";
-import { CoevalBrand } from "../components/coeval-brand";
+import { RubristBrand } from "../components/rubrist-brand";
 
 /**
  * Security-sensitive reviewer shell. It intentionally sits outside
@@ -22,7 +22,7 @@ export function BlindReviewLayout() {
             className="text-ink"
             aria-label="Governed review task inbox"
           >
-            <CoevalBrand
+            <RubristBrand
               markClassName="size-5"
               nameClassName="font-serif text-[17px] font-semibold tracking-[-0.025em]"
             />

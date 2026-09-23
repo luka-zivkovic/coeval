@@ -1,7 +1,7 @@
 import {
   type JudgeProviderAvailabilityItem,
   type JudgeProviderId
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 export interface JudgeProviderSelection {
   provider: JudgeProviderId;

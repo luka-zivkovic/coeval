@@ -1,5 +1,5 @@
-import type { Queue } from "@coeval/queue";
-import type { CoevalRepository } from "../repository.js";
+import type { Queue } from "@rubrist/queue";
+import type { RubristRepository } from "../repository.js";
 
 export interface LangfusePollerOptions {
   intervalMs?: number | undefined;
@@ -23,7 +23,7 @@ const DEFAULT_IMPORT_LIMIT = 25;
 
 export function registerLangfusePoller(
   queue: Queue,
-  repository: CoevalRepository,
+  repository: RubristRepository,
   options: LangfusePollerOptions = {}
 ): LangfusePollerHandle {
   const intervalMs = options.intervalMs ?? DEFAULT_INTERVAL_MS;
@@ -52,7 +52,7 @@ export function registerLangfusePoller(
 }
 
 export async function enqueueDueLangfuseImports(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   queue: Queue,
   options: LangfusePollerOptions & { now?: Date | undefined } = {}
 ): Promise<LangfusePollingResult> {

@@ -1,8 +1,8 @@
 # SkillFormat v1
 
-SkillFormat v1 is Coeval's portable representation of a governed LLM-judging skill.
+SkillFormat v1 is Rubrist's portable representation of a governed LLM-judging skill.
 
-A skill is the team-owned artifact that defines how traces are judged. It combines a human-readable review guide, portable labeled examples, a requested model binding, and structured output schema. Coeval's runtime stores and executes skills, but the format is intended to become implementation-independent once a second implementation exists.
+A skill is the team-owned artifact that defines how traces are judged. It combines a human-readable review guide, portable labeled examples, a requested model binding, and structured output schema. Rubrist's runtime stores and executes skills, but the format is intended to become implementation-independent once a second implementation exists.
 
 ## Required fields
 
@@ -74,7 +74,7 @@ The rubric should define:
 
 Examples are portable labeled cases that may support calibration, testing,
 stale/flaky checks, and golden-set workflows. SkillFormat can carry examples,
-but the current Coeval judge runtime does **not** inject them as few-shot prompt
+but the current Rubrist judge runtime does **not** inject them as few-shot prompt
 content. Few-shot selection and train/holdout semantics are future product
 decisions, not current runtime guarantees.
 

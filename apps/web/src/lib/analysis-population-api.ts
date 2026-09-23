@@ -17,10 +17,10 @@ import {
   type AnalysisPopulationSelectedItemsPage,
   type AnalysisPopulationSummariesPage,
   type DatasetRevisionPayloadSnapshot
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
-const PROJECT_KEY = "coeval.project";
+const PROJECT_KEY = "rubrist.project";
 
 export interface AnalysisPopulationSelectedContent {
   populationId: string;
@@ -132,7 +132,7 @@ function projectFetch(url: string, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers);
   try {
     const projectId = localStorage.getItem(PROJECT_KEY);
-    if (projectId) headers.set("x-coeval-project", projectId);
+    if (projectId) headers.set("x-rubrist-project", projectId);
   } catch {
     // The authenticated server default remains authoritative when storage is unavailable.
   }

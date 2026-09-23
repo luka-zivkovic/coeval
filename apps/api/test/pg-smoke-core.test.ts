@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
-import { runMigrations } from "@coeval/db";
-import { type Queue } from "@coeval/queue";
+import { runMigrations } from "@rubrist/db";
+import { type Queue } from "@rubrist/queue";
 
 import { PgRepository } from "../src/repository.pg.js";
 

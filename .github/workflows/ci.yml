@@ -17,19 +17,19 @@ jobs:
   typecheck-and-test:
     runs-on: ubuntu-latest
     env:
-      PG_SMOKE_DATABASE_URL: postgres://coeval:coeval@localhost:5432/coeval
+      PG_SMOKE_DATABASE_URL: postgres://rubrist:rubrist@localhost:5432/rubrist
       BETTER_AUTH_SECRET: ci-test-secret-for-postgres-suite-at-least-32-bytes
     services:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_USER: coeval
-          POSTGRES_PASSWORD: coeval
-          POSTGRES_DB: coeval
+          POSTGRES_USER: rubrist
+          POSTGRES_PASSWORD: rubrist
+          POSTGRES_DB: rubrist
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U coeval -d coeval"
+          --health-cmd "pg_isready -U rubrist -d rubrist"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
@@ -64,9 +64,9 @@ jobs:
         run: pnpm test
 
       - name: Build web
-        run: pnpm --filter @coeval/web build
+        run: pnpm --filter @rubrist/web build
 
-  # Dogfood the judge gate when a hosted Coeval endpoint is configured.
+  # Dogfood the judge gate when a hosted Rubrist endpoint is configured.
   # Secrets are not readable in a job-level `if`, so a small check job exposes
   # their presence as an output. Without both secrets this job is skipped.
   gate-secrets:
@@ -75,7 +75,7 @@ jobs:
       available: ${{ steps.check.outputs.available }}
     steps:
       - id: check
-        run: echo "available=${{ secrets.COEVAL_URL != '' && secrets.COEVAL_API_KEY != '' }}" >> "$GITHUB_OUTPUT"
+        run: echo "available=${{ secrets.RUBRIST_URL != '' && secrets.RUBRIST_API_KEY != '' }}" >> "$GITHUB_OUTPUT"
 
   judge-gate:
     runs-on: ubuntu-latest
@@ -93,5 +93,5 @@ jobs:
       - name: Judge gate
         run: node tools/ci/gate.mjs tools/ci/examples.jsonl --min-agreement 1.0
         env:
-          COEVAL_URL: ${{ secrets.COEVAL_URL }}
-          COEVAL_API_KEY: ${{ secrets.COEVAL_API_KEY }}
+          RUBRIST_URL: ${{ secrets.RUBRIST_URL }}
+          RUBRIST_API_KEY: ${{ secrets.RUBRIST_API_KEY }}

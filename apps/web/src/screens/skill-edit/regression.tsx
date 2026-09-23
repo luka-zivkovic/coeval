@@ -1,7 +1,7 @@
 import { ArrowLeft, Clock, LoaderCircle, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Chip, Eyebrow, KPI, KPIRow, MarginNote, RegressionDiffTable, SectionHead } from "@/components/coeval";
+import { Chip, Eyebrow, KPI, KPIRow, MarginNote, RegressionDiffTable, SectionHead } from "@/components/rubrist";
 import { SkillEditFlow, type SkillEditOutcome } from "@/components/skill-edit-flow";
 import type { CompletedSkillVersionResult } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,7 @@ import {
   type RegressionCaseDiff,
   type Skill,
   type SkillVersion
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 // A regression isn't always "pass → fail": a fail anchor the new version now
 // passes is a LENIENT regression. Spell out each direction so the tile never
@@ -53,7 +53,7 @@ export function GovernedEvaluatorEditBoundary({
             <div>
               <div className="text-[13px] font-medium text-ink">Legacy editing and overrides are unavailable</div>
               <p className="mt-1 max-w-[72ch] text-[12px] leading-5 text-ink-2">
-                Coeval will not send this evaluator through the legacy version writer or let an override substitute for governed activation. Open Human truth to create and manage its next candidate from admissible evidence.
+                Rubrist will not send this evaluator through the legacy version writer or let an override substitute for governed activation. Open Human truth to create and manage its next candidate from admissible evidence.
               </p>
             </div>
           </div>
@@ -91,7 +91,7 @@ export function RegressionRunning({
         <SectionHead
           eyebrow="First setup · Check saved"
           title="Creating your first Result"
-          sub="The quality question and Review guide are now an immutable Check. Coeval is finishing its saved setup step before applying it to a recorded Run."
+          sub="The quality question and Review guide are now an immutable Check. Rubrist is finishing its saved setup step before applying it to a recorded Run."
         />
         <Card className="mb-4" role="status" aria-live="polite">
           <CardHeader>
@@ -152,7 +152,7 @@ export function RegressionRunning({
           <div className="min-w-0 flex-1">
             <div className="text-[13px] font-medium text-ink">Regression check running</div>
             <p className="mt-1 max-w-[72ch] text-[12px] leading-5 text-ink-2">
-              Coeval records the full outcome only after every case in the pinned revision finishes.
+              Rubrist records the full outcome only after every case in the pinned revision finishes.
               Until then this version is not presented as passed or current.
             </p>
             <dl className="mt-4 grid grid-cols-1 gap-y-1 text-[11.5px] sm:grid-cols-[150px_1fr] sm:gap-y-2">
@@ -301,7 +301,7 @@ export function RegressionResult({
             : run.goldenSetMissing
               ? "No promoted reference set yet — this version was created without a known-failure comparison. Promote reviewed cases to check future evaluator edits."
               : blocked
-                ? "Coeval is holding this evaluator version out of current selection until you record an override reason or revise the edit."
+                ? "Rubrist is holding this evaluator version out of current selection until you record an override reason or revise the edit."
                 : overridden
                   ? "The override reason and replacement version are recorded in Version history."
                   : "Every promoted reference case still agrees. The immutable outcome is recorded in Version history."

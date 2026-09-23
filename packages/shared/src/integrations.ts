@@ -189,12 +189,18 @@ export const IronsideEvaluatorTraceSchema = z.object({
 });
 export type IronsideEvaluatorTrace = z.infer<typeof IronsideEvaluatorTraceSchema>;
 
+export const IronsideWebUrlSchema = z.url({ protocol: /^https?$/ }).max(2_000);
+
 // A native connection is one Ironside project plus a scoped machine key. The
-// remote service owns settlement and exposes immutable trace versions; Coeval
+// remote service owns settlement and exposes immutable trace versions; Rubrist
 // persists only the opaque continuation cursor it receives from that feed.
 export const IronsideIntegrationInputSchema = z.object({
   skillVersionId: z.string().min(1).optional(),
   url: z.url(),
+  // Optional browser-facing Ironside URL for "View in Ironside" links, when
+  // the web app is served from a different origin than the API. Display-only:
+  // it never carries credentials and needs no remote revalidation.
+  webUrl: IronsideWebUrlSchema.optional(),
   apiKey: z.string().min(1),
   redaction: TraceRedactionConfigSchema.optional(),
   pollEnabled: z.boolean().optional(),
@@ -206,6 +212,8 @@ export type IronsideIntegrationInput = z.infer<typeof IronsideIntegrationInputSc
 export const UpdateIronsideIntegrationInputSchema = z.object({
   skillVersionId: z.string().min(1).optional(),
   url: z.url().optional(),
+  // null clears the web URL so links fall back to the API URL.
+  webUrl: IronsideWebUrlSchema.nullable().optional(),
   apiKey: z.string().min(1).optional(),
   pollEnabled: z.boolean().optional(),
   pollIntervalSeconds: z.number().int().positive().max(86_400).optional(),
@@ -232,6 +240,8 @@ export const IronsideIntegrationSchema = z.object({
   provider: z.literal("ironside"),
   skillVersionId: z.string().nullable(),
   url: z.string(),
+  // Optional browser-facing base URL; absent/null falls back to `url`.
+  webUrl: z.string().nullable().optional(),
   remoteProjectId: z.string().min(1),
   remoteProjectName: z.string().min(1),
   protocolVersion: z.literal(IRONSIDE_EVALUATOR_PROTOCOL_VERSION),
@@ -247,7 +257,7 @@ export const IronsideIntegrationSchema = z.object({
 export type IronsideIntegration = z.infer<typeof IronsideIntegrationSchema>;
 
 // The cursor is intentionally opaque: ordering, settlement, bootstrap and
-// recovery remain Ironside concerns rather than duplicated Coeval policy.
+// recovery remain Ironside concerns rather than duplicated Rubrist policy.
 export const IronsideSyncStateSchema = z.object({
   cursor: z.string().nullable()
 });

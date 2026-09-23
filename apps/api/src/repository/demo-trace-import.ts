@@ -1,15 +1,19 @@
 import { randomUUID } from "node:crypto";
+import { demoProject } from "@rubrist/db";
 import {
   type CaseSource,
   type ImportJobRecord,
   type ManualTraceImportInput,
   isInternalTraceMetadata
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { datasetInputIdentity } from "../lib/dataset-revision.js";
 import { normalizeTracePayload, redactNormalizedTracePayload } from "../lib/redaction.js";
 import type {
+  CaseSourceIdentity,
   CompleteImportJobInput,
   CreateImportJobInput,
+  FindImportedIronsideTracesInput,
+  ImportedIronsideTraceMatch,
   ListImportJobsInput,
   TraceImportContext,
   TraceImportResult
@@ -147,6 +151,36 @@ export class DemoTraceImportRepository implements TraceImportRepositoryPort {
       .filter((job) => job.projectId === input.projectId && (!input.status || job.status === input.status))
       .slice(0, input.limit)
       .map((job) => ({ ...job }));
+  }
+
+  // The demo store is single-project: every imported case belongs to the
+  // demo project, so a lookup outside it finds nothing.
+  async findImportedIronsideTraces(input: FindImportedIronsideTracesInput): Promise<ImportedIronsideTraceMatch[]> {
+    if (!input.projectIds.includes(demoProject.id)) return [];
+    const byVersion = new Map<string | null, ImportedIronsideTraceMatch>();
+    for (const [caseId, traceSource] of this.store.traceSources.entries()) {
+      if (
+        traceSource.source !== "ironside"
+        || traceSource.sourceRemoteProjectId !== input.remoteProjectId
+        || traceSource.sourceTraceId !== input.traceId
+      ) continue;
+      const version = traceSource.sourceTraceVersion ?? null;
+      if (byVersion.has(version)) continue;
+      byVersion.set(version, { projectId: demoProject.id, caseId, traceVersion: version, importedAt: traceSource.createdAt });
+    }
+    return [...byVersion.values()];
+  }
+
+  async getCaseSourceIdentity(_projectId: string, caseId: string): Promise<CaseSourceIdentity | null> {
+    const traceSource = this.store.traceSources.get(caseId);
+    if (!traceSource) return null;
+    return {
+      source: traceSource.source,
+      sourceTraceId: traceSource.sourceTraceId,
+      sourceTraceVersion: traceSource.sourceTraceVersion ?? null,
+      sourceRemoteProjectId: traceSource.sourceRemoteProjectId ?? null,
+      sourceIntegrationId: traceSource.sourceIntegrationId ?? null
+    };
   }
 
   private getImportJob(projectId: string, importJobId: string): ImportJobRecord {

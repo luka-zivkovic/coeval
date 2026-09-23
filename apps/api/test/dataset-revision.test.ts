@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CreateSkillVersionInputSchema, type GoldenSetEntry } from "@coeval/shared";
+import { CreateSkillVersionInputSchema, type GoldenSetEntry } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 

@@ -6,8 +6,8 @@ import type {
   AnalysisCriterionPromotionSummary,
   AnalysisStudyDetail,
   AnalysisTaxonomyDetail
-} from "@coeval/shared";
-import { ANALYSIS_MAX_PROMOTION_SUPPORTS } from "@coeval/shared";
+} from "@rubrist/shared";
+import { ANALYSIS_MAX_PROMOTION_SUPPORTS } from "@rubrist/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

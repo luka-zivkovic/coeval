@@ -16,7 +16,7 @@ import {
   type AnalysisPopulationCreateInput,
   type AnalysisPopulationInclusionProbability,
   type DatasetRevisionPayloadSnapshot
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   DATASET_REVISION_ITEM_DIGEST_BASIS,
   INPUT_IDENTITY_BASIS,
@@ -31,7 +31,7 @@ export const ANALYSIS_POPULATION_MEMBER_LINEAGE_DIGEST_BASIS = "analysis-populat
 export const ANALYSIS_POPULATION_EXCLUSION_DIGEST_BASIS = "analysis-population-exclusion/v1" as const;
 export const ANALYSIS_POPULATION_CONTENT_DIGEST_BASIS = "analysis-population-content/v1" as const;
 export const ANALYSIS_POPULATION_FRAME_DIGEST_BASIS = "analysis-population-frame/v1" as const;
-export const ANALYSIS_POPULATION_RANK_DIGEST_BASIS = "coeval-analysis-rank/v1" as const;
+export const ANALYSIS_POPULATION_RANK_DIGEST_BASIS = "rubrist-analysis-rank/v1" as const;
 export const ANALYSIS_POPULATION_DRAW_ITEM_DIGEST_BASIS = "analysis-population-draw-item/v1" as const;
 export const ANALYSIS_POPULATION_DRAW_CONTENT_DIGEST_BASIS = "analysis-population-draw-content/v1" as const;
 export const ANALYSIS_POPULATION_REFERENCE_BASIS = "Analysis population member; no reference label." as const;
@@ -143,7 +143,7 @@ export interface AnalysisPopulationRankedMember extends AnalysisPopulationRankab
 export interface AnalysisPopulationDrawEvidence {
   method: "simple_random";
   stoppingRule: "fixed";
-  drawExecutor: "coeval_server";
+  drawExecutor: "rubrist_server";
   seed: string;
   rngVersion: typeof ANALYSIS_POPULATION_RNG_VERSION;
   algorithmVersion: typeof ANALYSIS_POPULATION_DRAW_ALGORITHM_VERSION;
@@ -357,7 +357,7 @@ export function analysisPopulationDrawDigest(input: Readonly<AnalysisPopulationD
     contentDigest: assertSha256Digest(input.contentDigest, "contentDigest"),
     method: "simple_random",
     stoppingRule: "fixed",
-    drawExecutor: "coeval_server",
+    drawExecutor: "rubrist_server",
     seed: assertSeed(input.seed),
     rngVersion: ANALYSIS_POPULATION_RNG_VERSION,
     algorithmVersion: ANALYSIS_POPULATION_DRAW_ALGORITHM_VERSION,
@@ -528,7 +528,7 @@ export function drawAnalysisPopulationSample(input: Readonly<{
   return Object.freeze({
     method: "simple_random",
     stoppingRule: "fixed",
-    drawExecutor: "coeval_server",
+    drawExecutor: "rubrist_server",
     seed,
     rngVersion: ANALYSIS_POPULATION_RNG_VERSION,
     algorithmVersion: ANALYSIS_POPULATION_DRAW_ALGORITHM_VERSION,

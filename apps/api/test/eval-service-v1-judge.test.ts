@@ -53,7 +53,7 @@ describe("POST /api/v1/judge — eval-as-a-service", () => {
     const app = createApp(new DemoRepository());
     const res = await app.request("/api/v1/judge", {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: "Bearer coeval_sk_nope" },
+      headers: { "content-type": "application/json", authorization: "Bearer rubrist_sk_nope" },
       body: JSON.stringify({ trace: TRACE })
     });
     expect(res.status).toBe(401);

@@ -18,7 +18,7 @@ import {
   type GovernedTruthResolution,
   type RepresentativeClaimEligibility,
   type RepresentativeClaimReason
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { canonicalJson } from "./assessment-receipt.js";
 import { governedContentV1Digest } from "./governed-content-digest.js";
 import {
@@ -165,7 +165,7 @@ export function governedReviewBatchEventDomainArtifactDigest(
   input: Omit<GovernedReviewBatchEvent, "eventDigest"> | GovernedReviewBatchEvent
 ): string {
   const { eventDigest: _excluded, ...unsigned } = input as GovernedReviewBatchEvent;
-  return governedContentV1Digest("coeval/governed-review-batch-event-domain-artifact/v1", unsigned);
+  return governedContentV1Digest("rubrist/governed-review-batch-event-domain-artifact/v1", unsigned);
 }
 
 export interface GovernedReviewBatchHistory {
@@ -282,7 +282,7 @@ export function governedReviewAlignmentEventDomainArtifactDigest(
   input: Omit<GovernedReviewAlignmentEvent, "eventDigest"> | GovernedReviewAlignmentEvent
 ): string {
   const { eventDigest: _excluded, ...unsigned } = input as GovernedReviewAlignmentEvent;
-  return governedContentV1Digest("coeval/governed-review-alignment-event-domain-artifact/v1", unsigned);
+  return governedContentV1Digest("rubrist/governed-review-alignment-event-domain-artifact/v1", unsigned);
 }
 
 export function verifyGovernedReviewAlignmentHistory(input: {
@@ -311,7 +311,7 @@ export function governedReviewAdjudicationDomainArtifactDigest(
   input: Omit<GovernedReviewAdjudication, "adjudicationDigest"> | GovernedReviewAdjudication
 ): string {
   const { adjudicationDigest: _excluded, ...unsigned } = input as GovernedReviewAdjudication;
-  return governedContentV1Digest("coeval/governed-review-adjudication-domain-artifact/v1", unsigned);
+  return governedContentV1Digest("rubrist/governed-review-adjudication-domain-artifact/v1", unsigned);
 }
 
 export function verifyGovernedReviewAdjudication(raw: unknown): GovernedReviewAdjudication {
@@ -469,7 +469,7 @@ export function deriveRepresentativeClaimEligibility(input: {
   if (plan.method !== "simple_random" && plan.method !== "stratified_random") reasons.push("selection_method_not_eligible");
   if (!plan.populationDigest || !plan.frozenFrameDigest) reasons.push("population_frame_incomplete");
   if (!plan.collectionProvenanceDigest) reasons.push("collection_provenance_unverified");
-  if (plan.drawExecutor !== "coeval_server") reasons.push("draw_not_server_executed");
+  if (plan.drawExecutor !== "rubrist_server") reasons.push("draw_not_server_executed");
   if ((plan.method === "simple_random" || plan.method === "stratified_random") &&
     (plan.drawDigest !== governedReviewSelectionDrawDomainArtifactDigest(plan) || plan.seed === null || plan.rngVersion === null)) {
     reasons.push("draw_not_reproducible");

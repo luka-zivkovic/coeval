@@ -1,4 +1,4 @@
--- Coeval pre-launch clean-schema baseline.
+-- Rubrist pre-launch clean-schema baseline.
 --
 -- Generated from the normalized PostgreSQL 17 schema produced by migrations
 -- 0001-0055 at commit 17530fd. ADR-0011 declares pre-launch databases
@@ -280,7 +280,7 @@ CREATE FUNCTION analysis_criterion_authoring_exposure_details_v1(value analysis_
     AS $$
   select jsonb_build_object(
     'codeId', value.code_id,
-    'contract', 'coeval/analysis-criterion-promotion-exposure/v1',
+    'contract', 'rubrist/analysis-criterion-promotion-exposure/v1',
     'criterionId', value.criterion_id,
     'criterionVersionId', value.criterion_version_id,
     'promotionId', value.id,
@@ -501,7 +501,7 @@ CREATE FUNCTION analysis_criterion_support_exposure_details_v1(promotion analysi
   select jsonb_build_object(
     'assignmentEventId', support.assignment_event_id,
     'closureItemId', support.closure_item_id,
-    'contract', 'coeval/analysis-criterion-promotion-support-exposure/v1',
+    'contract', 'rubrist/analysis-criterion-promotion-support-exposure/v1',
     'criterionId', promotion.criterion_id,
     'criterionVersionId', promotion.criterion_version_id,
     'observationEventId', support.observation_event_id,
@@ -750,7 +750,7 @@ CREATE FUNCTION analysis_population_draw_digest_v1(draw_id_value text) RETURNS t
     AS $$
   select analysis_sha256_v1(jsonb_build_object(
     'algorithmVersion', draw.algorithm_version,
-    'basis', 'coeval-analysis-draw/v1',
+    'basis', 'rubrist-analysis-draw/v1',
     'contentDigest', draw.content_digest,
     'datasetRevisionId', draw.dataset_revision_id,
     'drawExecutor', draw.draw_executor,
@@ -2134,7 +2134,7 @@ begin
     'evaluator-lifecycle-revocation-request/v1',jsonb_build_object(
       'artifactId',new.artifact_id,'lifecycleId',lifecycle.id,'revocationId',new.id));
   next_row.id:=next_id;
-  next_row.contract_version:='coeval/evaluator-lifecycle-event/v1';
+  next_row.contract_version:='rubrist/evaluator-lifecycle-event/v1';
   next_row.lifecycle_id:=lifecycle.id;
   next_row.project_id:=lifecycle.project_id;
   next_row.criterion_id:=lifecycle.criterion_id;
@@ -2707,7 +2707,7 @@ CREATE TABLE evaluator_lifecycles (
     created_at timestamp with time zone DEFAULT date_trunc('milliseconds'::text, clock_timestamp()) NOT NULL,
     CONSTRAINT evaluator_lifecycles_check CHECK ((truth_item_count = regression_item_count)),
     CONSTRAINT evaluator_lifecycles_content_digest_check CHECK ((content_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
-    CONSTRAINT evaluator_lifecycles_contract_version_check CHECK ((contract_version = 'coeval/evaluator-lifecycle/v1'::text)),
+    CONSTRAINT evaluator_lifecycles_contract_version_check CHECK ((contract_version = 'rubrist/evaluator-lifecycle/v1'::text)),
     CONSTRAINT evaluator_lifecycles_governed_batch_digest_check CHECK ((governed_batch_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
     CONSTRAINT evaluator_lifecycles_idempotency_key_check CHECK (((char_length(idempotency_key) >= 1) AND (char_length(idempotency_key) <= 240))),
     CONSTRAINT evaluator_lifecycles_regression_content_digest_check CHECK ((regression_content_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
@@ -2803,7 +2803,7 @@ CREATE TABLE evaluator_lifecycle_events (
     CONSTRAINT evaluator_lifecycle_events_check8 CHECK (((calibration_artifact_id IS NULL) = (calibration_artifact_digest IS NULL))),
     CONSTRAINT evaluator_lifecycle_events_check9 CHECK (((calibration_artifact_id IS NULL) = (calibration_evidence_digest IS NULL))),
     CONSTRAINT evaluator_lifecycle_events_content_digest_check CHECK ((content_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
-    CONSTRAINT evaluator_lifecycle_events_contract_version_check CHECK ((contract_version = 'coeval/evaluator-lifecycle-event/v1'::text)),
+    CONSTRAINT evaluator_lifecycle_events_contract_version_check CHECK ((contract_version = 'rubrist/evaluator-lifecycle-event/v1'::text)),
     CONSTRAINT evaluator_lifecycle_events_idempotency_key_check CHECK (((char_length(idempotency_key) >= 1) AND (char_length(idempotency_key) <= 240))),
     CONSTRAINT evaluator_lifecycle_events_predecessor_event_digest_check CHECK (((predecessor_event_digest IS NULL) OR (predecessor_event_digest ~ '^sha256:[0-9a-f]{64}$'::text))),
     CONSTRAINT evaluator_lifecycle_events_reason_check CHECK (((char_length(btrim(reason)) >= 1) AND (char_length(btrim(reason)) <= 5000))),
@@ -4310,7 +4310,7 @@ begin
                   member.case_id,
                   member.frame_member_digest,
                   analysis_sha256_v1(jsonb_build_object(
-                    'basis', 'coeval-analysis-rank/v1',
+                    'basis', 'rubrist-analysis-rank/v1',
                     'caseId', member.case_id,
                     'frameMemberDigest', member.frame_member_digest,
                     'seed', draw.seed
@@ -4426,7 +4426,7 @@ begin
       using errcode = '23514';
   end if;
   expected_digest := analysis_sha256_v1(jsonb_build_object(
-    'basis', 'coeval-analysis-rank/v1',
+    'basis', 'rubrist-analysis-rank/v1',
     'caseId', new.case_id,
     'frameMemberDigest', new.frame_member_digest,
     'seed', draw.seed
@@ -8599,7 +8599,7 @@ begin
     end if;
 
     if batch.selection_method in ('simple_random','stratified_random')
-       and batch.draw_executed_by = 'coeval_server'
+       and batch.draw_executed_by = 'rubrist_server'
        and batch.selection_seed is not null
        and batch.rng_version is not null
        and batch.population_definition <> '{}'::jsonb
@@ -9716,13 +9716,13 @@ CREATE TABLE analysis_population_draws (
     content_digest text NOT NULL,
     executed_by_subject_id text NOT NULL,
     executed_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT analysis_population_draws_algorithm_version_check CHECK ((algorithm_version = 'coeval-analysis-draw/v1'::text)),
+    CONSTRAINT analysis_population_draws_algorithm_version_check CHECK ((algorithm_version = 'rubrist-analysis-draw/v1'::text)),
     CONSTRAINT analysis_population_draws_check CHECK ((fixed_budget <= population_size)),
     CONSTRAINT analysis_population_draws_check1 CHECK ((inclusion_numerator = fixed_budget)),
     CONSTRAINT analysis_population_draws_check2 CHECK ((inclusion_denominator = population_size)),
     CONSTRAINT analysis_population_draws_content_digest_check CHECK ((content_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
     CONSTRAINT analysis_population_draws_draw_digest_check CHECK ((draw_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
-    CONSTRAINT analysis_population_draws_draw_executor_check CHECK ((draw_executor = 'coeval_server'::text)),
+    CONSTRAINT analysis_population_draws_draw_executor_check CHECK ((draw_executor = 'rubrist_server'::text)),
     CONSTRAINT analysis_population_draws_fixed_budget_check CHECK (((fixed_budget >= 1) AND (fixed_budget <= 10000))),
     CONSTRAINT analysis_population_draws_method_check CHECK ((method = 'simple_random'::text)),
     CONSTRAINT analysis_population_draws_population_size_check CHECK (((population_size >= 1) AND (population_size <= 100000))),
@@ -9948,7 +9948,7 @@ CREATE TABLE binary_calibration_artifacts (
     CONSTRAINT binary_calibration_artifacts_artifact_revision_check CHECK ((artifact_revision > 0)),
     CONSTRAINT binary_calibration_artifacts_canonical_bytes_check CHECK (((octet_length(canonical_bytes) >= 2) AND (octet_length(canonical_bytes) <= 16777216))),
     CONSTRAINT binary_calibration_artifacts_check CHECK ((((artifact_revision = 1) AND (predecessor_artifact_id IS NULL) AND (correction_reason IS NULL)) OR ((artifact_revision > 1) AND (predecessor_artifact_id IS NOT NULL) AND (correction_reason IS NOT NULL)))),
-    CONSTRAINT binary_calibration_artifacts_contract_check CHECK ((contract = 'coeval/binary-calibration/v1'::text)),
+    CONSTRAINT binary_calibration_artifacts_contract_check CHECK ((contract = 'rubrist/binary-calibration/v1'::text)),
     CONSTRAINT binary_calibration_artifacts_evidence_digest_check CHECK ((evidence_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
     CONSTRAINT binary_calibration_artifacts_status_check CHECK ((status = ANY (ARRAY['complete'::text, 'incomplete'::text])))
 );
@@ -10041,7 +10041,7 @@ CREATE TABLE binary_calibration_private_ledgers (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT binary_calibration_private_ledgers_canonical_bytes_check CHECK (((octet_length(canonical_bytes) >= 2) AND (octet_length(canonical_bytes) <= 16777216))),
     CONSTRAINT binary_calibration_private_ledgers_commitment_digest_check CHECK ((commitment_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
-    CONSTRAINT binary_calibration_private_ledgers_contract_check CHECK ((contract = 'coeval/binary-calibration-private-ledger/v1'::text))
+    CONSTRAINT binary_calibration_private_ledgers_contract_check CHECK ((contract = 'rubrist/binary-calibration-private-ledger/v1'::text))
 );
 
 
@@ -10501,7 +10501,7 @@ CREATE TABLE evaluator_execution_authorizations (
     content_digest text NOT NULL,
     authorized_at timestamp with time zone DEFAULT date_trunc('milliseconds'::text, clock_timestamp()) NOT NULL,
     CONSTRAINT evaluator_execution_authorizations_content_digest_check CHECK ((content_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
-    CONSTRAINT evaluator_execution_authorizations_contract_version_check CHECK ((contract_version = 'coeval/evaluator-execution-authorization/v1'::text)),
+    CONSTRAINT evaluator_execution_authorizations_contract_version_check CHECK ((contract_version = 'rubrist/evaluator-execution-authorization/v1'::text)),
     CONSTRAINT evaluator_execution_authorizations_execution_context_check CHECK ((execution_context = ANY (ARRAY['implicit_production'::text, 'manual_import'::text, 'scheduled_import'::text, 'suite_publication'::text, 'trace_test'::text, 'release_gate'::text, 'explicit_nonproduction_dataset'::text, 'governed_nonsealed_evaluation'::text, 'binary_calibration_evidence'::text, 'candidate_regression_evidence'::text]))),
     CONSTRAINT evaluator_execution_authorizations_idempotency_key_check CHECK (((char_length(idempotency_key) >= 1) AND (char_length(idempotency_key) <= 240))),
     CONSTRAINT evaluator_execution_authorizations_resource_id_check CHECK (((char_length(resource_id) >= 1) AND (char_length(resource_id) <= 4096))),
@@ -10561,7 +10561,7 @@ CREATE TABLE evaluator_suite_manifests (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT evaluator_suite_manifests_artifact_digest_check CHECK ((artifact_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
     CONSTRAINT evaluator_suite_manifests_canonical_bytes_check CHECK ((octet_length(canonical_bytes) > 0)),
-    CONSTRAINT evaluator_suite_manifests_contract_check CHECK ((contract = 'coeval/evaluator-suite-manifest/v1'::text)),
+    CONSTRAINT evaluator_suite_manifests_contract_check CHECK ((contract = 'rubrist/evaluator-suite-manifest/v1'::text)),
     CONSTRAINT evaluator_suite_manifests_idempotency_key_check CHECK ((length(idempotency_key) BETWEEN 1 AND 200) AND (idempotency_key = TRIM(BOTH FROM idempotency_key))),
     CONSTRAINT evaluator_suite_manifests_manifest_digest_check CHECK ((manifest_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
     CONSTRAINT evaluator_suite_manifests_member_count_check CHECK ((member_count > 0)),
@@ -11128,7 +11128,7 @@ CREATE TABLE governed_review_batches (
     CONSTRAINT governed_review_batches_content_digest_check CHECK ((content_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
     CONSTRAINT governed_review_batches_custodian_role_at_review_check CHECK (((custodian_role_at_review IS NULL) OR ((length(custodian_role_at_review) > 0) AND (octet_length(custodian_role_at_review) <= 256)))),
     CONSTRAINT governed_review_batches_draw_digest_check CHECK ((draw_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
-    CONSTRAINT governed_review_batches_draw_executed_by_check CHECK ((draw_executed_by = 'coeval_server'::text)),
+    CONSTRAINT governed_review_batches_draw_executed_by_check CHECK ((draw_executed_by = 'rubrist_server'::text)),
     CONSTRAINT governed_review_batches_fixed_budget_check CHECK (((fixed_budget > 0) AND (fixed_budget <= 10000))),
     CONSTRAINT governed_review_batches_idempotency_key_check CHECK (((length(idempotency_key) > 0) AND (octet_length(idempotency_key) <= 1024))),
     CONSTRAINT governed_review_batches_population_collection_provenance_check CHECK ((octet_length((population_collection_provenance)::text) <= 262144)),

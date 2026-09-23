@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { BookOpenCheck, DatabaseZap, Plus, RefreshCcw, Scale, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SectionHead } from "@/components/coeval";
+import { SectionHead } from "@/components/rubrist";
 import { BinaryCalibrationPanel } from "@/components/binary-calibration-panel";
 import { EvaluatorLifecyclePanel } from "@/components/evaluator-lifecycle-panel";
 import { DatabaseModeRequired } from "@/components/database-mode-required";
@@ -99,7 +99,7 @@ function PersistentHumanTruthScreen() {
       <SectionHead
         eyebrow="Governed human truth · append-only"
         title="Human truth"
-        sub="Set up a review where people label the same frozen evidence independently, without seeing the evaluator's answer. Coeval preserves the instructions, assignments, disagreements, and final rulings. Ordinary review queues remain ungoverned."
+        sub="Set up a review where people label the same frozen evidence independently, without seeing the evaluator's answer. Rubrist preserves the instructions, assignments, disagreements, and final rulings. Ordinary review queues remain ungoverned."
         right={
           <Button variant="ghost" size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCcw /> Refresh

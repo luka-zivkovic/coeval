@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { RunComparison } from "@coeval/shared";
+import type { RunComparison } from "@rubrist/shared";
 import type { Pool } from "pg";
 import type { CreateRunComparisonInputDb } from "../repository.js";
 import type { RunComparisonRepositoryPort } from "../repository/ports.js";

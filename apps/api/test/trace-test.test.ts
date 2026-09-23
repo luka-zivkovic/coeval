@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import type { CreateTraceTestInput, TraceTestDetail, TraceTestValidation } from "@coeval/shared";
+import type { CreateTraceTestInput, TraceTestDetail, TraceTestValidation } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 import { createRequestServices, type AppVariables } from "../src/request-services/index.js";

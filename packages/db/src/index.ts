@@ -1,5 +1,5 @@
-import { MinimumVerdictOutputSchema } from "@coeval/shared";
-import type { CapabilityGap, DashboardSummary, ExceptionCase, GoldenSetEntry, Project, Skill, VerdictRecord } from "@coeval/shared";
+import { MinimumVerdictOutputSchema } from "@rubrist/shared";
+import type { CapabilityGap, DashboardSummary, ExceptionCase, GoldenSetEntry, Project, Skill, VerdictRecord } from "@rubrist/shared";
 
 export { runMigrations } from "./migrate.js";
 

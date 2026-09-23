@@ -76,8 +76,8 @@ describe("responsive and contrast foundations", () => {
     const [table, card, kpi, ref, rowAction, reviewPlayer] = await Promise.all([
       source("components/ui/table.tsx"),
       source("components/ui/card.tsx"),
-      source("components/coeval/kpi.tsx"),
-      source("components/coeval/ref.tsx"),
+      source("components/rubrist/kpi.tsx"),
+      source("components/rubrist/ref.tsx"),
       source("components/row-action.tsx"),
       source("components/review-player.tsx")
     ]);

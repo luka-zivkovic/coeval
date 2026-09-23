@@ -13,9 +13,9 @@ import {
 const sha = (digit: string) => `sha256:${digit.repeat(64)}`;
 
 const safeView = {
-  contract: "coeval/governed-blind-task-view/v1",
+  contract: "rubrist/governed-blind-task-view/v1",
   schemaVersion: 1,
-  canonicalizationVersion: "coeval-canonical-json/v1",
+  canonicalizationVersion: "rubrist-canonical-json/v1",
   taskId: "task_blind_1",
   batchId: "batch_1",
   servePosition: 0,
@@ -46,7 +46,7 @@ function blindResponse(value: unknown): Response {
   return new Response(bytes, {
     headers: {
       "content-type": "application/json",
-      "x-coeval-view-digest": digest
+      "x-rubrist-view-digest": digest
     }
   });
 }
@@ -75,7 +75,7 @@ describe("governed review web API boundary", () => {
       expect.objectContaining({ credentials: "include" })
     );
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
-    expect(new Headers(request.headers).get("x-coeval-project")).toBe("project_1");
+    expect(new Headers(request.headers).get("x-rubrist-project")).toBe("project_1");
   });
 
   it.each([
@@ -97,7 +97,7 @@ describe("governed review web API boundary", () => {
 
   it("rejects a missing or byte-swapped digest before rendering", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(safeView), {
-      headers: { "x-coeval-view-digest": sha("f") }
+      headers: { "x-rubrist-view-digest": sha("f") }
     })));
     await expect(fetchGovernedBlindTaskView("task_blind_1")).rejects.toThrow("do not match");
   });

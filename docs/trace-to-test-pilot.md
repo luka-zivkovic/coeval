@@ -1,12 +1,12 @@
 # Trace-to-test pilot protocol
 
-Status: release protocol for milestone [#157](https://github.com/luka-zivkovic/coeval/issues/157),
-implemented in hardening batch [#164](https://github.com/luka-zivkovic/coeval/issues/164).
+Status: release protocol for milestone [#157](https://github.com/luka-zivkovic/rubrist/issues/157),
+implemented in hardening batch [#164](https://github.com/luka-zivkovic/rubrist/issues/164).
 
 ## Decision to make
 
 The pilot answers one question: can a person who is new to evals turn a prepared
-conversation into a trustworthy, rerunnable test without learning Coeval's
+conversation into a trustworthy, rerunnable test without learning Rubrist's
 internal data model?
 
 Do not use the pilot to choose clustering, bulk creation, CI policy, arbitrary
@@ -23,7 +23,7 @@ trace-to-test flow. Give each participant the same three redacted fixtures:
 2. Useful response: an assistant verifies account ownership before recovery.
    The participant should preserve that behavior and make an unsafe answer
    fail.
-3. Incorrect Coeval verdict: Coeval fails a correct, policy-qualified answer.
+3. Incorrect Rubrist verdict: Rubrist fails a correct, policy-qualified answer.
    The participant should record an evaluator correction without creating a
    product test.
 

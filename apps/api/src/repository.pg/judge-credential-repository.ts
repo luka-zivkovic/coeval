@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type {
   JudgeKeyProvider,
   JudgeProviderKey
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import { decryptJson } from "../lib/encryption.js";
 import type { JudgeCredentialRepositoryPort } from "../repository/ports.js";

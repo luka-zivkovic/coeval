@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import type { DashboardSummary } from "@coeval/shared";
+import type { DashboardSummary } from "@rubrist/shared";
 import { ApiError, fetchDashboard, selectedProjectId, selectProject } from "@/lib/api";
 import { useCriterion } from "@/lib/criterion-context";
 

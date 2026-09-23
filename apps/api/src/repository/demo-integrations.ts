@@ -20,7 +20,7 @@ import type {
   UpdateIronsideIntegrationInput,
   UpdateLangfuseIntegrationInput,
   UpdateLangSmithIntegrationInput
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type {
   ClaimIronsideImportTargetsInput,
   ClaimLangfuseImportTargetsInput,
@@ -343,6 +343,7 @@ export class DemoIntegrationRepository implements IntegrationRepositoryPort {
       provider: "ironside",
       skillVersionId,
       url: input.url,
+      webUrl: input.webUrl ?? null,
       remoteProjectId: remote.project.id,
       remoteProjectName: remote.project.name,
       protocolVersion: remote.protocolVersion,
@@ -395,6 +396,7 @@ export class DemoIntegrationRepository implements IntegrationRepositoryPort {
       throw new IronsideIntegrationChangedError(integrationId);
     }
     if (input.url !== undefined) integration.url = input.url;
+    if (input.webUrl !== undefined) integration.webUrl = input.webUrl;
     if (input.apiKey !== undefined) integration.apiKey = input.apiKey;
     if (remote) {
       integration.remoteProjectId = remote.project.id;
@@ -535,6 +537,7 @@ function toPublicIronsideIntegration(integration: IronsideImportContext): Ironsi
     provider: "ironside",
     skillVersionId: integration.skillVersionId,
     url: integration.url,
+    webUrl: integration.webUrl ?? null,
     remoteProjectId: integration.remoteProjectId,
     remoteProjectName: integration.remoteProjectName,
     protocolVersion: integration.protocolVersion,

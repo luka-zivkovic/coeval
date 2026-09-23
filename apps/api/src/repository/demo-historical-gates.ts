@@ -6,7 +6,7 @@ import {
   type GateCheck,
   type GateCheckDetail,
   type GateCheckItem
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { CreateGateCheckInputDb } from "./contracts.js";
 import type { DemoRepositoryStore } from "./demo-store.js";
 import type { HistoricalGateEvidenceRepositoryPort } from "./ports.js";

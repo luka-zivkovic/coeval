@@ -502,7 +502,7 @@ export const EvaluatorSuiteManifestMemberSchema = z.object({
 export type EvaluatorSuiteManifestMember = z.infer<typeof EvaluatorSuiteManifestMemberSchema>;
 
 export const EvaluatorSuiteManifestSchema = z.object({
-  contract: z.literal("coeval/evaluator-suite-manifest/v1"),
+  contract: z.literal("rubrist/evaluator-suite-manifest/v1"),
   schemaVersion: z.literal(1),
   manifestId: z.string().min(1),
   suiteId: z.string().min(1),

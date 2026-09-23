@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { Pool } from "pg";
-import { runMigrations } from "@coeval/db";
-import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema, STARTER_RUBRIC_MARKER, verdictOutputSchema } from "@coeval/shared";
-import { MockJudgeProvider, type JudgeProvider } from "@coeval/audit/runtime";
-import type { Queue, QueueJob, QueueName, QueueSendOptions } from "@coeval/queue";
-import { createApp, type CoevalApi } from "../src/app.js";
+import { runMigrations } from "@rubrist/db";
+import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema, STARTER_RUBRIC_MARKER, verdictOutputSchema } from "@rubrist/shared";
+import { MockJudgeProvider, type JudgeProvider } from "@rubrist/audit/runtime";
+import type { Queue, QueueJob, QueueName, QueueSendOptions } from "@rubrist/queue";
+import { createApp, type RubristApi } from "../src/app.js";
 import { claimAgentSetupPairing, createAuth } from "../src/lib/auth.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
@@ -230,7 +230,7 @@ run("Postgres auth flow", () => {
       expect(setupBody.apiKey).toMatchObject({
         projectId: setupBody.projectId,
         name: "First verdict",
-        key: expect.stringMatching(/^coeval_sk_/)
+        key: expect.stringMatching(/^rubrist_sk_/)
       });
       // Setup auto-signs-in the new owner: the session cookie from better-auth
       // must be forwarded so the UI lands in the app, not on the login form.
@@ -268,7 +268,7 @@ run("Postgres auth flow", () => {
         [setupBody.projectId]
       );
       expect(firstKeyRows.rows).toEqual([
-        expect.objectContaining({ name: "First verdict", key_prefix: expect.stringMatching(/^coeval_sk_/) })
+        expect.objectContaining({ name: "First verdict", key_prefix: expect.stringMatching(/^rubrist_sk_/) })
       ]);
       const firstKeyAuth = await app.request("/api/v1/project", {
         headers: { authorization: `Bearer ${setupBody.apiKey.key}` }
@@ -294,7 +294,7 @@ run("Postgres auth flow", () => {
 
       const ownerCookie = await signIn(app, "owner@example.com", "owner-password");
       const ownerCriteriaRead = await app.request("/api/v1/criteria", {
-        headers: { cookie: ownerCookie, "x-coeval-project": setupBody.projectId }
+        headers: { cookie: ownerCookie, "x-rubrist-project": setupBody.projectId }
       });
       expect(ownerCriteriaRead.status).toBe(200);
       await expect(ownerCriteriaRead.json()).resolves.toMatchObject({ criteria: [{ sourceKind: "native" }] });
@@ -303,7 +303,7 @@ run("Postgres auth flow", () => {
         headers: {
           cookie: ownerCookie,
           "content-type": "application/json",
-          "x-coeval-project": setupBody.projectId
+          "x-rubrist-project": setupBody.projectId
         },
         body: JSON.stringify({})
       });
@@ -318,7 +318,7 @@ run("Postgres auth flow", () => {
       const createdProjectBody = (await createdProject.json()) as { projectId: string; apiKey: { key: string; projectId: string } };
       expect(createdProjectBody.apiKey).toMatchObject({
         projectId: createdProjectBody.projectId,
-        key: expect.stringMatching(/^coeval_sk_/)
+        key: expect.stringMatching(/^rubrist_sk_/)
       });
       const ownerIntegration = await app.request("/api/integrations/langsmith", {
         method: "POST",
@@ -358,7 +358,7 @@ run("Postgres auth flow", () => {
 
       const memberCookie = await signIn(app, "member@example.com", "member-password");
       const memberCriteriaRead = await app.request("/api/v1/criteria", {
-        headers: { cookie: memberCookie, "x-coeval-project": setupBody.projectId }
+        headers: { cookie: memberCookie, "x-rubrist-project": setupBody.projectId }
       });
       expect(memberCriteriaRead.status).toBe(200);
       const memberCriteriaWrite = await app.request("/api/v1/criteria", {
@@ -366,7 +366,7 @@ run("Postgres auth flow", () => {
         headers: {
           cookie: memberCookie,
           "content-type": "application/json",
-          "x-coeval-project": setupBody.projectId
+          "x-rubrist-project": setupBody.projectId
         },
         body: JSON.stringify({})
       });
@@ -375,14 +375,14 @@ run("Postgres auth flow", () => {
         error: "Only project owners can change criteria or evaluator suites"
       });
       const memberCrossProjectCriteria = await app.request("/api/v1/criteria", {
-        headers: { cookie: memberCookie, "x-coeval-project": createdProjectBody.projectId }
+        headers: { cookie: memberCookie, "x-rubrist-project": createdProjectBody.projectId }
       });
       expect(memberCrossProjectCriteria.status).toBe(403);
       await expect(memberCrossProjectCriteria.json()).resolves.toMatchObject({
         error: "Not a member of this project"
       });
       const memberCrossProject = await app.request("/api/dashboard", {
-        headers: { cookie: memberCookie, "x-coeval-project": createdProjectBody.projectId }
+        headers: { cookie: memberCookie, "x-rubrist-project": createdProjectBody.projectId }
       });
       expect(memberCrossProject.status).toBe(403);
       await expect(memberCrossProject.json()).resolves.toMatchObject({ error: "Not a member of this project" });
@@ -514,8 +514,8 @@ run("Postgres auth flow", () => {
 
   it("bootstraps an agent-drafted bench and returns its first project key once", async () => {
     process.env.BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET || "test-secret-for-pg-auth-flow-at-least-32-bytes";
-    const previousBootstrapToken = process.env.COEVAL_BOOTSTRAP_TOKEN;
-    process.env.COEVAL_BOOTSTRAP_TOKEN = "pg-agent-bootstrap-token-that-is-at-least-32-characters";
+    const previousBootstrapToken = process.env.RUBRIST_BOOTSTRAP_TOKEN;
+    process.env.RUBRIST_BOOTSTRAP_TOKEN = "pg-agent-bootstrap-token-that-is-at-least-32-characters";
     const { pool, cleanup } = await openPostgresTestDatabase("pg_auth");
 
     try {
@@ -524,7 +524,7 @@ run("Postgres auth flow", () => {
       const disconnected = await app.request("/api/v1/bootstrap", {
         method: "POST",
         headers: {
-          authorization: `Bearer ${process.env.COEVAL_BOOTSTRAP_TOKEN}`,
+          authorization: `Bearer ${process.env.RUBRIST_BOOTSTRAP_TOKEN}`,
           "content-type": "application/json"
         },
         body: JSON.stringify({
@@ -552,7 +552,7 @@ run("Postgres auth flow", () => {
       const response = await app.request("/api/v1/bootstrap", {
         method: "POST",
         headers: {
-          authorization: `Bearer ${process.env.COEVAL_BOOTSTRAP_TOKEN}`,
+          authorization: `Bearer ${process.env.RUBRIST_BOOTSTRAP_TOKEN}`,
           "content-type": "application/json"
         },
         body: JSON.stringify({
@@ -593,7 +593,7 @@ run("Postgres auth flow", () => {
         rubricProvenance: "agent-drafted",
         check: { question: "Did this Run follow the external skill contract?" }
       });
-      expect(body.apiKey.key).toMatch(/^coeval_sk_/);
+      expect(body.apiKey.key).toMatch(/^rubrist_sk_/);
       expect(body.apiKey.key.startsWith(body.apiKey.keyPrefix.slice(0, -1))).toBe(true);
       // Issue #15: the completion response wires the agent, not just keys it —
       // every snippet form carries the one-time key pre-filled.
@@ -642,8 +642,8 @@ run("Postgres auth flow", () => {
       });
       expect(humanOnly.status).toBe(401);
     } finally {
-      if (previousBootstrapToken === undefined) delete process.env.COEVAL_BOOTSTRAP_TOKEN;
-      else process.env.COEVAL_BOOTSTRAP_TOKEN = previousBootstrapToken;
+      if (previousBootstrapToken === undefined) delete process.env.RUBRIST_BOOTSTRAP_TOKEN;
+      else process.env.RUBRIST_BOOTSTRAP_TOKEN = previousBootstrapToken;
       await cleanup();
     }
   });
@@ -653,8 +653,8 @@ run("Postgres auth flow", () => {
   // on a keyless instance (no providerApiKey, no env key, no catalog fetch).
   it("bootstraps a mock-judged bench when provider 'mock' is pinned explicitly, without any credential", async () => {
     process.env.BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET || "test-secret-for-pg-auth-flow-at-least-32-bytes";
-    const previousBootstrapToken = process.env.COEVAL_BOOTSTRAP_TOKEN;
-    process.env.COEVAL_BOOTSTRAP_TOKEN = "pg-agent-bootstrap-token-that-is-at-least-32-characters";
+    const previousBootstrapToken = process.env.RUBRIST_BOOTSTRAP_TOKEN;
+    process.env.RUBRIST_BOOTSTRAP_TOKEN = "pg-agent-bootstrap-token-that-is-at-least-32-characters";
     const { pool, cleanup } = await openPostgresTestDatabase("pg_auth");
 
     try {
@@ -663,7 +663,7 @@ run("Postgres auth flow", () => {
       const response = await app.request("/api/v1/bootstrap", {
         method: "POST",
         headers: {
-          authorization: `Bearer ${process.env.COEVAL_BOOTSTRAP_TOKEN}`,
+          authorization: `Bearer ${process.env.RUBRIST_BOOTSTRAP_TOKEN}`,
           "content-type": "application/json"
         },
         body: JSON.stringify({
@@ -683,7 +683,7 @@ run("Postgres auth flow", () => {
         apiKey: { key: string };
       };
       expect(body.modelBinding).toMatchObject({ provider: "mock", modelId: "mock", modelVersion: "mock" });
-      expect(body.apiKey.key).toMatch(/^coeval_sk_/);
+      expect(body.apiKey.key).toMatch(/^rubrist_sk_/);
 
       // No provider credential row was minted for the mock pin.
       const credentials = await pool.query(
@@ -692,16 +692,16 @@ run("Postgres auth flow", () => {
       );
       expect(credentials.rows).toEqual([]);
     } finally {
-      if (previousBootstrapToken === undefined) delete process.env.COEVAL_BOOTSTRAP_TOKEN;
-      else process.env.COEVAL_BOOTSTRAP_TOKEN = previousBootstrapToken;
+      if (previousBootstrapToken === undefined) delete process.env.RUBRIST_BOOTSTRAP_TOKEN;
+      else process.env.RUBRIST_BOOTSTRAP_TOKEN = previousBootstrapToken;
       await cleanup();
     }
   });
 
   it("pairs a signed-in owner with an external setup agent without a deployment token", async () => {
     process.env.BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET || "test-secret-for-pg-auth-flow-at-least-32-bytes";
-    const previousBootstrapToken = process.env.COEVAL_BOOTSTRAP_TOKEN;
-    delete process.env.COEVAL_BOOTSTRAP_TOKEN;
+    const previousBootstrapToken = process.env.RUBRIST_BOOTSTRAP_TOKEN;
+    delete process.env.RUBRIST_BOOTSTRAP_TOKEN;
     const { pool, cleanup } = await openPostgresTestDatabase("pg_auth");
 
     try {
@@ -740,7 +740,7 @@ run("Postgres auth flow", () => {
         ownerEmail: "paired-owner@example.com",
         status: "pending"
       });
-      expect(firstPairing.token).toMatch(/^coeval_pair_/);
+      expect(firstPairing.token).toMatch(/^rubrist_pair_/);
 
       const replacementResponse = await app.request("/api/agent-setup/pairings", {
         method: "POST",
@@ -810,7 +810,7 @@ run("Postgres auth flow", () => {
         rubricProvenance: "agent-drafted",
         check: { question: "Did this Run follow the target skill's contract?" }
       });
-      expect(body.apiKey.key).toMatch(/^coeval_sk_/);
+      expect(body.apiKey.key).toMatch(/^rubrist_sk_/);
 
       const persisted = await pool.query(
         `select
@@ -855,8 +855,8 @@ run("Postgres auth flow", () => {
         currentSkillVersionId: body.skillVersionId
       });
     } finally {
-      if (previousBootstrapToken === undefined) delete process.env.COEVAL_BOOTSTRAP_TOKEN;
-      else process.env.COEVAL_BOOTSTRAP_TOKEN = previousBootstrapToken;
+      if (previousBootstrapToken === undefined) delete process.env.RUBRIST_BOOTSTRAP_TOKEN;
+      else process.env.RUBRIST_BOOTSTRAP_TOKEN = previousBootstrapToken;
       await cleanup();
     }
   });
@@ -965,7 +965,7 @@ run("Postgres auth flow", () => {
   });
 });
 
-async function signIn(app: CoevalApi, email: string, password: string): Promise<string> {
+async function signIn(app: RubristApi, email: string, password: string): Promise<string> {
   const response = await app.request("/api/auth/sign-in/email", {
     method: "POST",
     headers: { "content-type": "application/json" },

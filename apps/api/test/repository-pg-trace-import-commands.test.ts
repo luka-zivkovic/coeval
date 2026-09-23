@@ -194,7 +194,7 @@ describe("PostgreSQL trace-import client commands", () => {
       sourceTraceId: "invalid-purpose-1",
       input: {},
       output: {},
-      metadata: { coeval: { internal: true } }
+      metadata: { rubrist: { internal: true } }
     }, { ingestionPurpose: "release_evidence" })).rejects.toThrow(
       "Ingestion purpose release_evidence is not valid for case source manual"
     );
@@ -204,7 +204,7 @@ describe("PostgreSQL trace-import client commands", () => {
       sourceTraceId: "recursive-1",
       input: {},
       output: {},
-      metadata: { coeval: { internal: true } }
+      metadata: { rubrist: { internal: true } }
     }, { ingestionPurpose: "analysis_eligible_manual" })).rejects.toBeInstanceOf(RecursiveTraceSkippedError);
     expect(calls).toEqual([]);
   });

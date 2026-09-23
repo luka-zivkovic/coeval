@@ -8,7 +8,7 @@ import {
   type BinaryCalibrationPrivateLedger,
   type ModelBinding,
   type SkillVersion
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { evaluatorExecutionAuthorizationDigest } from "../lib/evaluator-lifecycle.js";
 import { canonicalJson, sha256Digest } from "../lib/assessment-receipt.js";
 
@@ -214,7 +214,7 @@ export function providerPolicyFor(
 ): BinaryCalibrationProviderDataHandlingPolicy {
   const executionEnvironment = binding.provider === "mock" ? "local_provider" : "external_provider";
   const policyContent = {
-    contract: "coeval/provider-data-handling-policy/v1",
+    contract: "rubrist/provider-data-handling-policy/v1",
     schemaVersion: 1,
     provider: binding.provider,
     endpointKind: binding.endpointKind,

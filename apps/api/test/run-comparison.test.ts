@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Queue, QueueName, QueueSendOptions } from "@coeval/queue";
-import { CreateSkillVersionInputSchema, type EvalRunItem, type RunComparisonDetail } from "@coeval/shared";
+import type { Queue, QueueName, QueueSendOptions } from "@rubrist/queue";
+import { CreateSkillVersionInputSchema, type EvalRunItem, type RunComparisonDetail } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { computeRunComparisonDiff, runComparisonStatus } from "../src/lib/run-comparison.js";
 import { DatasetRevisionConflictError, DemoRepository } from "../src/repository.js";

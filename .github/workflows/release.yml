@@ -12,19 +12,19 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     env:
-      PG_SMOKE_DATABASE_URL: postgres://coeval:coeval@localhost:5432/coeval
+      PG_SMOKE_DATABASE_URL: postgres://rubrist:rubrist@localhost:5432/rubrist
       BETTER_AUTH_SECRET: release-test-secret-for-postgres-suite-at-least-32-bytes
     services:
       postgres:
         image: postgres:17.11-alpine
         env:
-          POSTGRES_USER: coeval
-          POSTGRES_PASSWORD: coeval
-          POSTGRES_DB: coeval
+          POSTGRES_USER: rubrist
+          POSTGRES_PASSWORD: rubrist
+          POSTGRES_DB: rubrist
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U coeval -d coeval"
+          --health-cmd "pg_isready -U rubrist -d rubrist"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
@@ -42,9 +42,9 @@ jobs:
       - name: Validate self-host release bundle
         shell: bash
         env:
-          COEVAL_VERSION: 0.0.0
-          COEVAL_POSTGRES_PASSWORD: release-render-password
-          COEVAL_AUTH_SECRET: release-render-auth-secret-at-least-32-bytes
+          RUBRIST_VERSION: 0.0.0
+          RUBRIST_POSTGRES_PASSWORD: release-render-password
+          RUBRIST_AUTH_SECRET: release-render-auth-secret-at-least-32-bytes
         run: |
           (cd deploy/self-host && sha256sum -c compose.yaml.sha256)
           docker compose -f deploy/self-host/compose.yaml config --quiet
@@ -104,7 +104,7 @@ jobs:
       - name: Refuse to overwrite a published release tag
         shell: bash
         run: |
-          image="ghcr.io/${{ github.repository_owner }}/coeval-${{ matrix.image }}:${{ steps.version.outputs.value }}"
+          image="ghcr.io/${{ github.repository_owner }}/rubrist-${{ matrix.image }}:${{ steps.version.outputs.value }}"
           if docker manifest inspect "$image" >/dev/null 2>&1; then
             echo "Refusing to overwrite existing image tag: $image" >&2
             exit 1
@@ -120,8 +120,8 @@ jobs:
           provenance: mode=max
           sbom: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/coeval-${{ matrix.image }}:${{ steps.version.outputs.value }}
-            ghcr.io/${{ github.repository_owner }}/coeval-${{ matrix.image }}:sha-${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/rubrist-${{ matrix.image }}:${{ steps.version.outputs.value }}
+            ghcr.io/${{ github.repository_owner }}/rubrist-${{ matrix.image }}:sha-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -149,17 +149,17 @@ jobs:
       - name: Boot and verify the published release bundle
         shell: bash
         env:
-          COEVAL_VERSION: ${{ github.ref_name }}
-          COEVAL_BIND_ADDRESS: 127.0.0.1
-          COEVAL_PORT: 18081
-          COEVAL_PUBLIC_URL: http://127.0.0.1:18081
-          COEVAL_POSTGRES_PASSWORD: release-smoke-postgres
-          COEVAL_AUTH_SECRET: release-smoke-auth-secret-at-least-32-bytes
-          COEVAL_BOOTSTRAP_TOKEN: release-smoke-bootstrap-token
+          RUBRIST_VERSION: ${{ github.ref_name }}
+          RUBRIST_BIND_ADDRESS: 127.0.0.1
+          RUBRIST_PORT: 18081
+          RUBRIST_PUBLIC_URL: http://127.0.0.1:18081
+          RUBRIST_POSTGRES_PASSWORD: release-smoke-postgres
+          RUBRIST_AUTH_SECRET: release-smoke-auth-secret-at-least-32-bytes
+          RUBRIST_BOOTSTRAP_TOKEN: release-smoke-bootstrap-token
         run: |
-          COEVAL_VERSION="${COEVAL_VERSION#v}"
-          export COEVAL_VERSION
-          project="coeval-release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          RUBRIST_VERSION="${RUBRIST_VERSION#v}"
+          export RUBRIST_VERSION
+          project="rubrist-release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           cleanup() {
             status=$?
             if ((status != 0)); then

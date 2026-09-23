@@ -1,5 +1,5 @@
-import type { Queue, QueueName } from "@coeval/queue";
-import type { FeedbackSyncJob } from "@coeval/shared";
+import type { Queue, QueueName } from "@rubrist/queue";
+import type { FeedbackSyncJob } from "@rubrist/shared";
 import { DemoRepository, NoCurrentSkillError } from "../src/repository.js";
 
 export class PurposeCapturingRepository extends DemoRepository {

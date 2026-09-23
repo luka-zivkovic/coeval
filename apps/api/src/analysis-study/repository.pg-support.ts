@@ -30,7 +30,7 @@ import {
   type AnalysisTaxonomyRevisionCodeArtifact,
   type AnalysisTaxonomyRevisionProjection,
   type AnalysisTaxonomyRevisionResult
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import {

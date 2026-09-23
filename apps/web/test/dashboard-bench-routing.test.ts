@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { DashboardSummary } from "@coeval/shared";
+import type { DashboardSummary } from "@rubrist/shared";
 
 const state = {
   dashboard: null as DashboardSummary | null
@@ -25,7 +25,7 @@ vi.mock("@/components/ui/card", () => ({
 }));
 vi.mock("@/components/ui/table", () => ({ Table: Element }));
 vi.mock("@/components/ui/separator", () => ({ Separator: Element }));
-vi.mock("@/components/coeval", () => ({
+vi.mock("@/components/rubrist", () => ({
   Eyebrow: Element,
   SectionHead: Element,
   KPI: Element,
@@ -129,7 +129,7 @@ describe("Skill Bench dashboard routing", () => {
     dashboard.project.importedTraceCount = 0;
     state.dashboard = dashboard;
     vi.stubGlobal("sessionStorage", {
-      getItem: (key: string) => key === "coeval.setup-receipt"
+      getItem: (key: string) => key === "rubrist.setup-receipt"
         ? "Starter Check v1.0.0 created. Add a Run to see its first Result."
         : null,
       removeItem: vi.fn()

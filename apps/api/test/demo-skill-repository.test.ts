@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { MockJudgeProvider } from "@coeval/audit/runtime";
-import { demoProject } from "@coeval/db";
-import { CreateCriterionInputSchema, CreateSkillVersionInputSchema } from "@coeval/shared";
+import { MockJudgeProvider } from "@rubrist/audit/runtime";
+import { demoProject } from "@rubrist/db";
+import { CreateCriterionInputSchema, CreateSkillVersionInputSchema } from "@rubrist/shared";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import * as repositoryModule from "../src/repository.js";

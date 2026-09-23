@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { RefreshCcw, Star, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Chip, Eyebrow, SectionHead, VerdictChip } from "@/components/coeval";
+import { Chip, Eyebrow, SectionHead, VerdictChip } from "@/components/rubrist";
 import { fetchGoldenSet, retireGoldenSetEntry } from "@/lib/api";
 import { useDashboard } from "@/lib/dashboard-context";
 import { dashboardCriterionVersionId } from "@/lib/criterion-scope";
 import { isBench, journeyStage, type JourneyStage } from "@/lib/journey";
 import { cn } from "@/lib/utils";
-import type { GoldenSetEntry } from "@coeval/shared";
+import type { GoldenSetEntry } from "@rubrist/shared";
 
 export function GoldenScreen() {
   const navigate = useNavigate();
@@ -60,7 +60,7 @@ export function GoldenScreen() {
       <SectionHead
         eyebrow={`${entries.length} active reference case${entries.length === 1 ? "" : "s"}`}
         title="Golden set"
-        sub="The Golden set stores human-curated labels for known cases. Coeval checks every evaluator edit against the active set. These references are ungoverned regression evidence, not calibration or sealed human truth."
+        sub="The Golden set stores human-curated labels for known cases. Rubrist checks every evaluator edit against the active set. These references are ungoverned regression evidence, not calibration or sealed human truth."
         right={
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => void load()} disabled={loading}>
@@ -78,7 +78,7 @@ export function GoldenScreen() {
           <Eyebrow>The principle</Eyebrow>
           <div className="mt-2 font-serif text-[14px] leading-[1.55] tracking-[-0.005em] text-ink-2">
             Promote a reviewed case when future evaluator versions should preserve its result.
-            Coeval freezes the recorded label and includes the case in later regression checks.
+            Rubrist freezes the recorded label and includes the case in later regression checks.
             This set covers only the cases you chose; it does not measure overall quality or create
             governed human truth. Retiring a case removes it from future checks while preserving its history.
           </div>
@@ -185,7 +185,7 @@ function EmptyGolden({
         <div className="mx-auto mt-2 max-w-[58ch] text-[12.5px] leading-[1.55] text-ink-3">
           Promote a reviewed case when future evaluator versions should preserve its result. The
           case becomes ungoverned regression evidence, not calibration or sealed human truth.
-          Without an active reference, Coeval cannot compare an edit with known cases.
+          Without an active reference, Rubrist cannot compare an edit with known cases.
         </div>
         <Button variant="primary" size="sm" className="mt-4" onClick={onPromote}>
           <Star />

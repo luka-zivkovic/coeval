@@ -5,7 +5,7 @@ import {
   AnalysisPopulationSummarySchema,
   type AnalysisPopulationCreateInput,
   type AnalysisPopulationSummary
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { createAnalysisPopulationRouter } from "../src/analysis-population/routes.js";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
@@ -58,10 +58,10 @@ function summary(populationId = "population_1"): AnalysisPopulationSummary {
       datasetRevisionId: "revision_1",
       method: "simple_random" as const,
       stoppingRule: "fixed" as const,
-      drawExecutor: "coeval_server" as const,
+      drawExecutor: "rubrist_server" as const,
       seed: "00".repeat(32),
       rngVersion: "sha256-rank/v1" as const,
-      algorithmVersion: "coeval-analysis-draw/v1" as const,
+      algorithmVersion: "rubrist-analysis-draw/v1" as const,
       fixedBudget: 1,
       populationSize: 1,
       inclusionProbability: { numerator: 1, denominator: 1 },
@@ -189,7 +189,7 @@ describe("analysis population session API", () => {
       analysisPopulationRepository: repository
     });
     const list = await app.request("/api/analysis-populations", {
-      headers: { "x-coeval-project": PROJECT_ID }
+      headers: { "x-rubrist-project": PROJECT_ID }
     });
     expect(list.status).toBe(200);
     expect(repository.calls).toEqual(["list"]);

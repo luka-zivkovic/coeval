@@ -1,4 +1,4 @@
-import type { DashboardSummary, Skill } from "@coeval/shared";
+import type { DashboardSummary, Skill } from "@rubrist/shared";
 
 export function skillCriterionVersionId(skill: Skill | null | undefined): string | null {
   return skill?.currentVersion.criterionVersionId ?? null;

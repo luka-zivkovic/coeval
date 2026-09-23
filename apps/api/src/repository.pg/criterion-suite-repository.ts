@@ -10,7 +10,7 @@ import type {
   EvaluatorSuite,
   EvaluatorSuiteManifest,
   SkillVersion
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool } from "pg";
 import {
   buildEvaluatorSuiteManifest,

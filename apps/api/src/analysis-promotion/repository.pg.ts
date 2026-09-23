@@ -16,7 +16,7 @@ import {
   type AnalysisCriterionPromotionSupportsPage,
   type Criterion,
   type CriterionVersion
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   analysisCriterionPromotionContentDigest,
   analysisCriterionPromotionHandoffDigest,

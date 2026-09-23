@@ -16,7 +16,7 @@ review-fix pass), in order:
 
 1. **Machine checks** — all four, every time; a web build only when UI changed:
    ```bash
-   pnpm typecheck && pnpm test && pnpm --filter @coeval/web build && git diff --check
+   pnpm typecheck && pnpm test && pnpm --filter @rubrist/web build && git diff --check
    ```
 2. **New behavior gets an API test first-class** (`apps/api/test`, vitest over
    `DemoRepository`) — assert the *invariant*, not the implementation (e.g.

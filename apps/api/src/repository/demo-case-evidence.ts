@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { demoExceptions, demoGoldenSet, demoProject } from "@coeval/db";
+import { demoExceptions, demoGoldenSet, demoProject } from "@rubrist/db";
 import type {
   ConvergenceAuditPage,
   DisagreementSummary,
@@ -8,7 +8,7 @@ import type {
   KappaSummary,
   SelfConsistencyReport,
   VerdictRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   computeConvergenceAudit,
   computeDisagreementSummary,

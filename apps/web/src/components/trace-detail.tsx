@@ -10,7 +10,7 @@ import {
   Chip,
   MarginNote,
   JudgeCallPanel
-} from "@/components/coeval";
+} from "@/components/rubrist";
 import {
   promoteExceptionToGoldenSet,
   recordHumanVerdict
@@ -25,7 +25,7 @@ import {
   type VerdictLabel,
   type VerdictPayload,
   type VerdictRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 export type TraceDecisionKind = "accept" | "override" | "promote";
 

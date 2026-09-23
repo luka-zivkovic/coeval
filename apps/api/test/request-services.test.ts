@@ -5,9 +5,9 @@ import type {
   Queue,
   QueueName,
   QueueSendOptions
-} from "@coeval/queue";
-import type { DatasetRevisionDetail } from "@coeval/shared";
-import type { CoevalRepository } from "../src/repository.js";
+} from "@rubrist/queue";
+import type { DatasetRevisionDetail } from "@rubrist/shared";
+import type { RubristRepository } from "../src/repository.js";
 import {
   AmbiguousProjectSkillError,
   DemoRepository,
@@ -88,7 +88,7 @@ describe("request services", () => {
   });
 
   it("resolves versions through the shared lifecycle authorization path", async () => {
-    type AuthorizationInput = Parameters<CoevalRepository["authorizeSkillVersionExecution"]>[0];
+    type AuthorizationInput = Parameters<RubristRepository["authorizeSkillVersionExecution"]>[0];
     const authorizations: AuthorizationInput[] = [];
     const repository = new class extends DemoRepository {
       override async authorizeSkillVersionExecution(input: AuthorizationInput): Promise<void> {

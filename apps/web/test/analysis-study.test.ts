@@ -23,7 +23,7 @@ import {
   buildAnalyzeJourneySteps,
   defaultAnalysisWindowEnd
 } from "../src/lib/analyze-journey.js";
-import { ANALYSIS_POPULATION_MIN_WINDOW_LAG_SECONDS } from "@coeval/shared";
+import { ANALYSIS_POPULATION_MIN_WINDOW_LAG_SECONDS } from "@rubrist/shared";
 import { readFeatureSource } from "./support/web-extraction-contracts.js";
 
 const digest = (digit: string) => `sha256:${digit.repeat(64)}`;
@@ -125,7 +125,7 @@ describe("analysis study web boundary", () => {
     expect(workspace).toContain("metadata only until View");
     expect(workspace).toContain("temporarily unavailable while durable deadline closure retries");
     expect(workspace).toContain("Complete for this exact frozen set only");
-    expect(workspace).toContain("Coeval does not cluster, merge, split, or generate categories");
+    expect(workspace).toContain("Rubrist does not cluster, merge, split, or generate categories");
     expect(workspace).toContain("Findings by failure type");
     expect(workspace).toContain("Per-type promotion evidence is owner-only");
     expect(workspace).toContain("Open reviewed run");

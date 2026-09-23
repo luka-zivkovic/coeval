@@ -1,8 +1,8 @@
-import type { Queue } from "@coeval/queue";
+import type { Queue } from "@rubrist/queue";
 import {
   ImportSkillVersionBindingError,
   NoCurrentSkillError,
-  type CoevalRepository
+  type RubristRepository
 } from "../repository.js";
 import { dispatchEvalRunOnce, runExistingCaseBackfill } from "./gate.js";
 
@@ -14,7 +14,7 @@ export interface ImportedCaseJudgingResult {
 }
 
 export async function assertImportJudgingAllowed(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   projectId: string,
   skillVersionId: string
 ): Promise<void> {
@@ -48,7 +48,7 @@ export async function assertImportJudgingAllowed(
 // (project, Check version, case), so concurrent imports and worker retries
 // cannot enqueue a second provider call.
 export async function scheduleImportedCaseJudging(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   queue: Queue | undefined,
   input: { projectId: string; skillVersionId: string; caseIds: string[] }
 ): Promise<ImportedCaseJudgingResult> {

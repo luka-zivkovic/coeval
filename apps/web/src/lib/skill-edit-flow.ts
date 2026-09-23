@@ -3,7 +3,7 @@ import {
   GOLDEN_GATE_RECOMMENDED,
   type RegressionRunResult,
   type SkillVersion
-} from "@coeval/shared";
+} from "@rubrist/shared";
 
 export function knownFailureGateSummary(goldenSize: number): string {
   if (goldenSize < GOLDEN_GATE_ARMS_AT) {

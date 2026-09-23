@@ -98,7 +98,7 @@ class AppCalibrationRepository implements BinaryCalibrationControlRepository {
       );
     }
     return {
-      contract: "coeval/binary-calibration-artifact-status/v1",
+      contract: "rubrist/binary-calibration-artifact-status/v1",
       schemaVersion: 1,
       artifactId,
       calibrationRunId: fixture.calibrationRunId,
@@ -182,7 +182,7 @@ describe("binary calibration app wiring", () => {
     };
     const response = await app.request("/api/binary-calibration-runs", {
       method: "POST",
-      headers: { "content-type": "application/json", "x-coeval-project": PROJECT_ID },
+      headers: { "content-type": "application/json", "x-rubrist-project": PROJECT_ID },
       body: JSON.stringify(body)
     });
     expect(response.status).toBe(202);
@@ -193,14 +193,14 @@ describe("binary calibration app wiring", () => {
 
     const artifactResponse = await app.request(
       `/api/v1/binary-calibration-artifacts/${fixture.artifactId}`,
-      { headers: { "x-coeval-project": PROJECT_ID } }
+      { headers: { "x-rubrist-project": PROJECT_ID } }
     );
     expect(artifactResponse.status).toBe(200);
     expect(Buffer.from(await artifactResponse.arrayBuffer())).toEqual(fixtureBytes);
 
     const statusResponse = await app.request(
       `/api/v1/binary-calibration-artifacts/${fixture.artifactId}/status`,
-      { headers: { "x-coeval-project": PROJECT_ID } }
+      { headers: { "x-rubrist-project": PROJECT_ID } }
     );
     expect(statusResponse.status).toBe(200);
     await expect(statusResponse.json()).resolves.toMatchObject({
@@ -210,7 +210,7 @@ describe("binary calibration app wiring", () => {
 
     const privateLedger = await app.request(
       `/api/v1/binary-calibration-artifacts/${fixture.artifactId}/private-ledger`,
-      { headers: { "x-coeval-project": PROJECT_ID } }
+      { headers: { "x-rubrist-project": PROJECT_ID } }
     );
     expect(privateLedger.status).toBe(404);
   });
@@ -301,7 +301,7 @@ describe("binary calibration app wiring", () => {
         for (const suffix of ["", "/status"]) {
           const response = await caller.app.request(
             `/api/v1/binary-calibration-artifacts/${artifactId}${suffix}`,
-            { headers: { "x-coeval-project": caller.projectId } }
+            { headers: { "x-rubrist-project": caller.projectId } }
           );
           expect(response.status).toBe(caller.expectedStatus);
           denials.push(await response.json());
@@ -319,14 +319,14 @@ describe("binary calibration app wiring", () => {
       headers: {
         origin: "http://localhost:5173",
         "access-control-request-method": "GET",
-        "access-control-request-headers": "x-coeval-project"
+        "access-control-request-headers": "x-rubrist-project"
       }
     });
     expect(response.status).toBe(204);
     const exposed = response.headers.get("access-control-expose-headers")?.toLowerCase() ?? "";
-    expect(exposed).toContain("x-coeval-artifact-digest");
-    expect(exposed).toContain("x-coeval-evidence-digest");
-    expect(exposed).toContain("x-coeval-canonicalization");
+    expect(exposed).toContain("x-rubrist-artifact-digest");
+    expect(exposed).toContain("x-rubrist-evidence-digest");
+    expect(exposed).toContain("x-rubrist-canonicalization");
     expect(exposed).toContain("etag");
     expect(exposed).toContain("digest");
   });

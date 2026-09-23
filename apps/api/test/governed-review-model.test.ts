@@ -15,7 +15,7 @@ import {
   type GovernedReviewTask,
   type GovernedReviewTaskEvent,
   type ImportedHumanTruth
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { sha256Digest } from "../src/lib/assessment-receipt.js";
 import { evaluatorSuiteCriterionDigest } from "../src/lib/evaluator-suite.js";
 import {
@@ -89,7 +89,7 @@ function criterion(overrides: Partial<CriterionVersion> = {}): CriterionVersion 
 
 function instruction(overrides: Partial<GovernedReviewInstructionVersion> = {}): GovernedReviewInstructionVersion {
   const unsigned = {
-    contract: "coeval/governed-review-instruction/v1" as const,
+    contract: "rubrist/governed-review-instruction/v1" as const,
     schemaVersion: 1 as const,
     instructionVersionId: "instruction_one",
     projectId: PROJECT_ID,
@@ -110,7 +110,7 @@ function instruction(overrides: Partial<GovernedReviewInstructionVersion> = {}):
 
 function item(overrides: Partial<GovernedReviewItem> = {}): GovernedReviewItem {
   const unsigned = {
-    contract: "coeval/governed-review-item/v1" as const,
+    contract: "rubrist/governed-review-item/v1" as const,
     schemaVersion: 1 as const,
     reviewItemId: ITEM_ID,
     projectId: PROJECT_ID,
@@ -141,7 +141,7 @@ function selectionPlan(
   const populationSize = overrides.populationSize ?? 10;
   const fixedBudget = overrides.fixedBudget ?? reviewItemDigests.length;
   const unsignedBase = {
-    contract: "coeval/governed-review-selection/v1" as const,
+    contract: "rubrist/governed-review-selection/v1" as const,
     schemaVersion: 1 as const,
     method,
     sourcePopulationId: "population_one",
@@ -149,8 +149,8 @@ function selectionPlan(
     timeWindow: { startInclusive: NOW, endExclusive: STOP },
     populationSize,
     populationDigest: sha256Digest("population"),
-    collectionProvenance: { collector: "coeval", sourceRevisionId: "dataset_revision_one" },
-    collectionProvenanceDigest: sha256Digest({ collector: "coeval", sourceRevisionId: "dataset_revision_one" }),
+    collectionProvenance: { collector: "rubrist", sourceRevisionId: "dataset_revision_one" },
+    collectionProvenanceDigest: sha256Digest({ collector: "rubrist", sourceRevisionId: "dataset_revision_one" }),
     frozenFrameDigest: sha256Digest("frozen-frame"),
     seed: random ? "seed_one" : null,
     rngVersion: random ? "xoshiro256/v1" : null,
@@ -159,7 +159,7 @@ function selectionPlan(
     weight: method === "simple_random" ? populationSize / fixedBudget : null,
     fixedBudget,
     stoppingRule: "fixed" as const,
-    drawExecutor: "coeval_server" as const,
+    drawExecutor: "rubrist_server" as const,
     drawItemDigests: reviewItemDigests,
     strata: [],
     ...without(overrides, "selectionPlanDigest", "drawDigest")
@@ -176,7 +176,7 @@ function batch(
   const taskIds = Array.from({ length: requiredIndependentLabels }, (_, index) => `task_${index + 1}`);
   const plan = overrides.selectionPlan ?? selectionPlan([reviewItem.itemDigest]);
   const unsigned = {
-    contract: "coeval/governed-review-batch/v1" as const,
+    contract: "rubrist/governed-review-batch/v1" as const,
     schemaVersion: 1 as const,
     batchId: "batch_one",
     projectId: PROJECT_ID,
@@ -209,7 +209,7 @@ function batch(
 
 function task(ordinal = 0, reviewer = `reviewer_${ordinal + 1}`, overrides: Partial<GovernedReviewTask> = {}): GovernedReviewTask {
   const unsigned = {
-    contract: "coeval/governed-review-task/v1" as const,
+    contract: "rubrist/governed-review-task/v1" as const,
     schemaVersion: 1 as const,
     taskId: `task_${ordinal + 1}`,
     projectId: PROJECT_ID,
@@ -233,7 +233,7 @@ function label(
   overrides: Partial<GovernedReviewLabel> = {}
 ): GovernedReviewLabel {
   const unsigned = {
-    contract: "coeval/governed-review-label/v1" as const,
+    contract: "rubrist/governed-review-label/v1" as const,
     schemaVersion: 1 as const,
     labelId: `label_${reviewTask.taskId}_${overrides.attemptNumber ?? 1}`,
     projectId: reviewTask.projectId,
@@ -267,7 +267,7 @@ function taskEvent(
   previousEventDigest: string | null
 ): GovernedReviewTaskEvent {
   const unsigned = {
-    contract: "coeval/governed-review-task-event/v1" as const,
+    contract: "rubrist/governed-review-task-event/v1" as const,
     schemaVersion: 1 as const,
     eventId: `task_event_${sequence}`,
     projectId: reviewTask.projectId,
@@ -307,7 +307,7 @@ function adjudication(
   overrides: Partial<GovernedReviewAdjudication> = {}
 ): GovernedReviewAdjudication {
   const unsigned = {
-    contract: "coeval/governed-review-adjudication/v1" as const,
+    contract: "rubrist/governed-review-adjudication/v1" as const,
     schemaVersion: 1 as const,
     adjudicationId: overrides.adjudicationId ?? "adjudication_one",
     projectId: PROJECT_ID,
@@ -339,7 +339,7 @@ function batchEvent(
   previousEventDigest: string | null
 ): GovernedReviewBatchEvent {
   const unsigned = {
-    contract: "coeval/governed-review-batch-event/v1" as const,
+    contract: "rubrist/governed-review-batch-event/v1" as const,
     schemaVersion: 1 as const,
     batchEventId: `batch_event_${sequence}`,
     projectId: reviewBatch.projectId,
@@ -536,7 +536,7 @@ describe("batch state and alignment evidence", () => {
     const reviewBatch = batch(2);
     const visible = ["label_task_1_1", "label_task_2_1"];
     const unsigned = {
-      contract: "coeval/governed-review-alignment-event/v1" as const, schemaVersion: 1 as const,
+      contract: "rubrist/governed-review-alignment-event/v1" as const, schemaVersion: 1 as const,
       alignmentEventId: "alignment_one", projectId: PROJECT_ID, batchId: reviewBatch.batchId,
       sequence: 1, expectedPreviousSequence: 0, actorSubjectId: "alignment_subject", actorRoleAtReview: "alignment_facilitator",
       visibleActiveLabelIds: visible, kind: "comment_recorded" as const,
@@ -719,7 +719,7 @@ describe("representative claims and imported provenance", () => {
 
   it("keeps governed materialization links separate from legacy verdict/user provenance", () => {
     const unsigned = {
-      contract: "coeval/governed-dataset-reference-provenance/v1" as const, schemaVersion: 1 as const,
+      contract: "rubrist/governed-dataset-reference-provenance/v1" as const, schemaVersion: 1 as const,
       kind: "governed_labels" as const, projectId: PROJECT_ID, datasetRevisionId: "revision_out",
       datasetRevisionItemId: "revision_item_out", criterionVersionId: "criterion_version_one",
       referenceLabel: "pass" as const, batchItemId: "batch_item_one",
@@ -761,7 +761,7 @@ function importedTruth(
   };
   attestation.attestationDigest = sha256Digest(without(attestation, "attestationDigest"));
   const unsignedBase = {
-    contract: "coeval/imported-human-truth/v1" as const,
+    contract: "rubrist/imported-human-truth/v1" as const,
     schemaVersion: 1 as const,
     importedTruthId: "import_one",
     projectId: PROJECT_ID,

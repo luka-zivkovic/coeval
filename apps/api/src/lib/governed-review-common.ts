@@ -1,7 +1,7 @@
 // Internal invariants shared by the governed-review artifact pipelines.
 // This module is deliberately absent from the compatibility barrel.
 import { createHash } from "node:crypto";
-import type { GovernedReviewBatch } from "@coeval/shared";
+import type { GovernedReviewBatch } from "@rubrist/shared";
 import { canonicalJson } from "./assessment-receipt.js";
 
 export const MAX_GOVERNED_REVIEW_PAYLOAD_BYTES = 2 * 1024 * 1024;

@@ -1,6 +1,6 @@
 # AI contributor context
 
-Before planning, auditing, or changing Coeval, read:
+Before planning, auditing, or changing Rubrist, read:
 
 1. `PRODUCT.md` — authoritative target product scope;
 2. `docs/glossary.md` — shared terminology;
@@ -29,7 +29,7 @@ its dated sources. It is context, never product authority.
 
 ## Product boundary
 
-Coeval owns the analyze-to-measure evaluator lifecycle: failure taxonomy,
+Rubrist owns the analyze-to-measure evaluator lifecycle: failure taxonomy,
 governed human truth, single-criterion evaluators, policy-free suites,
 calibration, pinned execution, and immutable assessment evidence. It does not
 own release thresholds, `promote`/`block` decisions, rollouts, or deployment

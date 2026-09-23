@@ -4,7 +4,7 @@ import type {
   CreatedApiKey,
   JudgeKeyProvider,
   JudgeProviderKey
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { generateApiKey, hashApiKey } from "../lib/api-keys.js";
 import type { CreateApiKeyInputDb } from "./contracts.js";
 import type { DemoRepositoryStore } from "./demo-store.js";

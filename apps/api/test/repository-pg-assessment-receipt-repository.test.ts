@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   AssessmentReceiptSchema,
   type AssessmentReceipt
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { Pool, PoolClient } from "pg";
 import ts from "typescript";
 import {

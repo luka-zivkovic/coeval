@@ -1,4 +1,4 @@
-import type { JudgeProvider, Trace } from "@coeval/audit/runtime";
+import type { JudgeProvider, Trace } from "@rubrist/audit/runtime";
 import {
   demoExceptions,
   demoGoldenSet,
@@ -6,8 +6,8 @@ import {
   demoSkill,
   demoSkillPrevVersion,
   demoVerdicts
-} from "@coeval/db";
-import type { GoldenSetEntry } from "@coeval/shared";
+} from "@rubrist/db";
+import type { GoldenSetEntry } from "@rubrist/shared";
 import { datasetInputIdentity } from "../lib/dataset-revision.js";
 import { evaluatorSuiteCriterionDigest } from "../lib/evaluator-suite.js";
 import type {

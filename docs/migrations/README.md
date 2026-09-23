@@ -1,6 +1,6 @@
 # Database change policy
 
-Coeval is pre-launch and has no supported upgrade path between development
+Rubrist is pre-launch and has no supported upgrade path between development
 schemas. The current database is defined by
 `packages/db/migrations/0001_baseline.sql`; development databases are dropped
 and recreated when that baseline changes.

@@ -4,7 +4,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ============================================================
- * Coeval design tokens
+ * Rubrist design tokens
  * Light = the original "paper & ink" product theme
  * Dark  = preserved zinc + purple from the previous build
  * ========================================================= */
@@ -153,7 +153,7 @@
   --color-input:        var(--input);
   --color-ring:         var(--ring);
 
-  /* Coeval-specific colors */
+  /* Rubrist-specific colors */
   --color-paper:        var(--paper);
   --color-paper-2:      var(--paper-2);
   --color-paper-3:      var(--paper-3);
@@ -216,7 +216,7 @@
 }
 
 /* ============================================================
- * Coeval typography utilities
+ * Rubrist typography utilities
  * ========================================================= */
 @layer components {
   .font-serif { font-family: var(--font-serif); font-weight: 500; letter-spacing: -0.015em; }

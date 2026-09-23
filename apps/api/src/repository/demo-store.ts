@@ -1,4 +1,4 @@
-import type { Trace } from "@coeval/audit/runtime";
+import type { Trace } from "@rubrist/audit/runtime";
 import type {
   ApiKey,
   CaseSource,
@@ -29,7 +29,7 @@ import type {
   TraceTestSourceScope,
   TraceTestValidation,
   VerdictRecord
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import type { datasetInputIdentity } from "../lib/dataset-revision.js";
 import type {
   AssessmentReceiptArtifact,

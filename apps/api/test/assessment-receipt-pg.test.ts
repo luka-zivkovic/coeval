@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Pool } from "pg";
-import { runMigrations } from "@coeval/db";
-import { AssessmentReceiptSchema, MinimumVerdictOutputSchema, type AssessmentReceipt } from "@coeval/shared";
+import { runMigrations } from "@rubrist/db";
+import { AssessmentReceiptSchema, MinimumVerdictOutputSchema, type AssessmentReceipt } from "@rubrist/shared";
 import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 import {

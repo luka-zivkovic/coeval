@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MockJudgeProvider } from "@coeval/audit/runtime";
-import type { SkillVersion } from "@coeval/shared";
+import { MockJudgeProvider } from "@rubrist/audit/runtime";
+import type { SkillVersion } from "@rubrist/shared";
 import { DemoRepository, type JudgeRunContext } from "../src/repository.js";
 import { judgeAndRecord, processJudgeRunJob } from "../src/workers/judge.js";
 

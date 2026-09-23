@@ -36,9 +36,9 @@ const artifact: GovernedBlindTaskArtifact = {
   canonicalBytes: new TextEncoder().encode("exact-canonical-view"),
   canonicalText: "exact-canonical-view",
   view: {
-    contract: "coeval/governed-blind-task-view/v1",
+    contract: "rubrist/governed-blind-task-view/v1",
     schemaVersion: 1,
-    canonicalizationVersion: "coeval-canonical-json/v1",
+    canonicalizationVersion: "rubrist-canonical-json/v1",
     taskId: "task_1",
     batchId: "batch_1",
     servePosition: 0,

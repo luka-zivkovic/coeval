@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AnalysisWorkflowMeasurementReport } from "@coeval/shared";
+import type { AnalysisWorkflowMeasurementReport } from "@rubrist/shared";
 import { createAnalysisMeasurementRouter } from "../src/analysis-measurement/routes.js";
 import type { AnalysisMeasurementRepository } from "../src/analysis-measurement/repository.js";
 import { analysisWorkflowMeasurementReportDigest } from "../src/lib/analysis-measurement.js";
 
 function report(overrides: Partial<AnalysisWorkflowMeasurementReport> = {}): AnalysisWorkflowMeasurementReport {
   const content = {
-    contractVersion: "coeval/analysis-workflow-measurement/v1" as const,
+    contractVersion: "rubrist/analysis-workflow-measurement/v1" as const,
     calculationVersion: "analysis-workflow-components/v1" as const,
     projectId: "project",
     studyId: "study",

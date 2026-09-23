@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { Trace } from "@coeval/audit/runtime";
-import { demoGoldenSet, demoProject, demoSkill, getDemoDashboardSummary } from "@coeval/db";
+import type { Trace } from "@rubrist/audit/runtime";
+import { demoGoldenSet, demoProject, demoSkill, getDemoDashboardSummary } from "@rubrist/db";
 import {
   type DatasetRevisionDetail,
   type ExceptionCase,
@@ -12,7 +12,7 @@ import {
   type VerdictRecord,
   effectiveHumanLabel,
   verdictLabelFromPayload
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { redactTrace } from "../lib/redaction.js";
 import type {
   PromoteExceptionToGoldenSetInput,

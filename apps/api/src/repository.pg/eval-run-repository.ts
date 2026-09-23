@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { EvalRun, EvalRunDetail, EvalRunItem } from "@coeval/shared";
+import type { EvalRun, EvalRunDetail, EvalRunItem } from "@rubrist/shared";
 import type { Pool } from "pg";
 import { computeEvalRunSpend } from "../repository.js";
 import type {

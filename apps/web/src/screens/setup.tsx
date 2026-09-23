@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AgentSetupPairingCard } from "@/components/agent-setup-pairing";
-import { Eyebrow } from "@/components/coeval";
+import { Eyebrow } from "@/components/rubrist";
 import { CHOOSE_TASK_ERROR, NAME_REQUIRED_ERROR, ProjectTaskFields } from "@/components/project-task";
 import { OneTimeKeyNotice } from "@/components/project-create";
-import { CoevalBrand } from "@/components/coeval-brand";
+import { RubristBrand } from "@/components/rubrist-brand";
 import { setupOwner } from "@/lib/api";
 import { rememberFirstProjectKey } from "@/lib/journey";
-import type { CreatedApiKey, ProjectMode } from "@coeval/shared";
+import type { CreatedApiKey, ProjectMode } from "@rubrist/shared";
 
 export function SetupScreen({ onDone }: { onDone: () => void }) {
   const [email, setEmail] = useState("");
@@ -78,13 +78,13 @@ export function SetupScreen({ onDone }: { onDone: () => void }) {
     <div className="min-h-screen grid place-items-center px-6">
       <Card className="w-full max-w-[680px]">
         <CardHeader className="flex-col items-start gap-1.5">
-          <CoevalBrand
+          <RubristBrand
             className="mb-2"
             markClassName="size-6"
             nameClassName="font-serif text-[17px] font-semibold tracking-[-0.025em] text-ink"
           />
           <CardTitle className="text-[20px]">What are you evaluating?</CardTitle>
-          <CardDescription>Choose where the first recorded Runs will come from. Coeval creates the project and a starter Check with your owner account.</CardDescription>
+          <CardDescription>Choose where the first recorded Runs will come from. Rubrist creates the project and a starter Check with your owner account.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-3" onSubmit={(event) => void submit(event)}>

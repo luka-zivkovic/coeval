@@ -3,7 +3,7 @@ import {
   ANALYSIS_STUDY_CONTRACT_VERSION,
   type AnalysisStudyArtifact,
   type AnalysisStudyItemArtifact
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   analysisStudyContentDigest,
   analysisStudyEventDigest,

@@ -24,7 +24,7 @@ export * from "./repository/errors.js";
 export { buildGoldenSetHealthSummary, previousVerdictsFromRun, runGoldenSetRegression } from "./repository/golden-helpers.js";
 export * from "./repository/helpers.js";
 
-export interface CoevalRepository extends
+export interface RubristRepository extends
   ProjectRepositoryPort,
   CriterionSuiteRepositoryPort,
   SkillLifecycleRepositoryPort,

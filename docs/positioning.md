@@ -1,11 +1,11 @@
-# Coeval positioning note
+# Rubrist positioning note
 
 Status: **time-sensitive market context; not product authority**
 
 Last verified against linked official documentation: 2026-08-22
 
 Refresh this note before using it in external claims. `PRODUCT.md` and accepted
-ADRs define Coeval even when competitors change.
+ADRs define Rubrist even when competitors change.
 
 ## Category context
 
@@ -28,13 +28,13 @@ annotation, and automated evaluators:
   [experiment runner](https://www.braintrust.dev/docs/evaluate/run-evaluations)
   also supports repeated trials for variance.
 
-These are real overlaps, not straw competitors. Coeval should not claim that
+These are real overlaps, not straw competitors. Rubrist should not claim that
 trace review, datasets, experiments, human annotation, evaluator calibration,
 or immutable experiment history are unique.
 
 ## Intended wedge
 
-Coeval's differentiated product thesis is the governed path from observed
+Rubrist's differentiated product thesis is the governed path from observed
 failure to independently verifiable evaluator evidence:
 
 1. representative traces become open failure codes and a reviewable taxonomy;
@@ -51,7 +51,7 @@ The defensible claim is not “another eval dashboard.” It is truth lineage,
 evaluator-governance discipline, and portable evidence whose release meaning
 is intentionally decided elsewhere.
 
-## What Coeval must prove
+## What Rubrist must prove
 
 - The analyze-to-measure workflow helps teams find and encode real failure
   modes faster and more consistently than ad-hoc dataset work.

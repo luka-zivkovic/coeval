@@ -6,9 +6,9 @@ import {
   verdictLabelFromPayload,
   type EvalItemJob,
   type EvalRunJob
-} from "@coeval/shared";
-import type { Queue } from "@coeval/queue";
-import type { CoevalRepository } from "../repository.js";
+} from "@rubrist/shared";
+import type { Queue } from "@rubrist/queue";
+import type { RubristRepository } from "../repository.js";
 import { createJudgeProvider } from "../lib/judge-provider.js";
 import { isPermanentError, judgeAndRecord, type ProviderArg } from "./judge.js";
 
@@ -26,7 +26,7 @@ import { isPermanentError, judgeAndRecord, type ProviderArg } from "./judge.js";
 // counters forever — infrastructure failure masquerading as progress.
 export async function registerEvalRunWorkers(
   queue: Queue,
-  repository: CoevalRepository,
+  repository: RubristRepository,
   provider: ProviderArg = createJudgeProvider
 ): Promise<void> {
   await queue.work<EvalRunJob>("eval.run", async ({ id, data }) => {
@@ -127,7 +127,7 @@ function postDispatchFailureMessage(error: unknown, providerCallReturned: boolea
 }
 
 export async function recoverStaleEvalRunItemExecutions(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   queue?: Queue | undefined
 ): Promise<number> {
   const stale = await repository.listStaleEvalRunItemExecutions();
@@ -225,7 +225,7 @@ export async function recoverStaleEvalRunItemExecutions(
 }
 
 export async function processEvalRunJob(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   queue: Queue,
   job: EvalRunJob
 ): Promise<void> {
@@ -260,7 +260,7 @@ export async function processEvalRunJob(
 }
 
 export async function processEvalItemJob(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   job: EvalItemJob,
   provider: ProviderArg = createJudgeProvider,
   executionToken = `direct:${randomUUID()}`,
@@ -361,7 +361,7 @@ export async function processEvalItemJob(
 // the route responds. Caps are small and the provider is the mock, so the
 // synchronous walk is cheap; PG-mode keeps the async 202-then-poll contract.
 export async function runEvalRunInline(
-  repository: CoevalRepository,
+  repository: RubristRepository,
   projectId: string,
   evalRunId: string,
   provider: ProviderArg = createJudgeProvider

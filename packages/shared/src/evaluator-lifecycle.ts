@@ -9,9 +9,9 @@ import { SkillSchema } from "./skills.js";
 // Batch 6B-4: explicit evaluator lifecycle for analysis-promotion criteria.
 // Legacy skill_versions.status remains a compatibility projection only; once
 // a lineage has this contract, the append-only lifecycle is authoritative.
-export const EVALUATOR_LIFECYCLE_CONTRACT_VERSION = "coeval/evaluator-lifecycle/v1" as const;
-export const EVALUATOR_LIFECYCLE_EVENT_CONTRACT_VERSION = "coeval/evaluator-lifecycle-event/v1" as const;
-export const EVALUATOR_EXECUTION_AUTHORIZATION_VERSION = "coeval/evaluator-execution-authorization/v1" as const;
+export const EVALUATOR_LIFECYCLE_CONTRACT_VERSION = "rubrist/evaluator-lifecycle/v1" as const;
+export const EVALUATOR_LIFECYCLE_EVENT_CONTRACT_VERSION = "rubrist/evaluator-lifecycle-event/v1" as const;
+export const EVALUATOR_EXECUTION_AUTHORIZATION_VERSION = "rubrist/evaluator-execution-authorization/v1" as const;
 
 const EvaluatorLifecycleIdSchema = z.string().trim().min(1).max(240);
 const EvaluatorLifecycleDigestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);

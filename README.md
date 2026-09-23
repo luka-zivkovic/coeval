@@ -1,43 +1,43 @@
-<h1 align="center">Coeval</h1>
+<h1 align="center">Rubrist</h1>
 
 <p align="center"><strong>Turn examples of your AI failing into evaluators you can check against human judgment, and keep the evidence.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/luka-zivkovic/coeval/actions/workflows/ci.yml"><img src="https://github.com/luka-zivkovic/coeval/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/luka-zivkovic/rubrist/actions/workflows/ci.yml"><img src="https://github.com/luka-zivkovic/rubrist/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-475569" alt="MIT license"></a>
 </p>
 
 <p align="center">
-  <a href="#ten-minute-start">Ten-minute start</a> · <a href="#concepts">Concepts</a> · <a href="#where-coeval-fits">Where it fits</a> · <a href="#judgment-in-ci">CI</a> · <a href="#mcp">MCP</a> · <a href="#documentation">Documentation</a>
+  <a href="#ten-minute-start">Ten-minute start</a> · <a href="#concepts">Concepts</a> · <a href="#where-rubrist-fits">Where it fits</a> · <a href="#judgment-in-ci">CI</a> · <a href="#mcp">MCP</a> · <a href="#documentation">Documentation</a>
 </p>
 
-Coeval is for the person who owns the quality of an AI feature: you have seen
+Rubrist is for the person who owns the quality of an AI feature: you have seen
 it fail, you want an automated check for that failure, and you want to know
 whether the check agrees with a human before you rely on it. You can start
-from production traces or from a handful of examples. Coeval keeps the human
+from production traces or from a handful of examples. Rubrist keeps the human
 review, the evaluator versions, and the resulting evidence connected as the
 project grows, and it hands that evidence to whoever decides what ships.
 
 ## Ten-minute start
 
 Pick the path that matches what you already have. Every path ends at the same
-place: a running Coeval, an owner account, and one Check over one real Run.
+place: a running Rubrist, an owner account, and one Check over one real Run.
 
 ### a. Claude Code plugin
 
-If Coeval is already running somewhere (see paths b, c, or d), let the plugin
+If Rubrist is already running somewhere (see paths b, c, or d), let the plugin
 do the rest:
 
 ```text
-/plugin marketplace add luka-zivkovic/coeval
-/plugin install coeval@coeval
+/plugin marketplace add luka-zivkovic/rubrist
+/plugin install rubrist@rubrist
 ```
 
 Open Claude Code in the project you want to evaluate and run
-`/coeval:coeval-setup`. The skill reads safe project text, asks one short
+`/rubrist:rubrist-setup`. The skill reads safe project text, asks one short
 question, shows a plain-language proposed Check, and connects it after you
-choose **Finish setup**. `/coeval:coeval-audit` then captures real examples
-and submits them. The agent connection it uses needs a Coeval running in
+choose **Finish setup**. `/rubrist:rubrist-audit` then captures real examples
+and submits them. The agent connection it uses needs a Rubrist running in
 Postgres mode (paths b or c). Codex and other harnesses copy the same two
 skill folders; see the [agent setup guide](docs/agent-setup.md).
 
@@ -45,28 +45,31 @@ skill folders; see the [agent setup guide](docs/agent-setup.md).
 
 You need Docker Engine with Compose v2. This uses the release-owned bundle in
 [`deploy/self-host/compose.yaml`](deploy/self-host/compose.yaml) and the
-`0.2.0` images published on GHCR:
+`0.2.0` images published on GHCR. Rubrist was renamed from its former
+product name after `0.2.0`; that release's images and variables still carry the
+old name, and the next release is the first published under the `rubrist-*`
+image names and `RUBRIST_*` variables shown here:
 
 ```bash
-mkdir coeval && cd coeval
-curl -fsSLO https://raw.githubusercontent.com/luka-zivkovic/coeval/v0.2.0/deploy/self-host/compose.yaml
+mkdir rubrist && cd rubrist
+curl -fsSLO https://raw.githubusercontent.com/luka-zivkovic/rubrist/v0.2.0/deploy/self-host/compose.yaml
 cat > .env <<EOF
-COEVAL_VERSION=0.2.0
-COEVAL_POSTGRES_PASSWORD=$(openssl rand -hex 24)
-COEVAL_AUTH_SECRET=$(openssl rand -base64 32)
-COEVAL_PUBLIC_URL=http://localhost:8081
+RUBRIST_VERSION=0.2.0
+RUBRIST_POSTGRES_PASSWORD=$(openssl rand -hex 24)
+RUBRIST_AUTH_SECRET=$(openssl rand -base64 32)
+RUBRIST_PUBLIC_URL=http://localhost:8081
 EOF
 docker compose up -d
 curl --fail http://localhost:8081/health
 ```
 
-`COEVAL_VERSION`, `COEVAL_POSTGRES_PASSWORD`, and `COEVAL_AUTH_SECRET` are
-required; the bundle refuses to start without them. `COEVAL_PUBLIC_URL`
+`RUBRIST_VERSION`, `RUBRIST_POSTGRES_PASSWORD`, and `RUBRIST_AUTH_SECRET` are
+required; the bundle refuses to start without them. `RUBRIST_PUBLIC_URL`
 defaults to `http://localhost:8081` and must match the address you open in a
-browser. Optional: `COEVAL_BIND_ADDRESS` (default `127.0.0.1`), `COEVAL_PORT`
-(default `8081`), `COEVAL_POSTGRES_DB` (default `coeval`), and
-`COEVAL_BOOTSTRAP_TOKEN` for headless administration. Keep `.env` out of Git
-and keep `COEVAL_AUTH_SECRET` in a recovery record: it also encrypts stored
+browser. Optional: `RUBRIST_BIND_ADDRESS` (default `127.0.0.1`), `RUBRIST_PORT`
+(default `8081`), `RUBRIST_POSTGRES_DB` (default `rubrist`), and
+`RUBRIST_BOOTSTRAP_TOKEN` for headless administration. Keep `.env` out of Git
+and keep `RUBRIST_AUTH_SECRET` in a recovery record: it also encrypts stored
 credentials.
 
 Open [http://localhost:8081](http://localhost:8081), create the first owner,
@@ -81,8 +84,8 @@ Prerequisites: Node.js 24 or newer, pnpm 10.33 or newer, Docker for local
 Postgres, and an optional Anthropic or OpenAI API key for real judging.
 
 ```bash
-git clone https://github.com/luka-zivkovic/coeval.git
-cd coeval
+git clone https://github.com/luka-zivkovic/rubrist.git
+cd rubrist
 pnpm install
 cp .env.example .env
 docker compose -f docker-compose.pg.yml up -d
@@ -92,15 +95,15 @@ Generate a Better Auth secret with `openssl rand -base64 32` and add it to
 `.env`, together with an optional judge provider key:
 
 ```dotenv
-DATABASE_URL=postgres://coeval:coeval@localhost:5432/coeval
+DATABASE_URL=postgres://rubrist:rubrist@localhost:5432/rubrist
 BETTER_AUTH_SECRET=<generated-secret>
 BETTER_AUTH_URL=http://localhost:8787
-COEVAL_TRUST_PROXY=0
+RUBRIST_TRUST_PROXY=0
 TRUSTED_ORIGINS=http://localhost:5173
 
 # Optional advanced fallback for setup with no signed-in onboarding session.
-# Normal users create a short-lived agent connection in the Coeval UI.
-COEVAL_BOOTSTRAP_TOKEN=
+# Normal users create a short-lived agent connection in the Rubrist UI.
+RUBRIST_BOOTSTRAP_TOKEN=
 
 # Optional. Without one, local demo judging uses a deterministic mock.
 ANTHROPIC_API_KEY=
@@ -108,8 +111,8 @@ OPENAI_API_KEY=
 OPENROUTER_API_KEY=
 ```
 
-Set `COEVAL_TRUST_PROXY=1` only when clients cannot bypass your trusted reverse
-proxy. Coeval will then use sanitized forwarded client-IP headers for the
+Set `RUBRIST_TRUST_PROXY=1` only when clients cannot bypass your trusted reverse
+proxy. Rubrist will then use sanitized forwarded client-IP headers for the
 pre-auth onboarding rate limit; direct deployments use the socket address.
 
 Start the API and web app in separate terminals:
@@ -135,7 +138,7 @@ Postgres. From a checkout with dependencies installed, and without sourcing
 `.env`:
 
 ```bash
-pnpm dev:api    # prints "Coeval API listening on http://localhost:8787 (demo)"
+pnpm dev:api    # prints "Rubrist API listening on http://localhost:8787 (demo)"
 pnpm dev:web    # second terminal
 ```
 
@@ -146,14 +149,14 @@ keys** mints keys you can use with the batch endpoint below.
 
 Demo mode is for looking around. Its limits: nothing persists across a
 restart; authentication is off, so do not expose it on a network; the agent
-connection used by the plugin, `COEVAL_BOOTSTRAP_TOKEN`, independent
+connection used by the plugin, `RUBRIST_BOOTSTRAP_TOKEN`, independent
 (governed) human review, protected sealed calibration, the Analyze study
 runtime, and evaluator activation all require the persistent Postgres
 workspace.
 
 ### Your first Check
 
-You do not need to learn evaluator-governance terminology first. Coeval
+You do not need to learn evaluator-governance terminology first. Rubrist
 defaults to a **Guided** view that keeps the core journey visible, explains
 what each step changes, and leaves secondary diagnostics and system details
 out of the way. A typical first project looks like this:
@@ -171,33 +174,33 @@ changes the presentation, not the evidence, permissions, or safety rules.
 <p align="center">
   <picture>
     <source media="(max-width: 600px)" srcset="docs/assets/workflow-mobile.svg">
-    <img src="docs/assets/workflow.svg" width="100%" alt="Coeval workflow: understand failures, review human labels, version evaluators, and retain assessment and calibration evidence.">
+    <img src="docs/assets/workflow.svg" width="100%" alt="Rubrist workflow: understand failures, review human labels, version evaluators, and retain assessment and calibration evidence.">
   </picture>
 </p>
 
 To onboard with an external AI agent, copy the no-secret setup prompt after
 creating the owner account (or from a new project's Overview). The bundled
-`coeval-setup` skill inspects safe project context, asks one short question,
+`rubrist-setup` skill inspects safe project context, asks one short question,
 and shows a plain-language proposed Check. After you choose **Finish setup**,
 create the private agent connection and paste those instructions into Claude,
 Codex, or another agent. The connection is project-scoped, single-use, and
 expires after 15 minutes; no deployment secret is required. The returned
-`coeval_sk_` key is project-scoped and shown exactly once.
-`COEVAL_BOOTSTRAP_TOKEN` remains an optional advanced fallback for fully
+`rubrist_sk_` key is project-scoped and shown exactly once.
+`RUBRIST_BOOTSTRAP_TOKEN` remains an optional advanced fallback for fully
 headless administration. Agents may create an explicitly unvalidated Check
 and submit real Runs, but human adjudication and Golden promotion remain
 session-only.
 
 #### Submit a first batch
 
-Coeval mints the first project key when the project is created and shows the
+Rubrist mints the first project key when the project is created and shows the
 plaintext once during onboarding. Save it then, or mint a replacement under
-**Settings → API keys**. Export it as `COEVAL_API_KEY`, then submit a labeled
+**Settings → API keys**. Export it as `RUBRIST_API_KEY`, then submit a labeled
 example (use port `8081` for the self-host bundle):
 
 ```bash
 curl -X POST http://localhost:8787/api/v1/judge/batch \
-  -H "Authorization: Bearer ${COEVAL_API_KEY}" \
+  -H "Authorization: Bearer ${RUBRIST_API_KEY}" \
   -H "Content-Type: application/json" \
   -d '{
     "items": [
@@ -229,13 +232,13 @@ contracts below use the rest.
 | **Evaluator version** | One exact rubric, prompt, output contract, and pinned model for a criterion. Runs are judged by a named version, never by "latest". |
 | **Human truth** | A person's independent label and rationale for a Run, collected without seeing the evaluator's Result. |
 | **Calibration** | Measuring how often an exact evaluator version agrees with human truth on a set it has never been tuned on, with the uncertainty of that measurement shown. |
-| **Dataset roles** | Every immutable set of Runs is marked by how it has been used: analysis, iterative development, sealed validation, or regression/golden. Coeval records exposure so a set used for tuning cannot later be passed off as a blind validation set. |
+| **Dataset roles** | Every immutable set of Runs is marked by how it has been used: analysis, iterative development, sealed validation, or regression/golden. Rubrist records exposure so a set used for tuning cannot later be passed off as a blind validation set. |
 | **Receipt** | The persisted, byte-exact record of one assessment: which evaluator version judged which Runs and what it returned. It carries no pass threshold or ship decision. |
 | **Suite** | An ordered list of criteria, each bound to an exact evaluator version, with no weights, thresholds, or combined score. |
 
-## Coeval is not
+## Rubrist is not
 
-These are decisions Coeval deliberately leaves to other tools or to people,
+These are decisions Rubrist deliberately leaves to other tools or to people,
 per the [product charter](PRODUCT.md):
 
 - **Not a release gate.** It does not decide whether a product change should
@@ -250,33 +253,33 @@ per the [product charter](PRODUCT.md):
   Langfuse, or Ironside and syncs assessments back rather than storing your
   traces for you.
 
-## Where Coeval fits
+## Where Rubrist fits
 
-Coeval is one of a few small, separately installable tools. Each does one job;
+Rubrist is one of a few small, separately installable tools. Each does one job;
 none requires the others.
 
-| Tool | Job | Status with Coeval |
+| Tool | Job | Status with Rubrist |
 | --- | --- | --- |
-| [Ironside](https://github.com/luka-zivkovic/ironside) | Records what your AI did: traces via the SDK, JSON, or OTLP. | Trace source. Coeval consumes Ironside's native versioned evaluator feed and writes criterion-specific assessments back; verified end to end. |
-| [Dailies](https://github.com/luka-zivkovic/dailies) | Decides whether an AI change meets customer-owned release rules. | Evidence consumer. Dailies verifies Coeval receipts and binary-calibration artifacts and applies its own policy; implemented, with no network lookup of Coeval. |
+| [Ironside](https://github.com/luka-zivkovic/ironside) | Records what your AI did: traces via the SDK, JSON, or OTLP. | Trace source. Rubrist consumes Ironside's native versioned evaluator feed and writes criterion-specific assessments back; verified end to end. Imported traces link back to Ironside's viewer, and Ironside can deep-link into Rubrist's copy of a trace ([trace links](docs/ironside-integration.md#trace-links)). |
+| [Dailies](https://github.com/luka-zivkovic/dailies) | Decides whether an AI change meets customer-owned release rules. | Evidence consumer. Dailies verifies Rubrist receipts and binary-calibration artifacts and applies its own policy; implemented, with no network lookup of Rubrist. |
 | [Casefile](https://github.com/luka-zivkovic/casefile) | Statically inspects agent skills and plugins before installation. | No runtime integration. It is the scanner used on the plugin in this repository. |
 
-Traces in Ironside can feed Coeval, and Coeval's evidence can feed Dailies,
+Traces in Ironside can feed Rubrist, and Rubrist's evidence can feed Dailies,
 without any of the three owning the others' data. Many mature products
 combine traces, datasets, experiments, human annotation, and judge
-calibration; the claims Coeval still has to prove are recorded in
+calibration; the claims Rubrist still has to prove are recorded in
 [docs/positioning.md](docs/positioning.md).
 
 ## How the pieces connect
 
-| You want to… | Coeval helps you… |
+| You want to… | Rubrist helps you… |
 | --- | --- |
 | Understand recurring failures | Inspect traces and develop a human-authored failure taxonomy. |
 | Judge a specific behavior | Define one criterion and version the evaluator that measures it. |
 | Check the evaluator itself | Compare its judgments with reviewed human labels and retain calibration evidence. |
 | Improve it without losing history | Re-run known failures and inspect evidence for exact evaluator versions. |
 
-Coeval complements tracing platforms rather than replacing them. It can import traces from LangSmith or Langfuse, or use Ironside's native versioned evaluator feed, and sync recorded assessments back to the source.
+Rubrist complements tracing platforms rather than replacing them. It can import traces from LangSmith or Langfuse, or use Ironside's native versioned evaluator feed, and sync recorded assessments back to the source.
 
 <details>
 <summary><strong>Explore the full feature set</strong></summary>
@@ -310,19 +313,19 @@ Coeval complements tracing platforms rather than replacing them. It can import t
 ## Set up and audit from Claude Code (and other agents)
 
 Two bundled skills carry the workflow into your agent. The Claude Code plugin
-in [`plugins/coeval`](plugins/coeval/) ships both:
+in [`plugins/rubrist`](plugins/rubrist/) ships both:
 
 | Skill | What it does |
 | --- | --- |
-| [coeval-setup](plugins/coeval/skills/coeval-setup/) | Reads safe project context, proposes a **Starter · unvalidated** Check, and connects it after **Finish setup**. |
-| [coeval-audit](plugins/coeval/skills/coeval-audit/) | Captures real input/output examples, submits Runs, and explains the resulting assessments. |
+| [rubrist-setup](plugins/rubrist/skills/rubrist-setup/) | Reads safe project context, proposes a **Starter · unvalidated** Check, and connects it after **Finish setup**. |
+| [rubrist-audit](plugins/rubrist/skills/rubrist-audit/) | Captures real input/output examples, submits Runs, and explains the resulting assessments. |
 
 Claude Code users install the plugin as shown in the
 [ten-minute start](#a-claude-code-plugin). Codex and other harnesses
 copy both folders in full using the
 [harness-specific commands](docs/agent-setup.md#copy-the-skill-folders).
-Then ask your agent to "initialize Coeval for this project" or "audit my skill
-with Coeval." Manual capture works across harnesses; the optional automatic
+Then ask your agent to "initialize Rubrist for this project" or "audit my skill
+with Rubrist." Manual capture works across harnesses; the optional automatic
 capture hook is specific to Claude Code. Submission is explicit by default.
 
 Unlabeled assessments are evaluator opinions, not verified correctness.
@@ -333,26 +336,26 @@ Claude Code, Codex, or other terminal-capable agent session in the directory
 where you keep your projects:
 
 ```text
-Set up Coeval locally from https://github.com/luka-zivkovic/coeval.
+Set up Rubrist locally from https://github.com/luka-zivkovic/rubrist.
 Read its README and docs/agent-setup.md first, check the prerequisites,
 and follow the local installation steps. Keep existing files and services
 intact. Start the API and web app, verify their URLs, and guide me through
 owner signup and my first Check. Keep credentials out of chat and Git.
-Then help me install coeval-setup and coeval-audit for this harness.
+Then help me install rubrist-setup and rubrist-audit for this harness.
 ```
 
 The [agent setup guide](docs/agent-setup.md) covers the plugin, Codex skill
 installation, other harnesses, first-run verification, and the optional
 [MCP connection](tools/mcp/README.md). The skills help you set up and use a
-Coeval project; the Coeval service still needs to be running.
+Rubrist project; the Rubrist service still needs to be running.
 
 ## Judgment in CI
 
 The repository includes a dependency-free CI client:
 
 ```bash
-COEVAL_URL=https://your-coeval.example \
-COEVAL_API_KEY=coeval_sk_... \
+RUBRIST_URL=https://your-rubrist.example \
+RUBRIST_API_KEY=rubrist_sk_... \
 node tools/ci/gate.mjs tools/ci/examples.jsonl --min-agreement 1.0
 ```
 
@@ -374,10 +377,10 @@ Unchanged examples reuse recorded verdicts; edited examples are judged again. In
 `POST /api/v1/gate-checks` returns `410 Gone`; historical gate reads remain
 available. New release integrations submit `purpose: "release_evidence"` to
 `POST /api/v1/judge/batch`, verify the policy-free assessment receipt, and
-apply thresholds or ship/hold policy in the release layer—not in Coeval.
+apply thresholds or ship/hold policy in the release layer—not in Rubrist.
 Receipt v1 is a closed wire contract with portable schema and interoperability
 fixtures in [`contracts/`](contracts/). Calibration transport is now the
-separate aggregate-only `coeval/binary-calibration/v1` contract accepted by
+separate aggregate-only `rubrist/binary-calibration/v1` contract accepted by
 ADR-0009. The current Postgres runtime executes one trial per governed sealed
 binary item and mints that separate artifact; it is not added to receipt v1.
 Dailies independently verifies the frozen calibration contract and corpus and
@@ -405,7 +408,7 @@ snapshots, exact pre-redaction input identities, reference-label provenance,
 content and revision digests, lineage, and append-only exposure evidence.
 
 `sealed_validation` cannot be created through the ordinary collection API:
-Coeval will not manufacture a blind-validation claim from visible historical
+Rubrist will not manufacture a blind-validation claim from visible historical
 data. It is created only from the governed case-less sealed-intake path
 described below. `regression_golden` is likewise not a public
 collection-freeze role;
@@ -425,7 +428,7 @@ traces, review queues, exports, and project API keys.
 
 Legacy verdict, adjudication, review-queue, and export responses remain useful
 for unblinded triage and carry
-`X-Coeval-Governance-Class: ungoverned_legacy`. They never become governed
+`X-Rubrist-Governance-Class: ungoverned_legacy`. They never become governed
 evidence. Legacy Cohen's kappa is reported as
 undefined, not `1`, when chance-expected agreement is one.
 
@@ -467,11 +470,11 @@ route is under `/api/v1`; project API keys and member sessions are denied.
 Later development exposure can revoke current admissibility without rewriting
 the historical artifact.
 
-The frozen contract supports repeated-trial evidence, but the current Coeval
+The frozen contract supports repeated-trial evidence, but the current Rubrist
 runtime does not execute it. Dailies currently vends and verifies the same
 contract and conformance corpus, consumes explicitly configured local
 artifacts, and emits calibration-aware release reports. It never fetches a
-latest artifact or Coeval status, and it has no access to the private ledger.
+latest artifact or Rubrist status, and it has no access to the private ledger.
 
 See the [binary-calibration contract](contracts/binary-calibration-v1.md),
 [ADR-0009](docs/decisions/0009-binary-calibration-artifact-contract.md), and
@@ -479,7 +482,7 @@ the [runtime architecture](docs/architecture.md).
 
 ## Criteria and evaluator suites
 
-Coeval models one independently judgeable quality claim as a versioned
+Rubrist models one independently judgeable quality claim as a versioned
 criterion. Each evaluator lineage belongs to one stable criterion, and every
 evaluator version pins the exact criterion definition revision it measures.
 Golden evidence, regression revisions, human review, calibration, imports,
@@ -493,7 +496,7 @@ at execution time. Single-criterion routes continue to work for projects with
 one criterion and fail closed when selection would be ambiguous.
 
 An owner can publish an immutable
-[`coeval/evaluator-suite-manifest/v1`](contracts/evaluator-suite-manifest-v1.md)
+[`rubrist/evaluator-suite-manifest/v1`](contracts/evaluator-suite-manifest-v1.md)
 artifact that orders criterion definitions and binds each one to an exact
 evaluator version, frozen `skillDigest`, output contract, applicability rule,
 and optional independent-trial plan. The manifest contains no release roles,
@@ -544,7 +547,7 @@ calibration. Activation is an owner action over exact complete calibration and
 full passed regression evidence; revocation appends `needs_review`.
 
 The integrated Analyze view now emits one digest-bound
-`coeval/analysis-workflow-measurement/v1` report. Coding completion, named
+`rubrist/analysis-workflow-measurement/v1` report. Coding completion, named
 taxonomy coverage, taxonomy churn, governed reviewer disagreement, calibration
 error directions and coverage intervals, and the two artifact durations remain
 separate components. Missing, running, incomplete, revoked, or unavailable
@@ -562,11 +565,11 @@ and the accepted [pre-launch database policy](docs/decisions/0011-prelaunch-blan
 
 ## MCP
 
-Coeval includes a **Model Context Protocol (MCP) server** for harnesses that
+Rubrist includes a **Model Context Protocol (MCP) server** for harnesses that
 support local stdio tools. It lets an agent read project findings and cases,
 submit examples, and check agreement on labeled examples.
 
-The harness starts `tools/mcp/index.mjs`; that process connects to the Coeval
+The harness starts `tools/mcp/index.mjs`; that process connects to the Rubrist
 HTTP API using your project key. It is optional: the audit skill can submit
 over HTTP without MCP.
 
@@ -590,7 +593,7 @@ accepted architecture decisions define intended scope; the
 ```bash
 pnpm typecheck
 pnpm test
-pnpm --filter @coeval/web build
+pnpm --filter @rubrist/web build
 ```
 
 Database-backed tests run against a disposable PostgreSQL 17 container. The
@@ -619,7 +622,7 @@ apps/audit       Structured LLM judge runtime
 packages/shared  Shared Zod schemas and API contracts
 packages/db      Current PostgreSQL baseline and demo fixtures
 packages/queue   pg-boss queue wrapper
-plugins/coeval   Claude Code plugin bundling the coeval-setup and coeval-audit skills
+plugins/rubrist   Claude Code plugin bundling the rubrist-setup and rubrist-audit skills
 deploy           Release-owned Compose bundles for self-hosting
 tools/ci         Standalone CI gate client and examples
 tools/mcp        Stdio MCP server over the HTTP API
@@ -633,7 +636,7 @@ The architectural overview and core invariants are documented in [docs/architect
 
 - Postgres mode uses Better Auth sessions and project-scoped authorization.
 - Onboarding agent connections are project-scoped, hashed at rest, single-use,
-  and expire after 15 minutes. The optional `COEVAL_BOOTSTRAP_TOKEN` is a
+  and expire after 15 minutes. The optional `RUBRIST_BOOTSTRAP_TOKEN` is a
   separate instance-owner secret for headless administration only.
 - Provider and integration credentials are encrypted with AES-256-GCM using key material derived from `BETTER_AUTH_SECRET`.
 - Normalized trace payloads are redacted before judging and review surfaces.
@@ -644,8 +647,8 @@ Use a strong unique `BETTER_AUTH_SECRET`, HTTPS, a restrictive `TRUSTED_ORIGINS`
 
 ## Project status
 
-Coeval is early-stage software. APIs, migrations, and the SkillFormat specification may evolve before a stable release. Issues and focused pull requests are welcome.
+Rubrist is early-stage software. APIs, migrations, and the SkillFormat specification may evolve before a stable release. Issues and focused pull requests are welcome.
 
 ## License
 
-Coeval is open source under the [MIT License](LICENSE.md). You are free to use, modify, distribute, and self-host it, including in commercial products and hosted services, subject to the license terms.
+Rubrist is open source under the [MIT License](LICENSE.md). You are free to use, modify, distribute, and self-host it, including in commercial products and hosted services, subject to the license terms.

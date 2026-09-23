@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PlanQueueAssignmentsInputSchema, planQueueAssignments } from "@coeval/shared";
+import { PlanQueueAssignmentsInputSchema, planQueueAssignments } from "@rubrist/shared";
 
 describe("planQueueAssignments", () => {
   it("with overlapRate=0 assigns each case to exactly one reviewer (round-robin)", () => {

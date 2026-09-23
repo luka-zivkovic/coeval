@@ -6,7 +6,7 @@ import {
   type TraceTestDetail,
   type TraceTestRunResult,
   type TraceTestValidation
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 

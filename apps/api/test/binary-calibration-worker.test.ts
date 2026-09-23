@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type {
   BinaryCalibrationErrorCode,
   BinaryCalibrationPrivateProviderObservation
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   BinaryCalibrationProviderError,
   type BinaryCalibrationProviderExecutor

@@ -369,7 +369,7 @@ export async function appendCapabilityChecks(
     )).rows[0];
     const sequence = Number(previous.sequence) + 1;
     const evidence = {
-      contract: "coeval/sealed-separation-evidence/v1",
+      contract: "rubrist/sealed-separation-evidence/v1",
       criterionVersionId: batch.criterion_version_id,
       evaluatedCapabilities: [...COVERED_CAPABILITIES],
       findings: evaluated.findings

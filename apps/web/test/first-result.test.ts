@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { EvalRun, VerdictRecord } from "@coeval/shared";
+import type { EvalRun, VerdictRecord } from "@rubrist/shared";
 import { backfillRunForVersion, verdictForTrackedItem } from "../src/lib/first-result.js";
 
 function run(input: Partial<EvalRun> & Pick<EvalRun, "id" | "skillVersionId" | "trigger">): EvalRun {

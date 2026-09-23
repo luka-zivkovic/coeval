@@ -6,7 +6,7 @@ Last reviewed: 2026-08-31
 
 ## Purpose
 
-Coeval uses 1,000 lines as a prompt to review a file's cohesion. It is not a
+Rubrist uses 1,000 lines as a prompt to review a file's cohesion. It is not a
 hard cap and does not measure code quality by itself. The goal is to make a
 small change understandable without loading several unrelated lifecycles into
 the same context, especially for human and agent contributors.
@@ -64,18 +64,18 @@ For an exception, the code or inventory should explain:
 ## Structural refactor invariants
 
 Large-file refactors are structural work unless separately authorized. They
-must not change Coeval's TARGET product boundary, authentication classes,
+must not change Rubrist's TARGET product boundary, authentication classes,
 project isolation, transaction ownership, lock order, retry behavior,
 idempotency, public package exports, canonical bytes, frozen contracts, or
 evidence semantics.
 
 In particular:
 
-- Coeval remains Analyze to Measure and policy-free. Release decisions remain
-  outside Coeval, and semantic clustering remains deferred.
+- Rubrist remains Analyze to Measure and policy-free. Release decisions remain
+  outside Rubrist, and semantic clustering remains deferred.
 - Governed review and CURRENT `ungoverned_legacy` review remain distinct
   evidence classes.
-- `@coeval/shared` keeps its root public entry point unless a separate public
+- `@rubrist/shared` keeps its root public entry point unless a separate public
   API decision authorizes subpath exports.
 - During the accepted clean-install period, ADR-0011 keeps
   `0001_baseline.sql` as one current-schema migration, and the migration runner
@@ -84,7 +84,7 @@ In particular:
 ## Current inventory
 
 The machine-readable classification lives in
-[`tools/large-files.json`](../tools/large-files.json). On 2026-08-31, Coeval
+[`tools/large-files.json`](../tools/large-files.json). On 2026-08-31, Rubrist
 started this review with 25 tracked files over 1,000 lines:
 
 - 1 generated artifact;
@@ -102,7 +102,7 @@ lines.
 The inventory is intentionally per repository. Ironside and other products
 maintain their own reports and justifications.
 
-The sorted `@coeval/shared` public and runtime export fixtures under `tools/`
+The sorted `@rubrist/shared` public and runtime export fixtures under `tools/`
 are generated review artifacts. They remain separate so each is readable and
 below the current trigger. If either crosses 1,000 lines, classify it as a
 generated structural exception rather than splitting an exact export surface.

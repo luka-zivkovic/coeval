@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { type SkillVersion } from "@coeval/shared";
+import { type SkillVersion } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository, runGoldenSetRegression } from "../src/repository.js";
 
-describe("Coeval Hono API", () => {
+describe("Rubrist Hono API", () => {
   it("promotes a non-exception (judge-pass) case and surfaces the latest human label on detail", async () => {
     const repository = new DemoRepository();
     const appWithRepository = createApp(repository);

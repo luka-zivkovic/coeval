@@ -4,14 +4,14 @@ import { ChevronRight, Plus, RefreshCcw } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RowLink } from "@/components/row-action";
-import { Eyebrow, SectionHead } from "@/components/coeval";
+import { Eyebrow, SectionHead } from "@/components/rubrist";
 import { createReviewQueue, fetchReviewQueues } from "@/lib/api";
 import { useDashboard } from "@/lib/dashboard-context";
 import { journeyStage } from "@/lib/journey";
 import { dashboardCriterionVersionId } from "@/lib/criterion-scope";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/use-dialog-focus";
-import type { ReviewQueue } from "@coeval/shared";
+import type { ReviewQueue } from "@rubrist/shared";
 
 export function ReviewQueuesScreen() {
   const navigate = useNavigate();

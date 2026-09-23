@@ -7,7 +7,7 @@ import {
   type EvaluatorSuiteManifestMember,
   type EvaluatorSuiteTrialPlan,
   type SkillVersion
-} from "@coeval/shared";
+} from "@rubrist/shared";
 import {
   canonicalJson,
   sha256Digest,
@@ -102,7 +102,7 @@ export function buildEvaluatorSuiteManifest(input: BuildEvaluatorSuiteManifestIn
     applicability: { kind: "all_items" }
   }));
   const unsigned = {
-    contract: "coeval/evaluator-suite-manifest/v1" as const,
+    contract: "rubrist/evaluator-suite-manifest/v1" as const,
     schemaVersion: 1 as const,
     manifestId: input.manifestId,
     suiteId: input.suiteId,
