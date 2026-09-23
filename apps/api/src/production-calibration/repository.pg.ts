@@ -12,6 +12,7 @@ import { governedContentV1Digest } from "../lib/governed-content-digest.js";
 import {
   PRODUCTION_RECORD_APPEND_MAX_RECORDS,
   PRODUCTION_RECORD_MAX_BYTES,
+  PRODUCTION_SNAPSHOT_MAX_BYTES,
   ProductionRecordRepositoryError,
   type AppendProductionRecordsInput,
   type AppendProductionRecordsResult,
@@ -156,6 +157,7 @@ export class PgProductionDecisionRecordRepository implements ProductionDecisionR
 
   async saveSnapshot(input: SaveProductionSnapshotInput): Promise<ProductionCalibrationSnapshotSummary> {
     const bytes = Buffer.from(canonicalJson(input.artifact), "utf8");
+    if (bytes.byteLength > PRODUCTION_SNAPSHOT_MAX_BYTES) throw snapshotTooLarge(bytes.byteLength);
     const result = await this.pool.query(
       `insert into production_calibration_snapshots
          (id, project_id, report_contract, canonical_bytes, artifact_digest, window_from, window_to,
@@ -365,6 +367,14 @@ function snapshotSummary(row: Record<string, unknown>): ProductionCalibrationSna
   };
 }
 
+function snapshotTooLarge(bytes: number | null): ProductionRecordRepositoryError {
+  return new ProductionRecordRepositoryError(
+    "snapshot_too_large",
+    `The report is larger than a snapshot may be (${PRODUCTION_SNAPSHOT_MAX_BYTES} bytes); choose a narrower window`,
+    { bytes, maximum: PRODUCTION_SNAPSHOT_MAX_BYTES }
+  );
+}
+
 function mapPgError(error: unknown): Error {
   if (error instanceof ProductionRecordRepositoryError) return error;
   const code = typeof error === "object" && error !== null && "code" in error
@@ -379,6 +389,9 @@ function mapPgError(error: unknown): Error {
   }
   if (code === "23514" && constraint === "production_decision_records_content_check") {
     return new ProductionRecordRepositoryError("record_too_large", "A record exceeds the stored content limit");
+  }
+  if (code === "23514" && constraint === "production_calibration_snapshots_canonical_bytes_check") {
+    return snapshotTooLarge(null);
   }
   if (code === "23503" && constraint === "production_decision_records_project_id_fkey") {
     return new ProductionRecordRepositoryError("project_not_found", "The project no longer exists");

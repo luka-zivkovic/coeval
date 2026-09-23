@@ -35,6 +35,9 @@ export interface AppendProductionRecordsResult {
   awaitingDecision: number;
 }
 
+/** The largest saved snapshot, in canonical JSON bytes; the table's own check enforces the same bound. */
+export const PRODUCTION_SNAPSHOT_MAX_BYTES = 16 * 1024 * 1024;
+
 /** The most stored records one report build may load, unless the deployment sets its own ceiling. */
 export const PRODUCTION_REPORT_DEFAULT_MAX_RECORDS = 100_000;
 
@@ -112,7 +115,8 @@ export type ProductionRecordRepositoryErrorCode =
   | "conflicting_decision"
   | "project_not_found"
   | "write_contention"
-  | "record_ceiling_exceeded";
+  | "record_ceiling_exceeded"
+  | "snapshot_too_large";
 
 export class ProductionRecordRepositoryError extends Error {
   constructor(

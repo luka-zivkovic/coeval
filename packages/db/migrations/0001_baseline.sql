@@ -15214,6 +15214,13 @@ CREATE UNIQUE INDEX production_decision_records_decision_unique ON production_de
 
 
 --
+-- Name: production_decision_records_orphan_at_idx; Type: INDEX; Schema: current; Owner: -
+--
+
+CREATE INDEX production_decision_records_orphan_at_idx ON production_decision_records USING btree (project_id, record_at, decision_id) WHERE (kind <> 'decision'::text);
+
+
+--
 -- Name: production_decision_records_project_decision_at_idx; Type: INDEX; Schema: current; Owner: -
 --
 

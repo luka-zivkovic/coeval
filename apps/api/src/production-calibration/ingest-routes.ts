@@ -47,6 +47,7 @@ export function productionRecordErrorStatus(code: ProductionRecordRepositoryErro
     case "write_contention":
       return 503;
     case "record_ceiling_exceeded":
+    case "snapshot_too_large":
       return 422;
     case "empty_batch":
     case "invalid_record":

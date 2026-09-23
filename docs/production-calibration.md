@@ -374,6 +374,8 @@ pasted ledger.
   saves it: the exact canonical bytes (`canonicalJson`), their digest, the
   window, the request parameters, the record count, the record-set digest,
   the build time, and the member who saved it. It answers `201 { snapshot }`.
+  A report larger than 16 MiB of canonical JSON is `422
+  production_calibration_snapshot_too_large`; choose a narrower window.
 - `GET /api/production-calibration/snapshots` lists them newest first, and
   `GET /api/production-calibration/snapshots/:id` answers `{ snapshot,
   artifact }`, parsing the artifact from the stored bytes only after they

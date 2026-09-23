@@ -189,5 +189,10 @@ run("stored production reports and snapshots", () => {
     expect(await backwards.json()).toMatchObject({ code: "production_calibration_invalid_window" });
     const pasted = await post(app, "/snapshots", { records: "{}" });
     expect(pasted.status).toBe(400);
+    const unknownField = await post(app, "/report", { from: day(1), window: "all" });
+    expect(await unknownField.json()).toMatchObject({ code: "production_calibration_invalid_request" });
+    // The orphan branch of loadRecords reads actions and outcomes by time through its own partial index.
+    const indexes = await pool.query(`select 1 from pg_indexes where indexname = 'production_decision_records_orphan_at_idx'`);
+    expect(indexes.rowCount).toBe(1);
   });
 });
