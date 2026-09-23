@@ -8,6 +8,13 @@ import type { ProductionDecisionLedgerRecord } from "@rubrist/shared";
 /** The most records one append may carry; ADR-0013 caps an ingest batch at 10,000. */
 export const PRODUCTION_RECORD_APPEND_MAX_RECORDS = 10_000;
 
+/**
+ * The largest single record, as JSON bytes. Real records are a few kilobytes;
+ * the bound keeps every stored row well inside the table's 256 KiB content
+ * check even after PostgreSQL's jsonb text formatting adds its spacing.
+ */
+export const PRODUCTION_RECORD_MAX_BYTES = 65_536;
+
 /** Who sent the records. Rubrist observes this; the record's own `by` field stays caller-asserted. */
 export type ProductionRecordSubmitter =
   | { kind: "api_key"; apiKeyId: string }
@@ -37,8 +44,11 @@ export type ProductionRecordRepositoryErrorCode =
   | "empty_batch"
   | "batch_too_large"
   | "invalid_record"
+  | "record_too_large"
   | "future_dated_record"
-  | "conflicting_decision";
+  | "conflicting_decision"
+  | "project_not_found"
+  | "write_contention";
 
 export class ProductionRecordRepositoryError extends Error {
   constructor(

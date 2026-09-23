@@ -289,13 +289,19 @@ The first Batch 7B slice under
   a stored one, or repeated in the batch, is a no-op counted as a duplicate. A
   decision ID is unique per project: a different decision under a stored or
   repeated ID rejects the whole batch with `conflicting_decision` and the
-  record's line, and concurrent writers of one ID cannot both succeed.
+  record's line, and concurrent writers of one ID cannot both succeed. Rows
+  are inserted in one global order (decisions by ID, then actions and outcomes
+  by digest), so concurrent batches that share records cannot deadlock; a
+  remaining serialization failure is reported as `write_contention`, and a
+  retry is safe because identical records are no-ops.
 - Actions and outcomes may arrive before their decision; the result counts
   them as awaiting their decision until it is stored.
 - A record dated more than five minutes after the database receives it is
   rejected with `future_dated_record` and its line. Older records are
-  accepted. Content PostgreSQL JSON cannot hold, such as a NUL character, is
-  rejected with `invalid_record` before anything is written.
+  accepted. A record larger than 64 KiB of JSON is rejected with
+  `record_too_large`, and content PostgreSQL JSON cannot hold, such as a NUL
+  character, with `invalid_record`; both name the line and write nothing. An
+  append to a project that no longer exists fails with `project_not_found`.
 - UPDATE is always rejected and DELETE is rejected while the project exists;
   project erasure removes the project's records.
 

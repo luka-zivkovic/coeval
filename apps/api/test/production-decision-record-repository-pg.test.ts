@@ -9,6 +9,7 @@ import type {
 } from "@rubrist/shared";
 import {
   PRODUCTION_RECORD_APPEND_MAX_RECORDS,
+  PRODUCTION_RECORD_MAX_BYTES,
   ProductionRecordRepositoryError,
   type ProductionRecordSubmitter
 } from "../src/production-calibration/repository.js";
@@ -164,9 +165,19 @@ run("PgProductionDecisionRecordRepository", () => {
       code: "invalid_record", details: { line: 2 }
     });
     await expect(rejection(append([]))).resolves.toMatchObject({ code: "empty_batch" });
+    // Schema-valid but enormous: 2,000 long option names in one choice answer.
+    const options = Object.fromEntries(Array.from({ length: 2_000 }, (_, index) => [`option_${index}_${"x".repeat(40)}`, 0]));
+    const huge: ProductionDecisionRecord = {
+      ...decision("d9"),
+      answers: { kind: { type: "choice", choice: "option_0", probabilities: options, confidence: 0.5 } }
+    };
+    await expect(rejection(append([decision("d8"), huge]))).resolves.toMatchObject({
+      code: "record_too_large", details: { line: 2, maximum: PRODUCTION_RECORD_MAX_BYTES }
+    });
+    await expect(rejection(append([decision("d8")], KEY, "proj_missing"))).resolves.toMatchObject({ code: "project_not_found" });
     const oversized = Array.from({ length: PRODUCTION_RECORD_APPEND_MAX_RECORDS + 1 }, () => outcome("d8"));
     await expect(rejection(append(oversized))).resolves.toMatchObject({ code: "batch_too_large" });
-    const stored = await pool.query(`select 1 from production_decision_records where decision_id in ('d7','d8')`);
+    const stored = await pool.query(`select 1 from production_decision_records where decision_id in ('d7','d8','d9')`);
     expect(stored.rowCount).toBe(0);
   });
 
@@ -232,6 +243,18 @@ run("PgProductionDecisionRecordRepository", () => {
     expect(identical.reduce((sum, result) => sum + result.duplicates, 0)).toBe(2);
     const stored = await pool.query(`select 1 from production_decision_records where decision_id='d21'`);
     expect(stored.rowCount).toBe(2);
+  });
+
+  it("does not deadlock when concurrent batches share records in opposite orders", async () => {
+    for (let round = 0; round < 8; round += 1) {
+      const records = [
+        decision(`dl${round}a`), decision(`dl${round}b`), decision(`dl${round}c`),
+        outcome(`dl${round}a`), outcome(`dl${round}b`), outcome(`dl${round}c`)
+      ];
+      const results = await Promise.all([append(records), append([...records].reverse())]);
+      expect(results.reduce((sum, result) =>
+        sum + result.inserted.decisions + result.inserted.outcomes, 0)).toBe(records.length);
+    }
   });
 
   it("has no column that could hold state or question text", async () => {

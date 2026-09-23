@@ -7,6 +7,7 @@ import {
 import { governedContentV1Digest } from "../lib/governed-content-digest.js";
 import {
   PRODUCTION_RECORD_APPEND_MAX_RECORDS,
+  PRODUCTION_RECORD_MAX_BYTES,
   ProductionRecordRepositoryError,
   type AppendProductionRecordsInput,
   type AppendProductionRecordsResult,
@@ -17,6 +18,10 @@ import {
 // function the insert guard recomputes in SQL, so a stored digest always
 // describes the stored content. Its canonical JSON sorts object keys and keeps
 // array order, which is the join's existing notion of an identical record.
+//
+// Rows are inserted in one global order (decisions by ID, then actions and
+// outcomes by digest) so concurrent batches that share records wait on each
+// other in the same order and cannot deadlock.
 
 interface PreparedRecord {
   id: string;
@@ -55,11 +60,13 @@ export class PgProductionDecisionRecordRepository implements ProductionDecisionR
          select row_value.id, $1, row_value.kind, row_value.decision_id, row_value.record_at,
                 row_value.content, row_value.content_digest, $2, $3
          from jsonb_to_recordset($4::jsonb) as row_value(
-           id text, kind text, decision_id text, record_at timestamptz, content jsonb, content_digest text
+           id text, kind text, decision_id text, record_at timestamptz, content jsonb, content_digest text,
+           position integer
          )
+         order by row_value.position
          on conflict do nothing
          returning kind`,
-        [input.projectId, apiKeyId, userId, JSON.stringify(rows)]
+        [input.projectId, apiKeyId, userId, JSON.stringify(rows.map((row, position) => ({ ...row, position })))]
       );
       await rejectConflictingDecisions(client, input.projectId, rows);
       const awaiting = await client.query<{ awaiting: number }>(
@@ -105,8 +112,9 @@ export class PgProductionDecisionRecordRepository implements ProductionDecisionR
 }
 
 /**
- * Digest every record, drop exact repeats within the batch, and reject a batch
- * that gives one decision ID two different contents.
+ * Digest every record, drop exact repeats within the batch, reject a batch that
+ * gives one decision ID two different contents, and return the rows in the
+ * global insert order.
  */
 function prepareRecords(records: readonly ProductionDecisionLedgerRecord[]): PreparedRecord[] {
   const byDigest = new Map<string, PreparedRecord>();
@@ -114,7 +122,16 @@ function prepareRecords(records: readonly ProductionDecisionLedgerRecord[]): Pre
   records.forEach((record, index) => {
     const line = index + 1;
     // PostgreSQL stores the JSON text, so digest exactly what a JSON round trip keeps.
-    const content = JSON.parse(JSON.stringify(record)) as ProductionDecisionLedgerRecord;
+    const json = JSON.stringify(record);
+    const bytes = Buffer.byteLength(json, "utf8");
+    if (bytes > PRODUCTION_RECORD_MAX_BYTES) {
+      throw new ProductionRecordRepositoryError(
+        "record_too_large",
+        `Record ${line} is ${bytes} bytes; a record may be at most ${PRODUCTION_RECORD_MAX_BYTES} bytes`,
+        { line, bytes, maximum: PRODUCTION_RECORD_MAX_BYTES }
+      );
+    }
+    const content = JSON.parse(json) as ProductionDecisionLedgerRecord;
     let contentDigest: string;
     try {
       contentDigest = governedContentV1Digest(PRODUCTION_DECISION_RECORD_CONTRACT, content);
@@ -148,7 +165,10 @@ function prepareRecords(records: readonly ProductionDecisionLedgerRecord[]): Pre
       content_digest: contentDigest
     });
   });
-  return [...byDigest.values()];
+  const order = (row: PreparedRecord) => row.kind === "decision" ? row.decision_id : row.content_digest;
+  return [...byDigest.values()].sort((left, right) =>
+    Number(right.kind === "decision") - Number(left.kind === "decision") ||
+    (order(left) < order(right) ? -1 : order(left) > order(right) ? 1 : 0));
 }
 
 /** Name the first record dated more than five minutes after the database's receive time. */
@@ -216,6 +236,18 @@ function mapPgError(error: unknown): Error {
     return new ProductionRecordRepositoryError(
       "conflicting_decision",
       "A decision with this ID and a different content was stored concurrently"
+    );
+  }
+  if (code === "23514" && constraint === "production_decision_records_content_check") {
+    return new ProductionRecordRepositoryError("record_too_large", "A record exceeds the stored content limit");
+  }
+  if (code === "23503" && constraint === "production_decision_records_project_id_fkey") {
+    return new ProductionRecordRepositoryError("project_not_found", "The project no longer exists");
+  }
+  if (code === "40P01" || code === "40001") {
+    return new ProductionRecordRepositoryError(
+      "write_contention",
+      "The batch collided with a concurrent write; retrying it is safe because identical records are no-ops"
     );
   }
   return error instanceof Error ? error : new Error(String(error));
