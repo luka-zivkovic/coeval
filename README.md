@@ -46,9 +46,8 @@ skill folders; see the [agent setup guide](docs/agent-setup.md).
 You need Docker Engine with Compose v2. This uses the release-owned bundle in
 [`deploy/self-host/compose.yaml`](deploy/self-host/compose.yaml) and the
 images published on GHCR. `v0.3.0` is the first release under the Rubrist
-name. Until its images are published, install `v0.2.0` instead: use the same
-steps with `v0.2.0` in the URL and the former product name as the variable
-prefix (`COEVAL_VERSION=0.2.0`, `COEVAL_POSTGRES_PASSWORD`, and so on).
+name. Create a clean database: the renamed baseline is incompatible with
+Coeval `v0.2.0`; do not reuse its database volume or environment file.
 
 ```bash
 mkdir rubrist && cd rubrist
@@ -263,6 +262,12 @@ none requires the others.
 | [Ironside](https://github.com/luka-zivkovic/ironside) | Records what your AI did: traces via the SDK, JSON, or OTLP. | Trace source. Rubrist consumes Ironside's native versioned evaluator feed and writes criterion-specific assessments back; verified end to end. Imported traces link back to Ironside's viewer, and Ironside can deep-link into Rubrist's copy of a trace ([trace links](docs/ironside-integration.md#trace-links)). |
 | [Dailies](https://github.com/luka-zivkovic/dailies) | Decides whether an AI change meets customer-owned release rules. | Evidence consumer. Dailies verifies Rubrist receipts and binary-calibration artifacts and applies its own policy; implemented, with no network lookup of Rubrist. |
 | [Casefile](https://github.com/luka-zivkovic/casefile) | Statically inspects agent skills and plugins before installation. | No runtime integration. It is the scanner used on the plugin in this repository. |
+
+The renamed evidence requires a Rubrist-compatible Dailies build. The
+published `dailies@0.3.x` packages still expect Coeval identifiers. Until the
+renamed npm release is available, build Dailies from its current source;
+Dailies 0.4.0 is the prepared release for these contracts. Rubrist Stack keeps
+its previous compatible server/consumer pair until both releases are published.
 
 Traces in Ironside can feed Rubrist, and Rubrist's evidence can feed Dailies,
 without any of the three owning the others' data. Many mature products

@@ -5,16 +5,15 @@
 - **TARGET:** a Rubrist release is an exact semantic version published as
   `ghcr.io/luka-zivkovic/rubrist-{api,web}:X.Y.Z`, plus matching generic
   single-host and Coolify Compose bundles.
-- **CURRENT:** the container workflow, `deploy/self-host/compose.yaml`, and
-  `deploy/coolify.yaml` are present in the repository. `v0.2.0` is the first
-  installable release; its images were published under the former product
-  name as anonymously pullable GHCR packages. The earlier `v0.1.0` predates these artifacts and
-  must not be selected.
-- **CURRENT:** the product was renamed to Rubrist after `v0.2.0`
-  ([ADR-0012](decisions/0012-rename-coeval-to-rubrist.md)). The `0.2.0` images
-  and bundle were published under the former product name and variable
-  prefix; the next release is the first published under the `rubrist-{api,web}`
-  image names and `RUBRIST_*` variables.
+- **CURRENT:** `v0.3.0` is the first release published under the Rubrist name,
+  with `rubrist-api` and `rubrist-web` images and `RUBRIST_*` variables.
+  The workflow builds both architectures, boots the published bundle, and
+  verifies its health endpoint before the GitHub release is published.
+- **CURRENT:** `v0.2.0` remains the historical Coeval release, with its original
+  image names and variable prefix. The renamed PostgreSQL baseline differs:
+  install `v0.3.0` into a clean instance, not the old database volume. See
+  [ADR-0012](decisions/0012-rename-coeval-to-rubrist.md). The earlier `v0.1.0`
+  predates installable container artifacts and must not be selected.
 - **CURRENT:** founder-only deployments are disposable test instances. This
   pre-launch release supports clean database installs only; recreate the
   instance when the current baseline changes.
