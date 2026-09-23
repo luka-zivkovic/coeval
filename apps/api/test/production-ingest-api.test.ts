@@ -109,6 +109,27 @@ describe("production ingest API", () => {
     expect(missing.status).toBe(401);
   });
 
+  it("holds the capability gate on path variants of the ingest route", async () => {
+    const { app, records, ingestKey, judgeKey } = await setup();
+    const post = (key: string, path: string) => app.request(path, {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/x-ndjson" },
+      body: ledger
+    });
+    for (const path of [PRODUCTION_INGEST_PATH, `${PRODUCTION_INGEST_PATH}/`, `${PRODUCTION_INGEST_PATH}?x=1`]) {
+      expect((await post(judgeKey.key, path)).status).toBe(403);
+    }
+    for (const path of [
+      `${PRODUCTION_INGEST_PATH}/x`, "/api/v1/PRODUCTION-DECISIONS", "/api/v1/production-decisions%2F",
+      "/api/v1//production-decisions", "/api/v1/judge"
+    ]) {
+      const response = await post(ingestKey.key, path);
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({ code: "api_key_capability_mismatch" });
+    }
+    expect(records?.calls).toHaveLength(0);
+  });
+
   it.each([
     ["conflicting_decision", 409],
     ["future_dated_record", 400],
@@ -150,9 +171,13 @@ describe("production ingest API", () => {
         return allow;
       }
     });
-    const post = () => router.request("/", { method: "POST", headers: { "content-type": "application/x-ndjson" }, body: ledger });
+    const post = (body = ledger) => router.request("/", { method: "POST", headers: { "content-type": "application/x-ndjson" }, body });
     expect((await post()).status).toBe(200);
-    expect(charges).toEqual([["key_ingest", 6]]);
+    // One unit before parsing, then the rest of the six records.
+    expect(charges).toEqual([["key_ingest", 1], ["key_ingest", 5]]);
+    charges.length = 0;
+    expect((await post("not json")).status).toBe(400);
+    expect(charges).toEqual([["key_ingest", 1]]);
     allow = false;
     const limited = await post();
     expect(limited.status).toBe(429);

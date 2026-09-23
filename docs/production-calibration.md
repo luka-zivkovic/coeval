@@ -328,11 +328,13 @@ awaitingDecision }`. Retrying a batch is safe.
   `future_dated_record`, `invalid_record`, and `empty_batch` are 400;
   `project_not_found` is 404; and `write_contention` is 503 with
   `Retry-After: 1`.
-- Each record costs one unit of the key's ingest budget, separate from the
-  judge request bucket: `PRODUCTION_INGEST_RECORDS_PER_MINUTE` per key
-  (60,000 by default), with a burst of at least one full 10,000-record batch.
-  A batch the budget cannot cover is `429 production_ingest_rate_limited` and
-  writes nothing. The limiter is in memory and per process.
+- Each request costs one unit of the key's ingest budget before its body is
+  parsed, so malformed bodies are metered too, and each record after the
+  first costs one more. The budget is separate from the judge request bucket:
+  `PRODUCTION_INGEST_RECORDS_PER_MINUTE` per key (60,000 by default), with a
+  burst of at least one full 10,000-record batch. A batch the budget cannot
+  cover is `429 production_ingest_rate_limited` and writes nothing. The
+  limiter is in memory and per process.
 - Without database-backed mode the route answers 501.
 
 A project owner can also import a ledger in a session with

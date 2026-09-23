@@ -66,15 +66,19 @@ export function createProductionIngestRouter(options: CreateProductionIngestRout
     if (!identity.apiKeyId) {
       return context.json({ error: "A production-ingest API key is required", code: "production_ingest_api_key_required" }, 401);
     }
-    const parsed = await readRecords(context);
-    if (parsed instanceof Response) return parsed;
-    if (!options.takeIngestRecords(identity.apiKeyId, Math.max(1, parsed.length))) {
+    // Every request pays one unit before its body is parsed, so malformed
+    // bodies are metered too; the rest of the batch is charged per record.
+    const rateLimited = () => {
       context.header("retry-after", "60");
       return context.json({
         error: "Production ingest record budget exceeded for this API key",
         code: "production_ingest_rate_limited"
       }, 429);
-    }
+    };
+    if (!options.takeIngestRecords(identity.apiKeyId, 1)) return rateLimited();
+    const parsed = await readRecords(context);
+    if (parsed instanceof Response) return parsed;
+    if (parsed.length > 1 && !options.takeIngestRecords(identity.apiKeyId, parsed.length - 1)) return rateLimited();
     try {
       const result = await options.repository.appendRecords({
         projectId: identity.projectId,
