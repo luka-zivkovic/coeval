@@ -1,6 +1,6 @@
 # Production calibration
 
-Status: **CURRENT shared contract, pure analysis, a compute-only preview route, and a project view; no persistence or ingest wiring**
+Status: **CURRENT shared contract, pure analysis, a compute-only preview route, a project view, and an append-only record store with no route yet; no ingest wiring**
 
 Production calibration reports whether a classifier's stated probabilities held
 up against the outcomes that arrived later on the customer's own traffic. It
@@ -269,12 +269,49 @@ not a model of it: it assumes tomorrow looks like the outcomes you already
 have. It recommends; it does not decide. Release thresholds and
 `promote`/`block` decisions stay outside Rubrist.
 
+## CURRENT: the record store
+
+The first Batch 7B slice under
+[ADR-0013](decisions/0013-production-outcome-monitoring.md) adds the
+`production_decision_records` table and
+`PgProductionDecisionRecordRepository.appendRecords`. No route calls it yet.
+
+- One append-only table holds decision, action, and outcome records per
+  project. Each row keeps the record as given, its kind, decision ID, and
+  `at`, a content digest, the submitter (an API key or a session user, never
+  both), and the receive time. No column can hold state or question text.
+- The content digest is `governed_content_v1_digest` over the record under
+  `rubrist/production-decision-record/v1`: canonical JSON with sorted keys and
+  kept array order. The insert guard recomputes it in SQL, checks that kind,
+  decision ID, and time match the content, and sets the receive time from the
+  database clock, so a writer can supply none of them.
+- A batch of up to 10,000 records is applied atomically. A record identical to
+  a stored one, or repeated in the batch, is a no-op counted as a duplicate. A
+  decision ID is unique per project: a different decision under a stored or
+  repeated ID rejects the whole batch with `conflicting_decision` and the
+  record's line, and concurrent writers of one ID cannot both succeed. Rows
+  are inserted in one global order (decisions by ID, then actions and outcomes
+  by digest), so concurrent batches that share records cannot deadlock; a
+  remaining serialization failure is reported as `write_contention`, and a
+  retry is safe because identical records are no-ops.
+- Actions and outcomes may arrive before their decision; the result counts
+  them as awaiting their decision until it is stored.
+- A record dated more than five minutes after the database receives it is
+  rejected with `future_dated_record` and its line. Older records are
+  accepted. A record larger than 64 KiB of JSON is rejected with
+  `record_too_large`, and content PostgreSQL JSON cannot hold, such as a NUL
+  character, with `invalid_record`; both name the line and write nothing. An
+  append to a project that no longer exists fails with `project_not_found`.
+- UPDATE is always rejected and DELETE is rejected while the project exists;
+  project erasure removes the project's records.
+
 ## Not implemented
 
-- **Persistence of decision records.** The preview route and the view are
-  compute-only. No table, worker, or history stores a ledger, an artifact, or
-  a reading; a refresh starts over. Persistence, ingest, saved snapshots, and
-  retention are TARGET under accepted
+- **Ingest, stored reports, snapshots, and retention.** The preview route and
+  the view are still compute-only: nothing writes to or reads from the record
+  store, and a refresh starts over. The ingest route and key capabilities,
+  reports built from stored records, saved snapshots, and retention, erasure,
+  and purges are TARGET under accepted
   [ADR-0013](decisions/0013-production-outcome-monitoring.md) and Batch 7 in
   [`implementation-batches.md`](implementation-batches.md).
 - **Live import.** No poller or sink reads decisions from a running system;
