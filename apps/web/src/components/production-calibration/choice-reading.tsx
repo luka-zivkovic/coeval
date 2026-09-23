@@ -10,7 +10,6 @@ import {
 } from "../../lib/production-calibration-ui.js";
 
 export type ChoiceQuestion = Extract<ProductionCalibrationQuestion, { answerType: "choice" }>;
-export type ScoreQuestion = Extract<ProductionCalibrationQuestion, { answerType: "score" }>;
 
 export function ChoiceReading({ entry }: { entry: ChoiceQuestion }) {
   const { calibration } = entry;
@@ -114,18 +113,5 @@ export function ChoiceReading({ entry }: { entry: ChoiceQuestion }) {
         </div>
       </section>
     </div>
-  );
-}
-
-export function ScoreNotice({ entry }: { entry: ScoreQuestion }) {
-  return (
-    <section aria-label="Score question" className="rounded-sm border border-dashed border-rule bg-paper-2 p-4">
-      <div className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-ink-4">not implemented · {entry.calibration.reason.replaceAll("_", " ")}</div>
-      <p className="mt-2 max-w-[70ch] text-[12px] leading-5 text-ink-2">
-        Score (ordinal) calibration is reported as not implemented by the shared module. This question has{" "}
-        {entry.calibration.n} decision{entry.calibration.n === 1 ? "" : "s"} and {entry.calibration.nWithOutcome} outcome{entry.calibration.nWithOutcome === 1 ? "" : "s"};
-        nothing else is claimed about it.
-      </p>
-    </section>
   );
 }

@@ -7,8 +7,11 @@ import {
   PRODUCTION_CALIBRATION_DEFAULT_WINDOW_DAYS,
   PRODUCTION_CALIBRATION_INTERVAL_DEFINITION_VERSION,
   PRODUCTION_CALIBRATION_MAX_BINS,
+  PRODUCTION_CALIBRATION_MAX_SCORE_LEVELS,
   PRODUCTION_CALIBRATION_METRIC_DEFINITION_VERSION,
   PRODUCTION_CALIBRATION_MIN_ADVISABLE_OUTCOMES,
+  PRODUCTION_CALIBRATION_MIN_SCORE_LEVELS,
+  PRODUCTION_CALIBRATION_SCORE_SUM_TOLERANCE,
   PRODUCTION_CALIBRATION_THRESHOLD_GRID,
   PRODUCTION_CALIBRATION_WILSON_Z,
   PRODUCTION_DECISION_RECORD_CONTRACT,
@@ -29,20 +32,25 @@ import type {
   ProductionCalibrationQuestion,
   ProductionCalibrationReliabilityBin,
   ProductionCalibrationScore,
+  ProductionCalibrationScoreConfusionCell,
+  ProductionCalibrationScoreCut,
+  ProductionCalibrationScoreModelGroup,
   ProductionCalibrationSingleSweepRow,
   ProductionCalibrationThresholdAdvice,
   ProductionCalibrationWilsonRate,
+  ProductionCalibrationWindow,
   ProductionDecisionAnswerType,
   ProductionDecisionLedgerRecord,
   ProductionDecisionQuestionSetRef,
   ProductionDecisionRecord,
+  ProductionDecisionScoreAnswer,
   ProductionOutcomeRecord
 } from "./production-calibration.js";
 
-// Pure analysis over arrays of production decision records, ported from
-// jevkit's decision ledger with the same math. No I/O and no clock: every
+// Pure analysis over arrays of production decision records. Boolean and choice
+// math is ported from jevkit's decision ledger. No I/O and no clock: every
 // function is a deterministic map from records (and explicit options) to the
-// `rubrist/production-calibration/v1` artifact or one of its parts. Every rate
+// `rubrist/production-calibration/v2` artifact or one of its parts. Every rate
 // carries its numerator and denominator and a 95% Wilson interval; a rate
 // with a zero denominator is an explicit "undefined" object, never NaN.
 
@@ -483,23 +491,235 @@ export function productionChoiceCalibration(
 }
 
 // ---------------------------------------------------------------------------
-// Score calibration: not implemented, said plainly
+// Score (ordinal) calibration
 // ---------------------------------------------------------------------------
 
+// Float slack for a mean the provider computed from unrounded probabilities.
+// A mean further above the top level does not describe the answer's scale.
+const SCORE_MEAN_EPSILON = 1e-9;
+
+/** One valid score answer, with its probabilities divided by their sum. */
+interface ScorePrediction {
+  levels: number;
+  mean: number;
+  /** The most likely level; ties resolve to the lowest level. */
+  predicted: number;
+  /** The probability of the most likely level. */
+  confidence: number;
+  /** `atLeast[k - 1]` is P(level >= k) for k from 1 to levels - 1. */
+  atLeast: number[];
+  truth: number | null;
+  model: ProductionCalibrationModelIdentity;
+  digest: string;
+  at: string;
+}
+
+/** The answer's normalized distribution, or null when it cannot describe an ordered rubric of 2 to 10 levels. */
+function scoreDistribution(answer: ProductionDecisionScoreAnswer): number[] | null {
+  const levels = answer.probabilities.length;
+  if (levels < PRODUCTION_CALIBRATION_MIN_SCORE_LEVELS || levels > PRODUCTION_CALIBRATION_MAX_SCORE_LEVELS) return null;
+  if (!answer.probabilities.every((p) => Number.isFinite(p) && p >= 0 && p <= 1)) return null;
+  const sum = answer.probabilities.reduce((total, p) => total + p, 0);
+  if (!(Math.abs(sum - 1) <= PRODUCTION_CALIBRATION_SCORE_SUM_TOLERANCE)) return null;
+  if (!Number.isFinite(answer.mean) || answer.mean < 0 || answer.mean > levels - 1 + SCORE_MEAN_EPSILON) return null;
+  return answer.probabilities.map((p) => p / sum);
+}
+
+function scorePrediction(
+  decision: ProductionDecisionRecord,
+  answer: ProductionDecisionScoreAnswer,
+  probabilities: readonly number[],
+  truth: number | null
+): ScorePrediction {
+  let predicted = 0;
+  for (let level = 1; level < probabilities.length; level += 1) {
+    if (probabilities[level]! > probabilities[predicted]!) predicted = level;
+  }
+  const atLeast: number[] = [];
+  let tail = 0;
+  for (let level = probabilities.length - 1; level >= 1; level -= 1) {
+    tail += probabilities[level]!;
+    atLeast[level - 1] = Math.min(1, tail);
+  }
+  return {
+    levels: probabilities.length,
+    mean: answer.mean,
+    predicted,
+    confidence: probabilities[predicted]!,
+    atLeast,
+    truth,
+    model: productionCalibrationModelIdentity(decision),
+    digest: decision.questionSet.digest,
+    at: decision.at
+  };
+}
+
+interface ScoreSummary {
+  nWithOutcome: number;
+  exactAccuracy: ProductionCalibrationWilsonRate;
+  withinOneAccuracy: ProductionCalibrationWilsonRate;
+  meanAbsoluteError: number | null;
+  meanSignedError: number | null;
+  rankedProbabilityScore: number | null;
+}
+
+function scoreSummary(predictions: readonly ScorePrediction[]): ScoreSummary {
+  let scored = 0;
+  let exact = 0;
+  let withinOne = 0;
+  let absoluteError = 0;
+  let signedError = 0;
+  let rankedProbability = 0;
+  for (const prediction of predictions) {
+    const { truth } = prediction;
+    if (truth === null) continue;
+    scored += 1;
+    if (prediction.predicted === truth) exact += 1;
+    if (Math.abs(prediction.predicted - truth) <= 1) withinOne += 1;
+    absoluteError += Math.abs(prediction.mean - truth);
+    signedError += prediction.mean - truth;
+    let squaredError = 0;
+    prediction.atLeast.forEach((p, index) => {
+      const y = truth >= index + 1 ? 1 : 0;
+      squaredError += (p - y) * (p - y);
+    });
+    rankedProbability += squaredError / prediction.atLeast.length;
+  }
+  return {
+    nWithOutcome: scored,
+    exactAccuracy: productionCalibrationRate(exact, scored),
+    withinOneAccuracy: productionCalibrationRate(withinOne, scored),
+    meanAbsoluteError: scored > 0 ? absoluteError / scored : null,
+    meanSignedError: scored > 0 ? signedError / scored : null,
+    rankedProbabilityScore: scored > 0 ? rankedProbability / scored : null
+  };
+}
+
+export interface ProductionScoreCalibrationOptions {
+  bins?: number;
+}
+
+/**
+ * Ordinal calibration for a score question. An answer is a distribution over
+ * ordered levels and its outcome is the true level index. Answers that cannot
+ * describe a 2-to-10-level rubric, and outcomes that are not a level of the
+ * answer's own scale, are counted and left out rather than repaired.
+ *
+ * - Exact and within-one accuracy of the most likely level, as Wilson rates.
+ * - Mean absolute and mean signed error of the stated `mean`, in levels.
+ * - Confidence reliability: the most likely level's probability against exact
+ *   correctness, the same pairing as choice questions.
+ * - Cumulative reliability: for each k, P(level >= k) against whether the
+ *   outcome reached level k. Each cut is a binary event, so it reuses the
+ *   boolean machinery; the mean of the cut Brier scores is the ranked
+ *   probability score.
+ */
 export function productionScoreCalibration(
   joined: readonly ProductionCalibrationJoinedDecision[],
-  question: string
+  question: string,
+  options: ProductionScoreCalibrationOptions = {}
 ): ProductionCalibrationScore {
-  let n = 0;
-  let nWithOutcome = 0;
+  const bins = options.bins ?? PRODUCTION_CALIBRATION_DEFAULT_BINS;
+  assertBins(bins);
+  const predictions: ScorePrediction[] = [];
+  let invalidAnswer = 0;
+  let outcomeOutOfRange = 0;
   for (const { decision, outcomes } of joined) {
     const answer = decision.answers[question];
     if (!answer || answer.type !== "score") continue;
-    n += 1;
+    const probabilities = scoreDistribution(answer);
+    if (!probabilities) {
+      invalidAnswer += 1;
+      continue;
+    }
     const outcome = outcomes[question];
-    if (outcome && typeof outcome.value === "number") nWithOutcome += 1;
+    let truth: number | null = null;
+    if (outcome && typeof outcome.value === "number") {
+      if (Number.isInteger(outcome.value) && outcome.value >= 0 && outcome.value < probabilities.length) truth = outcome.value;
+      else outcomeOutOfRange += 1;
+    }
+    predictions.push(scorePrediction(decision, answer, probabilities, truth));
   }
-  return { question, implemented: false, reason: "ordinal_calibration_not_implemented", n, nWithOutcome };
+
+  const levelCounts = [...groupBy(predictions, (prediction) => String(prediction.levels))]
+    .map(([levels, group]) => ({ levels: Number(levels), decisions: group.length }))
+    .sort((left, right) => left.levels - right.levels);
+  const summary = scoreSummary(predictions);
+  const base = {
+    question,
+    n: predictions.length,
+    nWithOutcome: summary.nWithOutcome,
+    excluded: { invalidAnswer, outcomeOutOfRange },
+    levelCounts
+  };
+  const levels = levelCounts[0]?.levels;
+  if (levels === undefined) return { ...base, state: "undefined", undefinedReason: "no_valid_answers" };
+  if (levelCounts.length > 1) return { ...base, state: "undefined", undefinedReason: "mixed_levels" };
+
+  const toPair = (prediction: ScorePrediction, p: number, y: boolean | null): BinaryPair =>
+    ({ p, y, model: prediction.model, digest: prediction.digest, at: prediction.at });
+  const confidence = binaryStats(
+    predictions.map((prediction) =>
+      toPair(prediction, prediction.confidence, prediction.truth === null ? null : prediction.truth === prediction.predicted)),
+    bins
+  );
+  const cumulative: ProductionCalibrationScoreCut[] = Array.from({ length: levels - 1 }, (_, index) => {
+    const atLeast = index + 1;
+    const pairs = predictions.map((prediction) =>
+      toPair(prediction, prediction.atLeast[index]!, prediction.truth === null ? null : prediction.truth >= atLeast));
+    const stats = binaryStats(pairs, bins);
+    const scored = pairs.filter(isScored);
+    return {
+      atLeast,
+      meanPredicted: scored.length > 0 ? scored.reduce((sum, pair) => sum + pair.p, 0) / scored.length : null,
+      observedRate: productionCalibrationRate(scored.filter((pair) => pair.y).length, scored.length),
+      brier: stats.brier,
+      ece: stats.ece,
+      reliability: stats.reliability
+    };
+  });
+
+  const cells = new Map<string, ProductionCalibrationScoreConfusionCell>();
+  for (const { truth, predicted } of predictions) {
+    if (truth === null) continue;
+    const key = `${truth}:${predicted}`;
+    const cell = cells.get(key) ?? { truth, predicted, count: 0 };
+    cell.count += 1;
+    cells.set(key, cell);
+  }
+  const byModel: ProductionCalibrationScoreModelGroup[] = [...groupBy(predictions, (prediction) => modelIdentityKey(prediction.model)).values()]
+    .flatMap((group) => {
+      const first = group[0];
+      if (!first) return [];
+      const groupSummary = scoreSummary(group);
+      return [{
+        model: first.model,
+        n: group.length,
+        nWithOutcome: groupSummary.nWithOutcome,
+        exactAccuracy: groupSummary.exactAccuracy,
+        meanAbsoluteError: groupSummary.meanAbsoluteError,
+        rankedProbabilityScore: groupSummary.rankedProbabilityScore
+      }];
+    })
+    .sort((left, right) => compareModelIdentity(left.model, right.model));
+
+  return {
+    ...base,
+    state: "defined",
+    levels,
+    bins,
+    exactAccuracy: summary.exactAccuracy,
+    withinOneAccuracy: summary.withinOneAccuracy,
+    meanAbsoluteError: summary.meanAbsoluteError,
+    meanSignedError: summary.meanSignedError,
+    rankedProbabilityScore: summary.rankedProbabilityScore,
+    reliability: confidence.reliability,
+    ece: confidence.ece,
+    brier: confidence.brier,
+    cumulative,
+    confusion: [...cells.values()].sort((left, right) => left.truth - right.truth || left.predicted - right.predicted),
+    byModel
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -696,9 +916,18 @@ export interface ProductionCalibrationQuestionOptions {
   costs?: ProductionThresholdCostsInput | null;
 }
 
+export interface ProductionCalibrationWindowOptions {
+  /** Inclusive lower bound on a decision's `at`; null or omitted means unbounded. */
+  from?: Date | null;
+  /** Exclusive upper bound on a decision's `at`; null or omitted means unbounded. */
+  to?: Date | null;
+}
+
 export interface ProductionCalibrationBuildOptions {
   /** The report's generation time; the builder never reads the clock. */
   now: Date;
+  /** The decisions the report covers; omitted means every decision supplied. */
+  window?: ProductionCalibrationWindowOptions;
   bins?: number;
   threshold?: number;
   positiveClass?: boolean;
@@ -719,6 +948,26 @@ function compareQuestionSetRef(left: ProductionDecisionQuestionSetRef, right: Pr
     compareText(left.digest, right.digest);
 }
 
+function reportWindow(options: ProductionCalibrationWindowOptions | undefined): {
+  window: ProductionCalibrationWindow;
+  contains: (at: string) => boolean;
+} {
+  const from = options?.from ?? null;
+  const to = options?.to ?? null;
+  if (from !== null && Number.isNaN(from.getTime())) throw new RangeError("window.from must be a valid date");
+  if (to !== null && Number.isNaN(to.getTime())) throw new RangeError("window.to must be a valid date");
+  if (from !== null && to !== null && from.getTime() >= to.getTime()) {
+    throw new RangeError("window.from must be earlier than window.to");
+  }
+  return {
+    window: { from: from?.toISOString() ?? null, to: to?.toISOString() ?? null },
+    contains: (at) => {
+      const time = Date.parse(at);
+      return (from === null || time >= from.getTime()) && (to === null || time < to.getTime());
+    }
+  };
+}
+
 /** Build the production calibration artifact from an array of ledger records. Pure: no I/O and no clock. */
 export function buildProductionCalibrationArtifact(
   records: readonly ProductionDecisionLedgerRecord[],
@@ -732,22 +981,34 @@ export function buildProductionCalibrationArtifact(
     windowDays: options.windowDays ?? PRODUCTION_CALIBRATION_DEFAULT_WINDOW_DAYS,
     minOutcomesToFlag: options.minOutcomesToFlag ?? PRODUCTION_CALIBRATION_DEFAULT_MIN_OUTCOMES_TO_FLAG
   });
-  const joined = joinProductionDecisionRecords(records);
-  const decisionIds = new Set(joined.map((entry) => entry.decision.id));
+  const { window, contains } = reportWindow(options.window);
+  // Conflicts are checked across every record supplied, so a window can never
+  // hide a decision ID whose content was replaced.
+  const supplied = joinProductionDecisionRecords(records);
+  const joined = supplied.filter((entry) => contains(entry.decision.at));
+  const suppliedIds = new Set(supplied.map((entry) => entry.decision.id));
+  const coveredIds = new Set(joined.map((entry) => entry.decision.id));
 
   const outcomeSources = { human: 0, automatic: 0, delayed: 0 };
   let actionTotal = 0;
   let orphanActions = 0;
+  let actionsOutsideWindow = 0;
   let outcomeTotal = 0;
   let orphanOutcomes = 0;
+  let outcomesOutsideWindow = 0;
   for (const record of records) {
     if (record.kind === "action") {
       actionTotal += 1;
-      if (!decisionIds.has(record.decisionId)) orphanActions += 1;
+      if (!suppliedIds.has(record.decisionId)) orphanActions += 1;
+      else if (!coveredIds.has(record.decisionId)) actionsOutsideWindow += 1;
     } else if (record.kind === "outcome") {
       outcomeTotal += 1;
+      if (suppliedIds.has(record.decisionId) && !coveredIds.has(record.decisionId)) {
+        outcomesOutsideWindow += 1;
+        continue;
+      }
       outcomeSources[record.source] += 1;
-      if (!decisionIds.has(record.decisionId)) orphanOutcomes += 1;
+      if (!suppliedIds.has(record.decisionId)) orphanOutcomes += 1;
     }
   }
   let superseded = 0;
@@ -805,17 +1066,18 @@ export function buildProductionCalibrationArtifact(
       } else if (answerType === "choice") {
         questions.push({ question, answerType, calibration: productionChoiceCalibration(joined, question, { bins: parameters.bins }) });
       } else {
-        questions.push({ question, answerType, calibration: productionScoreCalibration(joined, question) });
+        questions.push({ question, answerType, calibration: productionScoreCalibration(joined, question, { bins: parameters.bins }) });
       }
     }
   }
 
   return {
     contract: PRODUCTION_CALIBRATION_CONTRACT,
-    schemaVersion: 1,
+    schemaVersion: 2,
     metricDefinitionVersion: PRODUCTION_CALIBRATION_METRIC_DEFINITION_VERSION,
     intervalDefinitionVersion: PRODUCTION_CALIBRATION_INTERVAL_DEFINITION_VERSION,
     generatedAt,
+    window,
     evidence: {
       kind: "production_outcomes",
       sealed: false,
@@ -824,9 +1086,9 @@ export function buildProductionCalibrationArtifact(
     },
     records: {
       contract: PRODUCTION_DECISION_RECORD_CONTRACT,
-      decisions: { total: joined.length, synthetic, firstAt, lastAt },
-      actions: { total: actionTotal, orphan: orphanActions },
-      outcomes: { total: outcomeTotal, orphan: orphanOutcomes, superseded, conflicting },
+      decisions: { total: supplied.length, outsideWindow: supplied.length - joined.length, synthetic, firstAt, lastAt },
+      actions: { total: actionTotal, orphan: orphanActions, outsideWindow: actionsOutsideWindow },
+      outcomes: { total: outcomeTotal, orphan: orphanOutcomes, outsideWindow: outcomesOutsideWindow, superseded, conflicting },
       questionSets: [...questionSets.values()]
         .sort((left, right) => compareQuestionSetRef(left.ref, right.ref))
         .map(({ ref, decisions }) => ({ name: ref.name, version: ref.version, digest: ref.digest, decisions })),

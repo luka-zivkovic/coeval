@@ -8,9 +8,10 @@ import {
   type ProductionCalibrationArtifact
 } from "@rubrist/shared";
 import { BooleanReading } from "../src/components/production-calibration/boolean-reading.js";
-import { ChoiceReading, ScoreNotice } from "../src/components/production-calibration/choice-reading.js";
+import { ChoiceReading } from "../src/components/production-calibration/choice-reading.js";
 import { ReliabilityDiagram } from "../src/components/production-calibration/reliability-diagram.js";
-import { formatRate, formatRateCompact } from "../src/lib/production-calibration-ui.js";
+import { ScoreReading } from "../src/components/production-calibration/score-reading.js";
+import { formatRate, formatRateCompact, scoreBias } from "../src/lib/production-calibration-ui.js";
 
 function ledger(name: string) {
   return readFileSync(
@@ -131,10 +132,44 @@ describe("production calibration reading components", () => {
     for (const group of entry.calibration.byModel) expect(html).toContain(formatRateCompact(group.accuracy));
   });
 
-  it("renders the score notice from the artifact's not-implemented reason", () => {
-    const artifact = buildProductionCalibrationArtifact(flakyTriage, { now });
-    const html = renderToStaticMarkup(createElement(ScoreNotice, { entry: question(artifact, "severity", "score") }));
-    expect(html).toContain("not implemented · ordinal calibration not implemented");
-    expect(html).toContain("16 decisions and 0 outcomes");
+  it("renders the score reading with level accuracy, bias direction, cumulative cuts, and level confusions", () => {
+    // The sample has no severity outcomes; these six are test data only.
+    const decisions = flakyTriage.filter((record) => record.kind === "decision").slice(0, 6);
+    const outcomes = decisions.map((decision, index) => ({
+      kind: "outcome" as const,
+      decisionId: decision.id,
+      at: decision.at,
+      question: "severity",
+      value: [3, 1, 2, 1, 1, 4][index]!,
+      source: "human" as const
+    }));
+    const artifact = buildProductionCalibrationArtifact([...flakyTriage, ...outcomes], { now });
+    const entry = question(artifact, "severity", "score");
+    if (entry.calibration.state !== "defined") throw new Error("expected defined score calibration");
+    const html = renderToStaticMarkup(createElement(ScoreReading, { entry }));
+    expect(html).toContain("6 with an outcome · 5 levels, 0 to 4");
+    expect(html).toContain(formatRate(entry.calibration.exactAccuracy));
+    expect(entry.calibration.exactAccuracy).toMatchObject({ numerator: 4, denominator: 6 });
+    expect(html).toContain(formatRate(entry.calibration.withinOneAccuracy));
+    expect(html).toContain(scoreBias(entry.calibration.meanSignedError).direction);
+    expect(html).toContain("Confidence reliability diagram");
+    expect(html.match(/>≥ \d</g)).toHaveLength(4);
+    expect(html).toContain("4 exact · 2 off");
+    for (const group of entry.calibration.byModel) expect(html).toContain(formatRateCompact(group.exactAccuracy));
+  });
+
+  it("says why score metrics are undefined instead of averaging across scales", () => {
+    const decision = flakyTriage.find((record) => record.kind === "decision");
+    if (decision?.kind !== "decision") throw new Error("expected a decision record");
+    const artifact = buildProductionCalibrationArtifact([
+      { ...decision, id: "three", answers: { severity: { type: "score", mean: 1, probabilities: [0.2, 0.6, 0.2] } } },
+      { ...decision, id: "five", answers: { severity: { type: "score", mean: 2, probabilities: [0.2, 0.2, 0.2, 0.2, 0.2] } } },
+      { ...decision, id: "bad", answers: { severity: { type: "score", mean: 0, probabilities: [0.4, 0.4] } } }
+    ], { now });
+    const html = renderToStaticMarkup(createElement(ScoreReading, { entry: question(artifact, "severity", "score") }));
+    expect(html).toContain("undefined · mixed levels");
+    expect(html).toContain("3 levels: 1 decision · 5 levels: 1 decision");
+    expect(html).toContain("1 answer excluded");
+    expect(html).not.toContain("<table");
   });
 });

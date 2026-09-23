@@ -3,8 +3,12 @@ import type {
   ProductionCalibrationDriftWindow,
   ProductionCalibrationModelIdentity,
   ProductionCalibrationReliabilityBin,
+  ProductionCalibrationScore,
+  ProductionCalibrationScoreConfusionCell,
+  ProductionCalibrationScoreExclusions,
   ProductionCalibrationThresholdAdvice,
-  ProductionCalibrationWilsonRate
+  ProductionCalibrationWilsonRate,
+  ProductionCalibrationWindow
 } from "@rubrist/shared";
 
 // Pure presentation helpers for the production calibration view. Nothing here
@@ -52,6 +56,60 @@ export function formatOutcomeSources(evidence: ProductionCalibrationArtifact["ev
 
 export function formatWindow(window: ProductionCalibrationDriftWindow): string {
   return `${window.start.slice(0, 10)} to ${window.end.slice(0, 10)}`;
+}
+
+/** The decisions a report covers; an unbounded side is said in words. */
+export function formatReportWindow(window: ProductionCalibrationWindow): string {
+  if (window.from === null && window.to === null) return "every decision supplied";
+  return `${window.from ?? "the first decision"} (inclusive) to ${window.to ?? "the last decision"} (exclusive)`;
+}
+
+// ---------------------------------------------------------------------------
+// Score questions
+// ---------------------------------------------------------------------------
+
+/** A distance in levels, or n/a when no decision has an outcome. */
+export function formatLevels(value: number | null): string {
+  return value === null ? "n/a" : `${value.toFixed(2)} level${value === 1 ? "" : "s"}`;
+}
+
+/** Signed level error with its direction spelled out, so nobody has to remember which sign is which. */
+export function scoreBias(meanSignedError: number | null): { value: string; direction: string } {
+  if (meanSignedError === null) return { value: "n/a", direction: "no outcomes yet" };
+  const value = `${meanSignedError > 0 ? "+" : ""}${formatLevels(meanSignedError)}`;
+  if (meanSignedError > 0) return { value, direction: "stated mean above the outcome on average" };
+  if (meanSignedError < 0) return { value, direction: "stated mean below the outcome on average" };
+  return { value, direction: "no average offset" };
+}
+
+/** What the score analysis left out, or null when it left out nothing. */
+export function scoreExclusionText(excluded: ProductionCalibrationScoreExclusions): string | null {
+  const parts: string[] = [];
+  if (excluded.invalidAnswer > 0) {
+    parts.push(`${excluded.invalidAnswer} answer${excluded.invalidAnswer === 1 ? "" : "s"} excluded: a level count outside 2 to 10, probabilities that do not sum to 1, or a mean off the scale`);
+  }
+  if (excluded.outcomeOutOfRange > 0) {
+    parts.push(`${excluded.outcomeOutOfRange} outcome${excluded.outcomeOutOfRange === 1 ? " is" : "s are"} not a level of the answer's scale`);
+  }
+  return parts.length === 0 ? null : `${parts.join(" · ")}.`;
+}
+
+export function scoreUndefinedText(calibration: Extract<ProductionCalibrationScore, { state: "undefined" }>): string {
+  if (calibration.undefinedReason === "mixed_levels") {
+    const counts = calibration.levelCounts
+      .map((row) => `${row.levels} levels: ${row.decisions} decision${row.decisions === 1 ? "" : "s"}`)
+      .join(" · ");
+    return `Answers to this question use different level counts (${counts}), so no score metric is defined. Level 3 of five and level 3 of ten are different claims; give each scale its own question name.`;
+  }
+  return "No answer to this question describes a rubric of 2 to 10 levels whose probabilities sum to 1, so no score metric is defined.";
+}
+
+/** Off-diagonal level pairs first, largest first. */
+export function topScoreConfusionPairs(confusion: readonly ProductionCalibrationScoreConfusionCell[], limit = 10) {
+  return confusion
+    .filter((cell) => cell.truth !== cell.predicted)
+    .sort((left, right) => right.count - left.count || left.truth - right.truth || left.predicted - right.predicted)
+    .slice(0, limit);
 }
 
 export function driftFlags(window: ProductionCalibrationDriftWindow): string[] {
