@@ -12,7 +12,7 @@ export function RubristBrand({
   return (
     <span className={`inline-flex items-center gap-2 ${className}`.trim()}>
       <img
-        src="/brand/rubrist-app-icon.png"
+        src="/brand/rubrist-app-icon.svg"
         alt=""
         aria-hidden="true"
         className={`shrink-0 object-contain ${markClassName}`.trim()}
