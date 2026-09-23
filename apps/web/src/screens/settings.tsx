@@ -23,7 +23,7 @@ import { authClient, useSession } from "@/lib/auth-client";
 import { forgetFirstProjectKey } from "@/lib/journey";
 import { useAppMode } from "@/lib/app-mode";
 import { useDialogFocus } from "@/hooks/use-dialog-focus";
-import type { ApiKey, CreatedApiKey, JudgeKeyProvider, JudgeProviderKey, ProjectSettings, RetentionPruneResult } from "@rubrist/shared";
+import type { ApiKey, ApiKeyCapability, CreatedApiKey, JudgeKeyProvider, JudgeProviderKey, ProjectSettings, RetentionPruneResult } from "@rubrist/shared";
 
 export function SettingsScreen() {
   const navigate = useNavigate();
@@ -468,11 +468,17 @@ function JudgeKeysCard() {
   );
 }
 
+const API_KEY_CAPABILITY_LABELS: Record<ApiKeyCapability, string> = {
+  judge: "Judge and read",
+  production_ingest: "Production ingest only"
+};
+
 function ApiKeysCard() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
+  const [capability, setCapability] = useState<ApiKeyCapability>("judge");
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<CreatedApiKey | null>(null);
   const [showConnect, setShowConnect] = useState(false);
@@ -498,7 +504,7 @@ function ApiKeysCard() {
     setCreating(true);
     setError(null);
     try {
-      const result = await createApiKey(name.trim());
+      const result = await createApiKey(name.trim(), capability);
       setCreated(result);
       setName("");
       await load();
@@ -528,7 +534,9 @@ function ApiKeysCard() {
             Call this project's evaluator programmatically:{" "}
             <code className="text-[12px]">POST /api/v1/judge</code> with{" "}
             <code className="text-[12px]">Authorization: Bearer &lt;key&gt;</code>. Rubrist records each
-            result in the ungoverned verdict ledger used by legacy Reliability diagnostics.
+            result in the ungoverned verdict ledger used by legacy Reliability diagnostics. A production-ingest
+            key can only append decision records with{" "}
+            <code className="text-[12px]">POST /api/v1/production-decisions</code>; it cannot judge or read.
           </CardDescription>
         </div>
       </CardHeader>
@@ -543,6 +551,18 @@ function ApiKeysCard() {
               className="mt-1 w-full rounded-md border border-line bg-transparent px-3 py-2 text-[13px]"
             />
           </div>
+          <label className="grid gap-1">
+            <Eyebrow>Can</Eyebrow>
+            <select
+              aria-label="Key capability"
+              value={capability}
+              onChange={(event) => setCapability(event.target.value as ApiKeyCapability)}
+              className="h-[38px] rounded-md border border-line bg-transparent px-2 text-[13px]"
+            >
+              <option value="judge">{API_KEY_CAPABILITY_LABELS.judge}</option>
+              <option value="production_ingest">{API_KEY_CAPABILITY_LABELS.production_ingest}</option>
+            </select>
+          </label>
           <Button size="sm" onClick={create} disabled={creating || !name.trim()}>
             {creating ? "Creating…" : "Create key"}
           </Button>
@@ -591,6 +611,7 @@ function ApiKeysCard() {
                 <div className="min-w-0">
                   <div className="text-[13px] font-medium">
                     {key.name}{" "}
+                    <Chip variant="outline">{API_KEY_CAPABILITY_LABELS[key.capability]}</Chip>{" "}
                     {key.revokedAt ? <Chip variant="outline">revoked</Chip> : null}
                   </div>
                   <div className="text-[12px] text-ink-3">

@@ -103,6 +103,7 @@ import {
   type RubristRepository,
   type CompareAssessmentReceiptCopyInput,
   type CreateApiKeyInputDb,
+  type ResolvedApiKey,
   type CreateAssessmentReceiptCorrectionInput,
   type CreateDatasetInputDb,
   type CreateDatasetRevisionDbInput,
@@ -692,7 +693,7 @@ export class PgRepository implements RubristRepository {
     return this.apiKeyRepository.revokeApiKey(projectId, apiKeyId);
   }
 
-  async resolveApiKey(rawKey: string): Promise<{ projectId: string; apiKeyId: string } | null> {
+  async resolveApiKey(rawKey: string): Promise<ResolvedApiKey | null> {
     return this.apiKeyRepository.resolveApiKey(rawKey);
   }
 

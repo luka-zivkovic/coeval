@@ -260,6 +260,7 @@ describe("PostgreSQL API-key repository slice", () => {
               name: values?.[2],
               key_hash: values?.[3],
               key_prefix: values?.[4],
+              capability: values?.[6],
               created_at: createdAt,
               last_used_at: null,
               revoked_at: null
@@ -275,6 +276,7 @@ describe("PostgreSQL API-key repository slice", () => {
               name: "Agent",
               key_hash: "not-public",
               key_prefix: "rubrist_sk_abc123…",
+              capability: "production_ingest",
               created_at: createdAt,
               last_used_at: null,
               revoked_at: null
@@ -284,7 +286,7 @@ describe("PostgreSQL API-key repository slice", () => {
         }
         if (call === 4) return { rows: [], rowCount: 1 };
         if (call === 5) return { rows: [], rowCount: 0 };
-        if (call === 6) return { rows: [{ id: "apikey-1", project_id: "project-1" }], rowCount: 1 };
+        if (call === 6) return { rows: [{ id: "apikey-1", project_id: "project-1", capability: "production_ingest" }], rowCount: 1 };
         return { rows: [], rowCount: 0 };
       }
     } as unknown as Pool;
@@ -300,6 +302,7 @@ describe("PostgreSQL API-key repository slice", () => {
       projectId: "project-1",
       name: "Agent",
       keyPrefix: `${created.key.slice(0, "rubrist_sk_".length + 6)}…`,
+      capability: "judge",
       createdAt: createdAt.toISOString(),
       lastUsedAt: null,
       revokedAt: null,
@@ -310,14 +313,15 @@ describe("PostgreSQL API-key repository slice", () => {
       "projectId",
       "name",
       "keyPrefix",
+      "capability",
       "createdAt",
       "lastUsedAt",
       "revokedAt",
       "key"
     ]);
     expect(calls[0]).toEqual({
-      sql: `insert into api_keys (id, project_id, name, key_hash, key_prefix, created_by_user_id)
-       values ($1,$2,$3,$4,$5,$6)
+      sql: `insert into api_keys (id, project_id, name, key_hash, key_prefix, created_by_user_id, capability)
+       values ($1,$2,$3,$4,$5,$6,$7)
        returning *`,
       values: [
         created.id,
@@ -325,15 +329,18 @@ describe("PostgreSQL API-key repository slice", () => {
         "Agent",
         hashApiKey(created.key),
         created.keyPrefix,
-        "user-1"
+        "user-1",
+        "judge"
       ]
     });
     expect(JSON.stringify(calls[0])).not.toContain(created.key);
 
     const createdWithoutActor = await repository.createApiKey({
       projectId: "project-1",
-      name: "Unowned"
+      name: "Unowned",
+      capability: "production_ingest"
     });
+    expect(createdWithoutActor.capability).toBe("production_ingest");
     expect(calls[1]).toEqual({
       sql: calls[0]!.sql,
       values: [
@@ -342,7 +349,8 @@ describe("PostgreSQL API-key repository slice", () => {
         "Unowned",
         hashApiKey(createdWithoutActor.key),
         createdWithoutActor.keyPrefix,
-        null
+        null,
+        "production_ingest"
       ]
     });
     expect(JSON.stringify(calls[1])).not.toContain(createdWithoutActor.key);
@@ -352,6 +360,7 @@ describe("PostgreSQL API-key repository slice", () => {
       projectId: "project-1",
       name: "Agent",
       keyPrefix: "rubrist_sk_abc123…",
+      capability: "production_ingest",
       createdAt: createdAt.toISOString(),
       lastUsedAt: null,
       revokedAt: null
@@ -360,7 +369,8 @@ describe("PostgreSQL API-key repository slice", () => {
     await expect(repository.revokeApiKey("project-1", "apikey-missing")).resolves.toBe(false);
     await expect(repository.resolveApiKey("rubrist_sk_presented")).resolves.toEqual({
       projectId: "project-1",
-      apiKeyId: "apikey-1"
+      apiKeyId: "apikey-1",
+      capability: "production_ingest"
     });
     await expect(repository.resolveApiKey("rubrist_sk_missing")).resolves.toBeNull();
 
@@ -377,7 +387,7 @@ describe("PostgreSQL API-key repository slice", () => {
     expect(calls[5]).toEqual({
       sql: `update api_keys set last_used_at = now()
        where key_hash = $1 and revoked_at is null
-       returning id, project_id`,
+       returning id, project_id, capability`,
       values: [hashApiKey("rubrist_sk_presented")]
     });
     expect(calls[6]?.values).toEqual([hashApiKey("rubrist_sk_missing")]);

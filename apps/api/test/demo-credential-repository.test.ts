@@ -338,7 +338,8 @@ describe("Demo credential repository slice", () => {
 
     expect(await repository.resolveApiKey(first.key)).toEqual({
       projectId: "project-a",
-      apiKeyId: first.id
+      apiKeyId: first.id,
+      capability: "judge"
     });
     expect(store.apiKeys.find((entry) => entry.record.id === first.id)?.record.lastUsedAt)
       .toEqual(expect.any(String));
@@ -349,7 +350,15 @@ describe("Demo credential repository slice", () => {
     expect(await repository.resolveApiKey(first.key)).toBeNull();
     expect(await repository.resolveApiKey(second.key)).toEqual({
       projectId: "project-a",
-      apiKeyId: second.id
+      apiKeyId: second.id,
+      capability: "judge"
+    });
+    const ingest = await repository.createApiKey({ projectId: "project-a", name: "ingest", capability: "production_ingest" });
+    expect(ingest.capability).toBe("production_ingest");
+    expect(await repository.resolveApiKey(ingest.key)).toEqual({
+      projectId: "project-a",
+      apiKeyId: ingest.id,
+      capability: "production_ingest"
     });
     await expect(repository.listApiKeys("project-a")).resolves.toContainEqual(
       expect.objectContaining({ id: first.id, revokedAt: expect.any(String) })

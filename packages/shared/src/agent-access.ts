@@ -28,11 +28,20 @@ export const SetJudgeProviderKeyInputSchema = z.object({
 });
 export type SetJudgeProviderKeyInput = z.infer<typeof SetJudgeProviderKeyInputSchema>;
 
+// What a project API key may do (ADR-0013). `judge` is the original
+// read/judge surface under /api/v1. `production_ingest` may only append
+// production decision records, so a leaked ingest key cannot judge or read.
+export const ApiKeyCapabilitySchema = z.enum(["judge", "production_ingest"]);
+export type ApiKeyCapability = z.infer<typeof ApiKeyCapabilitySchema>;
+
 export const ApiKeySchema = z.object({
   id: z.string(),
   projectId: z.string(),
   name: z.string(),
   keyPrefix: z.string(),
+  // Every key minted before capabilities existed was a judge key, so a stored
+  // or older payload without the field still parses as one.
+  capability: ApiKeyCapabilitySchema.default("judge"),
   createdAt: z.string(),
   lastUsedAt: z.string().nullable(),
   revokedAt: z.string().nullable()
@@ -40,7 +49,9 @@ export const ApiKeySchema = z.object({
 export type ApiKey = z.infer<typeof ApiKeySchema>;
 
 export const CreateApiKeyInputSchema = z.object({
-  name: z.string().min(1).max(120)
+  name: z.string().min(1).max(120),
+  /** Omitted means `judge`, the original key surface. */
+  capability: ApiKeyCapabilitySchema.optional()
 });
 export type CreateApiKeyInput = z.infer<typeof CreateApiKeyInputSchema>;
 

@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import type {
-  ApiKey,
-  CreatedApiKey
+import {
+  ApiKeyCapabilitySchema,
+  type ApiKey,
+  type CreatedApiKey
 } from "@rubrist/shared";
 import type { Pool } from "pg";
 import { generateApiKey, hashApiKey } from "../lib/api-keys.js";
-import type { CreateApiKeyInputDb } from "../repository.js";
+import type { CreateApiKeyInputDb, ResolvedApiKey } from "../repository.js";
 import type { ApiKeyRepositoryPort } from "../repository/ports.js";
 import { rowToApiKey } from "./mappers.js";
 
@@ -17,10 +18,13 @@ export class PgApiKeyRepository implements ApiKeyRepositoryPort {
   async createApiKey(input: CreateApiKeyInputDb): Promise<CreatedApiKey> {
     const generated = generateApiKey();
     const result = await this.pool.query(
-      `insert into api_keys (id, project_id, name, key_hash, key_prefix, created_by_user_id)
-       values ($1,$2,$3,$4,$5,$6)
+      `insert into api_keys (id, project_id, name, key_hash, key_prefix, created_by_user_id, capability)
+       values ($1,$2,$3,$4,$5,$6,$7)
        returning *`,
-      [`apikey_${randomUUID()}`, input.projectId, input.name, generated.keyHash, generated.keyPrefix, input.createdByUserId ?? null]
+      [
+        `apikey_${randomUUID()}`, input.projectId, input.name, generated.keyHash, generated.keyPrefix,
+        input.createdByUserId ?? null, input.capability ?? "judge"
+      ]
     );
     return { ...rowToApiKey(result.rows[0]), key: generated.key };
   }
@@ -42,16 +46,20 @@ export class PgApiKeyRepository implements ApiKeyRepositoryPort {
     return (result.rowCount ?? 0) > 0;
   }
 
-  async resolveApiKey(rawKey: string): Promise<{ projectId: string; apiKeyId: string } | null> {
+  async resolveApiKey(rawKey: string): Promise<ResolvedApiKey | null> {
     const keyHash = hashApiKey(rawKey);
     const result = await this.pool.query(
       `update api_keys set last_used_at = now()
        where key_hash = $1 and revoked_at is null
-       returning id, project_id`,
+       returning id, project_id, capability`,
       [keyHash]
     );
     const row = result.rows[0];
     if (!row) return null;
-    return { projectId: String(row.project_id), apiKeyId: String(row.id) };
+    return {
+      projectId: String(row.project_id),
+      apiKeyId: String(row.id),
+      capability: ApiKeyCapabilitySchema.parse(row.capability)
+    };
   }
 }

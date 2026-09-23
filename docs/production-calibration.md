@@ -1,6 +1,6 @@
 # Production calibration
 
-Status: **CURRENT shared contract, pure analysis, a compute-only preview route, a project view, and an append-only record store with no route yet; no ingest wiring**
+Status: **CURRENT shared contract, pure analysis, a compute-only preview route, a project view, an append-only record store, API-key ingest, and an owner import; reports do not read stored records yet**
 
 Production calibration reports whether a classifier's stated probabilities held
 up against the outcomes that arrived later on the customer's own traffic. It
@@ -271,10 +271,10 @@ have. It recommends; it does not decide. Release thresholds and
 
 ## CURRENT: the record store
 
-The first Batch 7B slice under
-[ADR-0013](decisions/0013-production-outcome-monitoring.md) adds the
-`production_decision_records` table and
-`PgProductionDecisionRecordRepository.appendRecords`. No route calls it yet.
+Batch 7B under [ADR-0013](decisions/0013-production-outcome-monitoring.md)
+adds the `production_decision_records` table and
+`PgProductionDecisionRecordRepository.appendRecords`, which the ingest and
+import routes below write through.
 
 - One append-only table holds decision, action, and outcome records per
   project. Each row keeps the record as given, its kind, decision ID, and
@@ -305,17 +305,52 @@ The first Batch 7B slice under
 - UPDATE is always rejected and DELETE is rejected while the project exists;
   project erasure removes the project's records.
 
+## CURRENT: ingest and import
+
+Every project API key now has one capability. `judge` is the original
+`/api/v1` surface and the default. `production_ingest` may only call
+`POST /api/v1/production-decisions`, and no other key may call it; the API
+key middleware answers `403 api_key_capability_mismatch` either way. An owner
+chooses the capability when minting a key (`POST /api/api-keys` with
+`capability`, or the Settings key form); keys minted before capabilities
+existed are judge keys.
+
+`POST /api/v1/production-decisions` takes the ledger as the raw body in JSON
+Lines (`application/x-ndjson`, `application/jsonl`, or `text/plain`) or as
+JSON `{ "records": ... }`, parsed exactly like the preview. The body may be
+at most 4 MiB. It writes through `appendRecords` with the key as submitter and
+answers `{ inserted: { decisions, actions, outcomes }, duplicates,
+awaitingDecision }`. Retrying a batch is safe.
+
+- A bad line is `400 production_ingest_invalid_record` with its line.
+- Store rejections answer `production_ingest_<code>`: `conflicting_decision`
+  is 409; `batch_too_large` and `record_too_large` are 413;
+  `future_dated_record`, `invalid_record`, and `empty_batch` are 400;
+  `project_not_found` is 404; and `write_contention` is 503 with
+  `Retry-After: 1`.
+- Each record costs one unit of the key's ingest budget, separate from the
+  judge request bucket: `PRODUCTION_INGEST_RECORDS_PER_MINUTE` per key
+  (60,000 by default), with a burst of at least one full 10,000-record batch.
+  A batch the budget cannot cover is `429 production_ingest_rate_limited` and
+  writes nothing. The limiter is in memory and per process.
+- Without database-backed mode the route answers 501.
+
+A project owner can also import a ledger in a session with
+`POST /api/production-calibration/records` (`{ "records": ... }`, 4 MiB). It
+uses the same write path and error codes, prefixed `production_calibration_`,
+with the owner as submitter. Members get `403
+production_calibration_owner_required`.
+
 ## Not implemented
 
-- **Ingest, stored reports, snapshots, and retention.** The preview route and
-  the view are still compute-only: nothing writes to or reads from the record
-  store, and a refresh starts over. The ingest route and key capabilities,
-  reports built from stored records, saved snapshots, and retention, erasure,
-  and purges are TARGET under accepted
+- **Stored reports, snapshots, and retention.** The preview route and the
+  view are still compute-only: nothing reads the record store yet, and the
+  view has no import button. Reports built from stored records, saved
+  snapshots, and retention, erasure, and purges are TARGET under accepted
   [ADR-0013](decisions/0013-production-outcome-monitoring.md) and Batch 7 in
   [`implementation-batches.md`](implementation-batches.md).
-- **Live import.** No poller or sink reads decisions from a running system;
-  the ledger arrives as pasted or uploaded text.
+- **Pulled import.** Rubrist does not poll a running system for decisions;
+  producers push them to the ingest route or an owner imports a file.
 - **Governed-review routing of a low-confidence sample.** The advisor names
   a review band, but nothing sends the decisions inside it to governed review
   or brings independent labels back. The view says this step is separate; it

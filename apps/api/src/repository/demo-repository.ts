@@ -105,6 +105,7 @@ import type {
   CompleteEvalRunItemInputDb,
   FailEvalRunItemInputDb,
   CreateApiKeyInputDb,
+  ResolvedApiKey,
   CreateTraceTestInputDb,
   ReviseTraceTestInputDb,
   RecordTraceTestValidationInputDb,
@@ -533,7 +534,7 @@ export class DemoRepository implements RubristRepository {
     return this.credentialRepository.revokeApiKey(projectId, apiKeyId);
   }
 
-  async resolveApiKey(rawKey: string): Promise<{ projectId: string; apiKeyId: string } | null> {
+  async resolveApiKey(rawKey: string): Promise<ResolvedApiKey | null> {
     return this.credentialRepository.resolveApiKey(rawKey);
   }
 

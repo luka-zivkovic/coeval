@@ -3,19 +3,22 @@ import { z } from "zod";
 import {
   PRODUCTION_CALIBRATION_MAX_BINS,
   ProductionCalibrationArtifactSchema,
-  ProductionDecisionLedgerRecordSchema,
   buildProductionCalibrationArtifact,
   joinProductionDecisionRecords,
   type ProductionCalibrationArtifact,
   type ProductionDecisionAnswerType,
   type ProductionDecisionLedgerRecord
 } from "@rubrist/shared";
+import { productionRecordErrorStatus } from "./ingest-routes.js";
+import { LedgerParseError, parseLedgerRecords as parseLedger } from "./ledger.js";
+import { ProductionRecordRepositoryError, type ProductionDecisionRecordRepository } from "./repository.js";
 
-// Compute-only preview of production calibration. The caller posts the
-// decision ledger with the request; nothing is persisted, queued, or read from
-// the database. The route exists so the web view and scripted callers share
-// one project-scoped computation path with the same session and membership
-// checks as the neighbouring analysis surfaces.
+// Session routes for production calibration. The preview is compute-only: the
+// caller posts the decision ledger with the request and nothing is persisted,
+// queued, or read from the database. The owner import appends a ledger to the
+// project's durable records through the same write path as API-key ingest
+// (ADR-0013 §4). Both share the session and membership checks of the
+// neighbouring analysis surfaces.
 
 /** Same ceiling as the batch judge body: a ledger preview is a bulk upload, not a single trace. */
 export const PRODUCTION_CALIBRATION_PREVIEW_BODY_BYTES = 4 * 1024 * 1024;
@@ -41,6 +44,11 @@ export const ProductionCalibrationPreviewRequestSchema = z.object({
   costs: ProductionCalibrationPreviewCostsSchema.nullable().optional()
 }).strict();
 export type ProductionCalibrationPreviewRequest = z.infer<typeof ProductionCalibrationPreviewRequestSchema>;
+
+export const ProductionCalibrationImportRequestSchema = z.object({
+  /** JSON Lines text, or an array of records. */
+  records: z.union([z.string(), z.array(z.unknown())])
+}).strict();
 
 export interface ProductionCalibrationPreviewQuestionSummary {
   question: string;
@@ -82,6 +90,8 @@ export interface CreateProductionCalibrationRouterOptions {
   databaseMode: boolean;
   requestIdentity: (context: Context) => RouteIdentity;
   resolveProjectRole: (input: { projectId: string; userId: string }) => Promise<ProductionCalibrationProjectRole | null>;
+  /** Durable decision records; null outside database-backed mode. */
+  repository?: ProductionDecisionRecordRepository | null | undefined;
   /** The artifact's generation time; injectable so tests stay deterministic. */
   now?: () => Date;
 }
@@ -90,7 +100,7 @@ class PreviewHttpError extends Error {
   constructor(
     message: string,
     readonly code: string,
-    readonly status: 400 | 413,
+    readonly status: 400 | 403 | 404 | 409 | 413 | 501 | 503,
     readonly details?: unknown
   ) {
     super(message);
@@ -162,6 +172,44 @@ export function createProductionCalibrationRouter(options: CreateProductionCalib
     };
     return context.json(response);
   });
+  router.post("/records", async (context) => {
+    const access = await resolveAccess(context, options);
+    if (access instanceof Response) return access;
+    if (access.projectRole !== "owner") {
+      throw new PreviewHttpError("Only project owners can import decision records", "production_calibration_owner_required", 403);
+    }
+    if (!options.repository) {
+      throw new PreviewHttpError("Decision records need database-backed mode", "production_calibration_records_unavailable", 501);
+    }
+    const parsed = ProductionCalibrationImportRequestSchema.safeParse(await readJsonBody(context));
+    if (!parsed.success) {
+      throw new PreviewHttpError(
+        "Invalid production decision record import",
+        "production_calibration_invalid_request",
+        400,
+        { validation: z.treeifyError(parsed.error) }
+      );
+    }
+    const records = parseLedgerRecords(parsed.data.records);
+    try {
+      return context.json(await options.repository.appendRecords({
+        projectId: access.projectId,
+        submitter: { kind: "user", userId: access.userId },
+        records
+      }));
+    } catch (error) {
+      if (error instanceof ProductionRecordRepositoryError) {
+        if (error.code === "write_contention") context.header("retry-after", "1");
+        throw new PreviewHttpError(
+          error.message,
+          `production_calibration_${error.code}`,
+          productionRecordErrorStatus(error.code),
+          error.details
+        );
+      }
+      throw error;
+    }
+  });
   return router;
 }
 
@@ -183,47 +231,18 @@ function buildArtifact(
 }
 
 /**
- * Parse JSON Lines text or an array of records, validating each against the
- * shared record contract. The first bad line stops the parse and is named by
- * its one-based line number (or array position).
+ * Parse JSON Lines text or an array of records with the shared ledger parser,
+ * answering a bad line as `400 production_calibration_invalid_record`.
  */
 export function parseLedgerRecords(input: string | readonly unknown[]): ProductionDecisionLedgerRecord[] {
-  const entries: Array<{ line: number; value: unknown }> = [];
-  if (typeof input === "string") {
-    const lines = input.split("\n");
-    for (const [index, raw] of lines.entries()) {
-      const text = raw.replace(/\r$/, "");
-      if (text.trim() === "") continue;
-      let value: unknown;
-      try {
-        value = JSON.parse(text);
-      } catch {
-        throw new PreviewHttpError(
-          `Line ${index + 1} is not valid JSON`,
-          "production_calibration_invalid_record",
-          400,
-          { line: index + 1, reason: "invalid_json" }
-        );
-      }
-      entries.push({ line: index + 1, value });
+  try {
+    return parseLedger(input);
+  } catch (error) {
+    if (error instanceof LedgerParseError) {
+      throw new PreviewHttpError(error.message, "production_calibration_invalid_record", 400, error.details);
     }
-  } else {
-    input.forEach((value, index) => entries.push({ line: index + 1, value }));
+    throw error;
   }
-  return entries.map(({ line, value }) => {
-    const parsed = ProductionDecisionLedgerRecordSchema.safeParse(value);
-    if (!parsed.success) {
-      const issue = parsed.error.issues[0];
-      const where = issue && issue.path.length > 0 ? ` at ${issue.path.map(String).join(".")}` : "";
-      throw new PreviewHttpError(
-        `Line ${line} is not a valid production decision record${where}: ${issue?.message ?? "invalid record"}`,
-        "production_calibration_invalid_record",
-        400,
-        { line, reason: "invalid_record", validation: z.treeifyError(parsed.error) }
-      );
-    }
-    return parsed.data;
-  });
 }
 
 function summarize(
@@ -290,6 +309,20 @@ async function resolveAccess(
 }
 
 async function parseBody(context: Context): Promise<ProductionCalibrationPreviewRequest> {
+  const parsed = ProductionCalibrationPreviewRequestSchema.safeParse(await readJsonBody(context));
+  if (!parsed.success) {
+    throw new PreviewHttpError(
+      "Invalid production calibration preview request",
+      "production_calibration_invalid_request",
+      400,
+      { validation: z.treeifyError(parsed.error) }
+    );
+  }
+  return parsed.data;
+}
+
+/** Read a JSON body under the route's own byte ceiling, which is checked inside the router. */
+async function readJsonBody(context: Context): Promise<unknown> {
   const declaredLength = Number(context.req.header("content-length") ?? "0");
   if (Number.isFinite(declaredLength) && declaredLength > PRODUCTION_CALIBRATION_PREVIEW_BODY_BYTES) {
     throw new PreviewHttpError(
@@ -306,20 +339,9 @@ async function parseBody(context: Context): Promise<ProductionCalibrationPreview
       413
     );
   }
-  let body: unknown;
   try {
-    body = JSON.parse(text);
+    return JSON.parse(text) as unknown;
   } catch {
     throw new PreviewHttpError("Invalid JSON request body", "production_calibration_invalid_request", 400);
   }
-  const parsed = ProductionCalibrationPreviewRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    throw new PreviewHttpError(
-      "Invalid production calibration preview request",
-      "production_calibration_invalid_request",
-      400,
-      { validation: z.treeifyError(parsed.error) }
-    );
-  }
-  return parsed.data;
 }

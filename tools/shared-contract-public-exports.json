@@ -241,6 +241,8 @@
     "ApiError",
     "ApiErrorSchema",
     "ApiKey",
+    "ApiKeyCapability",
+    "ApiKeyCapabilitySchema",
     "ApiKeySchema",
     "AssessmentReceipt",
     "AssessmentReceiptItem",

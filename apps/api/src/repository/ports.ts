@@ -134,6 +134,7 @@ import type {
   RecordTraceTestFunnelEventInputDb,
   RecordTraceTestValidationInputDb,
   RecordVerdictInput,
+  ResolvedApiKey,
   RetireGoldenSetEntryInput,
   ReviseTraceTestInputDb,
   StaleEvalRunItemExecution,
@@ -141,7 +142,7 @@ import type {
   TraceImportResult,
   FindImportedIronsideTracesInput,
   ImportedIronsideTraceMatch,
-  CaseSourceIdentity
+  CaseSourceIdentity,
 } from "./contracts.js";
 
 // Narrow consumer/type-composition ports. They organize the facade for callers;
@@ -403,13 +404,13 @@ export interface ReviewQueueRepositoryPort {
 export interface ApiKeyRepositoryPort {
   // Eval-as-a-service API keys. createApiKey returns the plaintext key exactly
   // once; only its hash is persisted. resolveApiKey maps a presented raw key to
-  // its project (or null when missing/revoked).
+  // its project and capability (or null when missing/revoked).
   createApiKey(input: CreateApiKeyInputDb): Promise<CreatedApiKey>;
   listApiKeys(projectId: string): Promise<ApiKey[]>;
   // Returns true if a matching, not-already-revoked key was revoked; false if
   // nothing matched (so the route can answer 404 instead of a silent ok).
   revokeApiKey(projectId: string, apiKeyId: string): Promise<boolean>;
-  resolveApiKey(rawKey: string): Promise<{ projectId: string; apiKeyId: string } | null>;
+  resolveApiKey(rawKey: string): Promise<ResolvedApiKey | null>;
 }
 
 export interface TraceTestRepositoryPort {

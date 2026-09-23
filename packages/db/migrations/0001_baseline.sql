@@ -9907,7 +9907,9 @@ CREATE TABLE api_keys (
     created_by_user_id text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     last_used_at timestamp with time zone,
-    revoked_at timestamp with time zone
+    revoked_at timestamp with time zone,
+    capability text DEFAULT 'judge'::text NOT NULL,
+    CONSTRAINT api_keys_capability_check CHECK ((capability = ANY (ARRAY['judge'::text, 'production_ingest'::text])))
 );
 
 

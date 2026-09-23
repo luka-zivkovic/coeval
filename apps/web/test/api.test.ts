@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, buildVerdictExportUrl, createIronsideIntegration, createProject, createReviewQueue, createSkillVersion, deleteLangSmithIntegration, ensureSkillVersionBackfill, fetchCaseVerdicts, fetchDatasetRevisionMetadata, fetchGoldenSet, fetchGoldenSetHealth, fetchJudgeHumanCalibration, fetchKappaSummary, fetchProjectVerdicts, fetchReviewQueueDetail, fetchReviewQueues, fetchSkillVersionCriterion, fetchSkillVersionHistory, recordHumanVerdict, setupOwner, testLangSmithIntegration } from "../src/lib/api.js";
+import { ApiError, buildVerdictExportUrl, createApiKey, createIronsideIntegration, createProject, createReviewQueue, createSkillVersion, deleteLangSmithIntegration, ensureSkillVersionBackfill, fetchCaseVerdicts, fetchDatasetRevisionMetadata, fetchGoldenSet, fetchGoldenSetHealth, fetchJudgeHumanCalibration, fetchKappaSummary, fetchProjectVerdicts, fetchReviewQueueDetail, fetchReviewQueues, fetchSkillVersionCriterion, fetchSkillVersionHistory, recordHumanVerdict, setupOwner, testLangSmithIntegration } from "../src/lib/api.js";
 
 const createdKey = {
   id: "apikey_first",
   projectId: "proj_first",
   name: "First verdict",
   keyPrefix: "rubrist_sk_first…",
+  capability: "judge",
   createdAt: "2026-08-14T00:00:00.000Z",
   lastUsedAt: null,
   revokedAt: null,
@@ -190,6 +191,16 @@ describe("web API helpers", () => {
     });
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
     expect(JSON.parse(String(init?.body))).toEqual({ name: "First evaluation", mode: "tracing" });
+  });
+
+  it("mints a key with the chosen capability, defaulting to judge", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ ...createdKey, capability: "production_ingest" }, 201));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(createApiKey("ingest", "production_ingest")).resolves.toMatchObject({ capability: "production_ingest" });
+    await createApiKey("ci");
+    const bodies = fetchMock.mock.calls.map((call) => JSON.parse(String((call as unknown[])[1] && ((call as unknown[])[1] as RequestInit).body)));
+    expect(bodies).toEqual([{ name: "ingest", capability: "production_ingest" }, { name: "ci", capability: "judge" }]);
   });
 
   it("preserves ApiError status for mutation helpers", async () => {
