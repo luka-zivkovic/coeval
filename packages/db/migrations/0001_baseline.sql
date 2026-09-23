@@ -9407,6 +9407,57 @@ $$;
 
 
 --
+-- Name: guard_production_decision_record_append_only(); Type: FUNCTION; Schema: current; Owner: -
+--
+
+CREATE FUNCTION guard_production_decision_record_append_only() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  if tg_op = 'UPDATE' then
+    raise exception '% rows are append-only', tg_table_name using errcode = '55000';
+  end if;
+  if tg_op = 'DELETE' and exists (select 1 from projects where id = old.project_id) then
+    raise exception '% rows are append-only while their project exists', tg_table_name using errcode = '55000';
+  end if;
+  return old;
+end;
+$$;
+
+
+--
+-- Name: guard_production_decision_record_insert(); Type: FUNCTION; Schema: current; Owner: -
+--
+
+CREATE FUNCTION guard_production_decision_record_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  -- The receive time is Rubrist's own observation; a writer cannot supply it.
+  new.received_at := now();
+  if new.content ->> 'kind' is distinct from new.kind then
+    raise exception 'production decision record kind must match its content' using errcode = '23514';
+  end if;
+  if new.decision_id is distinct from
+    (case when new.kind = 'decision' then new.content ->> 'id' else new.content ->> 'decisionId' end) then
+    raise exception 'production decision record decision id must match its content' using errcode = '23514';
+  end if;
+  if new.record_at is distinct from (new.content ->> 'at')::timestamp with time zone then
+    raise exception 'production decision record time must match its content' using errcode = '23514';
+  end if;
+  if new.record_at > new.received_at + interval '5 minutes' then
+    raise exception 'production decision record is dated more than five minutes after it was received' using errcode = '23514';
+  end if;
+  if new.content_digest is distinct from
+    governed_content_v1_digest('rubrist/production-decision-record/v1', new.content) then
+    raise exception 'production decision record digest must match its content' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+
+
+--
 -- Name: guard_regression_run_revision_binding(); Type: FUNCTION; Schema: current; Owner: -
 --
 
@@ -11438,6 +11489,29 @@ CREATE TABLE organizations (
     id text NOT NULL,
     name text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: production_decision_records; Type: TABLE; Schema: current; Owner: -
+--
+
+CREATE TABLE production_decision_records (
+    id text NOT NULL,
+    project_id text NOT NULL,
+    kind text NOT NULL,
+    decision_id text NOT NULL,
+    record_at timestamp with time zone NOT NULL,
+    content jsonb NOT NULL,
+    content_digest text NOT NULL,
+    submitted_by_api_key_id text,
+    submitted_by_user_id text,
+    received_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT production_decision_records_check CHECK (((submitted_by_api_key_id IS NULL) <> (submitted_by_user_id IS NULL))),
+    CONSTRAINT production_decision_records_content_check CHECK (((jsonb_typeof(content) = 'object'::text) AND (octet_length((content)::text) <= 262144))),
+    CONSTRAINT production_decision_records_content_digest_check CHECK ((content_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
+    CONSTRAINT production_decision_records_decision_id_check CHECK (((length(decision_id) > 0) AND (octet_length(decision_id) <= 16384))),
+    CONSTRAINT production_decision_records_kind_check CHECK ((kind = ANY (ARRAY['decision'::text, 'action'::text, 'outcome'::text])))
 );
 
 
@@ -13718,6 +13792,22 @@ ALTER TABLE ONLY organizations
 
 
 --
+-- Name: production_decision_records production_decision_records_pkey; Type: CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY production_decision_records
+    ADD CONSTRAINT production_decision_records_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: production_decision_records production_decision_records_project_id_content_digest_key; Type: CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY production_decision_records
+    ADD CONSTRAINT production_decision_records_project_id_content_digest_key UNIQUE (project_id, content_digest);
+
+
+--
 -- Name: project_members project_members_pkey; Type: CONSTRAINT; Schema: current; Owner: -
 --
 
@@ -15021,6 +15111,27 @@ CREATE INDEX judge_runs_project_idx ON judge_runs USING btree (project_id);
 --
 
 CREATE INDEX organization_members_user_idx ON organization_members USING btree (user_id);
+
+
+--
+-- Name: production_decision_records_decision_unique; Type: INDEX; Schema: current; Owner: -
+--
+
+CREATE UNIQUE INDEX production_decision_records_decision_unique ON production_decision_records USING btree (project_id, decision_id) WHERE (kind = 'decision'::text);
+
+
+--
+-- Name: production_decision_records_project_decision_at_idx; Type: INDEX; Schema: current; Owner: -
+--
+
+CREATE INDEX production_decision_records_project_decision_at_idx ON production_decision_records USING btree (project_id, record_at, decision_id) WHERE (kind = 'decision'::text);
+
+
+--
+-- Name: production_decision_records_project_decision_idx; Type: INDEX; Schema: current; Owner: -
+--
+
+CREATE INDEX production_decision_records_project_decision_idx ON production_decision_records USING btree (project_id, decision_id);
 
 
 --
@@ -16344,6 +16455,20 @@ CREATE TRIGGER governed_sealed_intake_populations_guard BEFORE INSERT ON governe
 --
 
 CREATE TRIGGER import_jobs_skill_version_guard BEFORE INSERT OR UPDATE OF project_id, skill_version_id, status ON import_jobs FOR EACH ROW EXECUTE FUNCTION ensure_import_job_skill_version_binding();
+
+
+--
+-- Name: production_decision_records production_decision_records_append_only; Type: TRIGGER; Schema: current; Owner: -
+--
+
+CREATE TRIGGER production_decision_records_append_only BEFORE DELETE OR UPDATE ON production_decision_records FOR EACH ROW EXECUTE FUNCTION guard_production_decision_record_append_only();
+
+
+--
+-- Name: production_decision_records production_decision_records_insert_guard; Type: TRIGGER; Schema: current; Owner: -
+--
+
+CREATE TRIGGER production_decision_records_insert_guard BEFORE INSERT ON production_decision_records FOR EACH ROW EXECUTE FUNCTION guard_production_decision_record_insert();
 
 
 --
@@ -18896,6 +19021,14 @@ ALTER TABLE ONLY judge_runs
 
 ALTER TABLE ONLY organization_members
     ADD CONSTRAINT organization_members_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: production_decision_records production_decision_records_project_id_fkey; Type: FK CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY production_decision_records
+    ADD CONSTRAINT production_decision_records_project_id_fkey FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
 
 
 --
