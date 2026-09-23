@@ -31,9 +31,10 @@ its dated sources. It is context, never product authority.
 
 Rubrist owns the analyze-to-measure evaluator lifecycle: failure taxonomy,
 governed human truth, single-criterion evaluators, policy-free suites,
-calibration, pinned execution, and immutable assessment evidence. It does not
-own release thresholds, `promote`/`block` decisions, rollouts, or deployment
-overrides.
+calibration, pinned execution, and immutable assessment evidence. It also owns
+production outcome monitoring, which is ungoverned development feedback kept
+separate from that evidence. It does not own release thresholds,
+`promote`/`block` decisions, rollouts, or deployment overrides.
 Dailies owns release decisions. Casefile owns deterministic no-execution trust
 intake for capability artifacts.
 

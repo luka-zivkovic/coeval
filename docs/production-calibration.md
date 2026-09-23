@@ -223,8 +223,10 @@ have. It recommends; it does not decide. Release thresholds and
 - **Score (ordinal) calibration.** Reported as not implemented, with counts.
 - **Persistence of decision records.** The preview route and the view are
   compute-only. No table, worker, or history stores a ledger, an artifact, or
-  a reading; a refresh starts over. Persistence is TARGET only if a decision
-  record accepts it.
+  a reading; a refresh starts over. Persistence, ingest, saved snapshots, and
+  retention are TARGET under accepted
+  [ADR-0013](decisions/0013-production-outcome-monitoring.md) and Batch 7 in
+  [`implementation-batches.md`](implementation-batches.md).
 - **Live import.** No poller or sink reads decisions from a running system;
   the ledger arrives as pasted or uploaded text.
 - **Governed-review routing of a low-confidence sample.** The advisor names

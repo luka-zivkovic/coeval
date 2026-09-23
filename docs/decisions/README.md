@@ -23,3 +23,4 @@ Status meanings:
 - [0010 — Representative analysis and taxonomy lifecycle](0010-representative-analysis-and-taxonomy-lifecycle.md) — Accepted
 - [0011 — Pre-launch blank-slate database policy](0011-prelaunch-blank-slate-database-policy.md) — Accepted; clean-install policy remains active for founder-only disposable testing
 - [0012 — Rename Coeval to Rubrist](0012-rename-coeval-to-rubrist.md) — Accepted
+- [0013 — Production outcome monitoring](0013-production-outcome-monitoring.md) — Accepted

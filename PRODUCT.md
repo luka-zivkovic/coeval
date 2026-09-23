@@ -2,7 +2,7 @@
 
 Status: **active target-state charter**
 
-Last reviewed: 2026-08-23
+Last reviewed: 2026-09-23
 
 This document is the source of truth for what Rubrist is becoming. The README,
 architecture notes, UI copy, plans, and code may describe current behavior,
@@ -20,6 +20,13 @@ The job is:
 > Analyze representative traces, define how each important failure mode should
 > be judged, validate those evaluators against reviewed human truth, execute
 > exact versions, and preserve what happened as policy-free evidence.
+
+The same owner also needs to know whether the probabilistic decisions their
+system makes in production keep the confidence they state. The second job is:
+
+> Keep the decisions a production system makes and the outcomes that arrive
+> later, and show whether its stated probabilities held up, per model version
+> and over time, without presenting that feedback as governed evidence.
 
 ## Product loop
 
@@ -40,6 +47,21 @@ adjudication history. These are evaluator-governance activities, not release
 automation. Semantic clustering may later assist analysis, but it is explicitly
 deferred and is not required for this loop.
 
+Production outcome monitoring runs beside that loop:
+
+```text
+production decisions, actions, and later outcomes
+→ durable project-scoped records
+→ production calibration, drift, and model-change reports
+→ signals for analysis and governed review, never a substitute for them
+```
+
+Monitoring answers a different question from sealed calibration. Sealed
+calibration measures an exact evaluator version against governed-blind human
+truth on a frozen revision. Monitoring measures a live system against outcomes
+posted after it acted, and those outcomes may be shaped by the action the
+decision triggered. Both are useful; only the first is validation evidence.
+
 ## Rubrist owns
 
 - Analysis workflows that turn representative traces into open codes, failure
@@ -57,6 +79,11 @@ deferred and is not required for this loop.
 - Pinned evaluator execution and observed provider provenance.
 - Calibration evidence, coverage, uncertainty, and incomplete-run state.
 - Policy-free assessment receipts and their versioned wire contracts.
+- Production outcome monitoring: durable, project-scoped decision, action,
+  and outcome records in the versioned production decision-record format;
+  production calibration, drift, and model-change reports computed from them;
+  and an advisory threshold sweep. Monitoring is ungoverned development
+  feedback and stays visibly separate from governed evidence.
 
 ## Decisions Rubrist makes
 
@@ -64,6 +91,8 @@ deferred and is not required for this loop.
 - Whether an evaluator was measured against human truth, against which
   immutable revision, with which exposure state and metric definition.
 - Whether assessment evidence is complete enough to describe what happened.
+- How a production system's stated probabilities compared with the outcomes
+  recorded for it, for a named question, window, and observed model identity.
 
 ## Decisions Rubrist does not make
 
@@ -71,22 +100,28 @@ deferred and is not required for this loop.
 - Acceptable pass-rate, regression, cost, or latency thresholds for a release.
 - Rollout percentages, deployment promotion, rollback, or overrides.
 - Whether a static agent capability artifact is safe to install.
+- The threshold a production system acts on, or whether to switch models or
+  roll back when monitoring shows drift. The threshold advisor recommends; it
+  does not decide.
 
 ## Inputs and outputs
 
 Inputs include representative traces or cases, native human reviews or
 externally reviewed truth, failure codes and criteria, evaluator definitions,
-requested model bindings, and immutable dataset revisions.
+requested model bindings, immutable dataset revisions, and production
+decision, action, and outcome records.
 
 Outputs include review and taxonomy provenance, versioned evaluators and
-suites, calibration results, execution records, and immutable policy-free
-evidence. A consumer may use that evidence in a release decision, but the
-decision is not part of Rubrist's evidence.
+suites, calibration results, execution records, immutable policy-free
+evidence, and production monitoring reports. A consumer may use that evidence
+in a release decision, but the decision is not part of Rubrist's evidence.
 
 ## Relationship to the other products
 
 - **Dailies** consumes Rubrist evidence and applies customer-owned release
   policy. Rubrist does not emit `promote`, `block`, rollout, or override state.
+  Production monitoring reports are not part of that evidence unless a later
+  versioned contract says so.
 - **Casefile** may statically inspect and lock evaluator-related capability
   artifacts. Casefile does not validate model behavior, and Rubrist does not
   perform static supply-chain trust analysis.
@@ -132,6 +167,15 @@ the two accepted calibration-artifact durations. Missing, running, incomplete,
 revoked, and unavailable evidence remains explicit; the view creates no
 composite score or authority decision.
 
+Production calibration exists as a compute-only diagnostic. A pasted or
+uploaded ledger in the `rubrist/production-decision-record/v1` format produces
+a `rubrist/production-calibration/v1` report for boolean and choice questions,
+and nothing is stored. Durable records, a non-paste ingest path, and
+score-question analysis are TARGET. Accepted
+[ADR-0013](docs/decisions/0013-production-outcome-monitoring.md) defines their
+persistence, ingest, snapshot, and retention design, and Batch 7 sequences the
+runtime work.
+
 The producer runtime still does not run the repeated-trial contract or
 calibrate scalar and categorical evaluators. Those remaining gaps are distinct
 from the retained agreement diagnostics on the legacy ungoverned review path.
@@ -155,6 +199,9 @@ into Rubrist.
 8. Review alignment improves the rubric or resolves truth while preserving
    independent labels; it never rewrites disagreement out of history.
 9. Semantic clustering is explicitly deferred and outside the current plan.
+10. Production outcomes are development feedback, not human truth. They can
+    direct attention and review, but they become truth or validation evidence
+    only through governed review.
 
 ## Success signals
 
@@ -166,6 +213,8 @@ into Rubrist.
   prose report.
 - The same Rubrist evidence can support different Dailies policies without
   Rubrist changing its result.
+- A quality owner can see, from records that outlive the session, when a model
+  version change moved a production system's calibration on their own traffic.
 
 ## Accepted planning constraints
 
