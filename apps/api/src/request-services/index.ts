@@ -5,6 +5,7 @@ import { judgeProviderAvailability } from "../lib/judge-provider.js";
 import { userProjectRole, type AgentSetupPairingRecord } from "../lib/auth.js";
 import type { RubristRepository } from "../repository.js";
 import { createEvalRunRequestService, type EvalRunRequestService } from "./eval-runs.js";
+import { PRODUCTION_RECORD_APPEND_MAX_RECORDS } from "../production-calibration/repository.js";
 import { createTokenBucket } from "./rate-limit.js";
 import { createSkillVersionResolver, type ResolveSkillVersionId } from "./skill-versions.js";
 
@@ -20,6 +21,8 @@ export type AppVariables = {
 
 export interface RequestServices extends EvalRunRequestService {
   takeRateTokens(apiKeyId: string, count: number): boolean;
+  /** Production ingest keys spend records from their own bucket, never the judge request bucket. */
+  takeIngestRecords(apiKeyId: string, count: number): boolean;
   resolveSkillVersionId: ResolveSkillVersionId;
   listJudgeProviders(projectId: string): Promise<ReturnType<typeof judgeProviderAvailability>>;
   requireOwner(c: Context<{ Variables: AppVariables }>, action: string): Promise<Response | null>;
@@ -32,7 +35,11 @@ export interface CreateRequestServicesOptions {
   ownerAuthorizationEnabled: boolean;
   rateLimitPerMinute: number;
   batchMaxItems: number;
+  /** Production ingest record budget per key; defaults to PRODUCTION_INGEST_DEFAULT_RECORDS_PER_MINUTE. */
+  ingestRecordsPerMinute?: number | undefined;
 }
+
+export const PRODUCTION_INGEST_DEFAULT_RECORDS_PER_MINUTE = 60_000;
 
 // createApp owns exactly one of these containers. Every extracted router gets
 // the same limiter, authorization resolver, provider view, owner guard, and
@@ -44,11 +51,18 @@ export function createRequestServices(options: CreateRequestServicesOptions): Re
     capacity: Math.max(options.rateLimitPerMinute, options.batchMaxItems),
     refillPerMinute: options.rateLimitPerMinute
   });
+  const ingestRecordsPerMinute = options.ingestRecordsPerMinute ?? PRODUCTION_INGEST_DEFAULT_RECORDS_PER_MINUTE;
+  const ingestBucket = createTokenBucket({
+    // One full ingest batch must always be a legal burst (ADR-0013).
+    capacity: Math.max(ingestRecordsPerMinute, PRODUCTION_RECORD_APPEND_MAX_RECORDS),
+    refillPerMinute: ingestRecordsPerMinute
+  });
   const evalRuns = createEvalRunRequestService(options.repository, options.queue);
 
   return {
     ...evalRuns,
     takeRateTokens: bucket.take,
+    takeIngestRecords: ingestBucket.take,
     resolveSkillVersionId: createSkillVersionResolver(options.repository),
     async listJudgeProviders(projectId) {
       const configured = new Set(

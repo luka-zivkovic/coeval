@@ -73,11 +73,19 @@ import {
   PgAnalysisMeasurementRepository,
   type AnalysisMeasurementRepository
 } from "./analysis-measurement/index.js";
+import {
+  PRODUCTION_INGEST_MAX_BODY_BYTES,
+  PRODUCTION_INGEST_PATH,
+  createProductionIngestRouter
+} from "./production-calibration/ingest-routes.js";
+import type { ProductionDecisionRecordRepository } from "./production-calibration/repository.js";
+import { PgProductionDecisionRecordRepository } from "./production-calibration/repository.pg.js";
 import { createProductionCalibrationRouter } from "./production-calibration/routes.js";
 import { assertImportJudgingAllowed, scheduleImportedCaseJudging } from "./workers/import-judging.js";
 import type { TraceTestDraftGenerator } from "./lib/trace-test-drafter.js";
 import type { TraceTestValidationRunner } from "./lib/trace-test-validator.js";
 import {
+  PRODUCTION_INGEST_DEFAULT_RECORDS_PER_MINUTE,
   createRequestServices,
   type AppVariables
 } from "./request-services/index.js";
@@ -121,6 +129,10 @@ const JUDGE_TIMEOUT_MS = guardrailFromEnv("JUDGE_TIMEOUT_MS", 60_000);
 const JUDGE_BATCH_MAX_ITEMS = guardrailFromEnv("JUDGE_BATCH_MAX_ITEMS", 100);
 const JUDGE_BATCH_MAX_BODY_BYTES = guardrailFromEnv("JUDGE_BATCH_MAX_BODY_BYTES", 4 * 1024 * 1024);
 const TRACE_TEST_DRAFT_TIMEOUT_MS = guardrailFromEnv("TRACE_TEST_DRAFT_TIMEOUT_MS", 45_000);
+const PRODUCTION_INGEST_RECORDS_PER_MINUTE = guardrailFromEnv(
+  "PRODUCTION_INGEST_RECORDS_PER_MINUTE",
+  PRODUCTION_INGEST_DEFAULT_RECORDS_PER_MINUTE
+);
 const TRACE_TEST_VALIDATION_TIMEOUT_MS = guardrailFromEnv("TRACE_TEST_VALIDATION_TIMEOUT_MS", 30_000);
 
 function bootstrapTokenMatches(presented: string): boolean {
@@ -182,6 +194,7 @@ export interface CreateAppOptions {
   analysisPromotionRepository?: AnalysisPromotionRepository | null | undefined;
   evaluatorLifecycleRepository?: EvaluatorLifecycleRepository | null | undefined;
   analysisMeasurementRepository?: AnalysisMeasurementRepository | null | undefined;
+  productionDecisionRecordRepository?: ProductionDecisionRecordRepository | null | undefined;
 }
 
 export function createApp(repository: RubristRepository = new DemoRepository(), options: CreateAppOptions = {}) {
@@ -208,13 +221,17 @@ export function createApp(repository: RubristRepository = new DemoRepository(), 
   const analysisMeasurementRepository = options.analysisMeasurementRepository === undefined
     ? options.pool ? new PgAnalysisMeasurementRepository(options.pool) : null
     : options.analysisMeasurementRepository;
+  const productionDecisionRecordRepository = options.productionDecisionRecordRepository === undefined
+    ? options.pool ? new PgProductionDecisionRecordRepository(options.pool) : null
+    : options.productionDecisionRecordRepository;
   const requestServices = createRequestServices({
     repository,
     ...(options.pool ? { pool: options.pool } : {}),
     ...(options.queue ? { queue: options.queue } : {}),
     ownerAuthorizationEnabled: Boolean(options.auth && options.pool),
     rateLimitPerMinute: JUDGE_RATE_LIMIT_PER_MINUTE,
-    batchMaxItems: JUDGE_BATCH_MAX_ITEMS
+    batchMaxItems: JUDGE_BATCH_MAX_ITEMS,
+    ingestRecordsPerMinute: PRODUCTION_INGEST_RECORDS_PER_MINUTE
   });
   const {
     requireOwner,
@@ -355,11 +372,22 @@ export function createApp(repository: RubristRepository = new DemoRepository(), 
     maxSize: JUDGE_BATCH_MAX_BODY_BYTES,
     onError: (c) => c.json({ error: `Request body exceeds ${JUDGE_BATCH_MAX_BODY_BYTES} bytes` }, 413)
   });
+  const ingestBodyLimit = bodyLimit({
+    maxSize: PRODUCTION_INGEST_MAX_BODY_BYTES,
+    onError: (c) => c.json({
+      error: `Request body exceeds ${PRODUCTION_INGEST_MAX_BODY_BYTES} bytes`,
+      code: "production_ingest_body_too_large"
+    }, 413)
+  });
+  const isProductionIngestPath = (path: string): boolean =>
+    path === PRODUCTION_INGEST_PATH || path === `${PRODUCTION_INGEST_PATH}/`;
   app.use("/api/v1/*", (c, next) =>
-    c.req.path === "/api/v1/judge/batch" ||
-    c.req.path.endsWith("/assessment-receipt/comparisons")
-      ? batchBodyLimit(c, next)
-      : singleBodyLimit(c, next)
+    isProductionIngestPath(c.req.path)
+      ? ingestBodyLimit(c, next)
+      : c.req.path === "/api/v1/judge/batch" ||
+        c.req.path.endsWith("/assessment-receipt/comparisons")
+        ? batchBodyLimit(c, next)
+        : singleBodyLimit(c, next)
   );
   // The session-authed examples paste carries the same up-to-500-item bulk
   // shape as the batch endpoint — same cap, or it becomes the one unbounded
@@ -486,7 +514,24 @@ export function createApp(repository: RubristRepository = new DemoRepository(), 
     const resolved = await repository.resolveApiKey(token);
     if (!resolved) return c.json({ error: "Invalid or revoked API key." }, 401);
 
-    if (!takeRateTokens(resolved.apiKeyId, 1)) {
+    // A key does one kind of work (ADR-0013 §4). An ingest key may only append
+    // production decision records, and no other key may append them. Ingest
+    // spends its own record budget inside the ingest router instead of the
+    // judge request bucket.
+    const ingestPath = isProductionIngestPath(c.req.path);
+    if (resolved.capability === "production_ingest" && !ingestPath) {
+      return c.json({
+        error: "This API key may only append production decision records.",
+        code: "api_key_capability_mismatch"
+      }, 403);
+    }
+    if (resolved.capability !== "production_ingest" && ingestPath) {
+      return c.json({
+        error: "Appending production decision records needs a production-ingest API key.",
+        code: "api_key_capability_mismatch"
+      }, 403);
+    }
+    if (!ingestPath && !takeRateTokens(resolved.apiKeyId, 1)) {
       return c.json({ error: `Rate limit exceeded: ${JUDGE_RATE_LIMIT_PER_MINUTE} requests/minute per API key.` }, 429);
     }
 
@@ -649,7 +694,15 @@ export function createApp(repository: RubristRepository = new DemoRepository(), 
   app.route("/api/production-calibration", createProductionCalibrationRouter({
     databaseMode: Boolean(options.auth && options.pool),
     requestIdentity: binaryCalibrationIdentity,
-    resolveProjectRole: resolveBinaryCalibrationRole
+    resolveProjectRole: resolveBinaryCalibrationRole,
+    repository: productionDecisionRecordRepository
+  }));
+  // Durable ingest for production-ingest API keys (ADR-0013 §4). The /api/v1
+  // middleware has resolved the key and refused every other capability.
+  app.route(PRODUCTION_INGEST_PATH, createProductionIngestRouter({
+    repository: productionDecisionRecordRepository,
+    requestIdentity: (c) => ({ projectId: c.get("projectId"), apiKeyId: c.get("apiKeyId") }),
+    takeIngestRecords: requestServices.takeIngestRecords
   }));
 
   registerProjectAdministrationRoutes(app, {
@@ -834,6 +887,7 @@ export function createApp(repository: RubristRepository = new DemoRepository(), 
     const created = await repository.createApiKey({
       projectId: c.get("projectId"),
       name: parsed.data.name,
+      capability: parsed.data.capability ?? "judge",
       createdByUserId: c.get("user")?.id
     });
     // The plaintext `key` is returned exactly once here; it is never retrievable again.

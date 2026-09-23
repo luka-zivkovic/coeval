@@ -6,7 +6,7 @@ import type {
   JudgeProviderKey
 } from "@rubrist/shared";
 import { generateApiKey, hashApiKey } from "../lib/api-keys.js";
-import type { CreateApiKeyInputDb } from "./contracts.js";
+import type { CreateApiKeyInputDb, ResolvedApiKey } from "./contracts.js";
 import type { DemoRepositoryStore } from "./demo-store.js";
 import { judgeKeyDisplay } from "./helpers.js";
 import type { ApiKeyRepositoryPort, JudgeCredentialRepositoryPort } from "./ports.js";
@@ -52,6 +52,7 @@ export class DemoCredentialRepository implements
       projectId: input.projectId,
       name: input.name,
       keyPrefix: generated.keyPrefix,
+      capability: input.capability ?? "judge",
       createdAt: new Date().toISOString(),
       lastUsedAt: null,
       revokedAt: null
@@ -74,11 +75,11 @@ export class DemoCredentialRepository implements
     return true;
   }
 
-  async resolveApiKey(rawKey: string): Promise<{ projectId: string; apiKeyId: string } | null> {
+  async resolveApiKey(rawKey: string): Promise<ResolvedApiKey | null> {
     const keyHash = hashApiKey(rawKey);
     const entry = this.store.apiKeys.find((candidate) => candidate.keyHash === keyHash && !candidate.record.revokedAt);
     if (!entry) return null;
     entry.record.lastUsedAt = new Date().toISOString();
-    return { projectId: entry.record.projectId, apiKeyId: entry.record.id };
+    return { projectId: entry.record.projectId, apiKeyId: entry.record.id, capability: entry.record.capability };
   }
 }

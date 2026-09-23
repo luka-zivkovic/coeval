@@ -17,7 +17,7 @@ exports[`repository ports > partition the complete facade into exact, disjoint m
     },
     {
       "kind": "MethodSignature",
-      "signature": "resolveApiKey(rawKey: string): Promise<{ projectId: string; apiKeyId: string; } | null>;",
+      "signature": "resolveApiKey(rawKey: string): Promise<ResolvedApiKey | null>;",
     },
   ],
   "AssessmentReceiptRepositoryPort": [

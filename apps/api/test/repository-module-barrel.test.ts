@@ -129,6 +129,7 @@ const EXPECTED_TYPE_ONLY_EXPORTS = [
   "RecordTraceTestFunnelEventInputDb",
   "RecordTraceTestValidationInputDb",
   "RecordVerdictInput",
+  "ResolvedApiKey",
   "RetireGoldenSetEntryInput",
   "ReviseTraceTestInputDb",
   "RubristRepository",

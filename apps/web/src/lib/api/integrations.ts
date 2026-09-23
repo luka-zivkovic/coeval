@@ -2,6 +2,7 @@ import {
   type AgentSetupPairing,
   AgentSetupPairingSchema,
   type ApiKey,
+  type ApiKeyCapability,
   ApiKeySchema,
   type CreatedAgentSetupPairing,
   CreatedAgentSetupPairingSchema,
@@ -243,12 +244,12 @@ export async function fetchApiKeys(): Promise<ApiKey[]> {
   throw apiError(response, payload, "Failed to load API keys");
 }
 
-export async function createApiKey(name: string): Promise<CreatedApiKey> {
+export async function createApiKey(name: string, capability: ApiKeyCapability = "judge"): Promise<CreatedApiKey> {
   const response = await apiFetch(`${API_BASE}/api/api-keys`, {
     method: "POST",
     credentials: "include",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name })
+    body: JSON.stringify({ name, capability })
   });
   const payload = await response.json().catch(() => null) as unknown;
   if (response.ok) return CreatedApiKeySchema.parse(payload);

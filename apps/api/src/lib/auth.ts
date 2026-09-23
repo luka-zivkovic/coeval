@@ -567,8 +567,8 @@ async function insertProjectApiKey(
   const generated = generateApiKey();
   const id = `apikey_${randomUUID()}`;
   const result = await client.query(
-    `insert into api_keys (id, project_id, name, key_hash, key_prefix, created_by_user_id)
-     values ($1,$2,$3,$4,$5,$6)
+    `insert into api_keys (id, project_id, name, key_hash, key_prefix, created_by_user_id, capability)
+     values ($1,$2,$3,$4,$5,$6,'judge')
      returning created_at`,
     [id, input.projectId, input.name, generated.keyHash, generated.keyPrefix, input.createdByUserId]
   );
@@ -577,6 +577,7 @@ async function insertProjectApiKey(
     projectId: input.projectId,
     name: input.name,
     keyPrefix: generated.keyPrefix,
+    capability: "judge",
     createdAt: new Date(result.rows[0]?.created_at ?? Date.now()).toISOString(),
     lastUsedAt: null,
     revokedAt: null,

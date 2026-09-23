@@ -380,6 +380,7 @@ export function registerV1AgentAdministrationRoutes(
       const apiKey = await repository.createApiKey({
         projectId,
         name: input.project.apiKeyName,
+        capability: "judge",
         createdByUserId: owner!.id
       });
 

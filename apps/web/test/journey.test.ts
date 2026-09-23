@@ -48,6 +48,7 @@ const apiKey: CreatedApiKey = {
   projectId: "proj_first",
   name: "First verdict",
   keyPrefix: "rubrist_sk_first…",
+  capability: "judge",
   createdAt: "2026-08-14T00:00:00.000Z",
   lastUsedAt: null,
   revokedAt: null,

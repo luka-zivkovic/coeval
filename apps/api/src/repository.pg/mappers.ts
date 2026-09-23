@@ -43,6 +43,7 @@ import type {
   VerdictRecord
 } from "@rubrist/shared";
 import {
+  ApiKeyCapabilitySchema,
   deriveGateCheckDecision,
   IronsideConnectionTestResultSchema,
   LangfuseConnectionTestResultSchema,
@@ -672,6 +673,7 @@ export function rowToApiKey(row: Record<string, unknown>): ApiKey {
     projectId: String(row.project_id),
     name: String(row.name),
     keyPrefix: String(row.key_prefix),
+    capability: ApiKeyCapabilitySchema.parse(row.capability),
     createdAt: toIso(row.created_at),
     lastUsedAt: row.last_used_at ? toIso(row.last_used_at) : null,
     revokedAt: row.revoked_at ? toIso(row.revoked_at) : null

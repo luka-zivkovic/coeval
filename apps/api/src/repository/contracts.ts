@@ -1,5 +1,6 @@
 import type { JudgeProvider, Trace } from "@rubrist/audit/runtime";
 import type {
+  ApiKeyCapability,
   AssessmentReceipt,
   CaseSource,
   DatasetKind,
@@ -250,7 +251,16 @@ export interface FailEvalRunItemInputDb {
 export interface CreateApiKeyInputDb {
   projectId: string;
   name: string;
+  /** Omitted means `judge`. */
+  capability?: ApiKeyCapability | undefined;
   createdByUserId?: string | undefined;
+}
+
+/** A presented key resolved to its project and what it may do. */
+export interface ResolvedApiKey {
+  projectId: string;
+  apiKeyId: string;
+  capability: ApiKeyCapability;
 }
 
 export interface CreateTraceTestInputDb extends TraceTestDraftContent {
