@@ -644,12 +644,14 @@ describe("governed review selection and projection helpers", () => {
     const simpleA = executeGovernedReviewSelection({
       frame,
       selection: { method: "simple_random", fixedBudget: 3 },
-      seed: "fixed-test-seed"
+      seed: "fixed-test-seed",
+      serveOrderSeed: "5e".repeat(32)
     });
     const simpleB = executeGovernedReviewSelection({
       frame: [...frame].reverse(),
       selection: { method: "simple_random", fixedBudget: 3 },
-      seed: "fixed-test-seed"
+      seed: "fixed-test-seed",
+      serveOrderSeed: "5e".repeat(32)
     });
     expect(simpleA).toEqual(simpleB);
     expect(simpleA.selected).toHaveLength(3);

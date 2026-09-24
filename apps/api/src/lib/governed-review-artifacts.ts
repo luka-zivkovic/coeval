@@ -25,7 +25,8 @@ import {
   assertSame,
   assertSortedUnique,
   assertSubjectSeparated,
-  assertUnique
+  assertUnique,
+  compareStrings
 } from "./governed-review-common.js";
 
 export function governedReviewInstructionDigest(
@@ -174,6 +175,30 @@ export function verifyGovernedReviewSelectionPlan(raw: unknown): GovernedReviewS
   return plan;
 }
 
+export const GOVERNED_REVIEW_SERVE_ORDER_VERSION = "sha256-serve-rank/v1";
+
+/**
+ * Each draw member's reviewer serve position, in draw order. Ranking by a
+ * server seed keeps the order reviewers see independent of how the draw or a
+ * caller-directed selection listed the items (a list sorted by model score
+ * must not reach an evaluator-blind reviewer), and the frozen seed reproduces it.
+ */
+export function governedReviewServePositions(seed: string, drawItemDigests: readonly string[]): number[] {
+  assertUnique(drawItemDigests, "governed review serve-order item digest");
+  const positions: number[] = new Array<number>(drawItemDigests.length);
+  drawItemDigests
+    .map((digest, drawPosition) => ({
+      digest,
+      drawPosition,
+      rank: sha256Digest({ basis: "governed-review-serve-rank/v1", seed, digest })
+    }))
+    .sort((left, right) => compareStrings(left.rank, right.rank) || compareStrings(left.digest, right.digest))
+    .forEach((entry, servePosition) => {
+      positions[entry.drawPosition] = servePosition;
+    });
+  return positions;
+}
+
 export function governedReviewBatchDomainArtifactDigest(
   input: Omit<GovernedReviewBatch, "batchDigest"> | GovernedReviewBatch
 ): string {
@@ -194,6 +219,13 @@ export function verifyGovernedReviewBatch(
     throw new Error("governed review fixed stop must be after batch creation");
   }
   assertContiguousPositions(batch.members.map((member) => member.servePosition), "governed review member");
+  const servePositions = governedReviewServePositions(
+    batch.serveOrderSeed,
+    batch.members.map((member) => member.reviewItemDigest)
+  );
+  if (batch.members.some((member, index) => member.servePosition !== servePositions[index])) {
+    throw new Error("governed review serve order does not match its frozen seed");
+  }
   assertUnique(batch.members.map((member) => member.reviewItemId), "governed review member item");
   assertUnique(batch.members.flatMap((member) => member.taskIds), "governed review member task");
   for (const member of batch.members) {

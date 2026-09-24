@@ -42,6 +42,7 @@ import {
   governedReviewRequestDigest,
   governedReviewSelectionDrawDomainArtifactDigest,
   governedReviewSelectionPlanDomainArtifactDigest,
+  governedReviewServePositions,
   governedReviewTaskDomainArtifactDigest,
   governedReviewTaskEventDomainArtifactDigest,
   importedHumanTruthDomainArtifactDigest,
@@ -58,6 +59,7 @@ import {
 } from "../src/lib/governed-review.js";
 
 const NOW = "2026-08-23T10:00:00.000Z";
+const SERVE_ORDER_SEED = "5e".repeat(32);
 const STOP = "2026-08-24T10:00:00.000Z";
 const PROJECT_ID = "project_one";
 const ITEM_ID = "review_item_one";
@@ -199,6 +201,8 @@ function batch(
     stateMachineVersion: "governed-review-state/v1" as const,
     idempotencyKey: "create_batch_one",
     requestDigest: governedReviewRequestDigest({ taskIds, item: ITEM_ID }),
+    serveOrderSeed: SERVE_ORDER_SEED,
+    serveOrderVersion: "sha256-serve-rank/v1" as const,
     members: [{ reviewItemId: ITEM_ID, reviewItemDigest: reviewItem.itemDigest, servePosition: 0, taskIds }],
     fixedStopAt: STOP,
     createdAt: NOW,
@@ -402,6 +406,23 @@ describe("governed review immutable contracts", () => {
       custodianRoleAtReview: "sealed_custodian"
     });
     expect(() => verifyGovernedReviewBatch(leaked)).toThrow("peer blindness");
+  });
+
+  it("serves members in the order their frozen seed reproduces, not the draw order", () => {
+    const digests = Array.from({ length: 12 }, (_, index) => sha256Digest(`serve-order-item-${index}`));
+    const plan = selectionPlan(digests, { method: "uncertainty", populationSize: 20 });
+    const positions = governedReviewServePositions(SERVE_ORDER_SEED, digests);
+    expect([...positions].sort((left, right) => left - right)).toEqual(digests.map((_, index) => index));
+    expect(positions).not.toEqual(digests.map((_, index) => index));
+    expect(governedReviewServePositions(SERVE_ORDER_SEED, digests)).toEqual(positions);
+    expect(governedReviewServePositions("0f".repeat(32), digests)).not.toEqual(positions);
+    const members = (servePosition: (index: number) => number) => digests.map((digest, index) => ({
+      reviewItemId: `item_${index}`, reviewItemDigest: digest, servePosition: servePosition(index), taskIds: [`task_${index}`]
+    }));
+    const shuffled = batch(1, { selectionPlan: plan, members: members((index) => positions[index]!) });
+    expect(verifyGovernedReviewBatch(shuffled)).toEqual(shuffled);
+    const drawOrdered = batch(1, { selectionPlan: plan, members: members((index) => index) });
+    expect(() => verifyGovernedReviewBatch(drawOrdered)).toThrow("serve order does not match its frozen seed");
   });
 
   it("rejects recursive evaluator/expected-label canaries and exposes only the allowlisted view", () => {

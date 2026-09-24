@@ -4,6 +4,7 @@ import { runMigrations } from "@rubrist/db";
 import { CreateSkillVersionInputSchema } from "@rubrist/shared";
 import { canonicalJson } from "../src/lib/assessment-receipt.js";
 import { datasetInputIdentity } from "../src/lib/dataset-revision.js";
+import { governedReviewServePositions } from "../src/lib/governed-review-artifacts.js";
 import { createApp } from "../src/app.js";
 import { createAuth } from "../src/lib/auth.js";
 import {
@@ -742,6 +743,67 @@ run("PgGovernedReviewRepository", () => {
       expiredTaskIds: [task.taskId]
     });
     expect(evidence.task_state).toBe("expired");
+  });
+
+  it("serves a caller-directed batch in its frozen seed's order, separate from the draw", async () => {
+    const latest = (await pool.query<{ id: string }>(
+      `select id from review_instruction_versions where criterion_version_id=$1 order by revision desc limit 1`,
+      [nonsealedCriterionVersionId]
+    )).rows[0];
+    const instruction = await repository.createInstruction(OWNER, {
+      criterionVersionId: nonsealedCriterionVersionId,
+      ...(latest ? { predecessorInstructionVersionId: latest.id } : {}),
+      title: "Directed review",
+      instructions: "Judge only the immutable input and output.",
+      failureCodeGuidance: "Use short open failure codes.",
+      idempotencyKey: "instruction-directed-serve-order"
+    });
+    const sourceItemIds = (await pool.query<{ id: string }>(
+      `select id from dataset_revision_items where revision_id=$1 order by position desc`, [sourceRevisionId]
+    )).rows.map((row) => row.id);
+    const batch = await repository.createBatchDraft(OWNER, {
+      instructionVersionId: instruction.instructionVersionId,
+      roleIntent: "analysis_authoring",
+      source: { kind: "dataset_revision", revisionId: sourceRevisionId },
+      selection: { method: "failure_hunting", selectedSourceItemIds: sourceItemIds },
+      reviewerUserIds: [REVIEWER_A.userId, REVIEWER_B.userId],
+      fixedStopAt: STOP_AT,
+      idempotencyKey: "batch-directed-serve-order"
+    });
+
+    const stored = (await pool.query(
+      `select serve_order_seed,serve_order_version,draw_digest,governed_review_draw_digest(id) as membership_draw_digest
+       from governed_review_batches where id=$1`, [batch.batchId]
+    )).rows[0];
+    expect(stored.serve_order_seed).toMatch(/^[0-9a-f]{64}$/);
+    expect(stored.serve_order_version).toBe("sha256-serve-rank/v1");
+    expect(stored.membership_draw_digest).toBe(stored.draw_digest);
+    const members = (await pool.query(
+      `select item.id,item.frame_member_digest,item.draw_position,item.serve_position,
+              array_agg(task.serve_order order by task.id) as task_serve_orders
+       from governed_review_batch_items item
+       join governed_review_tasks task on task.batch_item_id=item.id
+       where item.batch_id=$1 group by item.id order by item.draw_position`, [batch.batchId]
+    )).rows;
+    expect(members.map((member) => member.draw_position)).toEqual([0, 1]);
+    expect(members.map((member) => member.serve_position)).toEqual(governedReviewServePositions(
+      stored.serve_order_seed,
+      members.map((member) => member.frame_member_digest)
+    ));
+    for (const member of members) expect(member.task_serve_orders).toEqual([member.serve_position, member.serve_position]);
+    const servedFirst = members.find((member) => member.serve_position === 0)!.id;
+    expect(batch.items.map((item) => item.batchItemId)).toEqual([servedFirst, members.find((member) => member.id !== servedFirst)!.id]);
+    expect(batch.items.map((item) => item.servePosition)).toEqual([0, 1]);
+
+    await repository.transitionBatch(OWNER, batch.batchId, "open", {
+      expectedStateVersion: 0,
+      idempotencyKey: "open-directed-serve-order"
+    });
+    const served = (await repository.listReviewerTasks(REVIEWER_B))
+      .filter((task) => task.batchId === batch.batchId);
+    expect(served.map((task) => task.servePosition)).toEqual([0, 1]);
+    const view = await repository.getOrCreateBlindTaskView(REVIEWER_B, served[0]!.taskId);
+    expect(JSON.parse(Buffer.from(view.canonicalBytes).toString("utf8"))).toMatchObject({ servePosition: 0 });
   });
 
   it("stores exact imported artifacts while refusing caller-minted verified trust", async () => {

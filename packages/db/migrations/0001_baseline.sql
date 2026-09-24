@@ -8304,6 +8304,8 @@ begin
     'selectionMethod', new.selection_method,
     'selectionSeed', new.selection_seed,
     'separationOfDutiesRequired', new.separation_of_duties_required,
+    'serveOrderSeed', new.serve_order_seed,
+    'serveOrderVersion', new.serve_order_version,
     'sourcePopulationId', new.source_population_id,
     'sourcePopulationKind', new.source_population_kind,
     'stateMachineVersion', new.state_machine_version,
@@ -8708,6 +8710,9 @@ begin
       )) then
     raise exception 'batch item must belong to the frozen source population' using errcode = '23514';
   end if;
+  if new.serve_position >= batch.fixed_budget then
+    raise exception 'batch item serve position must fall within its fixed budget' using errcode = '23514';
+  end if;
   if (select count(*) from governed_review_batch_items existing where existing.batch_id = batch.id)
      >= batch.fixed_budget then
     raise exception 'batch membership exceeds its fixed budget' using errcode = '23514';
@@ -8727,6 +8732,7 @@ begin
     'inclusionProbability', new.inclusion_probability,
     'reviewItemId', new.review_item_id,
     'samplingWeight', new.sampling_weight,
+    'servePosition', new.serve_position,
     'stratumKey', new.stratum_key
   ));
   if new.content_digest <> expected_digest then
@@ -9013,6 +9019,9 @@ begin
   end if;
   if batch.role_intent = 'sealed_validation' and reviewer.id = batch.custodian_subject_id then
     raise exception 'sealed batch custodian cannot be a reviewer' using errcode = '23514';
+  end if;
+  if new.serve_order <> batch_item.serve_position then
+    raise exception 'review task serve order must match its batch item' using errcode = '23514';
   end if;
   if (select count(*) from governed_review_tasks task where task.batch_item_id = batch_item.id)
      >= batch.required_labels_per_item then
@@ -11204,6 +11213,7 @@ CREATE TABLE governed_review_batch_items (
     batch_id text NOT NULL,
     review_item_id text NOT NULL,
     draw_position integer NOT NULL,
+    serve_position integer NOT NULL,
     frame_member_digest text NOT NULL,
     stratum_key text,
     inclusion_probability numeric,
@@ -11214,7 +11224,8 @@ CREATE TABLE governed_review_batch_items (
     CONSTRAINT governed_review_batch_items_draw_position_check CHECK ((draw_position >= 0)),
     CONSTRAINT governed_review_batch_items_frame_member_digest_check CHECK ((frame_member_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
     CONSTRAINT governed_review_batch_items_inclusion_probability_check CHECK (((inclusion_probability > (0)::numeric) AND (inclusion_probability <= (1)::numeric))),
-    CONSTRAINT governed_review_batch_items_sampling_weight_check CHECK ((sampling_weight > (0)::numeric))
+    CONSTRAINT governed_review_batch_items_sampling_weight_check CHECK ((sampling_weight > (0)::numeric)),
+    CONSTRAINT governed_review_batch_items_serve_position_check CHECK ((serve_position >= 0))
 );
 
 
@@ -11241,6 +11252,8 @@ CREATE TABLE governed_review_batches (
     selection_seed text,
     rng_version text,
     selection_algorithm_version text NOT NULL,
+    serve_order_seed text NOT NULL,
+    serve_order_version text NOT NULL,
     draw_executed_by text NOT NULL,
     fixed_budget integer NOT NULL,
     stopping_rule text NOT NULL,
@@ -11283,6 +11296,8 @@ CREATE TABLE governed_review_batches (
     CONSTRAINT governed_review_batches_selection_algorithm_version_check CHECK (((length(selection_algorithm_version) > 0) AND (octet_length(selection_algorithm_version) <= 256))),
     CONSTRAINT governed_review_batches_selection_method_check CHECK ((selection_method = ANY (ARRAY['simple_random'::text, 'stratified_random'::text, 'systematic'::text, 'convenience'::text, 'uncertainty'::text, 'failure_hunting'::text, 'manual'::text]))),
     CONSTRAINT governed_review_batches_selection_seed_check CHECK (((selection_seed IS NULL) OR (octet_length(selection_seed) <= 4096))),
+    CONSTRAINT governed_review_batches_serve_order_seed_check CHECK ((serve_order_seed ~ '^[0-9a-f]{64}$'::text)),
+    CONSTRAINT governed_review_batches_serve_order_version_check CHECK ((serve_order_version = 'sha256-serve-rank/v1'::text)),
     CONSTRAINT governed_review_batches_source_population_id_check CHECK (((length(source_population_id) > 0) AND (octet_length(source_population_id) <= 4096))),
     CONSTRAINT governed_review_batches_source_population_kind_check CHECK ((source_population_kind = ANY (ARRAY['dataset_revision'::text, 'sealed_intake'::text, 'analysis_promotion_handoff'::text]))),
     CONSTRAINT governed_review_batches_state_machine_version_check CHECK ((state_machine_version = 'governed-review-state/v1'::text)),
@@ -13609,6 +13624,14 @@ ALTER TABLE ONLY governed_review_batch_items
 
 ALTER TABLE ONLY governed_review_batch_items
     ADD CONSTRAINT governed_review_batch_items_batch_id_review_item_id_key UNIQUE (batch_id, review_item_id);
+
+
+--
+-- Name: governed_review_batch_items governed_review_batch_items_batch_id_serve_position_key; Type: CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY governed_review_batch_items
+    ADD CONSTRAINT governed_review_batch_items_batch_id_serve_position_key UNIQUE (batch_id, serve_position);
 
 
 --

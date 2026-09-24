@@ -50,6 +50,16 @@ a sealed batch. Batch 4 can freeze complete pass/fail human truth, but it does
 not execute an evaluator over that case-less sealed population. That final
 sealed evaluator execution and its calibration artifacts belong to Batch 5.
 
+Reviewers are served a batch's items in a server-seeded shuffle, never in draw
+or submission order. A caller-directed list sorted by a model score, or a
+stratified draw grouped by an evaluator-derived stratum, would otherwise show
+reviewers that ranking through their position. Each batch freezes its own
+serve-order seed and `sha256-serve-rank/v1` version, each batch item its serve
+position, and each task the serve position of its item; PostgreSQL rejects a
+task whose serve order differs from its item. The shuffle is separate from the
+draw: the draw digest, inclusion probabilities, and representativeness are
+computed from draw order and do not change with it.
+
 Representativeness is a scoped provenance claim, not a property of a label.
 `representativeOfPopulationId` is available only for a complete simple or
 stratified random draw from one exact finite, frozen population with a fixed

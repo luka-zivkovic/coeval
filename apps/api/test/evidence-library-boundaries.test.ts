@@ -21,12 +21,14 @@ const paths = {
 } as const;
 
 const ARTIFACT_EXPORTS = [
+  "GOVERNED_REVIEW_SERVE_ORDER_VERSION",
   "governedReviewBatchDomainArtifactDigest",
   "governedReviewInstructionDigest",
   "governedReviewItemDomainArtifactDigest",
   "governedReviewLabelDomainArtifactDigest",
   "governedReviewSelectionDrawDomainArtifactDigest",
   "governedReviewSelectionPlanDomainArtifactDigest",
+  "governedReviewServePositions",
   "governedReviewStratumDrawDomainArtifactDigest",
   "governedReviewTaskDomainArtifactDigest",
   "governedReviewTaskEventDomainArtifactDigest",

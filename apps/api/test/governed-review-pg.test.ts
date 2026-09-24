@@ -230,6 +230,8 @@ async function createFixture(client: Pool): Promise<Fixture> {
     selectionMethod: "simple_random",
     selectionSeed: "seed-1",
     separationOfDutiesRequired: false,
+    serveOrderSeed: "5e".repeat(32),
+    serveOrderVersion: "sha256-serve-rank/v1",
     sourcePopulationId: revisionId,
     sourcePopulationKind: "dataset_revision",
     stateMachineVersion: "governed-review-state/v1",
@@ -248,11 +250,12 @@ async function createFixture(client: Pool): Promise<Fixture> {
        draw_executed_by, fixed_budget, stopping_rule, stop_at, draw_digest, strata,
        required_labels_per_item, evaluator_blind, peer_blind_until_labeling_closed,
        separation_of_duties_required, state_machine_version, content_digest,
-       idempotency_key, request_digest, created_by_subject_id)
+       idempotency_key, request_digest, created_by_subject_id, serve_order_seed, serve_order_version)
     values ($1,'proj_gov',$2,$3,'analysis_authoring','dataset_revision',$4,$5,$6::jsonb,
             $7::jsonb,1,$8,'simple_random','seed-1','sha256-order/v1','simple-random/v1',
             'rubrist_server',1,'fixed','2099-01-01T00:00:00Z',$9,'[]',2,true,true,false,
-            'governed-review-state/v1',$10,'batch-once',$11,'subject_dev')
+            'governed-review-state/v1',$10,'batch-once',$11,'subject_dev',
+            repeat('5e', 32),'sha256-serve-rank/v1')
   `, [batchId, criterionVersionId, instructionId, revisionId, populationId,
     JSON.stringify({ revisionId }), JSON.stringify({ source: "immutable_revision" }),
     sha("1"), drawDigest, batchDigest, sha("7")]);
@@ -260,12 +263,13 @@ async function createFixture(client: Pool): Promise<Fixture> {
   const batchItemDigest = await digest(client, "governed-review-batch-item/v1", {
     batchId,
     ...drawMember,
+    servePosition: 0,
   });
   await client.query(`
     insert into governed_review_batch_items
-      (id, project_id, batch_id, review_item_id, draw_position, frame_member_digest,
+      (id, project_id, batch_id, review_item_id, draw_position, serve_position, frame_member_digest,
        inclusion_probability, sampling_weight, content_digest)
-    values ($1,'proj_gov',$2,$3,0,$4,1,1,$5)
+    values ($1,'proj_gov',$2,$3,0,0,$4,1,1,$5)
   `, [batchItemId, batchId, reviewItemId, sha("6"), batchItemDigest]);
 
   const tasks = [
@@ -520,6 +524,33 @@ async function createSealedPopulation(
 }
 
 run("Batch 4 governed human truth PostgreSQL invariants", () => {
+  it("binds serve positions to the fixed budget and each task to its item's serve position", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("governed_serve_order");
+    try {
+      await runMigrations(pool);
+      const fixture = await createFixture(pool);
+      await expect(pool.query(`
+        insert into governed_review_tasks
+          (id, project_id, batch_id, batch_item_id, reviewer_subject_id,
+           reviewer_role_at_review, serve_order, content_digest, idempotency_key, request_digest)
+        values ('grt_reordered',$1,$2,$3,$4,'reviewer',1,$5,'task:grt_reordered',$5)
+      `, [fixture.projectId, fixture.batchId, fixture.batchItemId, fixture.adjudicator, sha("a")]))
+        .rejects.toMatchObject({ code: "23514", message: "review task serve order must match its batch item" });
+      await expect(pool.query(`
+        insert into governed_review_batch_items
+          (id, project_id, batch_id, review_item_id, draw_position, serve_position, frame_member_digest,
+           inclusion_probability, sampling_weight, content_digest)
+        values ('grbi_outside',$1,$2,$3,1,1,$4,1,1,$4)
+      `, [fixture.projectId, fixture.batchId, fixture.reviewItemId, sha("b")]))
+        .rejects.toMatchObject({ code: "23514", message: "batch item serve position must fall within its fixed budget" });
+      await expect(pool.query(
+        `update governed_review_tasks set serve_order = 1 where id = $1`, [fixture.taskA]
+      )).rejects.toMatchObject({ code: "55000" });
+    } finally {
+      await cleanup();
+    }
+  });
+
   it("enforces immutable blind streams, exact overlap, CAS adjudication, truth linkage, and erasure", async () => {
     const { pool, cleanup } = await openPostgresTestDatabase("governed_clean");
     try {

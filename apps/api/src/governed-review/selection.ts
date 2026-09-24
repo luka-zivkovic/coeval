@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { sha256Digest } from "../lib/assessment-receipt.js";
+import { GOVERNED_REVIEW_SERVE_ORDER_VERSION, governedReviewServePositions } from "../lib/governed-review-artifacts.js";
 
 export interface GovernedSelectionFrameItem {
   id: string;
@@ -38,6 +39,12 @@ export interface GovernedSelectionResult {
     membershipDigest: string;
     drawDigest: string;
   }>;
+  /** Reviewer order, separate from the draw: `positions[i]` is where `selected[i]` is served. */
+  serveOrder: {
+    seed: string;
+    version: typeof GOVERNED_REVIEW_SERVE_ORDER_VERSION;
+    positions: number[];
+  };
 }
 
 export function generateGovernedSelectionSeed(): string {
@@ -48,6 +55,7 @@ export function executeGovernedReviewSelection(input: {
   frame: readonly GovernedSelectionFrameItem[];
   selection: GovernedSelectionRequest;
   seed?: string;
+  serveOrderSeed?: string;
 }): GovernedSelectionResult {
   const frame = validateFrame(input.frame);
   const byId = new Map(frame.map((item) => [item.id, item]));
@@ -114,6 +122,9 @@ export function executeGovernedReviewSelection(input: {
     throw new Error(`Unsupported governed review selection method: ${String(method)}`);
   }
 
+  // Every method gets its own serve-order seed, including directed ones with
+  // no draw seed, so the draw digest and representativeness are unaffected.
+  const serveOrderSeed = input.serveOrderSeed ?? generateGovernedSelectionSeed();
   return {
     method,
     selected,
@@ -126,7 +137,12 @@ export function executeGovernedReviewSelection(input: {
       rngVersion,
       drawItemDigests: selected.map((item) => item.digest)
     }),
-    strata
+    strata,
+    serveOrder: {
+      seed: serveOrderSeed,
+      version: GOVERNED_REVIEW_SERVE_ORDER_VERSION,
+      positions: governedReviewServePositions(serveOrderSeed, selected.map((item) => item.digest))
+    }
   };
 }
 
