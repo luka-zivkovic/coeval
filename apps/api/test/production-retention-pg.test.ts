@@ -158,6 +158,47 @@ run("production record retention, erasure, and purges", () => {
       .resolves.toEqual({ decisions: 0, actions: 0, outcomes: 0 });
   });
 
+  it("serializes erasure with appends in flight, in both directions", async () => {
+    const lockKey = `rubrist/production-records/v1:${PROJECT_ID}`;
+    const settled = (promise: Promise<unknown>) => Promise.race([
+      promise.then(() => true, () => true),
+      new Promise((resolve) => setTimeout(() => resolve(false), 150))
+    ]);
+
+    // An append in flight (holding the shared lock, its row inserted but not
+    // committed) makes erasure wait, and erasure then removes what it wrote.
+    const writer = await pool.connect();
+    try {
+      await writer.query("begin");
+      await writer.query(`select pg_advisory_xact_lock_shared(hashtextextended($1, 0))`, [lockKey]);
+      await writer.query(
+        `insert into production_decision_records (id, project_id, kind, decision_id, record_at, content, content_digest, submitted_by_user_id)
+         values ('pdr_race', $1, 'decision', 'race', $2, $3::jsonb, governed_content_v1_digest('rubrist/production-decision-record/v1', $3::jsonb), $4)`,
+        [PROJECT_ID, "2026-09-20T10:00:00.000Z", JSON.stringify(decision("race")), OWNER_ID]
+      );
+      const erasing = repository.eraseDecision({ projectId: PROJECT_ID, userId: OWNER_ID, decisionId: "race" });
+      expect(await settled(erasing)).toBe(false);
+      await writer.query("commit");
+      await expect(erasing).resolves.toEqual({ decisions: 1, actions: 0, outcomes: 0 });
+    } finally {
+      writer.release();
+    }
+    expect(await ids()).not.toContain("decision:race");
+
+    // An erasure in flight makes a new append wait, which then sees the tombstone.
+    const eraser = await pool.connect();
+    try {
+      await eraser.query("begin");
+      await eraser.query(`select pg_advisory_xact_lock(hashtextextended($1, 0))`, [lockKey]);
+      const appending = append([decision("race")]);
+      expect(await settled(appending)).toBe(false);
+      await eraser.query("commit");
+      await expect(appending).rejects.toMatchObject({ code: "erased_decision" });
+    } finally {
+      eraser.release();
+    }
+  });
+
   it("purges exactly what a revoked key sent, and only after it is revoked", async () => {
     await append([decision("from_leak"), outcome("new", false)], { kind: "api_key", apiKeyId: "key_leaked" });
     await append([decision("from_live")], { kind: "api_key", apiKeyId: "key_live" });

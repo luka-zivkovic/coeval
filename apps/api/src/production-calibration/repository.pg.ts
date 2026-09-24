@@ -68,6 +68,12 @@ export class PgProductionDecisionRecordRepository implements ProductionDecisionR
     const apiKeyId = input.submitter.kind === "api_key" ? input.submitter.apiKeyId : null;
     const userId = input.submitter.kind === "user" ? input.submitter.userId : null;
     return this.transaction(async (client) => {
+      // Appends share the project's record lock; erasure and purges take it
+      // exclusively, so neither can interleave with an append in flight.
+      await client.query(
+        `select pg_advisory_xact_lock_shared(hashtextextended($1, 0))`,
+        [recordLockKey(input.projectId)]
+      );
       await rejectFutureDated(client, rows);
       await rejectErasedDecisions(client, input.projectId, rows);
       const inserted = await client.query<{ kind: string }>(
@@ -300,6 +306,8 @@ export class PgProductionDecisionRecordRepository implements ProductionDecisionR
   async eraseDecision(input: ProductionRecordActor & { decisionId: string }): Promise<ProductionRecordDeletionCounts> {
     const decisionIdDigest = textDigest(input.decisionId);
     return this.transaction(async (client) => {
+      // Wait for appends in flight, and hold new ones until the tombstone commits.
+      await client.query(`select pg_advisory_xact_lock(hashtextextended($1, 0))`, [recordLockKey(input.projectId)]);
       await client.query("set local rubrist.production_deletion = 'on'");
       const deleted = await client.query<{ kind: string; content_digest: string }>(
         `delete from production_decision_records where project_id = $1 and decision_id = $2
@@ -324,6 +332,8 @@ export class PgProductionDecisionRecordRepository implements ProductionDecisionR
 
   async purgeApiKeyRecords(input: ProductionRecordActor & { apiKeyId: string }): Promise<ProductionRecordDeletionCounts> {
     return this.transaction(async (client) => {
+      // A request authenticated just before the revoke may still be writing.
+      await client.query(`select pg_advisory_xact_lock(hashtextextended($1, 0))`, [recordLockKey(input.projectId)]);
       const key = await client.query<{ revoked_at: Date | null }>(
         `select revoked_at from api_keys where id = $1 and project_id = $2 for share`,
         [input.apiKeyId, input.projectId]
@@ -461,6 +471,11 @@ async function rejectErasedDecisions(client: PoolClient, projectId: string, rows
       { line: erased.line, decisionId: erased.decision_id }
     );
   }
+}
+
+/** Advisory lock key for one project's production records. */
+function recordLockKey(projectId: string): string {
+  return `rubrist/production-records/v1:${projectId}`;
 }
 
 function textDigest(value: string): string {

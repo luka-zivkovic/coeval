@@ -429,7 +429,10 @@ append-only themselves; that is unchanged.
   `production_calibration_erased_decision`) naming the line, and the insert
   guard enforces the same rule. The `production.decision.erase` entry keeps
   the decision ID's digest and the erased record digests, never the ID or the
-  record content. Erasing again is harmless.
+  record content. Erasing again is harmless. Appends hold a per-project
+  advisory lock in shared mode and erasure and purges take it exclusively, so
+  an erasure waits for appends already in flight and new appends wait until
+  the tombstone commits; erased data cannot slip back in between.
 - **Revoked-key purge.** `POST /api/production-calibration/records/purge`
   (`{ "apiKeyId": ... }`) deletes every record that API key sent, including
   outcomes posted in advance for decisions that never arrived. The key must
