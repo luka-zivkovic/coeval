@@ -281,7 +281,8 @@ export function createProductionCalibrationRouter(options: CreateProductionCalib
     const access = await resolveAccess(context, options);
     if (access instanceof Response) return access;
     const retentionDays = await withRecordErrors(context, () => requireRepository(options).getRetentionDays(access.projectId));
-    return context.json({ retentionDays });
+    // The role lets the view show owner-only controls before any report is built.
+    return context.json({ retentionDays, projectRole: access.projectRole });
   });
   router.put("/settings", async (context) => {
     const { access, repository } = await ownerAccess(context, options);
@@ -299,7 +300,7 @@ export function createProductionCalibrationRouter(options: CreateProductionCalib
       userId: access.userId,
       retentionDays: parsed.data.retentionDays
     }));
-    return context.json({ retentionDays });
+    return context.json({ retentionDays, projectRole: access.projectRole });
   });
   router.post("/records/erase", async (context) => {
     const { access, repository } = await ownerAccess(context, options);

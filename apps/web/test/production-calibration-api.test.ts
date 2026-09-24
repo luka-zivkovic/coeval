@@ -8,6 +8,11 @@ import {
   PRODUCTION_CALIBRATION_SAMPLE_PATH,
   ProductionCalibrationApiError,
   buildStoredProductionReport,
+  deleteProductionSnapshot,
+  eraseProductionDecision,
+  fetchProductionSettings,
+  purgeProductionApiKeyRecords,
+  updateProductionRetention,
   fetchProductionCalibrationSample,
   fetchProductionSnapshot,
   importProductionRecords,
@@ -149,5 +154,39 @@ describe("stored production report client", () => {
       error: "Only project owners can import decision records", code: "production_calibration_owner_required"
     }, 403)));
     await expect(importProductionRecords(ledgerText)).rejects.toMatchObject({ status: 403, code: "production_calibration_owner_required" });
+  });
+});
+
+describe("production retention and erasure client", () => {
+  it("reads and updates retention and parses the role", async () => {
+    vi.stubGlobal("localStorage", { getItem: () => null });
+    vi.stubGlobal("fetch", vi.fn(async () => json({ retentionDays: 90, projectRole: "member" })));
+    await expect(fetchProductionSettings()).resolves.toEqual({ retentionDays: 90, projectRole: "member" });
+    const fetchMock = vi.fn(async () => json({ retentionDays: 30, projectRole: "owner" }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(updateProductionRetention(30)).resolves.toEqual({ retentionDays: 30, projectRole: "owner" });
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(String(init.body))).toEqual({ retentionDays: 30 });
+    vi.stubGlobal("fetch", vi.fn(async () => json({ retentionDays: 90, projectRole: "admin" })));
+    await expect(fetchProductionSettings()).rejects.toThrow("Invalid project role");
+  });
+
+  it("erases, purges, and deletes with their counts or refusals", async () => {
+    vi.stubGlobal("localStorage", { getItem: () => null });
+    vi.stubGlobal("fetch", vi.fn(async () => json({ erased: { decisions: 1, actions: 0, outcomes: 2 } })));
+    await expect(eraseProductionDecision("d1")).resolves.toEqual({ decisions: 1, actions: 0, outcomes: 2 });
+    vi.stubGlobal("fetch", vi.fn(async () => json({ purged: { decisions: 3, actions: 1, outcomes: 4 } })));
+    await expect(purgeProductionApiKeyRecords("key_1")).resolves.toEqual({ decisions: 3, actions: 1, outcomes: 4 });
+    vi.stubGlobal("fetch", vi.fn(async () => json({
+      error: "Revoke the API key before purging what it sent", code: "production_calibration_api_key_not_revoked"
+    }, 409)));
+    await expect(purgeProductionApiKeyRecords("key_1")).rejects.toMatchObject({ status: 409, code: "production_calibration_api_key_not_revoked" });
+    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(deleteProductionSnapshot("pcs 1")).resolves.toBeUndefined();
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/production-calibration/snapshots/pcs%201");
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "Snapshot not found", code: "production_calibration_snapshot_not_found" }, 404)));
+    await expect(deleteProductionSnapshot("pcs_missing")).rejects.toMatchObject({ status: 404 });
   });
 });

@@ -207,6 +207,88 @@ export async function importProductionRecords(records: string): Promise<Producti
   };
 }
 
+export interface ProductionCalibrationSettings {
+  /** Days Rubrist keeps production records after receiving them. */
+  retentionDays: number;
+  projectRole: "owner" | "member";
+}
+
+export interface ProductionRecordDeletionCounts {
+  decisions: number;
+  actions: number;
+  outcomes: number;
+}
+
+export async function fetchProductionSettings(): Promise<ProductionCalibrationSettings> {
+  const response = await projectFetch(`${API_BASE}/api/production-calibration/settings`);
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw apiError(response, payload, "Loading retention failed");
+  return settings(payload);
+}
+
+/** Owner-only: keep production records for this many days after receipt (1 to 730). */
+export async function updateProductionRetention(retentionDays: number): Promise<ProductionCalibrationSettings> {
+  const response = await projectFetch(`${API_BASE}/api/production-calibration/settings`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ retentionDays })
+  });
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw apiError(response, payload, "Saving retention failed");
+  return settings(payload);
+}
+
+/** Owner-only: delete every record of one decision; later records for it are rejected. */
+export async function eraseProductionDecision(decisionId: string): Promise<ProductionRecordDeletionCounts> {
+  const response = await projectFetch(`${API_BASE}/api/production-calibration/records/erase`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ decisionId })
+  });
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw apiError(response, payload, "Erasing the decision failed");
+  return deletionCounts(object(payload, "erase result").erased);
+}
+
+/** Owner-only: delete every record a revoked API key sent. */
+export async function purgeProductionApiKeyRecords(apiKeyId: string): Promise<ProductionRecordDeletionCounts> {
+  const response = await projectFetch(`${API_BASE}/api/production-calibration/records/purge`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ apiKeyId })
+  });
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw apiError(response, payload, "Purging the key's records failed");
+  return deletionCounts(object(payload, "purge result").purged);
+}
+
+/** Owner-only. */
+export async function deleteProductionSnapshot(snapshotId: string): Promise<void> {
+  const response = await projectFetch(
+    `${API_BASE}/api/production-calibration/snapshots/${encodeURIComponent(snapshotId)}`,
+    { method: "DELETE" }
+  );
+  if (response.status === 204) return;
+  const payload = await response.json().catch(() => null) as unknown;
+  throw apiError(response, payload, "Deleting the snapshot failed");
+}
+
+function settings(raw: unknown): ProductionCalibrationSettings {
+  const value = object(raw, "production calibration settings");
+  const projectRole = value.projectRole;
+  if (projectRole !== "owner" && projectRole !== "member") throw new Error("Invalid project role");
+  return { retentionDays: count(value.retentionDays, "retentionDays"), projectRole };
+}
+
+function deletionCounts(raw: unknown): ProductionRecordDeletionCounts {
+  const value = object(raw, "deletion counts");
+  return {
+    decisions: count(value.decisions, "decisions"),
+    actions: count(value.actions, "actions"),
+    outcomes: count(value.outcomes, "outcomes")
+  };
+}
+
 function storedReportBody(input: ProductionCalibrationStoredReportInput): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   if (input.from) body.from = input.from;
