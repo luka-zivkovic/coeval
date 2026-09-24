@@ -188,7 +188,9 @@ export function createTypeSafeProvider({
           throw new Error("typesafe response missing answers");
         }
         return {
-          model: typeof body.model === "string" ? body.model : model,
+          // The served model as the API reports it; null when it doesn't, so a
+          // caller can never mistake the requested pin for evidence.
+          model: typeof body.model === "string" ? body.model : null,
           answers: body.answers,
           usage: body.usage ?? { input_tokens: 0, output_tokens: 0 },
           requestId: response.headers.get("x-typesafe-request-id") ?? null

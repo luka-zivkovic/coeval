@@ -29,4 +29,4 @@ const judged = await claude.judgeStructured({
   trace,
   spec: { verdictKind: "binary", scalarRange: null, categoricalChoiceScores: null }
 });
-console.log(JSON.stringify({ judge: "claude", requested: claude.modelName, ms: Date.now() - started, label: judged.verdict.label, confidence: judged.verdict.confidence, usage: judged.usage, observed: judged.providerMetadata ?? null }));
+console.log(JSON.stringify({ judge: "claude", requested: claude.modelName, ms: Date.now() - started, label: judged.verdict.label, score: judged.verdict.score, usage: judged.usage, observed: judged.providerMetadata ?? null }));

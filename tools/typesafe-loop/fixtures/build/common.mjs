@@ -81,8 +81,8 @@ export const pad = (n) => String(n).padStart(2, "0");
 
 /**
  * ChaosNLI annotator counts as { e, n, c }. The dataset's old name served a
- * `label_counter` object; tasksource/chaos-mnli-ambiguity serves
- * `label_count` as a string, "[e, n, c]" or "e,n,c".
+ * `label_counter` object; tasksource/chaos-mnli-ambiguity serves `label_count`
+ * in [e, n, c] order, as an array or as a string of three numbers.
  */
 export function chaosMnliCounts(row) {
   if (row.label_counter) return row.label_counter;

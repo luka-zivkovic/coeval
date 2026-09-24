@@ -3,7 +3,9 @@
 // sets beside this file are balanced by label and agreement band for loop
 // development; these are seeded simple random samples of the same sources, so
 // each set keeps its source's own prevalence and difficulty mix. Criteria are
-// read from the development sets so both ask the identical question.
+// read from the development sets; MT-Bench's names the judged turn, and its
+// cases are also written with the responses swapped to measure position bias.
+// Output is committed; rerunning reproduces it from the same sources.
 //
 //   NODE_USE_ENV_PROXY=1 node tools/typesafe-loop/fixtures/build/compare-sets.mjs
 import { execFileSync } from "node:child_process";
@@ -13,6 +15,8 @@ import path from "node:path";
 import { chaosMnliCounts, fixturesRoot, huggingFaceRows, rawRoot, seededShuffle, writeFixture } from "./common.mjs";
 
 const SIZES = { chaosmnli: 200, mtbench: 150, taubench: 115 };
+// The tau-bench commit the committed sample was drawn from.
+const TAU_BENCH_COMMIT = "59a200c6d575d595120f1cb70fea53cef0632f6b";
 const id = (prefix, i) => `${prefix}${String(i + 1).padStart(3, "0")}`;
 
 async function criterionFor(name, sampling) {
@@ -64,14 +68,18 @@ async function mtBench() {
   const assistantTurns = (conv) => conv.filter((m) => m.role === "assistant").map((m) => m.content);
   const cases = chosen.map((c, i) => ({
     id: id("m", i),
-    input: { user_turns: userTurns(c.conv) },
+    input: { user_turns: userTurns(c.conv), judged_turn: c.g.turn },
     output: { response_a: assistantTurns(c.conv), response_b: assistantTurns(c.convB) },
     steps: [],
     humanLabel: c.majority === "model_a" ? "pass" : "fail",
     reviewerDisagreement: new Set(c.g.votes).size > 1,
     note: `q${c.g.question_id} turn ${c.g.turn} ${c.g.model_a} vs ${c.g.model_b}; votes a=${c.tally.model_a} b=${c.tally.model_b} tie=${c.tally.tie}`
   }));
-  const criterion = await criterionFor("mtbench", `seed 103 simple random sample of ${cases.length} of ${eligible.length} judged pairs with a strict majority and under 9,000 characters.`);
+  const base = await criterionFor("mtbench", `seed 103 simple random sample of ${cases.length} of ${eligible.length} judged pairs with a strict majority and under 9,000 characters (of ${groups.size}).`);
+  const criterion = {
+    ...base,
+    question: "Given the user's turns, is response A the better answer than response B at the judged turn (input.judged_turn; earlier turns are context)?"
+  };
   return { name: "mtbench", criterion, cases, source: groups.size };
 }
 
@@ -79,6 +87,10 @@ async function tauBench() {
   const repo = path.join(rawRoot, "tau-bench");
   if (!existsSync(repo)) {
     execFileSync("git", ["clone", "--depth", "1", "--quiet", "https://github.com/sierra-research/tau-bench", repo], { stdio: "inherit" });
+  }
+  if (execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim() !== TAU_BENCH_COMMIT) {
+    execFileSync("git", ["-C", repo, "fetch", "--quiet", "--depth", "1", "origin", TAU_BENCH_COMMIT], { stdio: "inherit" });
+    execFileSync("git", ["-C", repo, "checkout", "--quiet", TAU_BENCH_COMMIT], { stdio: "inherit" });
   }
   const entries = JSON.parse(await readFile(path.join(repo, "historical_trajectories", "gpt-4o-retail.json"), "utf8"));
   const trials = new Map();
@@ -124,12 +136,28 @@ async function tauBench() {
       note: `task ${e.task_id} trial ${e.trial}; reward ${e.reward}; trials ${JSON.stringify(trials.get(e.task_id))}`
     };
   });
-  const criterion = await criterionFor("taubench", `seed 107 sample of one trajectory per task, ${cases.length} of ${eligible.length} tasks with trajectories up to 24,000 characters. The label is the environment reward, not a human label.`);
+  const criterion = await criterionFor("taubench", `seed 107 sample of one trajectory per task, ${cases.length} of the ${eligible.length} tasks (of ${trials.size}) that have a trajectory up to 24,000 characters, from tau-bench ${TAU_BENCH_COMMIT.slice(0, 7)}. The label is the environment reward, not a human label.`);
   return { name: "taubench", criterion, cases, source: entries.length };
 }
 
-for (const build of [chaosMnli, mtBench, tauBench]) {
-  const { name, criterion, cases, source } = await build();
+/** The same MT-Bench cases with the responses swapped, so the label flips. */
+function swapped({ name, criterion, cases, source }) {
+  return {
+    name: `${name}-swapped`,
+    criterion: { ...criterion, notes: `${criterion.notes} Responses swapped: response_a is the original response_b.` },
+    cases: cases.map((c) => ({
+      ...c,
+      id: `${c.id}s`,
+      output: { response_a: c.output.response_b, response_b: c.output.response_a },
+      humanLabel: c.humanLabel === "pass" ? "fail" : "pass"
+    })),
+    source
+  };
+}
+
+const sets = [await chaosMnli(), await mtBench(), await tauBench()];
+sets.splice(2, 0, swapped(sets[1]));
+for (const { name, criterion, cases, source } of sets) {
   const dir = await writeFixture(path.join("compare", name), { criterion, cases, pairs: [] });
   const pass = cases.filter((c) => c.humanLabel === "pass").length;
   console.log(`${dir}: ${cases.length} cases (${pass} pass, ${cases.filter((c) => c.reviewerDisagreement).length} split), from ${source} source rows`);
