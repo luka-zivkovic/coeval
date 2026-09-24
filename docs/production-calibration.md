@@ -1,6 +1,6 @@
 # Production calibration
 
-Status: **CURRENT shared contract, pure analysis, a compute-only preview route, a project view, an append-only record store, API-key ingest, and an owner import; reports do not read stored records yet**
+Status: **CURRENT shared contract, pure analysis, a compute-only preview route, a project view, an append-only record store, API-key ingest, an owner import, and reports and snapshots over stored records; the view does not use stored records yet**
 
 Production calibration reports whether a classifier's stated probabilities held
 up against the outcomes that arrived later on the customer's own traffic. It
@@ -343,14 +343,56 @@ uses the same write path and error codes, prefixed `production_calibration_`,
 with the owner as submitter. Members get `403
 production_calibration_owner_required`.
 
+## CURRENT: stored reports and snapshots
+
+Project members can build a report from the project's stored records and
+save it as a snapshot. The server always loads the records itself, so a
+stored report or snapshot describes only records Rubrist holds, never a
+pasted ledger.
+
+- `POST /api/production-calibration/report` takes an optional window
+  (`from` inclusive and `to` exclusive, ISO timestamps with an offset, on
+  decision time) and the preview's parameters (`question`, `threshold`,
+  `bins`, `windowDays`, `costs`). It loads the decisions whose `at` falls in
+  the window with all of their actions and outcomes, plus orphan actions and
+  outcomes whose own `at` falls in it, and builds the report with that window.
+  It answers the preview's `{ artifact, summary, projectRole }` plus
+  `recordCount` and `recordSetDigest`.
+- Records reach the builder ordered by `at`, then receive time, then content
+  digest, so outcome ties resolve the same way every time: two builds over
+  the same records with the same `now` produce identical canonical bytes.
+  Because identical records are stored once, a stored build can count fewer
+  outcomes than a preview of the same pasted ledger.
+- `recordSetDigest` is `governed_content_v1_digest` over the sorted content
+  digests of the loaded records, under `rubrist/production-record-set/v1`.
+  It shows whether a later build would use the same records.
+- A window that would load more than `PRODUCTION_REPORT_MAX_RECORDS` records
+  (100,000 by default) is `422 production_calibration_record_ceiling_exceeded`,
+  naming the ceiling and the window. It is never sampled. A `from` that is not
+  earlier than `to` is `400 production_calibration_invalid_window`.
+- `POST /api/production-calibration/snapshots` builds the same report and
+  saves it: the exact canonical bytes (`canonicalJson`), their digest, the
+  window, the request parameters, the record count, the record-set digest,
+  the build time, and the member who saved it. It answers `201 { snapshot }`.
+  A report larger than 16 MiB of canonical JSON is `422
+  production_calibration_snapshot_too_large`; choose a narrower window.
+- `GET /api/production-calibration/snapshots` lists them newest first, and
+  `GET /api/production-calibration/snapshots/:id` answers `{ snapshot,
+  artifact }`, parsing the artifact from the stored bytes only after they
+  still hash to their digest; an unknown ID is 404.
+- The `production_calibration_snapshots` table is append-only like the record
+  store. Its insert guard recomputes the digest over the bytes and checks that
+  the contract, window, and build time columns match the bytes. A snapshot
+  keeps the report version it was built with and is never recomputed.
+- Without database-backed mode these routes answer 501.
+
 ## Not implemented
 
-- **Stored reports, snapshots, and retention.** The preview route and the
-  view are still compute-only: nothing reads the record store yet, and the
-  view has no import button. Reports built from stored records, saved
-  snapshots, and retention, erasure, and purges are TARGET under accepted
-  [ADR-0013](decisions/0013-production-outcome-monitoring.md) and Batch 7 in
-  [`implementation-batches.md`](implementation-batches.md).
+- **The view over stored records, and retention.** The web view still reads
+  pasted ledgers only and has no import, stored report, or snapshot controls.
+  Retention, erasure, revoked-key purges, and snapshot deletion are TARGET
+  under accepted [ADR-0013](decisions/0013-production-outcome-monitoring.md)
+  and Batch 7 in [`implementation-batches.md`](implementation-batches.md).
 - **Pulled import.** Rubrist does not poll a running system for decisions;
   producers push them to the ingest route or an owner imports a file.
 - **Governed-review routing of a low-confidence sample.** The advisor names

@@ -78,7 +78,10 @@ import {
   PRODUCTION_INGEST_PATH,
   createProductionIngestRouter
 } from "./production-calibration/ingest-routes.js";
-import type { ProductionDecisionRecordRepository } from "./production-calibration/repository.js";
+import {
+  PRODUCTION_REPORT_DEFAULT_MAX_RECORDS,
+  type ProductionDecisionRecordRepository
+} from "./production-calibration/repository.js";
 import { PgProductionDecisionRecordRepository } from "./production-calibration/repository.pg.js";
 import { createProductionCalibrationRouter } from "./production-calibration/routes.js";
 import { assertImportJudgingAllowed, scheduleImportedCaseJudging } from "./workers/import-judging.js";
@@ -133,6 +136,10 @@ const PRODUCTION_INGEST_RECORDS_PER_MINUTE = guardrailFromEnv(
   "PRODUCTION_INGEST_RECORDS_PER_MINUTE",
   PRODUCTION_INGEST_DEFAULT_RECORDS_PER_MINUTE
 );
+const PRODUCTION_REPORT_MAX_RECORDS = Math.floor(guardrailFromEnv(
+  "PRODUCTION_REPORT_MAX_RECORDS",
+  PRODUCTION_REPORT_DEFAULT_MAX_RECORDS
+));
 const TRACE_TEST_VALIDATION_TIMEOUT_MS = guardrailFromEnv("TRACE_TEST_VALIDATION_TIMEOUT_MS", 30_000);
 
 function bootstrapTokenMatches(presented: string): boolean {
@@ -687,15 +694,16 @@ export function createApp(repository: RubristRepository = new DemoRepository(), 
     requestIdentity: binaryCalibrationIdentity,
     resolveProjectRole: resolveBinaryCalibrationRole
   }));
-  // Production calibration preview is compute-only: the caller posts a
-  // decision ledger and receives the shared module's artifact. Nothing is
-  // persisted, so it shares the session-only membership boundary and keeps
-  // its own body ceiling inside the router.
+  // Production calibration session routes: the compute-only preview, reports
+  // and snapshots over stored records, and the owner import. They share the
+  // session-only membership boundary and keep their own body ceiling inside
+  // the router.
   app.route("/api/production-calibration", createProductionCalibrationRouter({
     databaseMode: Boolean(options.auth && options.pool),
     requestIdentity: binaryCalibrationIdentity,
     resolveProjectRole: resolveBinaryCalibrationRole,
-    repository: productionDecisionRecordRepository
+    repository: productionDecisionRecordRepository,
+    maxReportRecords: PRODUCTION_REPORT_MAX_RECORDS
   }));
   // Durable ingest for production-ingest API keys (ADR-0013 §4). The /api/v1
   // middleware has resolved the key and refused every other capability.

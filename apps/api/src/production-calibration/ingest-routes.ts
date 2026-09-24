@@ -35,7 +35,7 @@ export interface CreateProductionIngestRouterOptions {
 }
 
 /** HTTP status for a repository rejection; shared with the session import route. */
-export function productionRecordErrorStatus(code: ProductionRecordRepositoryErrorCode): 400 | 404 | 409 | 413 | 503 {
+export function productionRecordErrorStatus(code: ProductionRecordRepositoryErrorCode): 400 | 404 | 409 | 413 | 422 | 503 {
   switch (code) {
     case "batch_too_large":
     case "record_too_large":
@@ -46,6 +46,9 @@ export function productionRecordErrorStatus(code: ProductionRecordRepositoryErro
       return 404;
     case "write_contention":
       return 503;
+    case "record_ceiling_exceeded":
+    case "snapshot_too_large":
+      return 422;
     case "empty_batch":
     case "invalid_record":
     case "future_dated_record":

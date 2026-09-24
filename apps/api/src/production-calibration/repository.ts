@@ -1,4 +1,4 @@
-import type { ProductionDecisionLedgerRecord } from "@rubrist/shared";
+import type { ProductionCalibrationArtifact, ProductionDecisionLedgerRecord } from "@rubrist/shared";
 
 // Durable production decision records (ADR-0013). Records are the source of
 // truth for production monitoring: append-only per project, identical records
@@ -35,9 +35,75 @@ export interface AppendProductionRecordsResult {
   awaitingDecision: number;
 }
 
+/** The largest saved snapshot, in canonical JSON bytes; the table's own check enforces the same bound. */
+export const PRODUCTION_SNAPSHOT_MAX_BYTES = 16 * 1024 * 1024;
+
+/** The most stored records one report build may load, unless the deployment sets its own ceiling. */
+export const PRODUCTION_REPORT_DEFAULT_MAX_RECORDS = 100_000;
+
+/** Decisions a report covers, by decision time: `from` inclusive, `to` exclusive, null for no bound. */
+export interface ProductionRecordWindow {
+  from: Date | null;
+  to: Date | null;
+}
+
+export interface LoadProductionRecordsInput {
+  projectId: string;
+  window: ProductionRecordWindow;
+  /** A build that would load more records fails with `record_ceiling_exceeded`; it is never sampled. */
+  maxRecords: number;
+}
+
+export interface LoadedProductionRecords {
+  /** Ordered by `at`, then receive time, then content digest, so every build over the same records agrees. */
+  records: ProductionDecisionLedgerRecord[];
+  /** Digest of the sorted content digests of the loaded records. */
+  recordSetDigest: string;
+}
+
+export interface SaveProductionSnapshotInput {
+  projectId: string;
+  userId: string;
+  /** A report built from stored records; the store keeps its exact canonical bytes. */
+  artifact: ProductionCalibrationArtifact;
+  /** The build request's parameters, kept for listing. */
+  parameters: Readonly<Record<string, unknown>>;
+  recordCount: number;
+  recordSetDigest: string;
+}
+
+export interface ProductionCalibrationSnapshotSummary {
+  id: string;
+  projectId: string;
+  reportContract: string;
+  artifactDigest: string;
+  window: { from: string | null; to: string | null };
+  parameters: Record<string, unknown>;
+  recordCount: number;
+  recordSetDigest: string;
+  builtAt: string;
+  createdByUserId: string;
+  createdAt: string;
+}
+
+export interface ProductionCalibrationSnapshot {
+  snapshot: ProductionCalibrationSnapshotSummary;
+  /** Parsed from the stored bytes after their digest was verified. */
+  artifact: ProductionCalibrationArtifact;
+}
+
 export interface ProductionDecisionRecordRepository {
   /** Append a batch atomically: every new record is written, or none is. */
   appendRecords(input: AppendProductionRecordsInput): Promise<AppendProductionRecordsResult>;
+  /**
+   * Load the decisions in the window with all of their actions and outcomes,
+   * plus orphan actions and outcomes whose own `at` is in the window.
+   */
+  loadRecords(input: LoadProductionRecordsInput): Promise<LoadedProductionRecords>;
+  saveSnapshot(input: SaveProductionSnapshotInput): Promise<ProductionCalibrationSnapshotSummary>;
+  /** Newest first. */
+  listSnapshots(projectId: string): Promise<ProductionCalibrationSnapshotSummary[]>;
+  getSnapshot(projectId: string, snapshotId: string): Promise<ProductionCalibrationSnapshot | null>;
 }
 
 export type ProductionRecordRepositoryErrorCode =
@@ -48,7 +114,9 @@ export type ProductionRecordRepositoryErrorCode =
   | "future_dated_record"
   | "conflicting_decision"
   | "project_not_found"
-  | "write_contention";
+  | "write_contention"
+  | "record_ceiling_exceeded"
+  | "snapshot_too_large";
 
 export class ProductionRecordRepositoryError extends Error {
   constructor(

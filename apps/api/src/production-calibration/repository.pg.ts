@@ -1,18 +1,31 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import {
+  PRODUCTION_CALIBRATION_CONTRACT,
   PRODUCTION_DECISION_RECORD_CONTRACT,
+  ProductionCalibrationArtifactSchema,
+  ProductionDecisionLedgerRecordSchema,
   type ProductionDecisionLedgerRecord
 } from "@rubrist/shared";
+import { canonicalJson } from "../lib/assessment-receipt.js";
 import { governedContentV1Digest } from "../lib/governed-content-digest.js";
 import {
   PRODUCTION_RECORD_APPEND_MAX_RECORDS,
   PRODUCTION_RECORD_MAX_BYTES,
+  PRODUCTION_SNAPSHOT_MAX_BYTES,
   ProductionRecordRepositoryError,
   type AppendProductionRecordsInput,
   type AppendProductionRecordsResult,
-  type ProductionDecisionRecordRepository
+  type LoadedProductionRecords,
+  type LoadProductionRecordsInput,
+  type ProductionCalibrationSnapshot,
+  type ProductionCalibrationSnapshotSummary,
+  type ProductionDecisionRecordRepository,
+  type SaveProductionSnapshotInput
 } from "./repository.js";
+
+/** Digest kind for the set of records a report was built from. */
+export const PRODUCTION_RECORD_SET_DIGEST_KIND = "rubrist/production-record-set/v1";
 
 // The content digest is governed_content_v1_digest over the record, the same
 // function the insert guard recomputes in SQL, so a stored digest always
@@ -93,6 +106,101 @@ export class PgProductionDecisionRecordRepository implements ProductionDecisionR
         awaitingDecision: awaiting.rows[0]?.awaiting ?? 0
       };
     });
+  }
+
+  async loadRecords(input: LoadProductionRecordsInput): Promise<LoadedProductionRecords> {
+    const from = input.window.from?.toISOString() ?? null;
+    const to = input.window.to?.toISOString() ?? null;
+    // One statement reads one consistent snapshot of the table. Loading one
+    // row past the ceiling tells an over-full window apart from an exact fit.
+    const result = await this.pool.query<{ content: unknown; content_digest: string }>(
+      `with window_decisions as (
+         select decision_id from production_decision_records
+         where project_id = $1 and kind = 'decision'
+           and ($2::timestamptz is null or record_at >= $2::timestamptz)
+           and ($3::timestamptz is null or record_at < $3::timestamptz)
+       ), selected as (
+         select record.content, record.content_digest, record.record_at, record.received_at
+         from production_decision_records record
+         where record.project_id = $1 and record.decision_id in (select decision_id from window_decisions)
+         union all
+         select orphan.content, orphan.content_digest, orphan.record_at, orphan.received_at
+         from production_decision_records orphan
+         where orphan.project_id = $1 and orphan.kind <> 'decision'
+           and ($2::timestamptz is null or orphan.record_at >= $2::timestamptz)
+           and ($3::timestamptz is null or orphan.record_at < $3::timestamptz)
+           and not exists (
+             select 1 from production_decision_records decision
+             where decision.project_id = $1 and decision.kind = 'decision' and decision.decision_id = orphan.decision_id
+           )
+       )
+       select content, content_digest from selected
+       order by record_at, received_at, content_digest
+       limit $4`,
+      [input.projectId, from, to, input.maxRecords + 1]
+    );
+    if (result.rows.length > input.maxRecords) {
+      throw new ProductionRecordRepositoryError(
+        "record_ceiling_exceeded",
+        `The window holds more than ${input.maxRecords} records; choose a narrower window`,
+        { maximum: input.maxRecords, from, to }
+      );
+    }
+    return {
+      records: result.rows.map((row) => ProductionDecisionLedgerRecordSchema.parse(row.content)),
+      recordSetDigest: governedContentV1Digest(
+        PRODUCTION_RECORD_SET_DIGEST_KIND,
+        result.rows.map((row) => row.content_digest).sort()
+      )
+    };
+  }
+
+  async saveSnapshot(input: SaveProductionSnapshotInput): Promise<ProductionCalibrationSnapshotSummary> {
+    const bytes = Buffer.from(canonicalJson(input.artifact), "utf8");
+    if (bytes.byteLength > PRODUCTION_SNAPSHOT_MAX_BYTES) throw snapshotTooLarge(bytes.byteLength);
+    const result = await this.pool.query(
+      `insert into production_calibration_snapshots
+         (id, project_id, report_contract, canonical_bytes, artifact_digest, window_from, window_to,
+          parameters, record_count, record_set_digest, built_at, created_by_user_id)
+       values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12)
+       returning ${SNAPSHOT_SUMMARY_COLUMNS}`,
+      [
+        `pcs_${randomUUID()}`, input.projectId, input.artifact.contract, bytes, bytesDigest(bytes),
+        input.artifact.window.from, input.artifact.window.to, JSON.stringify(input.parameters),
+        input.recordCount, input.recordSetDigest, input.artifact.generatedAt, input.userId
+      ]
+    ).catch((error: unknown) => {
+      throw mapPgError(error);
+    });
+    return snapshotSummary(result.rows[0] as Record<string, unknown>);
+  }
+
+  async listSnapshots(projectId: string): Promise<ProductionCalibrationSnapshotSummary[]> {
+    const result = await this.pool.query(
+      `select ${SNAPSHOT_SUMMARY_COLUMNS} from production_calibration_snapshots
+       where project_id = $1 order by created_at desc, id desc`,
+      [projectId]
+    );
+    return result.rows.map((row) => snapshotSummary(row as Record<string, unknown>));
+  }
+
+  async getSnapshot(projectId: string, snapshotId: string): Promise<ProductionCalibrationSnapshot | null> {
+    const result = await this.pool.query(
+      `select ${SNAPSHOT_SUMMARY_COLUMNS}, canonical_bytes from production_calibration_snapshots
+       where project_id = $1 and id = $2`,
+      [projectId, snapshotId]
+    );
+    const row = result.rows[0] as (Record<string, unknown> & { canonical_bytes: Buffer }) | undefined;
+    if (!row) return null;
+    const snapshot = snapshotSummary(row);
+    // Never trust a stored projection: the bytes must still hash to their digest.
+    if (bytesDigest(row.canonical_bytes) !== snapshot.artifactDigest) {
+      throw new Error(`Production calibration snapshot ${snapshotId} no longer matches its digest`);
+    }
+    return {
+      snapshot,
+      artifact: ProductionCalibrationArtifactSchema.parse(JSON.parse(row.canonical_bytes.toString("utf8")))
+    };
   }
 
   private async transaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -226,6 +334,47 @@ async function rejectConflictingDecisions(
   }
 }
 
+const SNAPSHOT_SUMMARY_COLUMNS = `id, project_id, report_contract, artifact_digest, window_from, window_to,
+  parameters, record_count, record_set_digest, built_at, created_by_user_id, created_at`;
+
+function bytesDigest(bytes: Buffer): string {
+  return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+}
+
+function iso(value: unknown): string {
+  return (value instanceof Date ? value : new Date(String(value))).toISOString();
+}
+
+function snapshotSummary(row: Record<string, unknown>): ProductionCalibrationSnapshotSummary {
+  if (row.report_contract !== PRODUCTION_CALIBRATION_CONTRACT) {
+    throw new Error(`Unsupported production calibration snapshot contract ${String(row.report_contract)}`);
+  }
+  return {
+    id: String(row.id),
+    projectId: String(row.project_id),
+    reportContract: String(row.report_contract),
+    artifactDigest: String(row.artifact_digest),
+    window: {
+      from: row.window_from === null ? null : iso(row.window_from),
+      to: row.window_to === null ? null : iso(row.window_to)
+    },
+    parameters: row.parameters as Record<string, unknown>,
+    recordCount: Number(row.record_count),
+    recordSetDigest: String(row.record_set_digest),
+    builtAt: iso(row.built_at),
+    createdByUserId: String(row.created_by_user_id),
+    createdAt: iso(row.created_at)
+  };
+}
+
+function snapshotTooLarge(bytes: number | null): ProductionRecordRepositoryError {
+  return new ProductionRecordRepositoryError(
+    "snapshot_too_large",
+    `The report is larger than a snapshot may be (${PRODUCTION_SNAPSHOT_MAX_BYTES} bytes); choose a narrower window`,
+    { bytes, maximum: PRODUCTION_SNAPSHOT_MAX_BYTES }
+  );
+}
+
 function mapPgError(error: unknown): Error {
   if (error instanceof ProductionRecordRepositoryError) return error;
   const code = typeof error === "object" && error !== null && "code" in error
@@ -240,6 +389,9 @@ function mapPgError(error: unknown): Error {
   }
   if (code === "23514" && constraint === "production_decision_records_content_check") {
     return new ProductionRecordRepositoryError("record_too_large", "A record exceeds the stored content limit");
+  }
+  if (code === "23514" && constraint === "production_calibration_snapshots_canonical_bytes_check") {
+    return snapshotTooLarge(null);
   }
   if (code === "23503" && constraint === "production_decision_records_project_id_fkey") {
     return new ProductionRecordRepositoryError("project_not_found", "The project no longer exists");
