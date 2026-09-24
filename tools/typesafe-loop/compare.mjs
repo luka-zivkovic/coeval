@@ -199,7 +199,8 @@ function summarize(judge, cases, results) {
   const probability = answered.map((r) => ({ p: r.p, label: truth01(r) }));
   // Sensitivity: the same scores read as confidence in the judge's own label.
   const ownLabel = answered.map((r) => ({ p: r.label === "pass" ? r.p : r.label === "fail" ? 1 - r.p : 0.5, label: truth01(r) }));
-  const fresh = answered.filter((r) => !r.cached).map((r) => r.ms).sort((a, b) => a - b);
+  // A cached record keeps the latency measured when its call was made.
+  const measured = answered.map((r) => r.ms).sort((a, b) => a - b);
   const bySplit = (split) => {
     const subset = decided.filter((r) => r.split === split);
     return rate(subset.filter((r) => r.label === r.truth).length, subset.length);
@@ -229,7 +230,7 @@ function summarize(judge, cases, results) {
     softLabel: soft.length
       ? { spearman: spearman(soft.map((r) => r.p), soft.map((r) => r.soft)), brier: round(soft.reduce((s, r) => s + (r.p - r.soft) ** 2, 0) / soft.length) }
       : null,
-    latencyMs: { freshCalls: fresh.length, p50: quantile(fresh, 0.5), p95: quantile(fresh, 0.95) },
+    latencyMs: { calls: measured.length, p50: quantile(measured, 0.5), p95: quantile(measured, 0.95) },
     meanInputTokens: withUsage.length ? Math.round(withUsage.reduce((s, r) => s + r.usage.input_tokens, 0) / withUsage.length) : null,
     costPer1kUsd: costPerThousand(judge.name, answered),
     items: rows.map((r) => ({ id: r.id, truth: r.truth, label: r.label ?? null, p: r.p ?? null, ms: r.ms, cached: r.cached, error: r.error ?? null }))
