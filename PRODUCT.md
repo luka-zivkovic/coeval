@@ -2,7 +2,7 @@
 
 Status: **active target-state charter**
 
-Last reviewed: 2026-09-23
+Last reviewed: 2026-09-24
 
 This document is the source of truth for what Rubrist is becoming. The README,
 architecture notes, UI copy, plans, and code may describe current behavior,
@@ -170,14 +170,19 @@ the two accepted calibration-artifact durations. Missing, running, incomplete,
 revoked, and unavailable evidence remains explicit; the view creates no
 composite score or authority decision.
 
-Production calibration exists as a compute-only diagnostic. A pasted or
-uploaded ledger in the `rubrist/production-decision-record/v1` format produces
-a `rubrist/production-calibration/v2` report for boolean, choice, and score
-questions over an explicit decision window, and nothing is stored. Durable
-records, a non-paste ingest path, and saved snapshots are TARGET. Accepted
-[ADR-0013](docs/decisions/0013-production-outcome-monitoring.md) defines their
-persistence, ingest, snapshot, and retention design, and Batch 7 sequences the
-runtime work.
+Production outcome monitoring is now CURRENT as ungoverned development
+feedback under accepted
+[ADR-0013](docs/decisions/0013-production-outcome-monitoring.md). Keys with the
+production-ingest capability, and owners importing a ledger, append
+`rubrist/production-decision-record/v1` records to an append-only project store
+that rejects conflicting decisions and future-dated records. Members build
+`rubrist/production-calibration/v2` reports for boolean, choice, and score
+questions over an explicit window of stored records and save them as
+digest-bound snapshots; a compute-only preview of a pasted ledger remains.
+Retention by receive time (90 days by default), decision erasure with
+tombstones, revoked-key purges, and snapshot deletion are audited owner
+operations. Ironside ingest, governed-review routing of a production sample,
+and notifications remain ADR-0013 follow-ups.
 
 The producer runtime still does not run the repeated-trial contract or
 calibrate scalar and categorical evaluators. Those remaining gaps are distinct
