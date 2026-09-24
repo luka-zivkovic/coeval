@@ -1,6 +1,6 @@
 # Production calibration
 
-Status: **CURRENT shared contract, pure analysis, a compute-only preview route, an append-only record store, API-key ingest, an owner import, reports and snapshots over stored records, retention, erasure, and purges, and a project view over records and snapshots; the view has no retention or erasure controls yet**
+Status: **CURRENT shared contract, pure analysis, a compute-only preview route, an append-only record store, API-key ingest, an owner import, reports and snapshots over stored records, retention, erasure, and purges, and a project view over all of them**
 
 Production calibration reports whether a classifier's stated probabilities held
 up against the outcomes that arrived later on the customer's own traffic. It
@@ -65,7 +65,13 @@ a selected criterion. It reads three sources:
   inserted, were duplicates, or await their decision.
 - **Snapshots.** Saved reports are listed newest first with their window,
   record count, and digest; opening one shows it read-only, with the threshold
-  and cost controls disabled because its parameters are fixed.
+  and cost controls disabled because its parameters are fixed. Owners can
+  delete a snapshot after confirming.
+- **Retention and erasure.** Everyone sees the project's retention period.
+  Owners can change it (1 to 730 days) and erase a decision by ID after
+  confirming. Settings lists a "Purge records" action next to each revoked
+  production-ingest key. Owner-only controls are hidden from members once the
+  view knows the caller's role from `GET /settings`.
 - **A pasted ledger.** A pasted or uploaded ledger, or the bundled sample (a CI
   flaky-test triage bot's 16 decisions with 32 human outcomes, served from the
   web app's static assets; digests, probabilities, and option names only), is
@@ -414,7 +420,8 @@ append-only themselves; that is unchanged.
 - **Retention.** Each project keeps production records for
   `production_record_retention_days`: 90 by default, 1 to 730, and it cannot
   be switched off. Members read it with `GET /api/production-calibration/settings`
-  and owners change it with `PUT` (`{ "retentionDays": n }`, audited as
+  (which also answers the caller's `projectRole`) and owners change it with
+  `PUT` (`{ "retentionDays": n }`, audited as
   `production.retention.update`). Every API process runs a sweep hourly
   (`PRODUCTION_RETENTION_INTERVAL_MS`, 0 disables the timer), and an advisory
   lock lets one run delete at a time. A sweep uses Rubrist's receive time, never
@@ -448,10 +455,6 @@ Changing retention, erasing, purging, and deleting snapshots are owner-only
 
 ## Not implemented
 
-- **Retention and erasure controls in the view.** The web view reads stored
-  records and snapshots but has no retention setting, erasure, purge, or
-  snapshot deletion controls; the API routes above are the owners' current
-  surface.
 - **Pulled import.** Rubrist does not poll a running system for decisions;
   producers push them to the ingest route or an owner imports a file.
 - **Governed-review routing of a low-confidence sample.** The advisor names

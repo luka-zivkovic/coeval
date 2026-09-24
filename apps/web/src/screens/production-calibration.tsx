@@ -18,6 +18,12 @@ import {
   previewProductionCalibration,
   ProductionCalibrationApiError,
   saveProductionSnapshot,
+  deleteProductionSnapshot,
+  eraseProductionDecision,
+  fetchProductionSettings,
+  updateProductionRetention,
+  type ProductionCalibrationSettings,
+  type ProductionRecordDeletionCounts,
   type ProductionCalibrationPreviewSummary,
   type ProductionCalibrationReportParameters,
   type ProductionCalibrationSnapshotSummary,
@@ -102,6 +108,15 @@ function PersistentProductionCalibrationScreen() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ProductionRecordImportResult | null>(null);
   const [snapshots, setSnapshots] = useState<ProductionCalibrationSnapshotSummary[] | null>(null);
+  const [settings, setSettings] = useState<ProductionCalibrationSettings | null>(null);
+  const [settingsFailed, setSettingsFailed] = useState(false);
+  // The snapshot an in-flight open is loading, so deleting it can cancel that load.
+  const openingSnapshot = useRef<string | null>(null);
+  const [retentionDraft, setRetentionDraft] = useState("");
+  const [savingRetention, setSavingRetention] = useState(false);
+  const [eraseDecisionId, setEraseDecisionId] = useState("");
+  const [erasing, setErasing] = useState(false);
+  const [erased, setErased] = useState<{ decisionId: string; counts: ProductionRecordDeletionCounts } | null>(null);
   const [loadingSample, setLoadingSample] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inflight = useRef<AbortController | null>(null);
@@ -133,7 +148,75 @@ function PersistentProductionCalibrationScreen() {
 
   useEffect(() => {
     void refreshSnapshots();
+    void (async () => {
+      try {
+        const loaded = await fetchProductionSettings();
+        setSettings(loaded);
+        setRetentionDraft(String(loaded.retentionDays));
+      } catch (cause) {
+        setSettingsFailed(true);
+        setError(describeError(cause));
+      }
+    })();
   }, [refreshSnapshots]);
+
+  // Owner-only controls show while the role is loading and for owners; after
+  // the role arrives, or if it cannot be loaded, members never see them.
+  const isOwner = settings?.projectRole === "owner";
+  const showOwnerControls = settings === null ? !settingsFailed : isOwner;
+
+  async function saveRetention(): Promise<void> {
+    const days = Number(retentionDraft);
+    if (!Number.isInteger(days) || days < 1 || days > 730) {
+      setError("Retention must be a whole number of days from 1 to 730.");
+      return;
+    }
+    setSavingRetention(true);
+    setError(null);
+    try {
+      const saved = await updateProductionRetention(days);
+      setSettings(saved);
+      setRetentionDraft(String(saved.retentionDays));
+    } catch (cause) {
+      setError(describeError(cause));
+    } finally {
+      setSavingRetention(false);
+    }
+  }
+
+  async function eraseDecision(): Promise<void> {
+    const decisionId = eraseDecisionId.trim();
+    if (!decisionId) return;
+    if (!window.confirm(`Erase every record of decision ${decisionId}? Later records for it will be rejected, and this cannot be undone.`)) return;
+    setErasing(true);
+    setError(null);
+    setErased(null);
+    try {
+      setErased({ decisionId, counts: await eraseProductionDecision(decisionId) });
+      setEraseDecisionId("");
+    } catch (cause) {
+      setError(describeError(cause));
+    } finally {
+      setErasing(false);
+    }
+  }
+
+  async function deleteSnapshot(snapshotId: string): Promise<void> {
+    if (!window.confirm("Delete this snapshot? Its saved report cannot be recovered.")) return;
+    setError(null);
+    if (openingSnapshot.current === snapshotId) {
+      inflight.current?.abort();
+      inflight.current = null;
+      openingSnapshot.current = null;
+    }
+    try {
+      await deleteProductionSnapshot(snapshotId);
+      if (reading?.source.kind === "snapshot" && reading.source.snapshot.id === snapshotId) setReading(null);
+      await refreshSnapshots();
+    } catch (cause) {
+      setError(describeError(cause));
+    }
+  }
 
   const run = useCallback(async (
     source: Exclude<ReadingSource, { kind: "snapshot" }>,
@@ -219,6 +302,7 @@ function PersistentProductionCalibrationScreen() {
     inflight.current?.abort();
     const controller = new AbortController();
     inflight.current = controller;
+    openingSnapshot.current = snapshotId;
     setError(null);
     try {
       const { snapshot, artifact } = await fetchProductionSnapshot(snapshotId, controller.signal);
@@ -230,6 +314,7 @@ function PersistentProductionCalibrationScreen() {
       setError(describeError(cause));
     } finally {
       if (inflight.current === controller) inflight.current = null;
+      if (openingSnapshot.current === snapshotId) openingSnapshot.current = null;
     }
   }
 
@@ -374,9 +459,11 @@ function PersistentProductionCalibrationScreen() {
             >
               {saving ? "Saving…" : "Save snapshot"}
             </Button>
-            <Button variant="default" size="sm" onClick={() => importInput.current?.click()} disabled={importing}>
-              {importing ? "Importing…" : "Import .jsonl (owners)"}
-            </Button>
+            {showOwnerControls ? (
+              <Button variant="default" size="sm" onClick={() => importInput.current?.click()} disabled={importing}>
+                {importing ? "Importing…" : "Import .jsonl (owners)"}
+              </Button>
+            ) : null}
             <input
               ref={importInput}
               type="file"
@@ -415,7 +502,7 @@ function PersistentProductionCalibrationScreen() {
                   <th scope="col">Window</th>
                   <th scope="col">Records</th>
                   <th scope="col">Digest</th>
-                  <th scope="col"><span className="sr-only">Open</span></th>
+                  <th scope="col"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -425,14 +512,71 @@ function PersistentProductionCalibrationScreen() {
                     <td className="font-mono text-[11px] text-ink-3">{formatReportWindow(snapshot.window)}</td>
                     <td className="font-mono text-[11px] tabular-nums">{snapshot.recordCount}</td>
                     <td className="font-mono text-[11px] text-ink-3">{snapshot.artifactDigest.slice(0, 19)}…</td>
-                    <td>
+                    <td className="whitespace-nowrap">
                       <Button variant="ghost" size="sm" onClick={() => void openSnapshot(snapshot.id)}>Open</Button>
+                      {isOwner ? (
+                        <Button variant="ghost" size="sm" onClick={() => void deleteSnapshot(snapshot.id)}>Delete</Button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader className="justify-between">
+          <CardTitle>Retention and erasure</CardTitle>
+          <span className="font-mono text-[10px] text-ink-4">by Rubrist's receive time · audited · owners change it</span>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-[12px] leading-5 text-ink-2">
+            {settings === null
+              ? "Loading retention…"
+              : `Rubrist keeps production records for ${settings.retentionDays} day${settings.retentionDays === 1 ? "" : "s"} after it receives them. An hourly sweep deletes older decisions with all of their actions and outcomes. Snapshots are kept.`}
+          </p>
+          {isOwner ? (
+            <div className="flex flex-wrap items-end gap-3">
+              <label className={fieldLabel}>
+                Retention · days
+                <input
+                  type="number"
+                  min={1}
+                  max={730}
+                  aria-label="Retention days"
+                  value={retentionDraft}
+                  onChange={(event) => setRetentionDraft(event.target.value)}
+                  className={numberField}
+                />
+              </label>
+              <Button variant="default" size="sm" onClick={() => void saveRetention()} disabled={savingRetention}>
+                {savingRetention ? "Saving…" : "Save retention"}
+              </Button>
+              <label className={fieldLabel}>
+                Erase a decision · ID
+                <input
+                  type="text"
+                  aria-label="Decision ID to erase"
+                  value={eraseDecisionId}
+                  onChange={(event) => setEraseDecisionId(event.target.value)}
+                  className="h-7 w-64 rounded-sm border border-rule bg-paper px-2 font-sans text-[12px] normal-case tracking-normal text-ink"
+                />
+              </label>
+              <Button variant="default" size="sm" onClick={() => void eraseDecision()} disabled={erasing || eraseDecisionId.trim() === ""}>
+                {erasing ? "Erasing…" : "Erase decision"}
+              </Button>
+            </div>
+          ) : null}
+          {erased ? (
+            <p className="font-mono text-[10.5px] text-ink-3" aria-live="polite">
+              erased {erased.decisionId} · {erased.counts.decisions} decisions · {erased.counts.actions} actions · {erased.counts.outcomes} outcomes · later records for it are rejected · rebuild a report to reflect it
+            </p>
+          ) : null}
+          <p className="text-[11.5px] leading-5 text-ink-3">
+            Erasing removes a decision's records and keeps only a digest of its ID, so a producer replaying its own ledger cannot bring the data back. To remove what a leaked key sent, revoke the key in Settings and purge its records there.
+          </p>
         </CardContent>
       </Card>
 

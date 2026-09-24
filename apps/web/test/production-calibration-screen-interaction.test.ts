@@ -61,15 +61,26 @@ function json(value: unknown, status = 200): Response {
 describe("production calibration screen interactions", () => {
   let container: HTMLDivElement;
   let root: Root;
-  let calls: Array<{ url: string; body: unknown }>;
+  let calls: Array<{ url: string; method: string; body: unknown }>;
   let snapshotResponse: Promise<Response> | null;
+  let role: "owner" | "member" | "unavailable";
 
   beforeEach(() => {
     (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     calls = [];
     snapshotResponse = null;
+    role = "owner";
+    dom.window.confirm = () => true;
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      calls.push({ url, body: init?.body ? JSON.parse(String(init.body)) : null });
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : null;
+      calls.push({ url, method, body });
+      if (url.endsWith("/settings")) {
+        if (role === "unavailable") return json({ error: "unavailable" }, 500);
+        return json({ retentionDays: method === "PUT" ? body?.retentionDays : 90, projectRole: role });
+      }
+      if (url.endsWith("/records/erase")) return json({ erased: { decisions: 1, actions: 0, outcomes: 2 } });
+      if (url.endsWith("/snapshots/pcs_old") && method === "DELETE") return new Response(null, { status: 204 });
       if (url.endsWith("/report")) {
         return json({ artifact, summary, projectRole: "owner", recordCount: 48, recordSetDigest: snapshot.recordSetDigest });
       }
@@ -123,7 +134,7 @@ describe("production calibration screen interactions", () => {
     setDate("Window through date", "2026-09-20");
     await act(async () => button("Save snapshot").click());
     await settle();
-    expect(calls.find((call) => call.url.endsWith("/snapshots") && call.body !== null)?.body).toEqual({
+    expect(calls.find((call) => call.url.endsWith("/snapshots") && call.method === "POST")?.body).toEqual({
       from: "2026-09-01T00:00:00.000Z", to: "2026-09-11T00:00:00.000Z", bins: 10, windowDays: 7
     });
 
@@ -145,5 +156,65 @@ describe("production calibration screen interactions", () => {
     await act(async () => release(json({ snapshot, artifact })));
     await settle();
     expect(source()).toContain("stored records");
+  });
+
+  it("hides owner controls from members once the role is known", async () => {
+    role = "member";
+    act(() => root.render(createElement(ProductionCalibrationScreen)));
+    await settle();
+    expect(container.textContent).toContain("Rubrist keeps production records for 90 days");
+    expect(button("Import .jsonl (owners)")).toBeUndefined();
+    expect(button("Delete")).toBeUndefined();
+    expect(container.querySelector('input[aria-label="Retention days"]')).toBeNull();
+    expect(container.querySelector('input[aria-label="Decision ID to erase"]')).toBeNull();
+  });
+
+  it("lets an owner change retention, erase a decision after confirming, and delete a snapshot", async () => {
+    act(() => root.render(createElement(ProductionCalibrationScreen)));
+    await settle();
+    setDate("Retention days", "30");
+    await act(async () => button("Save retention").click());
+    await settle();
+    expect(calls.find((call) => call.method === "PUT")?.body).toEqual({ retentionDays: 30 });
+    expect(container.textContent).toContain("for 30 days");
+
+    act(() => {
+      const input = container.querySelector<HTMLInputElement>('input[aria-label="Decision ID to erase"]')!;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "d-42");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    dom.window.confirm = () => false;
+    await act(async () => button("Erase decision").click());
+    expect(calls.some((call) => call.url.endsWith("/records/erase"))).toBe(false);
+    dom.window.confirm = () => true;
+    await act(async () => button("Erase decision").click());
+    await settle();
+    expect(calls.find((call) => call.url.endsWith("/records/erase"))?.body).toEqual({ decisionId: "d-42" });
+    expect(container.textContent).toContain("erased d-42 · 1 decisions · 0 actions · 2 outcomes");
+
+    await act(async () => button("Delete").click());
+    await settle();
+    expect(calls.some((call) => call.url.endsWith("/snapshots/pcs_old") && call.method === "DELETE")).toBe(true);
+  });
+
+  it("hides owner controls when the role cannot be loaded", async () => {
+    role = "unavailable";
+    act(() => root.render(createElement(ProductionCalibrationScreen)));
+    await settle();
+    expect(button("Import .jsonl (owners)")).toBeUndefined();
+    expect(button("Delete")).toBeUndefined();
+  });
+
+  it("cancels an in-flight open of a snapshot that is deleted", async () => {
+    let release: (response: Response) => void = () => undefined;
+    snapshotResponse = new Promise((resolve) => { release = resolve; });
+    act(() => root.render(createElement(ProductionCalibrationScreen)));
+    await settle();
+    await act(async () => button("Open").click());
+    await act(async () => button("Delete").click());
+    await settle();
+    await act(async () => release(json({ snapshot, artifact })));
+    await settle();
+    expect(source()).toBeNull();
   });
 });

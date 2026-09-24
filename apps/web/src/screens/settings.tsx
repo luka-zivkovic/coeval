@@ -21,6 +21,7 @@ import {
 } from "@/lib/api";
 import { authClient, useSession } from "@/lib/auth-client";
 import { forgetFirstProjectKey } from "@/lib/journey";
+import { purgeProductionApiKeyRecords } from "@/lib/production-calibration-api";
 import { useAppMode } from "@/lib/app-mode";
 import { useDialogFocus } from "@/hooks/use-dialog-focus";
 import type { ApiKey, ApiKeyCapability, CreatedApiKey, JudgeKeyProvider, JudgeProviderKey, ProjectSettings, RetentionPruneResult } from "@rubrist/shared";
@@ -525,6 +526,20 @@ function ApiKeysCard() {
     }
   };
 
+  // Removes what a revoked production-ingest key sent (ADR-0013 section 5).
+  const [purged, setPurged] = useState<string | null>(null);
+  const purge = async (key: ApiKey) => {
+    if (!window.confirm(`Delete every production decision record sent by ${key.name}? This cannot be undone.`)) return;
+    setError(null);
+    setPurged(null);
+    try {
+      const counts = await purgeProductionApiKeyRecords(key.id);
+      setPurged(`${key.name}: ${counts.decisions} decisions · ${counts.actions} actions · ${counts.outcomes} outcomes deleted`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   return (
     <Card className="mb-6">
       <CardHeader>
@@ -599,6 +614,7 @@ function ApiKeysCard() {
         )}
 
         {error ? <div className="text-[12.5px] text-signal">{error}</div> : null}
+        {purged ? <div className="text-[12.5px] text-ink-3" aria-live="polite">{purged}</div> : null}
 
         {loading ? (
           <div className="text-[12.5px] text-ink-3">Loading keys…</div>
@@ -619,11 +635,15 @@ function ApiKeysCard() {
                     {key.lastUsedAt ? ` · last used ${new Date(key.lastUsedAt).toLocaleDateString()}` : ""}
                   </div>
                 </div>
-                {key.revokedAt ? null : (
+                {key.revokedAt === null ? (
                   <Button variant="ghost" size="sm" onClick={() => revoke(key.id)}>
                     Revoke
                   </Button>
-                )}
+                ) : key.capability === "production_ingest" ? (
+                  <Button variant="ghost" size="sm" onClick={() => void purge(key)}>
+                    Purge records
+                  </Button>
+                ) : null}
               </div>
             ))}
           </div>

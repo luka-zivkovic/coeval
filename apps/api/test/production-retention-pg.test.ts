@@ -243,9 +243,9 @@ run("production record retention, erasure, and purges", () => {
       headers: { "content-type": "application/json" },
       ...(body === undefined ? {} : { body: JSON.stringify(body) })
     });
-    expect(await (await send("member", "GET", "/settings")).json()).toEqual({ retentionDays: 90 });
+    expect(await (await send("member", "GET", "/settings")).json()).toEqual({ retentionDays: 90, projectRole: "member" });
     expect((await send("member", "PUT", "/settings", { retentionDays: 30 })).status).toBe(403);
-    expect(await (await send("owner", "PUT", "/settings", { retentionDays: 30 })).json()).toEqual({ retentionDays: 30 });
+    expect(await (await send("owner", "PUT", "/settings", { retentionDays: 30 })).json()).toEqual({ retentionDays: 30, projectRole: "owner" });
     const tooLong = await send("owner", "PUT", "/settings", { retentionDays: 731 });
     expect(await tooLong.json()).toMatchObject({ code: "production_calibration_invalid_retention" });
     expect((await send("member", "POST", "/records/erase", { decisionId: "new" })).status).toBe(403);
