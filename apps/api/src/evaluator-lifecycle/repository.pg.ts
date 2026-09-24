@@ -71,7 +71,6 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
     input: EvaluatorCandidateCreateInput
   ): Promise<EvaluatorCandidateCreateResult> {
     requireOwner(actor);
-    rejectMutableModelAlias(input.modelBinding.modelId, "become a candidate");
     const requestDigest = evaluatorCandidateRequestDigest(actor.projectId, input);
     const client = await this.pool.connect();
     try {
@@ -106,6 +105,9 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
         return result;
       }
 
+      // Checked after replay, like the other candidate rules, so a committed
+      // candidate always replays identically.
+      rejectMutableModelAlias(input.modelBinding.modelId, "become a candidate");
       const subjectId = await ensureOwnerSubject(client, actor);
       const context = await loadCandidateContext(client, actor.projectId, input);
       assertCandidateContext(context, input);

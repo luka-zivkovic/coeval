@@ -153,7 +153,7 @@ const MUTABLE_MODEL_ALIAS_SUFFIXES = ["-latest", ":latest"] as const;
  * aliases under this rule; calibration records the provider-observed model.
  */
 export function mutableModelAlias(modelId: string): string | null {
-  const normalized = modelId.trim().toLowerCase();
+  const normalized = modelId.trim().toLowerCase().replace(/\/+$/, "");
   const segment = normalized.slice(normalized.lastIndexOf("/") + 1);
   if (MUTABLE_MODEL_ALIAS_NAMES.has(segment)) return segment;
   return MUTABLE_MODEL_ALIAS_SUFFIXES.find((suffix) => normalized.endsWith(suffix)) ?? null;

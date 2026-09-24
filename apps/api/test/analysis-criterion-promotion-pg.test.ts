@@ -1461,16 +1461,19 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
       const storedBinding = (await pool.query(
         `select model_binding from skill_versions where id=$1`,[candidate.skill.currentVersion.id]
       )).rows[0]!.model_binding;
-      await pool.query(
-        `update skill_versions set model_binding=jsonb_set(model_binding,'{modelId}','"default"') where id=$1`,
-        [candidate.skill.currentVersion.id]
-      );
-      await expect(lifecycle.activate(actor,candidate.skill.currentVersion.id,{
-        ...activationEvidence,regressionRunId,
-        idempotencyKey:"promotion-repository-alias-activate"
-      })).rejects.toMatchObject({code:"mutable_model_alias",details:{modelId:"default",alias:"default"}});
-      await pool.query(`update skill_versions set model_binding=$2::jsonb where id=$1`,
-        [candidate.skill.currentVersion.id,JSON.stringify(storedBinding)]);
+      try {
+        await pool.query(
+          `update skill_versions set model_binding=jsonb_set(model_binding,'{modelId}','"default"') where id=$1`,
+          [candidate.skill.currentVersion.id]
+        );
+        await expect(lifecycle.activate(actor,candidate.skill.currentVersion.id,{
+          ...activationEvidence,regressionRunId,
+          idempotencyKey:"promotion-repository-alias-activate"
+        })).rejects.toMatchObject({code:"mutable_model_alias",details:{modelId:"default",alias:"default"}});
+      } finally {
+        await pool.query(`update skill_versions set model_binding=$2::jsonb where id=$1`,
+          [candidate.skill.currentVersion.id,JSON.stringify(storedBinding)]);
+      }
       const activated = await lifecycle.activate(actor,candidate.skill.currentVersion.id,{
         ...activationEvidence,regressionRunId,
         idempotencyKey:"promotion-repository-activate"

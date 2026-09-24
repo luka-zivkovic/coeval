@@ -11,7 +11,7 @@ import {
 
 describe("mutable model alias rule", () => {
   it.each([
-    ["latest", "latest"], ["DEFAULT", "default"], [" auto ", "auto"], ["openrouter/auto", "auto"],
+    ["latest", "latest"], ["DEFAULT", "default"], [" auto ", "auto"], ["openrouter/auto", "auto"], ["openrouter/auto/", "auto"],
     ["claude-3-5-sonnet-latest", "-latest"], ["chatgpt-4o-latest", "-latest"], ["jev-latest", "-latest"],
     ["llama3:latest", ":latest"], ["anthropic/claude-sonnet-4.5:latest", ":latest"]
   ])("treats %s as the alias %s", (modelId, alias) => {
