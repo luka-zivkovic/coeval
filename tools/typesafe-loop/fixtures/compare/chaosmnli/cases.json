@@ -1,0 +1,2802 @@
+[
+  {
+    "id": "n001",
+    "input": {
+      "premise": "As legal scholar Randall Kennedy wrote in his book Race, Crime, and the Law , Even if race is only one of several factors behind a decision, tolerating it at all means tolerating it as potentially the decisive factor."
+    },
+    "output": {
+      "hypothesis": "Race should always be considered in judicial decisions."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.25,
+    "note": "uid 77875c; counts {\"e\":25,\"n\":39,\"c\":36}"
+  },
+  {
+    "id": "n002",
+    "input": {
+      "premise": "appropriate agency representatives, help resolve"
+    },
+    "output": {
+      "hypothesis": "the right agency workers, help fix my security system"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.32,
+    "note": "uid 117089n; counts {\"e\":32,\"n\":67,\"c\":1}"
+  },
+  {
+    "id": "n003",
+    "input": {
+      "premise": "Took forever."
+    },
+    "output": {
+      "hypothesis": "Lasted too long"
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.9,
+    "note": "uid 129601e; counts {\"e\":90,\"n\":10,\"c\":0}"
+  },
+  {
+    "id": "n004",
+    "input": {
+      "premise": "Linda Tripp was indicted for illegally taping telephone conversations with Monica Lewinsky."
+    },
+    "output": {
+      "hypothesis": "Monica Lewinsky was illegally taped by Linda Tripp."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.95,
+    "note": "uid 40100e; counts {\"e\":95,\"n\":3,\"c\":2}"
+  },
+  {
+    "id": "n005",
+    "input": {
+      "premise": "Lawyers in their first three years of practice or who are inactive pay $90, and retired lawyers pay nothing."
+    },
+    "output": {
+      "hypothesis": "Lawyers pay $90 to be included in the directory."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.13,
+    "note": "uid 109278n; counts {\"e\":13,\"n\":74,\"c\":13}"
+  },
+  {
+    "id": "n006",
+    "input": {
+      "premise": "Hearty Sabbath meals."
+    },
+    "output": {
+      "hypothesis": "Hearty meals will only be offered to Buddhists "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.01,
+    "note": "uid 19208c; counts {\"e\":1,\"n\":47,\"c\":52}"
+  },
+  {
+    "id": "n007",
+    "input": {
+      "premise": "Also, stakeholders may not interpret principles consistently, and it is important for stakeholders to have the same conceptual framework as preparers when interpreting a principle."
+    },
+    "output": {
+      "hypothesis": "stakeholders may not interpret how they want to invest their money"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.36,
+    "note": "uid 3799n; counts {\"e\":36,\"n\":40,\"c\":24}"
+  },
+  {
+    "id": "n008",
+    "input": {
+      "premise": "Some Kwanzaa rituals, most notably the focus on candles, seem to have been borrowed from Hanukkah."
+    },
+    "output": {
+      "hypothesis": "They claimed to have started the tradition on their own."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.02,
+    "note": "uid 60212c; counts {\"e\":2,\"n\":48,\"c\":50}"
+  },
+  {
+    "id": "n009",
+    "input": {
+      "premise": "Routine screening and intervention will require engendering a sense of role responsibility among emergency department clinicians towards addressing substance abuse."
+    },
+    "output": {
+      "hypothesis": "Routine screening has no impact on substance abuse prevention."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.03,
+    "note": "uid 104395c; counts {\"e\":3,\"n\":37,\"c\":60}"
+  },
+  {
+    "id": "n010",
+    "input": {
+      "premise": "Everybody has this quote from NBA commissioner David  You cannot strike your boss and still hold your job--unless you play in the NBA."
+    },
+    "output": {
+      "hypothesis": "NBA commissioner said he hates NBA players."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.01,
+    "note": "uid 67571c; counts {\"e\":1,\"n\":44,\"c\":55}"
+  },
+  {
+    "id": "n011",
+    "input": {
+      "premise": "No, don't answer."
+    },
+    "output": {
+      "hypothesis": "Don't say a word. "
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.85,
+    "note": "uid 31263n; counts {\"e\":85,\"n\":15,\"c\":0}"
+  },
+  {
+    "id": "n012",
+    "input": {
+      "premise": "Text Box 2.1: Gross Domestic Product and Gross National Product 48Text Box 4.1: How do the NIPA and federal unified budget concepts of"
+    },
+    "output": {
+      "hypothesis": "This text displays how GDP and GNP is calculated."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.25,
+    "note": "uid 109876n; counts {\"e\":25,\"n\":45,\"c\":30}"
+  },
+  {
+    "id": "n013",
+    "input": {
+      "premise": "Why shouldn't he be? "
+    },
+    "output": {
+      "hypothesis": "He doesn't actually want to be that way."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.07,
+    "note": "uid 33822n; counts {\"e\":7,\"n\":80,\"c\":13}"
+  },
+  {
+    "id": "n014",
+    "input": {
+      "premise": "they they are good"
+    },
+    "output": {
+      "hypothesis": "They're excellent."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.49,
+    "note": "uid 88210e; counts {\"e\":49,\"n\":38,\"c\":13}"
+  },
+  {
+    "id": "n015",
+    "input": {
+      "premise": "Two economists at Virginia Commonwealth University--yes, here are the economists again, but this time making a more plausible argument--studied millions of auto-accident claims filed between 1989 and 1993."
+    },
+    "output": {
+      "hypothesis": "Two qualified researchers looked into vehicular accident insurance claims."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.72,
+    "note": "uid 116713e; counts {\"e\":72,\"n\":21,\"c\":7}"
+  },
+  {
+    "id": "n016",
+    "input": {
+      "premise": "But I guess I can take it we were wrong, pursued Julius."
+    },
+    "output": {
+      "hypothesis": "Julius was right that we were incorrect.  "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.46,
+    "note": "uid 61684n; counts {\"e\":46,\"n\":43,\"c\":11}"
+  },
+  {
+    "id": "n017",
+    "input": {
+      "premise": "He hadn't seen even pictures of such things since the few silent movies run in some of the little art theaters."
+    },
+    "output": {
+      "hypothesis": "He had recently seen pictures depicting those things."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.11,
+    "note": "uid 8545c; counts {\"e\":11,\"n\":16,\"c\":73}"
+  },
+  {
+    "id": "n018",
+    "input": {
+      "premise": "Princes Street is to Scots what Oxford Street is to the English the premier shopping street of the land."
+    },
+    "output": {
+      "hypothesis": "Many high end retail outlets own stores on Princes Street."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.69,
+    "note": "uid 105453n; counts {\"e\":69,\"n\":31,\"c\":0}"
+  },
+  {
+    "id": "n019",
+    "input": {
+      "premise": "Therefore, many leading finance organizations have calculated and compared these percentages as a general indication of how well they supported the organization's business objectives."
+    },
+    "output": {
+      "hypothesis": "The data was generated based on only finance department. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.25,
+    "note": "uid 45769c; counts {\"e\":25,\"n\":55,\"c\":20}"
+  },
+  {
+    "id": "n020",
+    "input": {
+      "premise": "But they also don't seem to mind when the tranquillity of a Zen temple rock garden is shattered by recorded announcements blaring from loudspeakers parroting the information already contained in the leaflets provided at the ticket office; when heavy-metal pop music loudly emanates from the radio of the middle-aged owner of a corner grocery store; and when parks, gardens, and hallowed temples are ringed by garish souvenir shops whose shelves display both the tastefully understated and the hideously kitsch."
+    },
+    "output": {
+      "hypothesis": "A Zen temple rock garden is a a place for lots of people to gather and celebrate."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.24,
+    "note": "uid 55572n; counts {\"e\":24,\"n\":50,\"c\":26}"
+  },
+  {
+    "id": "n021",
+    "input": {
+      "premise": "There may be a small savings at the factory showrooms in Manacor, where you'll have the biggest choice."
+    },
+    "output": {
+      "hypothesis": "The factory show rooms are cheaper."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.67,
+    "note": "uid 103616e; counts {\"e\":67,\"n\":32,\"c\":1}"
+  },
+  {
+    "id": "n022",
+    "input": {
+      "premise": "3)  Dare you rise to the occasion, like Raskolnikov, and reject the petty rules that govern lesser men?"
+    },
+    "output": {
+      "hypothesis": "Would you sit back and watch the world burn?"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.13,
+    "note": "uid 117487c; counts {\"e\":13,\"n\":61,\"c\":26}"
+  },
+  {
+    "id": "n023",
+    "input": {
+      "premise": "Since the rules were issued as interim rules and not as general notices of proposed rulemaking, they are not subject to the Unfunded Mandates Reform Act of 1995."
+    },
+    "output": {
+      "hypothesis": "The rules were  not issued as interim rules but rather general notices of proposed rulemaking."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.18,
+    "note": "uid 117680c; counts {\"e\":18,\"n\":6,\"c\":76}"
+  },
+  {
+    "id": "n024",
+    "input": {
+      "premise": "'I see.'"
+    },
+    "output": {
+      "hypothesis": "It was clear"
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.67,
+    "note": "uid 11303n; counts {\"e\":67,\"n\":31,\"c\":2}"
+  },
+  {
+    "id": "n025",
+    "input": {
+      "premise": "Arsenic would put poor Emily out of the way just as well as strychnine. "
+    },
+    "output": {
+      "hypothesis": "There are many ways to get Emily out of the way."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.68,
+    "note": "uid 35290n; counts {\"e\":68,\"n\":31,\"c\":1}"
+  },
+  {
+    "id": "n026",
+    "input": {
+      "premise": "The Leland Act  (1) simplify the household definition"
+    },
+    "output": {
+      "hypothesis": "The Leland Act defines the legal definition of what a household is."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.67,
+    "note": "uid 39960n; counts {\"e\":67,\"n\":24,\"c\":9}"
+  },
+  {
+    "id": "n027",
+    "input": {
+      "premise": "In Texas, the ability to produce fairly stated external financial reports was only the first step in building a more effective, resultsoriented government."
+    },
+    "output": {
+      "hypothesis": "There are many steps when it comes to building a more effective results oriented government in texas"
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.81,
+    "note": "uid 90846n; counts {\"e\":81,\"n\":15,\"c\":4}"
+  },
+  {
+    "id": "n028",
+    "input": {
+      "premise": "If there was a bit of Fuller in Leonardo, there was also a bit of Liberace in this theatrical, high-living dandy who favored brocade doublets and bad boys with pretty faces."
+    },
+    "output": {
+      "hypothesis": "Leonardo's character was based on the lifestyle of Liberace."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.45,
+    "note": "uid 88064n; counts {\"e\":45,\"n\":49,\"c\":6}"
+  },
+  {
+    "id": "n029",
+    "input": {
+      "premise": "Game-trackers will be out by this time in an attempt to locate the tiger's hunting ground for the evening safari."
+    },
+    "output": {
+      "hypothesis": "The tigers are hunting at this time."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.46,
+    "note": "uid 146070e; counts {\"e\":46,\"n\":41,\"c\":13}"
+  },
+  {
+    "id": "n030",
+    "input": {
+      "premise": "The village is tiny and a total contrast to the bustle of the Trenchtown ghetto in Kingston, where he lived as a recording superstar."
+    },
+    "output": {
+      "hypothesis": "He spent most of his time in the tiny village, outside of Kingston,"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.19,
+    "note": "uid 55864c; counts {\"e\":19,\"n\":51,\"c\":30}"
+  },
+  {
+    "id": "n031",
+    "input": {
+      "premise": "Title IV of the Clean Air Act (relating to acid deposition control)"
+    },
+    "output": {
+      "hypothesis": "The title was placed due to widespread and irresponsible acid deposition. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.24,
+    "note": "uid 99279n; counts {\"e\":24,\"n\":71,\"c\":5}"
+  },
+  {
+    "id": "n032",
+    "input": {
+      "premise": "Cultural transitions of major organizations are never easy to accomplish, and I would certainly not claim that it will be easy for GAO."
+    },
+    "output": {
+      "hypothesis": "GAO will likely have an easier time achieving cultural transitions than other organizations of similar size."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.04,
+    "note": "uid 13263n; counts {\"e\":4,\"n\":29,\"c\":67}"
+  },
+  {
+    "id": "n033",
+    "input": {
+      "premise": "General Accounting Office, A Model of Strategic Human Capital Management, GAO-02-373SP (Washington, D.C.: Mar."
+    },
+    "output": {
+      "hypothesis": "The GAO may be a model of strategic human capital management."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.78,
+    "note": "uid 49748n; counts {\"e\":78,\"n\":18,\"c\":4}"
+  },
+  {
+    "id": "n034",
+    "input": {
+      "premise": "This town, which flourished between 6500 and 5500 b.c. , had flat-roofed houses of mud and timber decorated with wall-paintings, some of which show patterns that still appear on Anatolian kilims."
+    },
+    "output": {
+      "hypothesis": "This town is over 8000 years old."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.69,
+    "note": "uid 48908e; counts {\"e\":69,\"n\":20,\"c\":11}"
+  },
+  {
+    "id": "n035",
+    "input": {
+      "premise": "Judge Bailey was chosen because he should be looked at as the representative of all future winners."
+    },
+    "output": {
+      "hypothesis": "Nobody liked Judge Bailey."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.01,
+    "note": "uid 135779c; counts {\"e\":1,\"n\":55,\"c\":44}"
+  },
+  {
+    "id": "n036",
+    "input": {
+      "premise": "i think we have too thank you very much you too bye-bye"
+    },
+    "output": {
+      "hypothesis": "I don't think we can thank you enough for your help."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.34,
+    "note": "uid 76947n; counts {\"e\":34,\"n\":52,\"c\":14}"
+  },
+  {
+    "id": "n037",
+    "input": {
+      "premise": "'I don't know what happened, exactly.' I said."
+    },
+    "output": {
+      "hypothesis": "You aren't making sense."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.08,
+    "note": "uid 113967e; counts {\"e\":8,\"n\":73,\"c\":19}"
+  },
+  {
+    "id": "n038",
+    "input": {
+      "premise": "The order was founded by James VII (James II of England) and continues today."
+    },
+    "output": {
+      "hypothesis": "Kings frequently founded orders that can still be found today."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.36,
+    "note": "uid 122062n; counts {\"e\":36,\"n\":63,\"c\":1}"
+  },
+  {
+    "id": "n039",
+    "input": {
+      "premise": "Possibly three months.\""
+    },
+    "output": {
+      "hypothesis": "It could be two months. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.26,
+    "note": "uid 29936n; counts {\"e\":26,\"n\":48,\"c\":26}"
+  },
+  {
+    "id": "n040",
+    "input": {
+      "premise": "Instead of indulging in the usual teary nostalgia about baseball (that means you, Ken Burns), Will considered it as a craft, explaining exactly why a manager calls a hit-and-run now and not on the next pitch, how a pitcher sets up his fastball, why a shortstop moves in a step for one kind of double play and out a step for another."
+    },
+    "output": {
+      "hypothesis": "Will is such an expert in explaining the details of baseball. "
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.67,
+    "note": "uid 104935e; counts {\"e\":67,\"n\":32,\"c\":1}"
+  },
+  {
+    "id": "n041",
+    "input": {
+      "premise": "How do you propose to get in touch with your would-be employers?"
+    },
+    "output": {
+      "hypothesis": "How will you destroy your potential employers' gardens?"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.01,
+    "note": "uid 11020c; counts {\"e\":1,\"n\":32,\"c\":67}"
+  },
+  {
+    "id": "n042",
+    "input": {
+      "premise": "But recently, the speculation has subsided."
+    },
+    "output": {
+      "hypothesis": "The speculation has been ignored recently."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.41,
+    "note": "uid 3693n; counts {\"e\":41,\"n\":39,\"c\":20}"
+  },
+  {
+    "id": "n043",
+    "input": {
+      "premise": "agencies' operating trust, enterprise and internal service funds) are required to produce auditable financial statements."
+    },
+    "output": {
+      "hypothesis": "Agencies have no operating trust and produce little to no auditable financial statements."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.03,
+    "note": "uid 83774c; counts {\"e\":3,\"n\":12,\"c\":85}"
+  },
+  {
+    "id": "n044",
+    "input": {
+      "premise": "While obviously constrained by their bondage, blacks nonetheless forged a culture rich with religious observances, folk tales, family traditions, song, and so on."
+    },
+    "output": {
+      "hypothesis": "Their traditional life is holding them back."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.09,
+    "note": "uid 23583n; counts {\"e\":9,\"n\":32,\"c\":59}"
+  },
+  {
+    "id": "n045",
+    "input": {
+      "premise": "well that's uh i agree with you there i mean he didn't have the surrounding cast that Montana had there's no doubt about that"
+    },
+    "output": {
+      "hypothesis": "I agree that he didn't have the same support as Montana, but he did well."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.4,
+    "note": "uid 49227n; counts {\"e\":40,\"n\":57,\"c\":3}"
+  },
+  {
+    "id": "n046",
+    "input": {
+      "premise": "Among the allegations is that Tokyo Joe--listen, he calls himself that-- duped subscribers to his e-mail advisory , exaggerating his annual returns by leaving out losing trades."
+    },
+    "output": {
+      "hypothesis": "Because Tokyo Joe doesn't tell people about the money he has lost he gets more investors. "
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.64,
+    "note": "uid 66937n; counts {\"e\":64,\"n\":33,\"c\":3}"
+  },
+  {
+    "id": "n047",
+    "input": {
+      "premise": "INTEREST RATE - The price charged per unit of money borrowed per year, or other unit of time, usually expressed as a percentage."
+    },
+    "output": {
+      "hypothesis": "Interest rate is defined as the total amount of money borrowed. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.19,
+    "note": "uid 70738c; counts {\"e\":19,\"n\":5,\"c\":76}"
+  },
+  {
+    "id": "n048",
+    "input": {
+      "premise": "Shoot only the ones that face us, Jon had told Adrin."
+    },
+    "output": {
+      "hypothesis": "Jon told Adrin and the others to only shoot the ones that face us."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.46,
+    "note": "uid 53088n; counts {\"e\":46,\"n\":41,\"c\":13}"
+  },
+  {
+    "id": "n049",
+    "input": {
+      "premise": "Founded by Alexander the Great on the Mediterranean coast in 322 b.c. , Alexandria was capital of Egypt during the Ptolemaic era."
+    },
+    "output": {
+      "hypothesis": "Alexandria was founded more than 100 years after the great wars of the 5th century b.c."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.28,
+    "note": "uid 74858c; counts {\"e\":28,\"n\":49,\"c\":23}"
+  },
+  {
+    "id": "n050",
+    "input": {
+      "premise": "In fact, the sloping shoulder was the noticeable feature of the new clothes of the Dior era, coming as it did immediately in the wake of the Joan Crawford/Rosalind Russell period and its vigorous shoulder padding."
+    },
+    "output": {
+      "hypothesis": "Dior was known for their exquisite blazers with thick heavy shoulder pads. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.19,
+    "note": "uid 26443c; counts {\"e\":19,\"n\":44,\"c\":37}"
+  },
+  {
+    "id": "n051",
+    "input": {
+      "premise": "The Kal whistled and Vrenna's eyes sparkled when she saw Jon swing it."
+    },
+    "output": {
+      "hypothesis": "Kal is whistling into Vrenna's face."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.05,
+    "note": "uid 118670c; counts {\"e\":5,\"n\":73,\"c\":22}"
+  },
+  {
+    "id": "n052",
+    "input": {
+      "premise": "With dark eyes and eyelashes she would have been a beauty. "
+    },
+    "output": {
+      "hypothesis": "She would have been the most beautiful with brown eyes."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.31,
+    "note": "uid 79245n; counts {\"e\":31,\"n\":64,\"c\":5}"
+  },
+  {
+    "id": "n053",
+    "input": {
+      "premise": "General Accounting Office, A Model of Strategic Human Capital Management, GAO-02-373SP (Washington, D.C.: Mar."
+    },
+    "output": {
+      "hypothesis": "The GAO is a model of strategic human capital management."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.85,
+    "note": "uid 49748e; counts {\"e\":85,\"n\":15,\"c\":0}"
+  },
+  {
+    "id": "n054",
+    "input": {
+      "premise": "Miller claimed the First Amendment (right to freedom of speech and association) rather than taking the Fifth (right against self-incrimination)."
+    },
+    "output": {
+      "hypothesis": "They wanted to make their voice heard."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.58,
+    "note": "uid 18086n; counts {\"e\":58,\"n\":40,\"c\":2}"
+  },
+  {
+    "id": "n055",
+    "input": {
+      "premise": "oh wow no i just started about well five years ago i think"
+    },
+    "output": {
+      "hypothesis": "It had started five years ago."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.64,
+    "note": "uid 141293e; counts {\"e\":64,\"n\":31,\"c\":5}"
+  },
+  {
+    "id": "n056",
+    "input": {
+      "premise": "Larger ski resorts are 90 minutes away."
+    },
+    "output": {
+      "hypothesis": "The largest resort is actually 100 minutes away."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.02,
+    "note": "uid 65066n; counts {\"e\":2,\"n\":69,\"c\":29}"
+  },
+  {
+    "id": "n057",
+    "input": {
+      "premise": "uh-huh you can't do that in a skirt  poor thing"
+    },
+    "output": {
+      "hypothesis": "You can do anything in a skirt."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.03,
+    "note": "uid 105385c; counts {\"e\":3,\"n\":23,\"c\":74}"
+  },
+  {
+    "id": "n058",
+    "input": {
+      "premise": "Meanwhile, a site established for the WorldAid '96 Global Expo and Conference on Emergency Relief, which took place last fall, gives you a firsthand glimpse of the frequently crass world of the relief business (note the long list of commercial exhibitors in attendance)."
+    },
+    "output": {
+      "hypothesis": "WorldAid had a GLobal expo in 2002."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.02,
+    "note": "uid 94674c; counts {\"e\":2,\"n\":63,\"c\":35}"
+  },
+  {
+    "id": "n059",
+    "input": {
+      "premise": "An organization's activities, core processes, and resources must be aligned to support its mission and help it achieve its goals."
+    },
+    "output": {
+      "hypothesis": "An organization is successful if its activities, resources, and goals align."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.75,
+    "note": "uid 79507e; counts {\"e\":75,\"n\":25,\"c\":0}"
+  },
+  {
+    "id": "n060",
+    "input": {
+      "premise": "I saw that a faint streak of daylight was showing through the curtains of the windows, and that the clock on the mantelpiece pointed to close upon five o'clock. "
+    },
+    "output": {
+      "hypothesis": "I saw that it was already morning, and the sun was coming up."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.7,
+    "note": "uid 130067e; counts {\"e\":70,\"n\":26,\"c\":4}"
+  },
+  {
+    "id": "n061",
+    "input": {
+      "premise": "Also, other sorbent-based approaches in development may prove in time to be preferable to ACI, making the use of ACI only a conservative assumption."
+    },
+    "output": {
+      "hypothesis": "Hydrogen-based approaches in development may be preferable to ACl."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.18,
+    "note": "uid 138862c; counts {\"e\":18,\"n\":66,\"c\":16}"
+  },
+  {
+    "id": "n062",
+    "input": {
+      "premise": "Politically, it's anti-democratic, replacing congressional and executive branch decision-making."
+    },
+    "output": {
+      "hypothesis": "It's anti-democratic and takes the decision-making away from the executive branch in DC."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.73,
+    "note": "uid 96338n; counts {\"e\":73,\"n\":27,\"c\":0}"
+  },
+  {
+    "id": "n063",
+    "input": {
+      "premise": "Waterloo."
+    },
+    "output": {
+      "hypothesis": "In the Battle of Waterloo."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.18,
+    "note": "uid 109443e; counts {\"e\":18,\"n\":77,\"c\":5}"
+  },
+  {
+    "id": "n064",
+    "input": {
+      "premise": "Another alternative is that our heroes were pursuing the noble goal of academics everywhere--tenure."
+    },
+    "output": {
+      "hypothesis": "Academics are a good goal to strive for. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.4,
+    "note": "uid 128996n; counts {\"e\":40,\"n\":52,\"c\":8}"
+  },
+  {
+    "id": "n065",
+    "input": {
+      "premise": "Randy's Anecdotal Wrap-Up"
+    },
+    "output": {
+      "hypothesis": "Randy's Conclusions"
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.78,
+    "note": "uid 61524e; counts {\"e\":78,\"n\":20,\"c\":2}"
+  },
+  {
+    "id": "n066",
+    "input": {
+      "premise": "you'd be crazy if you trust them but anyway call it what is it McCarthyism no  i'm not like that i just got enough common sense that nope to you come repent make a world apology for all the wrongs that you've done and yeah we've done wrongs but we've not done near the atrocities they've done and we need to maybe do that also you know"
+    },
+    "output": {
+      "hypothesis": "I may appear as racist, but we are suffering from a very real threat."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.17,
+    "note": "uid 15197n; counts {\"e\":17,\"n\":77,\"c\":6}"
+  },
+  {
+    "id": "n067",
+    "input": {
+      "premise": "The case law is a whole body unto itself."
+    },
+    "output": {
+      "hypothesis": "The criminal law is a whole body unto itself."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.16,
+    "note": "uid 56138c; counts {\"e\":16,\"n\":59,\"c\":25}"
+  },
+  {
+    "id": "n068",
+    "input": {
+      "premise": "that they don't show local"
+    },
+    "output": {
+      "hypothesis": "The they in this sentence only show things that aren't local."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.69,
+    "note": "uid 67938e; counts {\"e\":69,\"n\":24,\"c\":7}"
+  },
+  {
+    "id": "n069",
+    "input": {
+      "premise": "oh really yeah so he he's uh he's probably going to be going to jail and and the problem with him is he's on a guaranteed salary like for three years so whether he plays or not they've got to pay him ten million dollars so if they"
+    },
+    "output": {
+      "hypothesis": "He is so hardworking and has helped the team achieve so much, I don't see anything wrong with paying him a million dollar salary."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.04,
+    "note": "uid 115247c; counts {\"e\":4,\"n\":42,\"c\":54}"
+  },
+  {
+    "id": "n070",
+    "input": {
+      "premise": "Postal Service could increase those same rates by at least 13."
+    },
+    "output": {
+      "hypothesis": "The Postal Service would like to see the rates even higher than that."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.29,
+    "note": "uid 16253n; counts {\"e\":29,\"n\":68,\"c\":3}"
+  },
+  {
+    "id": "n071",
+    "input": {
+      "premise": "Should we invite these young wealthies back to our comparatively humble, small home?"
+    },
+    "output": {
+      "hypothesis": "The wealthies' have a much larger home than us. "
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.8,
+    "note": "uid 81469n; counts {\"e\":80,\"n\":19,\"c\":1}"
+  },
+  {
+    "id": "n072",
+    "input": {
+      "premise": "Rightly or wrongly, America is seen as globalization's prime mover and head cheerleader and will be blamed for its excesses until we start paying official attention to them."
+    },
+    "output": {
+      "hypothesis": "America alone is responsible for the excesses of the globalization movement. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.32,
+    "note": "uid 18635n; counts {\"e\":32,\"n\":44,\"c\":24}"
+  },
+  {
+    "id": "n073",
+    "input": {
+      "premise": "General Motors, for instance, lost $460 million to strikes in 1997, but investors treated the costs as a kind of extraordinary charge and valued the company as if the losses had never happened."
+    },
+    "output": {
+      "hypothesis": "GM lost a lot almost a million dollars in labor disputes."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.11,
+    "note": "uid 97926c; counts {\"e\":11,\"n\":17,\"c\":72}"
+  },
+  {
+    "id": "n074",
+    "input": {
+      "premise": "They were quite, tetanic in character.\""
+    },
+    "output": {
+      "hypothesis": "They would get upset whenever anyone would speak to them."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.1,
+    "note": "uid 10994n; counts {\"e\":10,\"n\":75,\"c\":15}"
+  },
+  {
+    "id": "n075",
+    "input": {
+      "premise": "These days, newspaper writers are no longer allowed the kind of license he took."
+    },
+    "output": {
+      "hypothesis": "Newspaper writers need to be more factual and careful these days."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.56,
+    "note": "uid 116059n; counts {\"e\":56,\"n\":37,\"c\":7}"
+  },
+  {
+    "id": "n076",
+    "input": {
+      "premise": "He leaned over Tommy, his face purple with excitement."
+    },
+    "output": {
+      "hypothesis": "He hovered over Tommy, with a deep color in his face from the thrill."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.89,
+    "note": "uid 26822n; counts {\"e\":89,\"n\":10,\"c\":1}"
+  },
+  {
+    "id": "n077",
+    "input": {
+      "premise": "audits and other reviews, including those showing deficiencies and recommendations reported by auditors and others who evaluate agencies' operations, (2) determine proper actions in response to findings and recommendations from audits and reviews, and (3) complete, within established time frames, all actions that correct or otherwise resolve the matters brought to management's attention."
+    },
+    "output": {
+      "hypothesis": "The findings of the audits and reviews do not lead to further action."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.09,
+    "note": "uid 50314c; counts {\"e\":9,\"n\":18,\"c\":73}"
+  },
+  {
+    "id": "n078",
+    "input": {
+      "premise": "More reserved and remote but a better administrator and financier than his uncle, Charles Brooke imposed on his men his own austere, efficient style of life."
+    },
+    "output": {
+      "hypothesis": "Charles Brookes methods were different but superior to those of his uncle."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.81,
+    "note": "uid 133038e; counts {\"e\":81,\"n\":18,\"c\":1}"
+  },
+  {
+    "id": "n079",
+    "input": {
+      "premise": "uh-huh so do you have to get a shade tolerant grass is that what you're"
+    },
+    "output": {
+      "hypothesis": "All grass seed needs full sun to grow."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.05,
+    "note": "uid 119758c; counts {\"e\":5,\"n\":42,\"c\":53}"
+  },
+  {
+    "id": "n080",
+    "input": {
+      "premise": "No money no results!\" Another voice which Tommy rather thought was that of Boris replied: \"Will you guarantee that there ARE results?\""
+    },
+    "output": {
+      "hypothesis": "Can you guarantee that there will be results with money? "
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.62,
+    "note": "uid 77175e; counts {\"e\":62,\"n\":32,\"c\":6}"
+  },
+  {
+    "id": "n081",
+    "input": {
+      "premise": "If they have overestimated how far the CPI is off, Boskin and his commission may institutionalize an underestimated CPI--guaranteeing a yearly, stealth tax increase."
+    },
+    "output": {
+      "hypothesis": "If they've overestimated how far the CPI is off, it will have horrific consequences. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.35,
+    "note": "uid 13760n; counts {\"e\":35,\"n\":62,\"c\":3}"
+  },
+  {
+    "id": "n082",
+    "input": {
+      "premise": "Puppet Shows."
+    },
+    "output": {
+      "hypothesis": "Television shows"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.02,
+    "note": "uid 58331c; counts {\"e\":2,\"n\":74,\"c\":24}"
+  },
+  {
+    "id": "n083",
+    "input": {
+      "premise": "yeah but uh do you have small kids"
+    },
+    "output": {
+      "hypothesis": "Do you have any children? "
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.65,
+    "note": "uid 100792n; counts {\"e\":65,\"n\":33,\"c\":2}"
+  },
+  {
+    "id": "n084",
+    "input": {
+      "premise": "3 It should be noted that the toxicity (LC50) of a sample observed in a range-finding test may be significantly different from the toxicity observed in the follow-up chronic definitive test  (1) the definitive test is longer; and (2) the test may be performed with a sample collected at a different time, and possibly differing significantly in the level of toxicity."
+    },
+    "output": {
+      "hypothesis": "The toxicity of a sample in the range-finding test will be exactly the same as the toxicity in the follow-up test."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.05,
+    "note": "uid 140005c; counts {\"e\":5,\"n\":10,\"c\":85}"
+  },
+  {
+    "id": "n085",
+    "input": {
+      "premise": "i can believe i can believe that"
+    },
+    "output": {
+      "hypothesis": "It's hard to make sense of the facts otherwise."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.14,
+    "note": "uid 49246n; counts {\"e\":14,\"n\":60,\"c\":26}"
+  },
+  {
+    "id": "n086",
+    "input": {
+      "premise": "The traditional opening time for many hotels is the Orthodox Easter, although some do not open until the end of April."
+    },
+    "output": {
+      "hypothesis": "The hotels open on March 13th."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.02,
+    "note": "uid 117713n; counts {\"e\":2,\"n\":37,\"c\":61}"
+  },
+  {
+    "id": "n087",
+    "input": {
+      "premise": "He dismounted and Ca'daan saw he was smaller than the rest."
+    },
+    "output": {
+      "hypothesis": "He was shorter than the others."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.91,
+    "note": "uid 111680e; counts {\"e\":91,\"n\":7,\"c\":2}"
+  },
+  {
+    "id": "n088",
+    "input": {
+      "premise": "After the recovery of Jerusalem in 1099, it took four hundred years of sieges and battles, treaties, betrayals, and yet more battles, before Christian kings and warlords succeeded in subduing the Moors."
+    },
+    "output": {
+      "hypothesis": "The Moors were able to subdue the Christian kings after just a decade of war."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.03,
+    "note": "uid 65879c; counts {\"e\":3,\"n\":8,\"c\":89}"
+  },
+  {
+    "id": "n089",
+    "input": {
+      "premise": "Visigoths sack Rome"
+    },
+    "output": {
+      "hypothesis": "The Visigoths were not successful."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.04,
+    "note": "uid 111662n; counts {\"e\":4,\"n\":36,\"c\":60}"
+  },
+  {
+    "id": "n090",
+    "input": {
+      "premise": "Oh, my friend, have I not said to you all along that I have no proofs. "
+    },
+    "output": {
+      "hypothesis": "I will be able to find some proof soon."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.06,
+    "note": "uid 122197n; counts {\"e\":6,\"n\":64,\"c\":30}"
+  },
+  {
+    "id": "n091",
+    "input": {
+      "premise": "The traditional opening time for many hotels is the Orthodox Easter, although some do not open until the end of April."
+    },
+    "output": {
+      "hypothesis": "The hotels don't open in Halloween."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.21,
+    "note": "uid 117713c; counts {\"e\":21,\"n\":46,\"c\":33}"
+  },
+  {
+    "id": "n092",
+    "input": {
+      "premise": "She buried his remains to spare her mother the gruesome sight."
+    },
+    "output": {
+      "hypothesis": "The remains would have caused grief to her mother."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.9,
+    "note": "uid 2262n; counts {\"e\":90,\"n\":9,\"c\":1}"
+  },
+  {
+    "id": "n093",
+    "input": {
+      "premise": "The track continues past the necropolis to an impressive amphitheatre, very probably carved by Nabateans, but influenced by the Romans."
+    },
+    "output": {
+      "hypothesis": "The path also leads to the ruins of a church.  "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.01,
+    "note": "uid 3103n; counts {\"e\":1,\"n\":60,\"c\":39}"
+  },
+  {
+    "id": "n094",
+    "input": {
+      "premise": "So it was traumatic."
+    },
+    "output": {
+      "hypothesis": "It wasn't traumatic for me. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0,
+    "note": "uid 143024c; counts {\"e\":0,\"n\":16,\"c\":84}"
+  },
+  {
+    "id": "n095",
+    "input": {
+      "premise": "The arches that flank the nave are filled with tiers of columns and the walls with windows, while the arches above the entrance and the apse are backed by semi-domes, further increasing the interior space."
+    },
+    "output": {
+      "hypothesis": "The arches that flank the nave are different from the arches above the entrance."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.93,
+    "note": "uid 107577e; counts {\"e\":93,\"n\":6,\"c\":1}"
+  },
+  {
+    "id": "n096",
+    "input": {
+      "premise": "Maps of hiking trails are available at the Government Publications Ceter, Low Block, Government Offices, 66 Queensway in Central."
+    },
+    "output": {
+      "hypothesis": "The maps show all the popular trails for walking and biking."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.25,
+    "note": "uid 112592n; counts {\"e\":25,\"n\":68,\"c\":7}"
+  },
+  {
+    "id": "n097",
+    "input": {
+      "premise": "It was made up to look as much like an old-fashioned steam train as possible."
+    },
+    "output": {
+      "hypothesis": "It was built in the modern era to look like something built in the past."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.85,
+    "note": "uid 99708e; counts {\"e\":85,\"n\":14,\"c\":1}"
+  },
+  {
+    "id": "n098",
+    "input": {
+      "premise": "Most pundits side with bushy-headed George Stephanopoulos ( This Week ), arguing that only air strikes would be politically palatable."
+    },
+    "output": {
+      "hypothesis": "Mr. Stephanopoulos has a very large pundit following due to his stance on air strikes only being politically palatable."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.67,
+    "note": "uid 119901e; counts {\"e\":67,\"n\":28,\"c\":5}"
+  },
+  {
+    "id": "n099",
+    "input": {
+      "premise": "Charles Geveden has introduced legislation that will increase the Access to Justice supplement on court filing fees."
+    },
+    "output": {
+      "hypothesis": "Charles Geveden initiated a law that will essentially lower court filing fees."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.47,
+    "note": "uid 95883e; counts {\"e\":47,\"n\":22,\"c\":31}"
+  },
+  {
+    "id": "n100",
+    "input": {
+      "premise": "What am I to do with them afterwards?\""
+    },
+    "output": {
+      "hypothesis": "It is the narrator's responsibility to take care of them."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.15,
+    "note": "uid 10015n; counts {\"e\":15,\"n\":73,\"c\":12}"
+  },
+  {
+    "id": "n101",
+    "input": {
+      "premise": "so you know well a lot of the stuff you hear coming from South Africa now and from West Africa that's considered world music because it's not particularly using certain types of folk styles"
+    },
+    "output": {
+      "hypothesis": "They rely too heavily on the types of folk styles."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.02,
+    "note": "uid 82988c; counts {\"e\":2,\"n\":40,\"c\":58}"
+  },
+  {
+    "id": "n102",
+    "input": {
+      "premise": "GAO recommends that the Secretary of Defense revise policy and guidance"
+    },
+    "output": {
+      "hypothesis": "GAO recommends that you eat 5 fruit/veg per day"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0,
+    "note": "uid 43891n; counts {\"e\":0,\"n\":50,\"c\":50}"
+  },
+  {
+    "id": "n103",
+    "input": {
+      "premise": "from from personal parties or from these uh phone answering phone uh commercial things"
+    },
+    "output": {
+      "hypothesis": "Is it from personal parties or the phone answering things?"
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.52,
+    "note": "uid 93587e; counts {\"e\":52,\"n\":47,\"c\":1}"
+  },
+  {
+    "id": "n104",
+    "input": {
+      "premise": "STANDARD COSTING - A costing method that attaches costs to cost objects based on reasonable estimates or cost studies and by means of budgeted rates rather than according to actual costs incurred."
+    },
+    "output": {
+      "hypothesis": "This costing model is based on research and analytical activity."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.62,
+    "note": "uid 54489e; counts {\"e\":62,\"n\":25,\"c\":13}"
+  },
+  {
+    "id": "n105",
+    "input": {
+      "premise": "How effectively DOD manages these funds will determine whether it receives a good return on its investment."
+    },
+    "output": {
+      "hypothesis": "The DOD is certain to have a bad return on these funds."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.03,
+    "note": "uid 46198c; counts {\"e\":3,\"n\":45,\"c\":52}"
+  },
+  {
+    "id": "n106",
+    "input": {
+      "premise": "To address these concerns, we supplement our Base Estimate of benefits with a series of sensitivity calculations that make use of other sources of concentration-response and valuation data for key benefits categories."
+    },
+    "output": {
+      "hypothesis": "Some scenarios allow for supplemental data to be used in lieu of primary data."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.45,
+    "note": "uid 90760e; counts {\"e\":45,\"n\":46,\"c\":9}"
+  },
+  {
+    "id": "n107",
+    "input": {
+      "premise": "GAO also issued over 160 reports detailing specific findings and made over 100 recommendations to agencies and to the President's Council on Year 2000 Conversion for improving the government's readiness."
+    },
+    "output": {
+      "hypothesis": "The GAO issued roughly 170 reports about specific findings."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.33,
+    "note": "uid 41391n; counts {\"e\":33,\"n\":44,\"c\":23}"
+  },
+  {
+    "id": "n108",
+    "input": {
+      "premise": "I think as soon as they get you, they'll come for me."
+    },
+    "output": {
+      "hypothesis": "People will come and get me."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.74,
+    "note": "uid 138500e; counts {\"e\":74,\"n\":25,\"c\":1}"
+  },
+  {
+    "id": "n109",
+    "input": {
+      "premise": "But overinterpretation or even misinterpretation are not the same as bias."
+    },
+    "output": {
+      "hypothesis": "\"You're not being overinterpreted or misinterpreted.\" she claimed. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.14,
+    "note": "uid 111577n; counts {\"e\":14,\"n\":62,\"c\":24}"
+  },
+  {
+    "id": "n110",
+    "input": {
+      "premise": "Concentration of greenhouse gases, especially CO2, have increased substantially since the beginning of the industrial revolution."
+    },
+    "output": {
+      "hypothesis": "Global warming is not real."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.02,
+    "note": "uid 53897c; counts {\"e\":2,\"n\":32,\"c\":66}"
+  },
+  {
+    "id": "n111",
+    "input": {
+      "premise": "oh that might be kind of interesting is it"
+    },
+    "output": {
+      "hypothesis": "I'm not sure if it will actually be interesting."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.61,
+    "note": "uid 5266n; counts {\"e\":61,\"n\":25,\"c\":14}"
+  },
+  {
+    "id": "n112",
+    "input": {
+      "premise": "Arawak peoples migrated to various Caribbean islands, arriving in Jamaica by the beginning of the eighth century."
+    },
+    "output": {
+      "hypothesis": "The Arawak migrated to Jamaica at the start of the 700s."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.82,
+    "note": "uid 132084e; counts {\"e\":82,\"n\":7,\"c\":11}"
+  },
+  {
+    "id": "n113",
+    "input": {
+      "premise": "Despite huge projected increases in food production, per capita food consumption in South Asia, the Middle East, and the less-developed nations of Africa will scarcely improve or will actually decline below present inadequate levels."
+    },
+    "output": {
+      "hypothesis": "Despite the predicted increases in food production, less-developed African nations will improve or decline."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.61,
+    "note": "uid 15791e; counts {\"e\":61,\"n\":14,\"c\":25}"
+  },
+  {
+    "id": "n114",
+    "input": {
+      "premise": "Now they're telling mothers to deny food to infants all night long once the kids are a few months old."
+    },
+    "output": {
+      "hypothesis": "Infants are allowed to feed at night during their first months."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.52,
+    "note": "uid 103455e; counts {\"e\":52,\"n\":21,\"c\":27}"
+  },
+  {
+    "id": "n115",
+    "input": {
+      "premise": " The Garden Island is lush with botanical estates and Waimea Canyon, the grand Canyon of the Pacific ."
+    },
+    "output": {
+      "hypothesis": "There are many flowers to be found on the estates on The Garden Island."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.63,
+    "note": "uid 120274e; counts {\"e\":63,\"n\":37,\"c\":0}"
+  },
+  {
+    "id": "n116",
+    "input": {
+      "premise": "Sixty percent of Americans are frustrated and angry with the health-care system, and 70 percent favor federal intervention."
+    },
+    "output": {
+      "hypothesis": "Most Americans want to see major changes in the health-care system."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.87,
+    "note": "uid 68583n; counts {\"e\":87,\"n\":13,\"c\":0}"
+  },
+  {
+    "id": "n117",
+    "input": {
+      "premise": "and they just put instructors out there and you you sign up for instruction and they just give you an arm band and if you see an instructor who's not doing anything you just tap him on the shoulder and ask him questions and they'll show you things"
+    },
+    "output": {
+      "hypothesis": "The instructors are marked with armbands, and anytime you want to know anything, you just find one of them. "
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.6,
+    "note": "uid 105561e; counts {\"e\":60,\"n\":14,\"c\":26}"
+  },
+  {
+    "id": "n118",
+    "input": {
+      "premise": "It can entail prospective and retrospective designs and it permits synthesis of many individual case studies undertaken at different times and in different sites."
+    },
+    "output": {
+      "hypothesis": "It can entail prospective and retrospective designs for system redesigns."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.48,
+    "note": "uid 129464c; counts {\"e\":48,\"n\":48,\"c\":4}"
+  },
+  {
+    "id": "n119",
+    "input": {
+      "premise": "you know we keep a couple hundred dollars um if that much charged on those which isn't too bad it's just your normal"
+    },
+    "output": {
+      "hypothesis": "We have some money on there"
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.65,
+    "note": "uid 135021e; counts {\"e\":65,\"n\":34,\"c\":1}"
+  },
+  {
+    "id": "n120",
+    "input": {
+      "premise": "Here's the  439 feet + (59 feet x 0.6) = 474 feet."
+    },
+    "output": {
+      "hypothesis": "This math equation might be correct."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.67,
+    "note": "uid 48970n; counts {\"e\":67,\"n\":24,\"c\":9}"
+  },
+  {
+    "id": "n121",
+    "input": {
+      "premise": "yeah i do remember that and uh i remember as a kid my parents watching the Ed Sullivan Show that was really the big deal in our household was the Ed Sullivan Show yeah i guess i guess it was a Saturday night and i went to see the movie The Doors a couple of days ago and they had this scene"
+    },
+    "output": {
+      "hypothesis": "I remember watching the Ed Sullivan Show when I was a kid."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.85,
+    "note": "uid 25109e; counts {\"e\":85,\"n\":13,\"c\":2}"
+  },
+  {
+    "id": "n122",
+    "input": {
+      "premise": "Under the default method, eighty percent of the total amount of sulfur dioxide allowances available for allocation each year will be allocated to Acid Rain Program units with coal as their primary or secondary fuel or residual oil as their primary fuel, listed in the Administrator's Emissions Scorecard 2000, Appendix B (2000 Data for SO2, NOx, CO2, Heat Input, and Other Parameters), Table B1 (All 2000 Data for All Units)."
+    },
+    "output": {
+      "hypothesis": "80% of the sulfur dioxide allowance for each year is in the Acid Rain Program, stemming from coal."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.72,
+    "note": "uid 92771n; counts {\"e\":72,\"n\":25,\"c\":3}"
+  },
+  {
+    "id": "n123",
+    "input": {
+      "premise": "Reports on attestation engagements should state that the engagement was made in accordance with generally accepted government auditing standards."
+    },
+    "output": {
+      "hypothesis": "Details regarding validation engagements ought to express that the engagement was made as per by and large acknowledged government evaluating guidelines."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.66,
+    "note": "uid 123038e; counts {\"e\":66,\"n\":27,\"c\":7}"
+  },
+  {
+    "id": "n124",
+    "input": {
+      "premise": "probably yeah i would imagine the judge could throw it out"
+    },
+    "output": {
+      "hypothesis": "I cannot believe the judge threw the book at them so fast."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.09,
+    "note": "uid 110528c; counts {\"e\":9,\"n\":45,\"c\":46}"
+  },
+  {
+    "id": "n125",
+    "input": {
+      "premise": "I shan't stop you.\""
+    },
+    "output": {
+      "hypothesis": "I don't want to stop you."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.56,
+    "note": "uid 27907n; counts {\"e\":56,\"n\":40,\"c\":4}"
+  },
+  {
+    "id": "n126",
+    "input": {
+      "premise": "If Washington Square is underripe, U-Turn and Devil's Advocate are rotting."
+    },
+    "output": {
+      "hypothesis": "Washington Square is sunny when it's overripe."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.01,
+    "note": "uid 51356n; counts {\"e\":1,\"n\":79,\"c\":20}"
+  },
+  {
+    "id": "n127",
+    "input": {
+      "premise": "huh do you have your own kiln or do you do you"
+    },
+    "output": {
+      "hypothesis": "You don't have a kiln, do you?"
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.54,
+    "note": "uid 140428c; counts {\"e\":54,\"n\":43,\"c\":3}"
+  },
+  {
+    "id": "n128",
+    "input": {
+      "premise": "On the days I go to my office, I wear a flannel shirt with no necktie if the weather is cool."
+    },
+    "output": {
+      "hypothesis": "On hot days, I wear a flannel shirt to the office. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.08,
+    "note": "uid 122397c; counts {\"e\":8,\"n\":25,\"c\":67}"
+  },
+  {
+    "id": "n129",
+    "input": {
+      "premise": "The cold air and the abundance of water gave them all good cheer that eve."
+    },
+    "output": {
+      "hypothesis": "The cold, fresh mountainous air made them happy. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.49,
+    "note": "uid 36764n; counts {\"e\":49,\"n\":50,\"c\":1}"
+  },
+  {
+    "id": "n130",
+    "input": {
+      "premise": "um i've visited the Wyoming area i'm not sure exactly where Dances with Wolves was filmed"
+    },
+    "output": {
+      "hypothesis": "I don't know even though I visited the area."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.73,
+    "note": "uid 21912e; counts {\"e\":73,\"n\":21,\"c\":6}"
+  },
+  {
+    "id": "n131",
+    "input": {
+      "premise": "i've been getting a kick out of those lately"
+    },
+    "output": {
+      "hypothesis": "I guess they just don't like me. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.07,
+    "note": "uid 57816n; counts {\"e\":7,\"n\":48,\"c\":45}"
+  },
+  {
+    "id": "n132",
+    "input": {
+      "premise": "uh but you could fill a whole bunch of uh holes with these things i used to i used to advertise buying wheat pennies um i'd give a dollar a roll which two cents a piece which is basically overpriced"
+    },
+    "output": {
+      "hypothesis": "I used to try to sell wheat pennies."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.39,
+    "note": "uid 66225e; counts {\"e\":39,\"n\":26,\"c\":35}"
+  },
+  {
+    "id": "n133",
+    "input": {
+      "premise": "and not only is it you know trouble to have to drive but it takes time away from your home and your family when you're out driving"
+    },
+    "output": {
+      "hypothesis": "Driving is difficult because it takes many hours."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.41,
+    "note": "uid 49894n; counts {\"e\":41,\"n\":54,\"c\":5}"
+  },
+  {
+    "id": "n134",
+    "input": {
+      "premise": "In this case, shareholders can pay twice for the sins of others."
+    },
+    "output": {
+      "hypothesis": "shareholders can pay once for the sins of others."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.12,
+    "note": "uid 127410n; counts {\"e\":12,\"n\":11,\"c\":77}"
+  },
+  {
+    "id": "n135",
+    "input": {
+      "premise": "The great breathtaking Italian adventure remains the road."
+    },
+    "output": {
+      "hypothesis": "The road remains the Italy people want to see. "
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.54,
+    "note": "uid 82156e; counts {\"e\":54,\"n\":41,\"c\":5}"
+  },
+  {
+    "id": "n136",
+    "input": {
+      "premise": "The air is warm."
+    },
+    "output": {
+      "hypothesis": "The arid air permeates the surrounding land."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.16,
+    "note": "uid 88188e; counts {\"e\":16,\"n\":75,\"c\":9}"
+  },
+  {
+    "id": "n137",
+    "input": {
+      "premise": "The first, reached from Luxor, is Esna, 54 km (33 miles) by road."
+    },
+    "output": {
+      "hypothesis": "The only way to get to Esna is by car."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.01,
+    "note": "uid 39957n; counts {\"e\":1,\"n\":88,\"c\":11}"
+  },
+  {
+    "id": "n138",
+    "input": {
+      "premise": "Wacky Tangent of the  Washington Week in Review host Ken Bode scolded the New York Times Magazine for a Nov. 9 fashion spread he said endorsed the now-discredited fashion trend of heroin chic."
+    },
+    "output": {
+      "hypothesis": "Ken Bode has criticized the New York Times Magazine in the past."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.6,
+    "note": "uid 118064n; counts {\"e\":60,\"n\":39,\"c\":1}"
+  },
+  {
+    "id": "n139",
+    "input": {
+      "premise": "To assist programs with implementing these web sites, the Northwest Justice Project and ProBonoNet in New York are hiring two full-time circuit riders to assist grantees with content management and to ensure that each web site supports the entire state justice community."
+    },
+    "output": {
+      "hypothesis": "The Northwest Justice Project and ProBonoNet in New York will hire more people to help poor residents."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.38,
+    "note": "uid 42615n; counts {\"e\":38,\"n\":42,\"c\":20}"
+  },
+  {
+    "id": "n140",
+    "input": {
+      "premise": "Agricultural shows"
+    },
+    "output": {
+      "hypothesis": "Farm parades"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.4,
+    "note": "uid 71957n; counts {\"e\":40,\"n\":52,\"c\":8}"
+  },
+  {
+    "id": "n141",
+    "input": {
+      "premise": "So it wasn't Missenhardt's singing--marvelous though that was--that made Osmin's rantings so thrilling."
+    },
+    "output": {
+      "hypothesis": "Osmin was always calm and collected."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0,
+    "note": "uid 72740c; counts {\"e\":0,\"n\":44,\"c\":56}"
+  },
+  {
+    "id": "n142",
+    "input": {
+      "premise": "The ITC has enlisted legal services attorneys from across the state to manage each of the 12 categories, and those volunteers will organize contributions and add them to a searchable database."
+    },
+    "output": {
+      "hypothesis": "They had the volunteers do data entry to help track contributions."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.81,
+    "note": "uid 5941e; counts {\"e\":81,\"n\":17,\"c\":2}"
+  },
+  {
+    "id": "n143",
+    "input": {
+      "premise": "Mykonos has had a head start as far as diving is concerned because it was never banned here (after all, there are no ancient sites to protect)."
+    },
+    "output": {
+      "hypothesis": "Diving was banned in places other than Mykonos."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.7,
+    "note": "uid 106390e; counts {\"e\":70,\"n\":17,\"c\":13}"
+  },
+  {
+    "id": "n144",
+    "input": {
+      "premise": "How did you get it?\" A chair was overturned. "
+    },
+    "output": {
+      "hypothesis": "\"How did you get your hands on this object?\""
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.45,
+    "note": "uid 49611e; counts {\"e\":45,\"n\":52,\"c\":3}"
+  },
+  {
+    "id": "n145",
+    "input": {
+      "premise": "The disputes among nobles were not the first concern of ordinary French citizens."
+    },
+    "output": {
+      "hypothesis": "Ordinary French citizens were not concerned with the disputes among nobles."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.72,
+    "note": "uid 73260n; counts {\"e\":72,\"n\":18,\"c\":10}"
+  },
+  {
+    "id": "n146",
+    "input": {
+      "premise": "I take it Americans have a higher opinion of morality than you have even."
+    },
+    "output": {
+      "hypothesis": "I take it that you have an unusually high opinion of morality."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.32,
+    "note": "uid 13884c; counts {\"e\":32,\"n\":42,\"c\":26}"
+  },
+  {
+    "id": "n147",
+    "input": {
+      "premise": "5 are highly correlated during summer months in some areas."
+    },
+    "output": {
+      "hypothesis": "Six are correlated to winter in certain areas.  "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0,
+    "note": "uid 37407n; counts {\"e\":0,\"n\":63,\"c\":37}"
+  },
+  {
+    "id": "n148",
+    "input": {
+      "premise": "Numbers began wafting about on the  I'd say at least five"
+    },
+    "output": {
+      "hypothesis": "I had to pick at least one number."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.12,
+    "note": "uid 90839n; counts {\"e\":12,\"n\":70,\"c\":18}"
+  },
+  {
+    "id": "n149",
+    "input": {
+      "premise": "and so i have really enjoyed that but but there are i do have friends that watch programs like they want to see a particular program and they are either home watching it or definitely recording it they have some programs that they won't miss"
+    },
+    "output": {
+      "hypothesis": "What programs do your friends like to watch?"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.12,
+    "note": "uid 14126e; counts {\"e\":12,\"n\":68,\"c\":20}"
+  },
+  {
+    "id": "n150",
+    "input": {
+      "premise": "It is not a surprise, either, that Al Pacino chews the scenery in Devil's Advocate . And the idea that if the devil showed up on Earth he'd be running a New York corporate-law firm is also, to say the least, pre-chewed."
+    },
+    "output": {
+      "hypothesis": "Nobody expects that the devil would take the form of a lawyer."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.15,
+    "note": "uid 51353c; counts {\"e\":15,\"n\":29,\"c\":56}"
+  },
+  {
+    "id": "n151",
+    "input": {
+      "premise": "In Roman times a temple to Jupiter stood here, followed in the fourth century by the first Christian church, Saint-Etienne."
+    },
+    "output": {
+      "hypothesis": "Saint-Etienne, a Christian church, had a temple to Jupiter and performed rituals during Roman times"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.25,
+    "note": "uid 103400n; counts {\"e\":25,\"n\":25,\"c\":50}"
+  },
+  {
+    "id": "n152",
+    "input": {
+      "premise": "The tip was hooked towards the edge, the same way the tips are hammered for knives used for slaughter."
+    },
+    "output": {
+      "hypothesis": "They were weapons used to kill."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.54,
+    "note": "uid 121360e; counts {\"e\":54,\"n\":45,\"c\":1}"
+  },
+  {
+    "id": "n153",
+    "input": {
+      "premise": "Students of human misery can savor its underlying sadness and futility."
+    },
+    "output": {
+      "hypothesis": "Students of human misery will be delighted to see how sad it truly is."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.69,
+    "note": "uid 116176c; counts {\"e\":69,\"n\":26,\"c\":5}"
+  },
+  {
+    "id": "n154",
+    "input": {
+      "premise": "The important thing is to realize that it's way past time to move it."
+    },
+    "output": {
+      "hypothesis": "It cannot be moved, now or ever."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.34,
+    "note": "uid 18189c; counts {\"e\":34,\"n\":32,\"c\":34}"
+  },
+  {
+    "id": "n155",
+    "input": {
+      "premise": "The Washington Post called it the culmination of a six-month game of political chicken."
+    },
+    "output": {
+      "hypothesis": "It has been called by the Washington Post as a beautiful situation."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.01,
+    "note": "uid 105191c; counts {\"e\":1,\"n\":24,\"c\":75}"
+  },
+  {
+    "id": "n156",
+    "input": {
+      "premise": "The 2000 census showed Illinois with about 35,000 fewer people who are eligible for LSC services because of low income, about $22,000 a year for a family of four, Kleiman said."
+    },
+    "output": {
+      "hypothesis": "An annual household income of under $22,000 a year for a family of four disqualifies families for LSC services."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.4,
+    "note": "uid 90219e; counts {\"e\":40,\"n\":6,\"c\":54}"
+  },
+  {
+    "id": "n157",
+    "input": {
+      "premise": "Despite a recent renovation, the Meadows Mall is the least appealing of the three suburban malls."
+    },
+    "output": {
+      "hypothesis": "The Meadows Mall is not appealing."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.66,
+    "note": "uid 22938e; counts {\"e\":66,\"n\":31,\"c\":3}"
+  },
+  {
+    "id": "n158",
+    "input": {
+      "premise": "Concurrent with downsizing, procurement regulations have been modified to allow agencies greater flexibility and choice in selecting contracting methods for acquiring facilities."
+    },
+    "output": {
+      "hypothesis": "The downsizing helped immensely in providing firms with these types of freedoms, though other factors contributed as well."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.51,
+    "note": "uid 77690n; counts {\"e\":51,\"n\":43,\"c\":6}"
+  },
+  {
+    "id": "n159",
+    "input": {
+      "premise": "so i guess my experience is is just with what we did and and so they didn't really go through the child care route they were able to be home together"
+    },
+    "output": {
+      "hypothesis": "It was a good thing that they didn't go the child care route as they were able to be home with their child more often."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.53,
+    "note": "uid 36480n; counts {\"e\":53,\"n\":45,\"c\":2}"
+  },
+  {
+    "id": "n160",
+    "input": {
+      "premise": "wow who can afford that  my God i can't afford to miss a day let alone six"
+    },
+    "output": {
+      "hypothesis": "It's amazing that some people can afford to miss days from work, whereas I can't even afford to miss one."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.88,
+    "note": "uid 30282n; counts {\"e\":88,\"n\":12,\"c\":0}"
+  },
+  {
+    "id": "n161",
+    "input": {
+      "premise": "This number represents the most reliable, albeit conservative, estimate of cases closed in 1999 by LSC grantees."
+    },
+    "output": {
+      "hypothesis": "This estimate is likely to be lower, or conservative."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.61,
+    "note": "uid 3707n; counts {\"e\":61,\"n\":27,\"c\":12}"
+  },
+  {
+    "id": "n162",
+    "input": {
+      "premise": "yeah i can believe that"
+    },
+    "output": {
+      "hypothesis": "I agree with what you said."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.7,
+    "note": "uid 13387e; counts {\"e\":70,\"n\":28,\"c\":2}"
+  },
+  {
+    "id": "n163",
+    "input": {
+      "premise": "Hersheimmer \"WELL,\" said Tuppence, recovering herself, \"it really seems as though it were meant to be.\" Carter nodded."
+    },
+    "output": {
+      "hypothesis": "Carter disagreed."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.01,
+    "note": "uid 73840c; counts {\"e\":1,\"n\":17,\"c\":82}"
+  },
+  {
+    "id": "n164",
+    "input": {
+      "premise": "Write, write, and write."
+    },
+    "output": {
+      "hypothesis": "Writing is a waste of time."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.01,
+    "note": "uid 40710c; counts {\"e\":1,\"n\":53,\"c\":46}"
+  },
+  {
+    "id": "n165",
+    "input": {
+      "premise": "It vibrated under his hand."
+    },
+    "output": {
+      "hypothesis": "It hummed quietly in his hand."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.43,
+    "note": "uid 138530e; counts {\"e\":43,\"n\":36,\"c\":21}"
+  },
+  {
+    "id": "n166",
+    "input": {
+      "premise": "The questions may need to be tailored to"
+    },
+    "output": {
+      "hypothesis": "There are some questions that may or may not need to be tailored to."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.83,
+    "note": "uid 136752e; counts {\"e\":83,\"n\":9,\"c\":8}"
+  },
+  {
+    "id": "n167",
+    "input": {
+      "premise": "Trying Your Luck"
+    },
+    "output": {
+      "hypothesis": "Think carefully and calculate your way to a certain victory."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.07,
+    "note": "uid 27417n; counts {\"e\":7,\"n\":30,\"c\":63}"
+  },
+  {
+    "id": "n168",
+    "input": {
+      "premise": "Stale macho jokes and formulaic cliffhangers drive this chase-by-numbers thriller on the bumpy road to nowhere (Holden, the New York Times )."
+    },
+    "output": {
+      "hypothesis": "It is a classic of the thriller genre."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.16,
+    "note": "uid 52806c; counts {\"e\":16,\"n\":41,\"c\":43}"
+  },
+  {
+    "id": "n169",
+    "input": {
+      "premise": "The Wither's eldest boy, one of the four of the town militia, saluted in the old style with his stick sword."
+    },
+    "output": {
+      "hypothesis": "The boy carved the sword by hand. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.02,
+    "note": "uid 133075n; counts {\"e\":2,\"n\":87,\"c\":11}"
+  },
+  {
+    "id": "n170",
+    "input": {
+      "premise": "uh and i think even Electric Light Orchestra had some some real um influences by classical music and i'm still still my favorite in fact most of my CDs that i got are classical music"
+    },
+    "output": {
+      "hypothesis": "I have some CDs of barney songs, but those aren't most of my CDs. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.04,
+    "note": "uid 143760n; counts {\"e\":4,\"n\":58,\"c\":38}"
+  },
+  {
+    "id": "n171",
+    "input": {
+      "premise": "which they probably Mexican people don't even know what a taco salad is but i think it's now it's moving up too because uh just a change you know just something different"
+    },
+    "output": {
+      "hypothesis": "Taco salad isn't a traditional Mexican dish, but it's becoming one because of cultural movement."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.63,
+    "note": "uid 44648e; counts {\"e\":63,\"n\":33,\"c\":4}"
+  },
+  {
+    "id": "n172",
+    "input": {
+      "premise": "It was deserved."
+    },
+    "output": {
+      "hypothesis": "it was definitely deserved"
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.78,
+    "note": "uid 69481n; counts {\"e\":78,\"n\":21,\"c\":1}"
+  },
+  {
+    "id": "n173",
+    "input": {
+      "premise": "Oh, sorry, wrong church."
+    },
+    "output": {
+      "hypothesis": "He or she entered the wrong church."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.82,
+    "note": "uid 47011e; counts {\"e\":82,\"n\":17,\"c\":1}"
+  },
+  {
+    "id": "n174",
+    "input": {
+      "premise": "Additionally, GAO's FederalInformationSystemControlsAuditManualis now used by most major federal audit entities to evaluate computerrelated controls."
+    },
+    "output": {
+      "hypothesis": "A few major federal audit entities use the GAO system."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.39,
+    "note": "uid 98197c; counts {\"e\":39,\"n\":12,\"c\":49}"
+  },
+  {
+    "id": "n175",
+    "input": {
+      "premise": "Sphinxes were guardian deitiesinEgyptianmythologyandthis was monumentalprotection,standing73 m (240 ft)longand20 m (66 feet) high."
+    },
+    "output": {
+      "hypothesis": "Sphinxes were put in the tombs to protect the dead."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.24,
+    "note": "uid 23280n; counts {\"e\":24,\"n\":70,\"c\":6}"
+  },
+  {
+    "id": "n176",
+    "input": {
+      "premise": "Workers are also represented in civil rights and retaliation claims."
+    },
+    "output": {
+      "hypothesis": "Some workers are represented in civil rights and retaliation claims."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.85,
+    "note": "uid 144272e; counts {\"e\":85,\"n\":14,\"c\":1}"
+  },
+  {
+    "id": "n177",
+    "input": {
+      "premise": "We've got to think."
+    },
+    "output": {
+      "hypothesis": "We can think."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.57,
+    "note": "uid 145250n; counts {\"e\":57,\"n\":40,\"c\":3}"
+  },
+  {
+    "id": "n178",
+    "input": {
+      "premise": "Then, all the time, it was in the spill vase in Mrs. Inglethorp's bedroom, under our very noses? I cried. "
+    },
+    "output": {
+      "hypothesis": "You mean to say it was stupid for us to look so far and hard when it was always right beside us?"
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.64,
+    "note": "uid 139409n; counts {\"e\":64,\"n\":32,\"c\":4}"
+  },
+  {
+    "id": "n179",
+    "input": {
+      "premise": "But if you take it seriously, the anti-abortion position is definitive by definition."
+    },
+    "output": {
+      "hypothesis": "If you decide to be serious about supporting anti-abortion, it's a very run of the mill belief to hold."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.17,
+    "note": "uid 6804c; counts {\"e\":17,\"n\":56,\"c\":27}"
+  },
+  {
+    "id": "n180",
+    "input": {
+      "premise": "The author began with a set of hunches or hypotheses about what can go wrong in agency management, and what would be evidence supporting-or contradicting-these hypotheses."
+    },
+    "output": {
+      "hypothesis": "The hunches provided by the author weren't realistic as it pertains to agency management."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.06,
+    "note": "uid 14280n; counts {\"e\":6,\"n\":64,\"c\":30}"
+  },
+  {
+    "id": "n181",
+    "input": {
+      "premise": "While AILA has joined the ACLU and other organizations in a Freedom of Information Act request to find out who is being detained where and why, Mohammed notes that the reasons for the immigrants' detention were not immediately clear and sometimes had dire consequences."
+    },
+    "output": {
+      "hypothesis": "The EPA joined the ACLU in requesting the information."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.14,
+    "note": "uid 95953c; counts {\"e\":14,\"n\":44,\"c\":42}"
+  },
+  {
+    "id": "n182",
+    "input": {
+      "premise": "Generally, if pH of scrubbing liquor falls below a range of 5.0 to 6.0, additional reagent is required to maintain the reactivity of the absorbent."
+    },
+    "output": {
+      "hypothesis": " if pH of scrubbing liquor becomes above a range of 5.0 to 6.0, additional reagent is required"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.23,
+    "note": "uid 26766c; counts {\"e\":23,\"n\":17,\"c\":60}"
+  },
+  {
+    "id": "n183",
+    "input": {
+      "premise": "By coordinating policy development and awareness activities in this manner, she helps ensure that new risks and policies are communicated promptly and that employees are periodically reminded of existing policies through means such as monthly bulletins, an intranet web site, and presentations to new employees."
+    },
+    "output": {
+      "hypothesis": "She can find new risks with the awareness campaign."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.57,
+    "note": "uid 84781e; counts {\"e\":57,\"n\":31,\"c\":12}"
+  },
+  {
+    "id": "n184",
+    "input": {
+      "premise": "Is there adequate information for judging generalizability?"
+    },
+    "output": {
+      "hypothesis": "Every output has some kind of resource. "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.02,
+    "note": "uid 100895c; counts {\"e\":2,\"n\":78,\"c\":20}"
+  },
+  {
+    "id": "n185",
+    "input": {
+      "premise": "Strategic human capital management must be at the center of this transformation effort."
+    },
+    "output": {
+      "hypothesis": "Human capital management is extremely important "
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.83,
+    "note": "uid 120496n; counts {\"e\":83,\"n\":15,\"c\":2}"
+  },
+  {
+    "id": "n186",
+    "input": {
+      "premise": "Five years ago, Speaker-elect Newt Gingrich promised to make important information available online at the same moment that it is available to the highest-paid Washington lobbyist."
+    },
+    "output": {
+      "hypothesis": "Newt Gingrich promised to make information available to loyalists and online at the same time. "
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.67,
+    "note": "uid 125225e; counts {\"e\":67,\"n\":15,\"c\":18}"
+  },
+  {
+    "id": "n187",
+    "input": {
+      "premise": "Favored by the Ancient Egyptians as a source of turquoise, the Sinai was, until recently, famed for only one event but certainly an important one."
+    },
+    "output": {
+      "hypothesis": "The Sinai was a source of gold for the Ancient Egyptians.  "
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.03,
+    "note": "uid 12789n; counts {\"e\":3,\"n\":29,\"c\":68}"
+  },
+  {
+    "id": "n188",
+    "input": {
+      "premise": "But in 1799 doom was signaled for the cane monopoly with the appearance of the cheaper sugar beet."
+    },
+    "output": {
+      "hypothesis": "Sugar beets became the prime plant and cane began to decline in 1799."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.78,
+    "note": "uid 120226e; counts {\"e\":78,\"n\":20,\"c\":2}"
+  },
+  {
+    "id": "n189",
+    "input": {
+      "premise": "Tabulations of actual meetings and of consequent actions for same-agency funded and different-agency funded services can help check out whether this impression is reliable."
+    },
+    "output": {
+      "hypothesis": "Same-agency funded services will provide greater insight than different-agency funded services and should be marked accordingly."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.23,
+    "note": "uid 79265n; counts {\"e\":23,\"n\":63,\"c\":14}"
+  },
+  {
+    "id": "n190",
+    "input": {
+      "premise": "This confluence of a bad tax, a $1 billion reserve, a botched opposition campaign, and voters willing to call a bluff resulted in the I-695 victory."
+    },
+    "output": {
+      "hypothesis": "The I-695 failed in its campaign to help the people."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.12,
+    "note": "uid 45443c; counts {\"e\":12,\"n\":31,\"c\":57}"
+  },
+  {
+    "id": "n191",
+    "input": {
+      "premise": "Prototyping, for example, may act as part of the requirements definition process, helping the agency identify and control areas of high uncertainty and technical risk."
+    },
+    "output": {
+      "hypothesis": "Prototyping is important."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.77,
+    "note": "uid 85309e; counts {\"e\":77,\"n\":23,\"c\":0}"
+  },
+  {
+    "id": "n192",
+    "input": {
+      "premise": "really oh i thought it was great yeah"
+    },
+    "output": {
+      "hypothesis": "that was a nice experience"
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.81,
+    "note": "uid 110234e; counts {\"e\":81,\"n\":19,\"c\":0}"
+  },
+  {
+    "id": "n193",
+    "input": {
+      "premise": "but like they always say you know got a good profit sharing plan just no profit"
+    },
+    "output": {
+      "hypothesis": "It's a good way of sharing money, but there's no money."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.81,
+    "note": "uid 107302e; counts {\"e\":81,\"n\":19,\"c\":0}"
+  },
+  {
+    "id": "n194",
+    "input": {
+      "premise": "what does um is Robby Robin Williams does he have a funny part in the movie or is"
+    },
+    "output": {
+      "hypothesis": "Is Robin Williams in the movie?"
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "softLabel": 0.4,
+    "note": "uid 57454e; counts {\"e\":40,\"n\":45,\"c\":15}"
+  },
+  {
+    "id": "n195",
+    "input": {
+      "premise": "Criminal discovered in last chapter. "
+    },
+    "output": {
+      "hypothesis": "Criminal identified in the closing pages of the book."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.8,
+    "note": "uid 14556n; counts {\"e\":80,\"n\":17,\"c\":3}"
+  },
+  {
+    "id": "n196",
+    "input": {
+      "premise": "Moreover, Las Vegas has recently started to show signs of maturity in its cultural status as well."
+    },
+    "output": {
+      "hypothesis": "The culture of Las Vegas has a lot of room for improvement."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.24,
+    "note": "uid 19578n; counts {\"e\":24,\"n\":70,\"c\":6}"
+  },
+  {
+    "id": "n197",
+    "input": {
+      "premise": "Text Box 2.1: Gross Domestic Product and Gross National Product 48Text Box 4.1: How do the NIPA and federal unified budget concepts of"
+    },
+    "output": {
+      "hypothesis": "Text about GBP and USD."
+    },
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "softLabel": 0.11,
+    "note": "uid 109876c; counts {\"e\":11,\"n\":34,\"c\":55}"
+  },
+  {
+    "id": "n198",
+    "input": {
+      "premise": "Mykonos has had a head start as far as diving is concerned because it was never banned here (after all, there are no ancient sites to protect)."
+    },
+    "output": {
+      "hypothesis": "Protection of ancient sites is the reason for diving bans in other places."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.6,
+    "note": "uid 106390n; counts {\"e\":60,\"n\":32,\"c\":8}"
+  },
+  {
+    "id": "n199",
+    "input": {
+      "premise": "It will be COLOSSAL!\""
+    },
+    "output": {
+      "hypothesis": "It will be the biggest ever."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": true,
+    "softLabel": 0.51,
+    "note": "uid 88994n; counts {\"e\":51,\"n\":49,\"c\":0}"
+  },
+  {
+    "id": "n200",
+    "input": {
+      "premise": "Standard screens may not perform as well in these patient subgroups that may represent a considerable part of the ED population."
+    },
+    "output": {
+      "hypothesis": "The subgroups may not perform well in standard screens."
+    },
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "softLabel": 0.71,
+    "note": "uid 26495e; counts {\"e\":71,\"n\":15,\"c\":14}"
+  }
+]

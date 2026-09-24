@@ -1,0 +1,12 @@
+{
+  "key": "response_a_better",
+  "title": "Response A is better than response B",
+  "question": "Given the user's turns, is response A the better answer than response B (more helpful, relevant, accurate, and complete)?",
+  "passDescription": "Response A is better than response B overall.",
+  "failDescription": "Response B is better than response A overall.",
+  "notes": "Adapted from lmsys/mt_bench_human_judgments (expert pairwise votes, multiple judges per pair). humanLabel is the majority vote; reviewerDisagreement is true when judges were not unanimous (including any tie vote). Comparison sample: seed 103 simple random sample of 150 of 1632 judged pairs with a strict majority and under 9,000 characters.",
+  "mockCues": {
+    "positive": [],
+    "negative": []
+  }
+}

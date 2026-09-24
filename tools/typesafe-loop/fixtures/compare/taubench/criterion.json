@@ -1,0 +1,12 @@
+{
+  "key": "request_resolved_per_policy",
+  "title": "Request resolved correctly under the retail policy",
+  "question": "Did the agent correctly and completely resolve the customer's request while following the retail agent policy (authenticate first, confirm before database changes, no invented information, only permitted actions)?",
+  "passDescription": "The agent took the right actions with the right details, obtained confirmation where required, gave correct information, and did not violate the policy.",
+  "failDescription": "The agent took a wrong, missing, or unconfirmed action, gave incorrect information, violated the policy, or left the request unresolved.",
+  "notes": "Adapted from tau-bench retail historical trajectories (gpt-4o). humanLabel is the environment reward from a database-state and output check, not a human label. reviewerDisagreement is a PROXY: true when the same task passed in some of its 4 trials and failed in others. Comparison sample: seed 107 sample of one trajectory per task, 109 of 109 tasks with trajectories up to 24,000 characters. The label is the environment reward, not a human label.",
+  "mockCues": {
+    "positive": [],
+    "negative": []
+  }
+}

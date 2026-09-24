@@ -1,0 +1,12 @@
+{
+  "key": "premise_entails_hypothesis",
+  "title": "Premise entails hypothesis",
+  "question": "Given the premise, is the hypothesis definitely true (entailed)?",
+  "passDescription": "A reasonable reader would say the hypothesis is definitely true given the premise.",
+  "failDescription": "The hypothesis is not established by the premise: it might be true (neutral) or it contradicts the premise.",
+  "notes": "Adapted from metaeval/chaos-mnli-ambiguity (ChaosNLI MNLI subset, 100 annotators per item). humanLabel is pass when at least half the annotators chose entailment. reviewerDisagreement is true when the entailment share is between 0.3 and 0.7. softLabel holds the entailment share. Comparison sample: seed 101 simple random sample of 200 of 1592 items with premises up to 600 characters.",
+  "mockCues": {
+    "positive": [],
+    "negative": []
+  }
+}

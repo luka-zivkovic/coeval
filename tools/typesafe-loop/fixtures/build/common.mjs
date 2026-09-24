@@ -29,10 +29,15 @@ export function seededShuffle(seed) {
   };
 }
 
-async function fetchJson(url) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`${url} -> ${response.status}`);
-  return response.json();
+/** GET JSON, retrying the datasets server's rate limits and transient 5xx answers. */
+async function fetchJson(url, attempts = 6) {
+  for (let attempt = 1; ; attempt += 1) {
+    const response = await fetch(url);
+    if (response.ok) return response.json();
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt >= attempts) throw new Error(`${url} -> ${response.status}`);
+    await new Promise((resolve) => setTimeout(resolve, 2000 * 2 ** attempt));
+  }
 }
 
 /**
@@ -73,3 +78,16 @@ export async function writeFixture(name, { criterion, cases, pairs }) {
 }
 
 export const pad = (n) => String(n).padStart(2, "0");
+
+/**
+ * ChaosNLI annotator counts as { e, n, c }. The dataset's old name served a
+ * `label_counter` object; tasksource/chaos-mnli-ambiguity serves
+ * `label_count` as a string, "[e, n, c]" or "e,n,c".
+ */
+export function chaosMnliCounts(row) {
+  if (row.label_counter) return row.label_counter;
+  const values = String(row.label_count).match(/\d+/g)?.map(Number) ?? [];
+  if (values.length !== 3) throw new Error(`unreadable ChaosNLI label_count for ${row.uid}`);
+  const [e, n, c] = values;
+  return { e, n, c };
+}
