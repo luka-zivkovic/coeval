@@ -177,12 +177,16 @@ production-ingest capability, and owners importing a ledger, append
 `rubrist/production-decision-record/v1` records to an append-only project store
 that rejects conflicting decisions and future-dated records. Members build
 `rubrist/production-calibration/v2` reports for boolean, choice, and score
-questions over an explicit window of stored records and save them as
-digest-bound snapshots; a compute-only preview of a pasted ledger remains.
-Retention by receive time (90 days by default), decision erasure with
-tombstones, revoked-key purges, and snapshot deletion are audited owner
-operations. Ironside ingest, governed-review routing of a production sample,
-and notifications remain ADR-0013 follow-ups.
+questions over a stated window of stored records (either bound may be open)
+and save them as digest-bound snapshots; a compute-only preview of a pasted
+ledger remains. A scheduled sweep deletes records by Rubrist's receive time
+(90 days by default, owner-adjustable from 1 to 730 days). Owners can erase a
+decision, leaving a tombstone, purge a revoked key's records, and delete a
+snapshot. Every deletion, retention run, and retention change is audited.
+Production analysis of score and choice questions neither satisfies nor
+reopens the evaluator calibration requirements below. Ironside ingest,
+governed-review routing of a production sample, and notifications remain
+ADR-0013 follow-ups.
 
 The producer runtime still does not run the repeated-trial contract or
 calibrate scalar and categorical evaluators. Those remaining gaps are distinct
