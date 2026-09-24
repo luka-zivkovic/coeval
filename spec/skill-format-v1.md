@@ -37,7 +37,7 @@ type SkillStatus =
 
 ## Model binding
 
-`modelId` is the identifier sent to the provider and should avoid mutable aliases such as `latest`, `default`, or `auto`. `modelVersion` is catalog identity captured with the skill and is not execution proof; provider-returned model/request/fingerprint metadata is the authoritative observed provenance when available.
+`modelId` is the identifier sent to the provider. It must not be a mutable alias once the evaluator becomes a governed candidate, is activated, or runs sealed calibration; Rubrist rejects those requests (`evaluator_lifecycle_mutable_model_alias`, or `binary_calibration_ineligible` for calibration) and only warns while authoring. Rule `rubrist-mutable-model-alias/v1` treats a model id as an alias when, ignoring case, it is `latest`, `default`, or `auto` (also as its final `/` segment, as in `openrouter/auto`), or it ends in `-latest` or `:latest`. Undated ids such as `gpt-4o` are not aliases under v1. `modelVersion` is catalog identity captured with the skill and is not execution proof; provider-returned model/request/fingerprint metadata is the authoritative observed provenance when available.
 
 Honest limitation: provider catalogs (Anthropic, OpenAI, OpenRouter) expose no
 immutable snapshot id separate from the model id, so `modelVersion` is stored

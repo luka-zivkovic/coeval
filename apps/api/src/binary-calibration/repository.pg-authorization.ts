@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import {
+  MUTABLE_MODEL_ALIAS_RULE_VERSION,
+  mutableModelAlias,
   type BinaryCalibrationCompletionEligibilityReason,
   type ModelBinding
 } from "@rubrist/shared";
@@ -85,6 +87,12 @@ export async function deriveRunIdentity(
   }
   if (skillVersion.modelBinding.topP !== undefined) {
     throw repoError("unsupported", "sealed calibration v1 does not execute a top-p binding until every provider preserves it exactly");
+  }
+  if (mutableModelAlias(skillVersion.modelBinding.modelId) !== null) {
+    throw repoError(
+      "ineligible",
+      `sealed calibration requires a pinned model id; "${skillVersion.modelBinding.modelId}" is a mutable alias under ${MUTABLE_MODEL_ALIAS_RULE_VERSION}`
+    );
   }
   const requestedBinding = requestedBindingFor(skillVersion.modelBinding);
   const providerPolicy = providerPolicyFor(requestedBinding);

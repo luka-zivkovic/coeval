@@ -2,10 +2,33 @@ import { describe, expect, it } from "vitest";
 import {
   ModelBindingInputSchema,
   ModelBindingSchema,
+  MUTABLE_MODEL_ALIAS_RULE_VERSION,
+  mutableModelAlias,
   normalizeJudgeProviderId,
   StoredModelBindingSchema,
   SkillVersionSchema
 } from "@rubrist/shared";
+
+describe("mutable model alias rule", () => {
+  it.each([
+    ["latest", "latest"], ["DEFAULT", "default"], [" auto ", "auto"], ["openrouter/auto", "auto"],
+    ["claude-3-5-sonnet-latest", "-latest"], ["chatgpt-4o-latest", "-latest"], ["jev-latest", "-latest"],
+    ["llama3:latest", ":latest"], ["anthropic/claude-sonnet-4.5:latest", ":latest"]
+  ])("treats %s as the alias %s", (modelId, alias) => {
+    expect(mutableModelAlias(modelId)).toBe(alias);
+  });
+
+  it.each([
+    "gpt-4o", "gpt-4o-2024-08-06", "claude-sonnet-4-5-20250929", "claude-sonnet-4-5", "jev-1.13.0",
+    "mock", "latest-model", "autopilot", "openai/gpt-4o", "default-v2", "my-latest-finetune"
+  ])("does not treat %s as an alias under v1", (modelId) => {
+    expect(mutableModelAlias(modelId)).toBeNull();
+  });
+
+  it("names its rule version", () => {
+    expect(MUTABLE_MODEL_ALIAS_RULE_VERSION).toBe("rubrist-mutable-model-alias/v1");
+  });
+});
 
 describe("model binding contract boundaries", () => {
   const outOfRuntimeContractBinding = {

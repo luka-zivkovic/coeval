@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { Chip, Eyebrow, GateStrip, MarginNote, SectionHead } from "@/components/rubrist";
 import { SkillChangeReview, SkillEditFlow, type SkillEditPhase } from "@/components/skill-edit-flow";
+import { mutableModelAlias } from "@rubrist/shared";
 import type {
   CreateSkillVersionInput,
   JudgeModel,
@@ -384,6 +385,12 @@ export function SkillVersionEditor({
               {modelVersion || "Choose a model"}
             </div>
             <span className="text-[11px] text-ink-3">Filled automatically from the selected API model ID.</span>
+            {mutableModelAlias(modelId) !== null ? (
+              <span className="text-[11px] text-signal">
+                {modelId} is an alias the provider can repoint. You can author and test with it, but an evaluator
+                bound to it can't become a governed candidate, be activated, or run sealed calibration.
+              </span>
+            ) : null}
           </Field>
 
           <Field label="Temperature">

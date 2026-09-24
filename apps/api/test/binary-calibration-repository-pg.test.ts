@@ -187,6 +187,17 @@ run("PgBinaryCalibrationRepository", () => {
       suiteBinding: null,
       idempotencyKey: "cal-run-root"
     };
+    // Sealed calibration refuses a mutable model alias; the stored binding is
+    // swapped here because every current writer already refuses one.
+    const storedBinding = (await pool.query(`select model_binding from skill_versions where id=$1`, [skillVersionId])).rows[0]!.model_binding;
+    for (const alias of ["latest", "openrouter/auto", "chatgpt-4o-latest"]) {
+      await pool.query(`update skill_versions set model_binding = jsonb_set(model_binding, '{modelId}', to_jsonb($2::text)) where id=$1`, [skillVersionId, alias]);
+      await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({
+        code: "ineligible",
+        message: expect.stringContaining("mutable alias")
+      });
+    }
+    await pool.query(`update skill_versions set model_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(storedBinding)]);
     const created = await repository.createRun(OWNER, input);
     expect(created).toMatchObject({ state: "queued", plannedObservations: 2, accountedObservations: 0 });
     expect(await repository.createRun(OWNER, input)).toEqual(created);

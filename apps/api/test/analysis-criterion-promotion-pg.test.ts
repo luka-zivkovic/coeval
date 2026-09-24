@@ -9,7 +9,8 @@ import {
   MinimumVerdictOutputSchema,
   type AnalysisCriterionPromotionCreateInput,
   type AnalysisCriterionPromotionHandoff,
-  type AnalysisCriterionPromotionSupportArtifact
+  type AnalysisCriterionPromotionSupportArtifact,
+  type EvaluatorCandidateCreateInput
 } from "@rubrist/shared";
 import { PgAnalysisPopulationRepository } from "../src/analysis-population/repository.pg.js";
 import { PgAnalysisPromotionRepository } from "../src/analysis-promotion/repository.pg.js";
@@ -1178,7 +1179,7 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
         [batch.batchId, frozen.datasetRevisionId]
       )).rows[0]!;
       const lifecycle = new PgEvaluatorLifecycleRepository(pool);
-      const candidate = await lifecycle.createCandidate(actor, {
+      const candidateInput: EvaluatorCandidateCreateInput = {
         criterionId: created.criterion.id,
         criterionVersionId: created.criterionVersion.id,
         governedBatchId: batch.batchId,
@@ -1198,7 +1199,16 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
         },
         outputSchema: MinimumVerdictOutputSchema,
         idempotencyKey: "promotion-repository-candidate"
+      };
+      await expect(lifecycle.createCandidate(actor, {
+        ...candidateInput,
+        modelBinding: { ...candidateInput.modelBinding, modelId: "gpt-4o-latest" },
+        idempotencyKey: "promotion-repository-alias-candidate"
+      })).rejects.toMatchObject({
+        code: "mutable_model_alias",
+        details: { modelId: "gpt-4o-latest", alias: "-latest", rule: "rubrist-mutable-model-alias/v1" }
       });
+      const candidate = await lifecycle.createCandidate(actor, candidateInput);
       expect(candidate).toMatchObject({
         replayed: false,
         projection: {
@@ -1447,6 +1457,20 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
             change:"agree",rationale:"Exact retained regression item agrees."
           }]),candidate.skill.currentVersion.criterionVersionId]
       );
+      // Activation re-checks the stored binding, not only the candidate request.
+      const storedBinding = (await pool.query(
+        `select model_binding from skill_versions where id=$1`,[candidate.skill.currentVersion.id]
+      )).rows[0]!.model_binding;
+      await pool.query(
+        `update skill_versions set model_binding=jsonb_set(model_binding,'{modelId}','"default"') where id=$1`,
+        [candidate.skill.currentVersion.id]
+      );
+      await expect(lifecycle.activate(actor,candidate.skill.currentVersion.id,{
+        ...activationEvidence,regressionRunId,
+        idempotencyKey:"promotion-repository-alias-activate"
+      })).rejects.toMatchObject({code:"mutable_model_alias",details:{modelId:"default",alias:"default"}});
+      await pool.query(`update skill_versions set model_binding=$2::jsonb where id=$1`,
+        [candidate.skill.currentVersion.id,JSON.stringify(storedBinding)]);
       const activated = await lifecycle.activate(actor,candidate.skill.currentVersion.id,{
         ...activationEvidence,regressionRunId,
         idempotencyKey:"promotion-repository-activate"

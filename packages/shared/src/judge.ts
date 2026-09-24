@@ -138,6 +138,27 @@ export const ModelBindingInputSchema = z
   });
 export type ModelBindingInput = z.infer<typeof ModelBindingInputSchema>;
 
+// Calibration evidence only describes the exact model that produced it, so a
+// model id the provider can repoint underneath Rubrist cannot become a
+// candidate, be activated, or run sealed calibration. Authoring may still use
+// one, with a warning. The list is versioned; widening it is a new version.
+export const MUTABLE_MODEL_ALIAS_RULE_VERSION = "rubrist-mutable-model-alias/v1";
+const MUTABLE_MODEL_ALIAS_NAMES = new Set(["latest", "default", "auto"]);
+const MUTABLE_MODEL_ALIAS_SUFFIXES = ["-latest", ":latest"] as const;
+
+/**
+ * The alias pattern a model id matches under MUTABLE_MODEL_ALIAS_RULE_VERSION,
+ * or null. Exact names are also matched as the final path segment, so a routed
+ * id such as `openrouter/auto` counts. Undated ids such as `gpt-4o` are not
+ * aliases under this rule; calibration records the provider-observed model.
+ */
+export function mutableModelAlias(modelId: string): string | null {
+  const normalized = modelId.trim().toLowerCase();
+  const segment = normalized.slice(normalized.lastIndexOf("/") + 1);
+  if (MUTABLE_MODEL_ALIAS_NAMES.has(segment)) return segment;
+  return MUTABLE_MODEL_ALIAS_SUFFIXES.find((suffix) => normalized.endsWith(suffix)) ?? null;
+}
+
 export const MinimumVerdictOutputSchema = {
   type: "object",
   required: ["label", "score", "reason", "confidence"],

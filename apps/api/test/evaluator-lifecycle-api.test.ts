@@ -3,7 +3,7 @@ import {
   MinimumVerdictOutputSchema,
   type EvaluatorCandidateCreateResult
 } from "@rubrist/shared";
-import type { EvaluatorLifecycleRepository } from "../src/evaluator-lifecycle/repository.js";
+import { EvaluatorLifecycleRepositoryError, type EvaluatorLifecycleRepository } from "../src/evaluator-lifecycle/repository.js";
 import { createEvaluatorLifecycleRouter } from "../src/evaluator-lifecycle/routes.js";
 import { evaluatorCandidateRequestDigest } from "../src/lib/evaluator-lifecycle.js";
 
@@ -180,6 +180,31 @@ describe("evaluator lifecycle API boundary", () => {
       expect.anything(),
       expect.objectContaining({ modelBinding: expect.objectContaining({ provider: "mock" }) })
     );
+  });
+
+  it("answers a mutable model alias with 422 and the matched rule", async () => {
+    const repo = repository();
+    vi.mocked(repo.createCandidate).mockRejectedValue(new EvaluatorLifecycleRepositoryError(
+      "mutable_model_alias",
+      "An evaluator bound to the mutable model alias \"auto\" cannot become a candidate; pin a specific model id",
+      { modelId: "auto", alias: "auto", rule: "rubrist-mutable-model-alias/v1" }
+    ));
+    const owner = createEvaluatorLifecycleRouter({
+      repository: repo,
+      databaseMode: true,
+      requestIdentity: () => ({ userId: "owner", projectId: "project" }),
+      resolveProjectRole: async () => "owner"
+    });
+    const response = await owner.request("/candidates", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...CANDIDATE_INPUT, modelBinding: { ...CANDIDATE_INPUT.modelBinding, modelId: "auto" } })
+    });
+    expect(response.status).toBe(422);
+    expect(await response.json()).toMatchObject({
+      code: "evaluator_lifecycle_mutable_model_alias",
+      details: { modelId: "auto", alias: "auto", rule: "rubrist-mutable-model-alias/v1" }
+    });
   });
 
   it("retries regression dispatch after an exact committed candidate replay", async () => {

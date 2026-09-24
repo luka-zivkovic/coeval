@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Activity, CheckCircle2, RefreshCcw, ShieldAlert } from "lucide-react";
-import { MinimumVerdictOutputSchema, type EvaluatorLifecycleProjection } from "@rubrist/shared";
+import { MinimumVerdictOutputSchema, mutableModelAlias, type EvaluatorLifecycleProjection } from "@rubrist/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -171,11 +171,15 @@ export function EvaluatorLifecyclePanel({
       {projectRole==="owner" ? <div className="grid gap-3 rounded-sm border border-rule-soft p-4 md:grid-cols-2">
         <div className="md:col-span-2 flex items-center gap-2 text-[12px] text-ink-2"><ShieldAlert className="size-4"/> {items.length ? "Create another governed candidate" : "Create the first governed candidate"}</div>
         <Input value={skillName} onChange={(event)=>setSkillName(event.target.value)} placeholder="Evaluator name" />
-        <Input value={modelId} onChange={(event)=>setModelId(event.target.value)} placeholder="Pinned model ID" />
+        <div className="grid gap-1">
+          <Input value={modelId} onChange={(event)=>setModelId(event.target.value)} placeholder="Pinned model ID" />
+          {mutableModelAlias(modelId) !== null ?
+            <span className="text-[11px] text-signal">{modelId} is a mutable alias; a candidate needs a pinned model ID.</span> : null}
+        </div>
         <Textarea value={skillDescription} onChange={(event)=>setSkillDescription(event.target.value)} placeholder="Description" />
         <Textarea value={rubric} onChange={(event)=>setRubric(event.target.value)} placeholder="Rubric" />
         <Textarea className="md:col-span-2" value={prompt} onChange={(event)=>setPrompt(event.target.value)} placeholder="Prompt" />
-        <Button className="md:col-span-2" onClick={() => void createCandidate()} disabled={working || !frozenBatch}>
+        <Button className="md:col-span-2" onClick={() => void createCandidate()} disabled={working || !frozenBatch || mutableModelAlias(modelId) !== null}>
           {frozenBatch ? "Create candidate and queue regression" : "Freeze an eligible governed batch first"}
         </Button>
       </div> : null}

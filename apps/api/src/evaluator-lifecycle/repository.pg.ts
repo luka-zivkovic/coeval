@@ -7,9 +7,11 @@ import {
   EvaluatorCandidateCreateResultSchema,
   EvaluatorLifecycleEventSchema,
   EvaluatorLifecycleProjectionSchema,
+  MUTABLE_MODEL_ALIAS_RULE_VERSION,
   MinimumVerdictOutputSchema,
   SkillSchema,
   SkillVersionSchema,
+  mutableModelAlias,
   type DatasetReferenceProvenance,
   type DatasetRevisionPayloadSnapshot,
   type EvaluatorCandidateCreateInput,
@@ -69,6 +71,7 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
     input: EvaluatorCandidateCreateInput
   ): Promise<EvaluatorCandidateCreateResult> {
     requireOwner(actor);
+    rejectMutableModelAlias(input.modelBinding.modelId, "become a candidate");
     const requestDigest = evaluatorCandidateRequestDigest(actor.projectId, input);
     const client = await this.pool.connect();
     try {
@@ -466,6 +469,12 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
       let replacedEvent: EvaluatorLifecycleEvent | null = null;
       if (transition === "activated") {
         const activation = input as EvaluatorLifecycleActivateInput;
+        const binding = (await client.query(
+          `select model_binding from skill_versions where project_id=$1 and id=$2`,
+          [actor.projectId, skillVersionId]
+        )).rows[0];
+        if (!binding) throw repoError("not_found", "Evaluator version not found");
+        rejectMutableModelAlias(String((parseJson(binding.model_binding) as { modelId: unknown }).modelId), "be activated");
         const active = (await client.query(
           `select other.*,other_head.id as head_id,other_head.sequence as head_sequence,
                   other_head.content_digest as head_digest,other_head.state as head_state
@@ -922,6 +931,16 @@ function requireOwner(actor: EvaluatorLifecycleAccess): void {
 
 function repoError(code: ConstructorParameters<typeof EvaluatorLifecycleRepositoryError>[0], message: string): EvaluatorLifecycleRepositoryError {
   return new EvaluatorLifecycleRepositoryError(code, message);
+}
+
+function rejectMutableModelAlias(modelId: string, gate: string): void {
+  const alias = mutableModelAlias(modelId);
+  if (alias === null) return;
+  throw new EvaluatorLifecycleRepositoryError(
+    "mutable_model_alias",
+    `An evaluator bound to the mutable model alias "${modelId}" cannot ${gate}; pin a specific model id`,
+    { modelId, alias, rule: MUTABLE_MODEL_ALIAS_RULE_VERSION }
+  );
 }
 
 function mapError(error: unknown, fallback: ConstructorParameters<typeof EvaluatorLifecycleRepositoryError>[0] = "state_conflict"): unknown {

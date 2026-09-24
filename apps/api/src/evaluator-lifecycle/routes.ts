@@ -170,7 +170,8 @@ async function callRepository<T>(c: Context,callback:()=>Promise<T>): Promise<T|
   catch (error) {
     if (!(error instanceof EvaluatorLifecycleRepositoryError)) throw error;
     const status = error.code==="not_found" ? 404 : error.code==="forbidden" ? 403 :
-      error.code==="unsupported" ? 501 : error.code==="invalid_cursor" ? 400 : 409;
+      error.code==="unsupported" ? 501 : error.code==="invalid_cursor" ? 400 :
+      error.code==="mutable_model_alias" ? 422 : 409;
     return c.json({error:error.message,code:`evaluator_lifecycle_${error.code}`,details:error.details},status);
   }
 }
