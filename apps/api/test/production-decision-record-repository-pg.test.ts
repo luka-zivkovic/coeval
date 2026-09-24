@@ -82,6 +82,13 @@ run("PgProductionDecisionRecordRepository", () => {
         [projectId]
       );
     }
+    await pool.query(
+      `insert into api_keys (id, project_id, name, key_hash, key_prefix, capability)
+       values ('key_ingest', $1, 'ingest', 'hash_ingest', 'rubrist_sk_ing…', 'production_ingest'),
+              ('key_revoked', $1, 'revoked', 'hash_revoked', 'rubrist_sk_rev…', 'production_ingest')`,
+      [PROJECT_ID]
+    );
+    await pool.query(`update api_keys set revoked_at = now() where id = 'key_revoked'`);
   });
 
   afterAll(async () => {
@@ -174,7 +181,10 @@ run("PgProductionDecisionRecordRepository", () => {
     await expect(rejection(append([decision("d8"), huge]))).resolves.toMatchObject({
       code: "record_too_large", details: { line: 2, maximum: PRODUCTION_RECORD_MAX_BYTES }
     });
-    await expect(rejection(append([decision("d8")], KEY, "proj_missing"))).resolves.toMatchObject({ code: "project_not_found" });
+    await expect(rejection(append([decision("d8")], OWNER, "proj_missing"))).resolves.toMatchObject({ code: "project_not_found" });
+    // A key revoked after the request authenticated, or a key of another project, writes nothing.
+    await expect(rejection(append([decision("d8")], { kind: "api_key", apiKeyId: "key_revoked" }))).resolves.toMatchObject({ code: "api_key_revoked" });
+    await expect(rejection(append([decision("d8")], KEY, OTHER_PROJECT_ID))).resolves.toMatchObject({ code: "api_key_revoked" });
     const oversized = Array.from({ length: PRODUCTION_RECORD_APPEND_MAX_RECORDS + 1 }, () => outcome("d8"));
     await expect(rejection(append(oversized))).resolves.toMatchObject({ code: "batch_too_large" });
     const stored = await pool.query(`select 1 from production_decision_records where decision_id in ('d7','d8','d9')`);
@@ -223,7 +233,7 @@ run("PgProductionDecisionRecordRepository", () => {
   });
 
   it("keeps projects apart and lets project erasure remove their records", async () => {
-    await expect(append([decision("d1", 0.1), outcome("d1", false)], KEY, OTHER_PROJECT_ID)).resolves.toMatchObject({
+    await expect(append([decision("d1", 0.1), outcome("d1", false)], OWNER, OTHER_PROJECT_ID)).resolves.toMatchObject({
       inserted: { decisions: 1, outcomes: 1 }
     });
     const before = await count();

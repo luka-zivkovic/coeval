@@ -156,7 +156,8 @@ export type ProductionRecordRepositoryErrorCode =
   | "snapshot_too_large"
   | "erased_decision"
   | "api_key_not_found"
-  | "api_key_not_revoked";
+  | "api_key_not_revoked"
+  | "api_key_revoked";
 
 export class ProductionRecordRepositoryError extends Error {
   constructor(

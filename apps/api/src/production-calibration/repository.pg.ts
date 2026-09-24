@@ -74,6 +74,9 @@ export class PgProductionDecisionRecordRepository implements ProductionDecisionR
         `select pg_advisory_xact_lock_shared(hashtextextended($1, 0))`,
         [recordLockKey(input.projectId)]
       );
+      if (input.submitter.kind === "api_key") {
+        await rejectRevokedKey(client, input.projectId, input.submitter.apiKeyId);
+      }
       await rejectFutureDated(client, rows);
       await rejectErasedDecisions(client, input.projectId, rows);
       const inserted = await client.query<{ kind: string }>(
@@ -299,6 +302,17 @@ export class PgProductionDecisionRecordRepository implements ProductionDecisionR
           deleted: project.deleted
         });
       }
+      // Every executed run is recorded, including one that deleted nothing,
+      // so the audit log shows retention is running.
+      await insertAudit(client, null, null, "production.retention.run", "production_retention_run", now.toISOString(), {
+        at: now.toISOString(),
+        projectsWithDeletions: projects.length,
+        deleted: projects.reduce((total, project) => ({
+          decisions: total.decisions + project.deleted.decisions,
+          actions: total.actions + project.deleted.actions,
+          outcomes: total.outcomes + project.deleted.outcomes
+        }), { decisions: 0, actions: 0, outcomes: 0 })
+      });
       return { skipped: false, projects };
     });
   }
@@ -451,6 +465,21 @@ function prepareRecords(records: readonly ProductionDecisionLedgerRecord[]): Pre
     (order(left) < order(right) ? -1 : order(left) > order(right) ? 1 : 0));
 }
 
+/**
+ * A request authenticated before its key was revoked may reach this point
+ * afterwards. Checked under the project's record lock, which a purge holds
+ * exclusively, so nothing a revoked key sends can land after its purge.
+ */
+async function rejectRevokedKey(client: PoolClient, projectId: string, apiKeyId: string): Promise<void> {
+  const active = await client.query(
+    `select 1 from api_keys where id = $1 and project_id = $2 and revoked_at is null`,
+    [apiKeyId, projectId]
+  );
+  if (active.rowCount === 0) {
+    throw new ProductionRecordRepositoryError("api_key_revoked", "The API key was revoked while the request was in flight");
+  }
+}
+
 /** An erased decision stays erased: reject any record for its ID, naming the first one. */
 async function rejectErasedDecisions(client: PoolClient, projectId: string, rows: readonly PreparedRecord[]): Promise<void> {
   const result = await client.query<{ line: number; decision_id: string }>(
@@ -494,7 +523,7 @@ function deletionCounts(rows: ReadonlyArray<{ kind: string }>): ProductionRecord
 
 async function insertAudit(
   client: PoolClient,
-  projectId: string,
+  projectId: string | null,
   actorUserId: string | null,
   action: string,
   targetType: string,

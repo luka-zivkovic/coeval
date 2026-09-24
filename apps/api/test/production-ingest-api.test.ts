@@ -114,6 +114,11 @@ describe("production ingest API", () => {
     });
     expect(ingestOnJudge.status).toBe(403);
     expect(await ingestOnJudge.json()).toMatchObject({ code: "api_key_capability_mismatch" });
+    for (const path of ["/api/v1/criteria", "/api/v1/evaluator-suites"]) {
+      const read = await app.request(path, { headers: { authorization: `Bearer ${ingestKey.key}` } });
+      expect(read.status).toBe(403);
+      expect(await read.json()).toMatchObject({ code: "api_key_capability_mismatch" });
+    }
     expect(records?.calls).toHaveLength(0);
 
     const missing = await app.request(PRODUCTION_INGEST_PATH, { method: "POST", body: ledger });
@@ -148,7 +153,8 @@ describe("production ingest API", () => {
     ["batch_too_large", 413],
     ["empty_batch", 400],
     ["project_not_found", 404],
-    ["write_contention", 503]
+    ["write_contention", 503],
+    ["api_key_revoked", 401]
   ] as const)("maps a %s rejection to %i with its code and details", async (failure, status) => {
     const fake = new FakeRecordRepository();
     fake.failure = failure;

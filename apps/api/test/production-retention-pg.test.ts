@@ -115,8 +115,14 @@ run("production record retention, erasure, and purges", () => {
       cutoff: middle.toISOString(),
       deleted: { decisions: 1, actions: 0, outcomes: 2 }
     });
-    // A rerun at the same time deletes nothing and writes no audit entry.
+    // A rerun at the same time deletes nothing: no project entry, but the run itself is recorded.
+    const applied = (await audits("production.retention.apply")).length;
     await expect(repository.applyRetention(new Date(middle.getTime() + 90 * DAY_MS))).resolves.toEqual({ skipped: false, projects: [] });
+    expect(await audits("production.retention.apply")).toHaveLength(applied);
+    expect((await audits("production.retention.run")).at(-1)?.metadata).toMatchObject({
+      projectsWithDeletions: 0,
+      deleted: { decisions: 0, actions: 0, outcomes: 0 }
+    });
   });
 
   it("lets only one retention run delete at a time and a sweeper run on demand", async () => {
@@ -199,6 +205,21 @@ run("production record retention, erasure, and purges", () => {
     }
   });
 
+  it("refuses an append from a key revoked while its request was in flight, after the purge", async () => {
+    // The request authenticated while the key was live; by the time it writes,
+    // the key is revoked and purged, so it must not land after the purge.
+    await pool.query(
+      `insert into api_keys (id, project_id, name, key_hash, key_prefix, capability)
+       values ('key_inflight', $1, 'inflight', 'hash_inflight', 'rubrist_sk_inf…', 'production_ingest')`,
+      [PROJECT_ID]
+    );
+    await pool.query(`update api_keys set revoked_at = now() where id = 'key_inflight'`);
+    await repository.purgeApiKeyRecords({ projectId: PROJECT_ID, userId: OWNER_ID, apiKeyId: "key_inflight" });
+    await expect(append([decision("late")], { kind: "api_key", apiKeyId: "key_inflight" }))
+      .rejects.toMatchObject({ code: "api_key_revoked" });
+    expect(await ids()).not.toContain("decision:late");
+  });
+
   it("purges exactly what a revoked key sent, and only after it is revoked", async () => {
     await append([decision("from_leak"), outcome("new", false)], { kind: "api_key", apiKeyId: "key_leaked" });
     await append([decision("from_live")], { kind: "api_key", apiKeyId: "key_live" });
@@ -215,7 +236,10 @@ run("production record retention, erasure, and purges", () => {
     );
     expect(remaining.rows.map((row) => row.submitted_by_api_key_id)).not.toContain("key_leaked");
     expect(await ids()).toContain("decision:from_live");
-    expect((await audits("production.api_key.purge")).map((row) => row.target_id)).toEqual(["key_leaked"]);
+    expect((await audits("production.api_key.purge")).at(-1)).toMatchObject({
+      target_id: "key_leaked",
+      metadata: { deleted: { decisions: 1, actions: 0, outcomes: 1 } }
+    });
   });
 
   it("deletes a snapshot only through the owner operation", async () => {
