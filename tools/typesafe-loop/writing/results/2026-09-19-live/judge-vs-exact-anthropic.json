@@ -1,0 +1,116 @@
+{
+  "provider": "anthropic",
+  "model": "claude-opus-5",
+  "rules": {
+    "dash_connective": {
+      "cases": 113,
+      "labelled": 113,
+      "model": "claude-opus-5",
+      "n": 113,
+      "auc": 0.994,
+      "brier": 0.018,
+      "ece": 0.053,
+      "confusion": {
+        "truePass": 92,
+        "trueFail": 19,
+        "falsePass": 0,
+        "falseFail": 2,
+        "truthPassRecall": 0.9787234042553191,
+        "truthFailRecall": 1
+      },
+      "cannotDetermineMass": null,
+      "confidentWrong": [
+        "casefile#1",
+        "ironside#9"
+      ]
+    },
+    "missing_contractions": {
+      "cases": 113,
+      "labelled": 113,
+      "model": "claude-opus-5",
+      "n": 113,
+      "auc": 0.076,
+      "brier": 0.546,
+      "ece": 0.717,
+      "confusion": {
+        "truePass": 1,
+        "trueFail": 5,
+        "falsePass": 107,
+        "falseFail": 0,
+        "truthPassRecall": 1,
+        "truthFailRecall": 0.044642857142857144
+      },
+      "cannotDetermineMass": null,
+      "confidentWrong": [
+        "casefile#6",
+        "casefile#8",
+        "casefile#9",
+        "coeval#11",
+        "coeval#13",
+        "coeval#18",
+        "coeval#19",
+        "coeval#29",
+        "coeval#30",
+        "coeval#32",
+        "coeval#33",
+        "coeval#34",
+        "coeval#35",
+        "coeval#39",
+        "coeval#4",
+        "coeval#49",
+        "coeval#5",
+        "coeval#55",
+        "coeval#56",
+        "coeval#57",
+        "coeval#6",
+        "coeval#62",
+        "coeval#63",
+        "coeval#65",
+        "coeval#7",
+        "coeval#75",
+        "coeval#83",
+        "coeval#84",
+        "coeval#87",
+        "coeval#90",
+        "coeval#91",
+        "coeval#92",
+        "dailies#5",
+        "dailies#6",
+        "dailies#7",
+        "ironside#10",
+        "ironside#11",
+        "ironside#4",
+        "ironside#6",
+        "ironside#8"
+      ]
+    }
+  },
+  "pairs": {
+    "dash_connective": {
+      "pairwiseAuc": 1,
+      "separatedByMarginRate": 0.96,
+      "meanSeparation": 0.858,
+      "inputTokens": 47321
+    },
+    "claims_preserved": {
+      "pairwiseAuc": 1,
+      "separatedByMarginRate": 1,
+      "meanSeparation": 0.957,
+      "inputTokens": 71022,
+      "byKind": {
+        "number_changed": {
+          "pairs": 25,
+          "separated": 25,
+          "ordered": 25
+        }
+      }
+    }
+  },
+  "usage": {
+    "claude-opus-5": {
+      "input_tokens": 328222,
+      "output_tokens": 4407,
+      "estimatedUsd": 1.7513
+    }
+  }
+}

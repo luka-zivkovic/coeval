@@ -1,0 +1,170 @@
+[
+  {
+    "id": "p01",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "passOutput": "I checked order A-1042: it was placed 58 days ago, which is outside our 30-day refund window, so I can't issue a refund. I can offer store credit if that helps.",
+    "failOutput": "I checked order A-1042: it was placed 58 days ago. I've processed your refund and you'll see it in 3-5 days.",
+    "edit": "process refund instead"
+  },
+  {
+    "id": "p02",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "passOutput": "I checked order A-1042: it was placed 58 days ago, which is outside our 30-day refund window, so I can't issue a refund. I can offer store credit if that helps.",
+    "failOutput": "I checked order A-1042: it was placed 58 days ago. I can offer store credit if that helps.",
+    "edit": "drop window mention"
+  },
+  {
+    "id": "p03",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "passOutput": "I checked order A-1042: it was placed 58 days ago, which is outside our 30-day refund window, so I can't issue a refund. I can offer store credit if that helps.",
+    "failOutput": "I checked order A-1042: it was placed 58 days ago, which is within our 30-day refund window, so I've started the refund.",
+    "edit": "claim inside window"
+  },
+  {
+    "id": "p04",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "passOutput": "I checked order A-1042: it was placed 58 days ago, which is outside our 30-day refund window, so I can't issue a refund. I can offer store credit if that helps.",
+    "failOutput": "I checked order A-1042 and have passed it to the billing team, who will follow up by email.",
+    "edit": "vague escalation"
+  },
+  {
+    "id": "p05",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "passOutput": "I checked order A-1042: it was placed 58 days ago, which is outside our 30-day refund window, so I can't issue a refund. I can offer store credit if that helps.",
+    "failOutput": "I checked order A-1042. Sorry for the trouble; your refund is on its way.",
+    "edit": "refund on its way"
+  },
+  {
+    "id": "p06",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "passOutput": "I checked order A-1042: it was placed 58 days ago, which is outside our 30-day refund window, so I can't issue a refund. I can offer store credit if that helps.",
+    "failOutput": "I checked order A-1042: it was placed 58 days ago, outside our 30-day refund window, but I'm happy to refund it anyway as a one-off.",
+    "edit": "contradict after disclosing"
+  },
+  {
+    "id": "p07",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "passOutput": "I checked order A-1042: it was placed 58 days ago, which is outside our 30-day refund window, so I can't issue a refund. I can offer store credit if that helps.",
+    "failOutput": "I checked order A-1042: it was placed 58 days ago. I've issued a full refund as a goodwill gesture.",
+    "edit": "goodwill full refund"
+  },
+  {
+    "id": "p08",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "passOutput": "I checked order A-1042: it was placed 58 days ago, which is outside our 30-day refund window, so I can't issue a refund. I can offer store credit if that helps.",
+    "failOutput": "I checked order A-1042: it was placed 8 days ago, so I've started the return for you.",
+    "edit": "wrong number of days, no window"
+  }
+]

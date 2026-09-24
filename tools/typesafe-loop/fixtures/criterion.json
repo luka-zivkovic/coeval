@@ -1,0 +1,31 @@
+{
+  "key": "refund_window_disclosed",
+  "title": "Refund window disclosed when the request falls outside it",
+  "question": "When the customer asks for a refund on an order older than the 30-day refund window, does the assistant clearly tell them the window and that this order falls outside it?",
+  "passDescription": "The reply states the 30-day refund window and that this order is outside it, or correctly identifies the order as inside the window.",
+  "failDescription": "The reply processes, promises, or implies a refund on an out-of-window order, or never mentions the window when the order is outside it.",
+  "mockCues": {
+    "positive": [
+      "30-day",
+      "30 day",
+      "thirty-day",
+      "outside our",
+      "outside the",
+      "past the",
+      "no longer eligible",
+      "refund window",
+      "within our 30",
+      "still inside"
+    ],
+    "negative": [
+      "processed your refund",
+      "processed a full refund",
+      "refund is on its way",
+      "issued a full refund",
+      "gone ahead and refunded",
+      "happy to refund",
+      "refund has been submitted"
+    ]
+  },
+  "notes": "Synthetic support-assistant criterion. Mock cues exist only so the lexical mock can exercise the harness; a real provider ignores them."
+}

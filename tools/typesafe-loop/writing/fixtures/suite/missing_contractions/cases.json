@@ -1,0 +1,1019 @@
+[
+  {
+    "id": "casefile#1",
+    "input": "M0: static scanner — structural, capability, supply-chain, and injection audit for skills/plugins",
+    "output": "## Summary\n- TypeScript CLI (`skillguard scan`) that statically audits Claude Code skills, plugins, and marketplace roots\n- Five check categories: structural validation (ported from overclock validate_skill.py), resource integrity, capability audit, supply-chain hygiene, injection heuristics\n- Versioned JSON report schema + markdown rendering, SQLite scan history, CI-friendly exit codes\n- 41 vitest tests incl. benign + malicious fixtures; verified live against overclock plugins\n\n## Test plan\n- `npm test` (41/41), `npm run build`\n- `node dist/cli.js scan <plugin-dir>` against a real plugin and the malicious fixture",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "casefile#10",
+    "input": "Default the GitHub Action gate to critical so warnings never block",
+    "output": "## Summary\n\nThe composite Action defaulted `fail-on` to `warning` while the CLI defaults to `critical`. Some skills legitimately make network calls, and Casefile's job is to surface that as a visible warning, not to block the skill.\n\n- `action.yml` and `scripts/action-run.sh`: default `fail-on` is now `critical`, matching the CLI. Warnings stay in the report and job summary without failing the job; `fail-on: warning` remains an explicit opt-in.\n- README: the Action example no longer sets `fail-on`, and the input table and a new sentence explain the warn-not-block default.\n- New test: a warning-only skill (a script calling `fetch`) passes at the default gate with the warning listed in the summary, and fails when `fail-on` is `warning`. The existing failure test is renamed to say it exercises the critical gate.\n- CHANGELOG Unreleased entry.\n\n## Verification\n\n- `npm run build && npm test`: 182 passed, 3 skipped (was 181 passed).",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "casefile#2",
+    "input": "Real-world hardening: 16-repo public corpus scan, 3 false-positive fixes, publishable reports",
+    "output": "## Summary\n- Scanned 16 real public Claude Code plugin/skill repos (incl. anthropics/skills, obra/superpowers, wshobson/agents) — all complete crash-free\n- Fixed 3 false-positive bugs found by the corpus (directory-as-missing-resource, emoji ZWJ flagged as hidden unicode, template-literal flagged as secret read), each with a regression test\n- Published reports/2026-07-13/: 16 per-repo reports + honest SUMMARY.md (findings framed as review signals, not malice verdicts)\n\n## Test plan\n- npm test (67/67), npm run build; re-scan of full corpus clean under timeout",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "casefile#3",
+    "input": "Launch kit: disclosure notes, launch post, naming shortlist",
+    "output": "## Summary\nDrafts (nothing sent/published) under launch/:\n- disclosure/ — heads-up notes to anthropics, thedotmack/claude-mem, jeremylongshore (send BEFORE the public post)\n- launch-post.md — public write-up from reports/2026-07-13/SUMMARY.md\n- naming-shortlist.md — real-name candidates (recommend: Assay / Plumb / Facet)\n- README.md — process + the \"signal not verdict\" framing rule\n\nAll claims sourced from the committed reports; disclosure notes honestly separate confirmed findings from our own false positives.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "casefile#4",
+    "input": "Add quality/* rule tier (ported from skill-mastery, calibrated)",
+    "output": "Port the QUALITY audit heuristics from skill-mastery's audit_skills.py as a\nfirst-class rule category, recalibrated: that audit graded 16/16 skills WARN,\nso these rules are tuned so a typical well-made skill yields ZERO findings.\n\n- quality/oversized-body (warning): body over ~1500 est. tokens (chars/4)\n  with no references/ dir; looser 2500 budget when references/ exists.\n- quality/no-failure-modes (info): no failure-modes/guardrails/anti-patterns\n  heading and no inline 'do not' guidance.\n- quality/orphaned-resource (info): a file under references|templates|assets\n  never referenced from SKILL.md (explicit path, ancestor dir, or bare\n  filename mention all count; scripts/ is not policed).\n- quality/missing-anti-trigger (info): description has a positive trigger\n  ('use when'/'use for') but no negative guidance ('do not use'/'not for').\n\nRuns off discovered skill dirs like structural/resources, so vendored code\ngenerates no quality noise. Existing rules and severities untouched.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "casefile#5",
+    "input": "Fix Casefile package version identity",
+    "output": "## Summary\n- bump the patch release to 0.2.1\n- align the CLI/report tool version with the package version\n- add a regression test preventing future version drift\n- refresh README report examples\n\n## Verification\n- npm ci\n- npm test (11 files, 172 tests)\n- npm run benchmark\n- npm pack --dry-run\n- npm audit --omit=dev (0 vulnerabilities)\n\nThe already-published 0.2.0 package exposed the intended 0.2 interface but incorrectly reported itself as 0.1.0. This patch release corrects that immutable public artifact.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "casefile#6",
+    "input": "Document reviewed internal skill workflow",
+    "output": "## Summary\n\n- document a lock-first admission and CI workflow for reviewed internal capabilities\n- keep critical scanning and exact lock verification as separate required checks\n- cover warning admission, strict-profile parity, byte drift, and lock-versus-gate semantics with CLI regression tests\n- document ownership, artifact-boundary, binary-analysis, file-mode, inventory, and version-pinning limitations\n\n## Verification\n\n- `npm test` — 174 tests passed\n- `npm run benchmark --silent` — 31-artifact gate passed\n- independent critical review — no remaining material findings\n- Claude Opus implementation re-audit — no remaining material findings\n\n## Scope\n\nDocumentation and regression coverage only. No scanner, report, lock, protocol, or runtime behavior changes.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "casefile#7",
+    "input": "docs: correct stale test count and launch-kit references",
+    "output": "## Summary\n\nBatch 1 of the marketability work: remove stale signals a first-time reader would trip over.\n\n- README no longer hardcodes a test count (it said 172; vitest currently reports 174 with 3 skipped). Every other README number was checked against `benchmark/manifest.json`, the CI matrix, and the rule IDs in `src/` and was accurate.\n- `launch/README.md` drops the already-resolved \"pick a name\" step and no longer points at the `reports/2026-07-13` directory that was removed; comparative evidence is pointed at the ADR-0002 neutral benchmark workflow instead.\n- `launch/launch-post.md` drops the \"replace casefile with the final name\" note, stops referencing the removed per-repo reports, and softens the now-unverifiable \"under four seconds\" claim. No comparative or superiority claims remain, per `docs/positioning.md`.\n- `CHANGELOG.md` Unreleased entry added.\n\nNothing was sent or published. No version bump, no product-scope or ADR changes.\n\n## Verification\n\n- `npm ci && npm run build && npm test`: 11 files, 171 passed, 3 skipped.\n- `node dist/benchmark.js` ran clean.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "casefile#8",
+    "input": "Add Claude Code plugin marketplace with inspect-skill",
+    "output": "## Summary\n\nBatch 2 of the marketability work: make Casefile installable from a coding agent in one line, using the same plugin-marketplace layout that already works in Overclock.\n\n- `.claude-plugin/marketplace.json` at the repo root and `plugins/casefile/.claude-plugin/plugin.json` (version 0.2.1, matching `package.json`).\n- `plugins/casefile/skills/inspect-skill/SKILL.md`: teaches an agent to run `npx casefile@latest scan` on a directory before installation, never execute the artifact, treat artifact text as untrusted, keep findings tied to file and line, explain them as review signals rather than verdicts (quoting the charter), and offer `lock` then `verify` for drift. Restricted `allowed-tools`.\n- README: \"Install with your coding agent\" section with the two `/plugin` commands, a paste-a-prompt alternative for Codex and other agents, and a pointer to Overclock's CI workflow, which already gates its marketplace with Casefile.\n- CHANGELOG Unreleased entry.\n\nNo product-scope, PRODUCT.md, ADR, or version changes.\n\n## Verification\n\n- Dogfood: `casefile scan plugins/casefile` classifies as a plugin, 2 files, 0 critical, 0 warning, 1 info (`capability/allowed-tools`, expected). `--strict --fail-on warning` exits 0.\n- `casefile scan .` classifies the repo as a marketplace; all critical and warning findings come from the scanner's own source, its deliberately malicious test fixtures, the benchmark corpus, and `node_modules`. Nothing under `plugins/` or `.claude-plugin/` beyond the one info finding.\n- `npm test`: 171 passed, 3 skipped.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "casefile#9",
+    "input": "Lead with reviewed admission, add `casefile init` and a composite GitHub Action",
+    "output": "## Summary\n\nBatch 4 of the marketability work. Free static scanners already own \"find bad patterns in a skill\", so Casefile's public story now leads with its actual wedge: no execution, reproducible identity, operator-owned policy, lock, verify, drift.\n\n- **README repositioning.** The first screenful states within ten lines that Casefile never executes the artifact, produces a reproducible identity and findings, locks the approved state, verifies drift in bytes, policy, findings, report identity or tool version, and emits SARIF. New \"Casefile is not\" list drawn from the charter's \"decisions Casefile does not make\". Detection rules stay documented below the lifecycle story. No comparative claims, no screenshots.\n- **`casefile init [dir]`.** Writes a documented starter `casefile.config.json` operator policy that suppresses nothing. Opens with `wx` so it refuses to overwrite files or symlinks (exit 2). Never creates a lock. The parser was verified to ignore `$comment` and per-entry `reason` keys, so the file documents itself without changing behavior.\n- **Composite GitHub Action** (`action.yml`, `scripts/action-run.sh`). Inputs: `path`, `config`, `version`, `fail-on`, `strict`, `sarif`, `lock`, `upload-sarif`. Runs the pinned npm release, writes reports outside the artifact, exposes `exit-code`, `report-json` and `sarif` outputs, and appends a severity table plus top findings with `file:line` to the job summary. With `lock` set it also runs `verify` and fails on drift. SARIF upload is an optional step; the caller must grant `security-events: write`, which is documented rather than assumed. The README CI section shows the Action first and the hand-rolled workflow second.\n- Skill text points operators at `init`; CHANGELOG Unreleased entries.\n\nNo version bump, no product-scope, ADR, or ecosystem changes.\n\n## Verification\n\n- `npm run build && npm test && npm run benchmark --silent`: 181 passed, 3 skipped (was 171 passed), 12 files. New tests cover `init` (3) and the Action script's exit mapping, outputs and summary against a fixture artifact (7).\n- `casefile scan plugins/casefile --strict --fail-on warning` exits 0.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#1",
+    "input": "Highlight the beginner-friendly workflow",
+    "output": "## Summary\n- explain near the top of the README that Guided is the default experience\n- show the five-step beginner journey in plain language\n- clarify that Technical view reveals detail without changing evidence or permissions\n- make the Quickstart handoff to the Guided setup ledger explicit\n\n## Validation\n- `git diff --check`\n- documentation-only change",
+    "steps": [],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#10",
+    "input": "Use the approved Coeval mark across the app",
+    "output": "## What changed\n\n- use the approved Coeval mark as the browser and home-screen icon\n- preserve the approved source unchanged and add a square transparent app-icon derivative that copies the exact painted pixels for legibility at favicon size\n- add a reusable accessible wordmark component\n- replace first-letter placeholders in setup, login, loading, governed review, and the workspace sidebar\n- keep the image decorative so the visible product name remains the accessible label\n\n## Validation\n\n- complete web suite: 243 passed\n- web TypeScript check: passed\n- production web build: passed\n- local browser verification: mark and favicon load at their intended rendered sizes",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#11",
+    "input": "Add supported self-host release and upgrade path",
+    "output": "## Summary\n\n- publish immutable multi-architecture Coeval API and web images from exact version tags\n- add platform-neutral and Coolify Compose bundles with checksum validation\n- freeze the deployed Postgres baseline and enforce append-only, checksum-verified migrations\n- boot the actual published images through the release Compose bundle before drafting a release\n- document installation, backups, update testing, and migration-aware recovery\n\nThe standalone trustctl bootstrap is intentionally kept out of the product runtime and will live in its own repository.\n\n## Validation\n\n- Node 24: 932 Vitest tests passed; 12 Node tests passed locally\n- pnpm build and pnpm typecheck passed locally\n- self-host Compose checksum and render validation passed\n- real three-container Coeval and combined 10-container stack smoke tests passed locally\n- pull-request typecheck-and-test and secret-gate checks passed on GitHub\n\n## Release gate\n\nAfter a tag publishes every image, CI pulls the exact GHCR tags, boots the generic stack, and verifies its public health route. Only then is a draft GitHub release created. The draft remains unpublished until anonymous GHCR pulls and the migration declaration have been reviewed. Default installer discovery uses only published, non-prerelease GitHub releases.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#12",
+    "input": "Prepare Coeval 0.2.0 release",
+    "output": "## Summary\n\nBump the root release version to 0.2.0 so the exact v0.2.0 tag can publish the first supported self-host images and deployment bundles.\n\n## Release sequence\n\n- full CI must pass on this PR\n- merge without tagging from an unreviewed commit\n- push the exact v0.2.0 tag on the merged main commit\n- require the release workflow to build both images, boot the published generic stack, verify health, and create a draft release\n- verify anonymous GHCR pulls and add the migration declaration before publishing the draft",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#13",
+    "input": "Integrate native Ironside evaluator feed",
+    "output": "## Summary\n\n- replace the provisional Ironside routes with the versioned `ironside/evaluator/v1` contract\n- verify protocol, remote project identity, and required capabilities before storing a connection\n- preserve opaque feed cursors across same-project credential rotation and reject cross-project rotation\n- persist and deduplicate `(remote project, source trace id, source trace version)` so reopened traces become distinct immutable cases\n- write criterion-specific assessments back with evaluator and source-version provenance\n- expose first-class connection, test, import, revalidation, and disconnect controls\n\n## Product boundary\n\nIronside owns settlement and remote trace versions. Coeval owns evaluator execution and assessment evidence. This change adds no release thresholds, promote/block decisions, rollout controls, or deployment policy. The integration remains optional for both applications.\n\n## Correctness\n\n- quarantine and CAS remote-identity changes before polling or feedback\n- replay one-trace pages safely without cursor loss\n- validate exact detail ID/version responses\n- preserve PostgreSQL-safe payload semantics, including ordinary backslashes, while injectively encoding NUL and lone surrogates\n\n## Dependency\n\nRequires luka-zivkovic/ironside#6. Merge and release the Ironside protocol first.\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm test` (111 files / 942 tests; 18 files / 105 tests skipped by environment, plus 12 Node tooling tests)\n- `pnpm test:pg` (19 files / 108 real-Postgres tests)",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#14",
+    "input": "Document large-file cohesion reviews",
+    "output": "## Summary\n\n- document the 1,000-line cohesion review trigger without making size a CI gate\n- add an exhaustive, machine-readable classification of current large files\n- add a report-only `pnpm large-files` command with binary and unavailable-path handling\n- add direct tests for counting, binary detection, configuration validation, and inventory drift\n\n## Authority and scope\n\n- **CURRENT:** contributor and code-organization guidance only\n- **TARGET:** unchanged; Coeval remains Analyze to Measure and policy-free\n- no runtime behavior, database schema, frozen contract, digest, auth, or product-scope changes\n\n## Verification\n\n- `pnpm large-files` — 25 classified, 0 review-required\n- `pnpm typecheck`\n- `pnpm test` — 942 Vitest tests passed plus 16 Node tool tests\n- `pnpm --filter @coeval/web build`\n- `git diff --check`\n- fresh Claude Opus review, findings resolved, final verdict: `FINAL_APPROVE`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#15",
+    "input": "Characterize route and auth contracts",
+    "output": "## Summary\n\n- pin demo and authenticated Hono route manifests before route extraction\n- characterize middleware ordering for public routes, body limits, API-key auth, session auth, and project resolution\n- strengthen real Postgres coverage for owner writes, member reads, owner-only mutations, and cross-project denial\n\n## Scope\n\nTest-only characterization. No production behavior, product contract, schema, or migration changes.\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm test` (945 unit tests and 16 tool tests)\n- `pnpm test:pg` (107 Postgres tests)\n- `pnpm --filter @coeval/web build`\n- `git diff --check`\n- fresh Agent Bridge Claude Opus review of the exact commit",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#16",
+    "input": "Guard shared contract exports and imports",
+    "output": "## Summary\n\n- pin all 890 TypeScript and 491 runtime exports from the `@coeval/shared` root\n- force-build and import the configured runtime root to catch initialization failures\n- reject eager runtime import cycles while allowing type-only and lazy edges\n- enforce the root-only package export map and `types`-before-`import` condition order\n- provide explicit deterministic fixture regeneration and generated-fixture guidance\n\n## Scope\n\nGuard tooling, CI, and contributor documentation only. No application behavior, shared contract implementation, schema, migration, or product changes.\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm shared-contracts`\n- `pnpm shared-contracts -- --write` (byte-stable fixtures)\n- `pnpm test` (945 unit tests and 21 tool tests)\n- `pnpm test:pg` (107 Postgres tests)\n- `pnpm --filter @coeval/web build`\n- `pnpm large-files` (zero unclassified files)\n- `git diff --check`\n- fresh Agent Bridge Claude Opus review and same-thread rereviews to `FINAL_APPROVE`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#17",
+    "input": "Guard web extraction source coverage",
+    "output": "## Summary\n\n- define durable source-ownership contracts for the four large web screens selected for extraction\n- route existing copy, editor, accessibility, responsive-dialog, and row-action source assertions through those contracts\n- discover dialog and row behavior sources bidirectionally so extracted files cannot silently lose coverage\n- recursively reject direct owned-source path literals from test files outside the central inventory\n- keep new large-screen candidates covered while retaining contracts after roots fall below 1,000 lines\n\n## Scope\n\nTest-only characterization. No production UI, application behavior, product contract, schema, or package changes.\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm shared-contracts`\n- `pnpm test` (948 unit tests and 21 tool tests)\n- `pnpm test:pg` (107 Postgres tests)\n- `pnpm --filter @coeval/web build`\n- `pnpm large-files` (zero unclassified files)\n- `git diff --check`\n- fresh Agent Bridge Claude Opus review and same-thread rereview to `FINAL_APPROVE`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#18",
+    "input": "Split shared foundation contracts",
+    "output": "## Summary\n\n- extract project settings, judge/model primitives, skill schemas, and verdict records from the shared root into four dependency-directed modules\n- preserve `@coeval/shared` as the only public package entry with the exact frozen TypeScript and runtime export sets\n- add a runtime binding-identity test and make the legacy terminology guard follow every shared source module recursively\n\nThis is a structural-only refactor. It changes no product behavior, schema semantics, migration, route, wire contract, contract fixture, or package subpath export.\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm shared-contracts` — 5 modules, 890 TypeScript exports, 491 runtime exports, built root initialized, no cycles\n- `pnpm test` — 949 passed, 104 skipped; 21 Node tests passed\n- `pnpm test:pg` — 107 passed\n- `pnpm --filter @coeval/web build`\n- `pnpm large-files` — no `review_required` entries\n- `git diff --check`\n\n## Independent review\n\nFresh Agent Bridge Claude Opus/high review and same-thread rereview completed on exact commit `3960b6075d8cb2888bc4cf10c2955af3f1e2ed5d`.\n\n- accepted finding: the legacy ground-truth terminology guard watched only `shared/index.ts`; fixed by recursively scanning `packages/shared/src/**/*.ts`\n- rereview markers: `FINAL_APPROVE`, `BATCH2A_REREVIEW_COMPLETE`\n- no remaining material findings",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#19",
+    "input": "Extract shared legacy review contracts",
+    "output": "## Summary\n\n- extract the ungoverned legacy-review contracts and helpers into a 625-line dependency-directed module\n- keep governed human truth and calibration contracts outside this module and preserve the package root as the only public entry point\n- extend the runtime barrel-identity test to every extracted legacy-review binding\n\nThe extracted declaration body is byte-identical to its original `shared/index.ts` segment. This is structural only: no schema, behavior, route, migration, wire contract, fixture, or product-authority change.\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm shared-contracts` — 6 modules, 890 TypeScript exports, 491 runtime exports, initialized root, no cycles\n- focused legacy-review/API/barrel suites — 197 passed\n- `pnpm test` — 949 passed, 104 skipped; 21 Node tests passed\n- `pnpm test:pg` — 107 passed\n- `pnpm --filter @coeval/web build`\n- `pnpm large-files` — root reduced from 6,270 to 5,666 reported lines; no `review_required` entries\n- `git diff --check`\n\n## Independent review\n\nFresh Agent Bridge Claude Opus/high review completed on exact commit `f718e71104442743355f0984334061bdfe027af1` with marker `BATCH2B_LEGACY_REVIEW_COMPLETE`.\n\n- zero material findings\n- base/head probe matched all 491 runtime exports, 414 schemas across 14,904 parses, and 20 exported function bodies\n- confirmed the ungoverned legacy versus governed evidence boundary remains intact",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#20",
+    "input": "Refactor shared trace contracts",
+    "output": "## Summary\n\n- extract core trace, source, and ingestion-purpose contracts into `traces.ts`\n- extract the complete trace-to-test authoring and validation contract into `trace-tests.ts`\n- preserve `@coeval/shared` as the only public entry point and preserve every root binding by identity\n- keep the sibling-only `TraceStepsSchema` unavailable from the package root while sharing it with remaining internal consumers\n\n## Verification\n\n- `pnpm shared-contracts` (8 modules, 890 TypeScript exports, 491 runtime exports, initialized root, no cycles)\n- `pnpm typecheck`\n- `pnpm test` (949 passed, 104 skipped; 21 Node tests passed)\n- `pnpm test:pg` against isolated PostgreSQL 17 (19 files, 107 tests)\n- `pnpm --filter @coeval/web build`\n- `pnpm large-files`\n- `git diff --check`\n- fresh Claude Opus/high Agent Bridge review of exact SHA `a7b3455ebee74ee0156fc80fa3c98a375ff8f9b6`: approved, no material findings\n- differential review: 414 schemas across 24,846 parses, zero differences\n\n## Scope\n\nStructural only. No product behavior, public contract, database schema, auth, or runtime semantics changed.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#21",
+    "input": "Refactor shared agent and dataset contracts",
+    "output": "## Summary\n\n- extract API-key, provider-key, agent bootstrap/pairing, connection-snippet, and judge-service contracts into `agent-access.ts`\n- extract mutable dataset and immutable dataset-revision evidence contracts into `datasets.ts`\n- preserve `@coeval/shared` as the only public entry point and preserve every root binding by identity\n- keep all downstream analysis/governed schemas closed over the same dataset digest and revision schema objects\n\n## Verification\n\n- `pnpm shared-contracts` (10 modules, 890 TypeScript exports, 491 runtime exports, initialized root, no cycles)\n- `pnpm typecheck`\n- `pnpm test` (949 passed, 104 skipped; 21 Node tests passed)\n- `pnpm test:pg` against isolated PostgreSQL 17 (19 files, 107 tests)\n- `pnpm --filter @coeval/web build`\n- `pnpm large-files`\n- `git diff --check`\n- fresh Claude Opus/high Agent Bridge review of exact SHA `788467e18dd9b10641b16e92178b60e7091868bc`: approved, no material findings\n- differential review: 414 schemas across 25,254 parses, zero differences; 699 downstream digest references retain identity\n\n## Scope\n\nStructural only. No product behavior, public contract, database schema, auth, trust boundary, or runtime semantics changed.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#22",
+    "input": "Refactor shared analysis contracts",
+    "output": "## Summary\n\n- extract representative analysis population/draw contracts into `analysis-population.ts`\n- extract the governed analysis study, coding, taxonomy, assignment, coverage, and closure contracts into `analysis-study.ts`\n- preserve the population-to-study dependency direction and keep six sibling-only helper schemas out of the public root\n- preserve `@coeval/shared` as the only public entry point and every root binding by identity\n\n## Verification\n\n- `pnpm shared-contracts` (12 modules, 890 TypeScript exports, 491 runtime exports, initialized root, no cycles)\n- `pnpm typecheck`\n- `pnpm test` (949 passed, 104 skipped; 21 Node tests passed)\n- `pnpm test:pg` against isolated PostgreSQL 17 (19 files, 107 tests)\n- `pnpm --filter @coeval/web build`\n- `pnpm large-files`\n- `git diff --check`\n- fresh Claude Opus/high Agent Bridge review plus same-thread rereview of exact SHA `47a6f46938abc4203a6a31d64996eec5ac13d026`: `FINAL_APPROVE`\n- differential review: approximately 86,000 parse probes, zero introduced differences\n\n## Scope\n\nStructural only. No product behavior, public contract, database schema, auth, evidence semantics, or runtime behavior changed.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#23",
+    "input": "refactor(shared): extract evaluation workflows",
+    "output": "## Summary\n\n- extract eval-run, comparison, batch, receipt, and spend contracts into a cohesive `evaluation-runs` module\n- move dataset operational contracts into `datasets` and access/provider discovery contracts into `agent-access`\n- preserve the root-only `@coeval/shared` API and verify sibling/root binding identity\n\n## Invariants\n\n- no product, wire-contract, schema, auth, persistence, or runtime behavior change\n- public surface remains exactly 890 TypeScript exports and 491 runtime exports\n- shared package initializes without cycles or TDZ failures\n- Coeval remains policy-free Analyze → Measure; retained deprecated gate contracts are unchanged\n\n## Verification\n\n- `pnpm shared-contracts`\n- `pnpm typecheck`\n- `pnpm test` — 949 passed, 104 skipped; 21 Node tests passed\n- `pnpm test:pg` — 107 passed\n- `pnpm --filter @coeval/web build`\n- `pnpm large-files`\n- `git diff HEAD^ HEAD --check`\n- fresh Agent Bridge Claude Opus review and same-thread rereview: `FINAL_APPROVE`\n\nReviewed exact commit: `14f2d0a9d46e79031d05211379fd52443c97f6fc`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#24",
+    "input": "refactor(shared): extract criterion governance contracts",
+    "output": "## Summary\n\n- extract criterion lifecycle, ADR-0010 Analyze-promotion handoff, and policy-free evaluator-suite contracts into `criterion-governance`\n- keep promotion cross-object refinements and suite no-policy constraints colocated\n- preserve the root-only shared package API and verify root/sibling identity\n\n## Invariants\n\n- Analyze promotion remains development authoring, creates neither truth nor an evaluator, and binds exact source evidence\n- evaluator suites still cannot express release roles, thresholds, weights, compensation, or composite decisions\n- no product, schema, auth, persistence, digest, or runtime behavior change\n- public surface remains 890 TypeScript exports and 491 runtime exports; no ESM cycle or deep package export\n\n## Verification\n\n- `pnpm shared-contracts`\n- `pnpm typecheck`\n- `pnpm test` — 949 passed, 104 skipped; 21 Node tests passed\n- `pnpm test:pg` — 107 passed\n- `pnpm --filter @coeval/web build`\n- `pnpm large-files`\n- `git diff HEAD^ HEAD --check`\n- fresh Agent Bridge Claude Opus review plus same-thread rereviews: `FINAL_APPROVE`\n\nReviewed exact commit: `973ef2848156383ef7056f54fd240846dba86ff1`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#25",
+    "input": "refactor(shared): extract binary calibration contracts",
+    "output": "## Summary\n\n- extract the complete binary-calibration shared evidence contract into a cohesive module\n- preserve the private ledger/public artifact boundary and all exact aggregate schemas\n- keep the root-only shared API and downstream Wilson-rate binding identity unchanged\n\n## Invariants\n\n- conformance fixture, canonical digests, count bounds, rate representations, provider identity, and eligibility semantics are unchanged\n- all private helper schemas remain private\n- no product, schema, auth, persistence, or runtime behavior change\n- public surface remains 890 TypeScript exports and 491 runtime exports; no cycles or deep package exports\n\n## Verification\n\n- `pnpm shared-contracts`\n- `pnpm typecheck`\n- `pnpm test` — 949 passed, 104 skipped; 21 Node tests passed\n- `pnpm test:pg` — 107 passed\n- `pnpm --filter @coeval/web build`\n- `pnpm large-files`\n- `git diff HEAD^ HEAD --check`\n- fresh Agent Bridge Claude Opus review: `FINAL_APPROVE`\n\nReviewed exact commit: `069b66f88df47d578e7c79f343f0b34632cbadc8`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#26",
+    "input": "refactor(shared): extract integration contracts",
+    "output": "## Summary\n\n- extract shared redaction, provider connection, native Ironside evaluator-feed, and import-job contracts into `integrations`\n- keep Langfuse/Ironside aliases colocated with their LangSmith canonical schemas\n- preserve opaque cursor/settlement ownership and root-only shared exports\n\n## Invariants\n\n- all 34 moved runtime bindings and 10 cross-provider aliases preserve object identity\n- recursive Ironside observation schemas, URL/redaction rules, defaults, and limits are unchanged\n- no compatibility shim, product, schema, auth, persistence, or runtime behavior change\n- public surface remains 890 TypeScript exports and 491 runtime exports; no cycles or deep package exports\n\n## Verification\n\n- `pnpm shared-contracts`\n- `pnpm typecheck`\n- `pnpm test` — 949 passed, 104 skipped; 21 Node tests passed\n- `pnpm test:pg` — 107 passed\n- `pnpm --filter @coeval/web build`\n- `pnpm large-files`\n- `git diff HEAD^ HEAD --check`\n- fresh Agent Bridge Claude Opus review: `FINAL_APPROVE`\n\nReviewed exact commit: `b8f6dccea42810274cf7619a6392171cbcc39333`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#27",
+    "input": "refactor(shared): extract evaluator lifecycle contracts",
+    "output": "## Summary\n\n- extract the ADR-0010 evaluator lifecycle contract family into a cohesive shared module\n- preserve the root-only public API and every runtime binding by identity\n- extend the shared barrel contract test to cover the new module\n\n## Verification\n\n- `pnpm shared-contracts` — 17 modules, 890 TypeScript exports, 491 runtime exports, no cycles\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm test` — 949 passed, 104 PostgreSQL tests skipped by the non-PG suite; 21 tool tests passed\n- `pnpm test:pg` — 107 passed\n- `pnpm large-files`\n- focused evaluator lifecycle and barrel suites — 19 passed\n- fresh Claude Opus/high Agent Bridge review — `FINAL_APPROVE`\n\nThe moved 270-line lifecycle body is byte-identical to `origin/main`; this PR changes module ownership only.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#28",
+    "input": "refactor(shared): extract analysis measurement contracts",
+    "output": "## Summary\n\n- extract the component-only Analyze measurement contract family into a cohesive shared module\n- preserve root-only exports and imported study, taxonomy, and calibration schema identities\n- extend the shared barrel identity guard for the new module\n\n## Verification\n\n- `pnpm shared-contracts` — 18 modules, 890 TypeScript exports, 491 runtime exports, no cycles\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm test` — 949 passed, 104 PostgreSQL-gated tests skipped; 21 tool tests passed\n- `pnpm test:pg` — 107 passed\n- `pnpm large-files`\n- focused measurement and barrel suites — 13 passed\n- fresh Claude Opus/high Agent Bridge review and same-thread rereview — `FINAL_APPROVE`\n\nThe moved 215-line measurement body is byte-identical to `origin/main`; this PR changes module ownership only.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#29",
+    "input": "refactor(shared): extract governed review contracts",
+    "output": "## Summary\n\n- extract the governed-human-truth contract state machine into a cohesive shared module\n- preserve blind-review, digest, adjudication, imported-truth, and representative-claim semantics\n- extend the root-binding identity guard for the new module\n\n## Verification\n\n- `pnpm shared-contracts` — 19 modules, 890 TypeScript exports, 491 runtime exports, no cycles\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm test` — 949 passed, 104 PostgreSQL-gated tests skipped; 21 tool tests passed\n- `pnpm test:pg` — 107 passed\n- `pnpm large-files`\n- focused governed-review/barrel suites — 46 passed, 2 PostgreSQL-gated skipped\n- fresh Claude Opus/high Agent Bridge review and same-thread rereview — `FINAL_APPROVE`\n\nThe 591-line governed contract body is an exact structural move apart from one corrected module-navigation comment; executable schema lines are byte-identical to `origin/main`.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#3",
+    "input": "Define the beginner onboarding journey",
+    "output": "## Summary\n- define the low-friction Run → Check → Result first-run contract\n- specify question-fatigue and Decide for me behavior\n- separate starter setup from human truth, calibration, and release authority\n- document app and external-agent entrances plus the deferred shared-session gate\n- link the contract from the README\n\n## Validation\n- `git diff --check`\n- verified referenced journey documents exist\n- docs-only change; runtime test suite not run locally (CI remains required)",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#30",
+    "input": "refactor(shared): extract golden and machine read contracts",
+    "output": "## Summary\n\n- extract golden-set registry, command, retirement, and health contracts into a leaf module\n- extract the bounded read-only findings, cases, and golden-set machine API contracts into a dependent module\n- preserve the root API and nested schema identities while reducing the root barrel to 895 lines\n- remove the completed shared-root entry from the large-file review inventory\n\n## Verification\n\n- `pnpm shared-contracts` — 21 modules, 890 TypeScript exports, 491 runtime exports, no cycles\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm test` — 949 passed, 104 PostgreSQL-gated skipped; 21 tool tests passed\n- `pnpm test:pg` — 107 passed\n- `pnpm large-files` — 24 tracked files over 1,000 lines, zero review-required\n- focused golden/read/barrel suites — 22 passed\n- fresh Claude Opus/high Agent Bridge review and same-thread rereview — `FINAL_APPROVE`\n\nAll four extracted source spans are byte-identical moves; only import/barrel wiring, identity coverage, formatting cleanup, and the completed inventory entry change.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#31",
+    "input": "refactor(api): extract shared request services",
+    "output": "## Summary\n\n- extract app-scoped rate limiting, lifecycle-aware evaluator resolution, owner authorization, provider visibility, and eval-run orchestration into shared request services\n- route every eval-run dispatch path, including batch judging, through one arm/dispatch/refresh implementation\n- add AST-backed composition guards that pin exact factory owners and module edges before route extraction\n- add direct behavior coverage for resolver failures, provider modes, dispatch ordering, revision guards, and owner responses\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm test` (961 passed, 104 skipped; 21 tool tests passed)\n- `pnpm test:pg` against disposable PostgreSQL 17 (107 passed)\n- `pnpm shared-contracts`\n- `pnpm large-files`\n- Agent Bridge Claude Opus/high review and same-session rereviews: final approved\n\nThis is a structural CURRENT refactor only. It changes no product, auth, wire, schema, persistence, or clean-install behavior.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#32",
+    "input": "refactor(api): extract project administration routes",
+    "output": "## Summary\n\n- extract the contiguous project administration, onboarding, and judge-provider routes from `app.ts`\n- preserve centralized authentication, membership enforcement, route registration order, and the single shared request-services container\n- move the corresponding behavior tests beside the route family and add an exact route-ownership assertion\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm test` (962 Vitest tests passed, 21 tool tests passed; expected gated skips only)\n- disposable PostgreSQL 17 suite (107/107 passed)\n- `pnpm shared-contracts` (890 TypeScript exports, 491 runtime exports, no cycles)\n- `pnpm large-files` (0 files require review)\n- fresh Claude Opus Agent Bridge review and same-thread rereview: approved with no remaining findings\n\nThis is a CURRENT structural refactor only. It does not change product behavior, authentication, wire contracts, persistence, or clean-install semantics.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#33",
+    "input": "refactor(api): extract skill administration routes",
+    "output": "## Summary\n\n- extract the contiguous skill administration and read-only evaluator-diagnostic routes from `app.ts`\n- preserve exact route order, session/project middleware, owner checks, queue and queue-less version creation, and the single shared request-services provider view\n- co-move 16 existing behavior tests byte-for-byte and add an exact 11-route ownership assertion\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm test` (963 Vitest tests passed, 21 tool tests passed; expected gated skips only)\n- disposable PostgreSQL 17 suite (107/107 passed)\n- `pnpm shared-contracts` (890 TypeScript exports, 491 runtime exports, no cycles)\n- API import graph (87 modules, no cycles)\n- `pnpm large-files` (0 files require review)\n- exact handler/test AST parity and unchanged route-manifest snapshot\n- fresh Claude Opus Agent Bridge review and same-thread rereview: approved with no remaining findings\n\nThis is a CURRENT structural refactor only. It does not change product behavior, authentication, wire contracts, persistence, policy boundaries, or clean-install semantics.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#34",
+    "input": "refactor(api): extract trace-test administration routes",
+    "output": "## Summary\n\n- extract the nine contiguous trace-test administration routes from `createApp` into a focused 495-line route module\n- preserve the existing registration slot, middleware/auth order, app-scoped request services, provider boundaries, rate limits, and append-only trace-test behavior\n- add an exact isolated route-family ownership assertion while retaining all existing behavior tests\n\n## Verification\n\n- exact TypeScript AST handler comparison: 9/9 route bodies unchanged\n- exact helper + handler block SHA-256 matches the base source\n- `pnpm typecheck`\n- `pnpm shared-contracts` (21 modules, 890 TypeScript exports, 491 runtime exports, no cycles)\n- `pnpm build`\n- `pnpm test` (964 passed, 104 skipped; 21 tool tests passed)\n- PostgreSQL 17 suite (19 files, 107 tests passed)\n- focused trace/security/manifest/composition suites\n- `pnpm large-files` (`review_required: 0`)\n- `git diff --check`\n\n## Independent review\n\n- fresh Agent Bridge Claude Opus/high review of exact `caa6ab9..222d91d`\n- final verdict: approved, no P0-P3 findings\n\nThis is a structural-only CURRENT refactor. It changes no product behavior, authentication policy, wire/schema contract, database baseline, or Analyze-to-Measure boundary.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#35",
+    "input": "Extract dataset administration routes",
+    "output": "## Summary\n\n- extract the 11 contiguous dataset administration routes from the API composition root\n- preserve their exact registration order, handlers, shared request services, and authorization behavior\n- co-move ten existing dataset behavior tests and add an isolated route ownership contract\n- clean up the remaining app test suites so their names match their actual model-binding and Ironside coverage\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm shared-contracts`\n- `pnpm test` (965 passed, 104 skipped; 21 tool tests passed)\n- PostgreSQL 17 suite (107 passed)\n- focused dataset/revision/route-boundary suites\n- `pnpm large-files`\n- `git diff --check`\n- fresh Claude Opus/high Agent Bridge review and same-thread rereview: `FINAL_APPROVE`\n\n## Invariants\n\n- route manifest remains unchanged\n- extracted 244-line handler body is byte-identical to the base\n- same app-scoped `RequestServices` instance is injected\n- no product, auth, wire, schema, migration, persistence, or contract behavior changes",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#36",
+    "input": "Extract evaluation administration routes",
+    "output": "## Summary\n\n- extract the nine evaluation-administration routes into a cohesive route module\n- preserve the exact route order, handler bodies, app-scoped request services, and queue identity\n- keep legacy gate-check reads in the composition root to preserve the Analyze-to-Measure product boundary\n- add an exact route-ownership contract test\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm shared-contracts`\n- `pnpm test` (966 passed; 104 PostgreSQL-gated skipped; 21 tool tests passed)\n- disposable PostgreSQL 17 suite (107/107)\n- `pnpm large-files`\n- `git diff --check`\n- fresh Agent Bridge Claude Opus/high review of exact SHA `9de0296c077cb9140b64ebc69d4f6fe96feb707f`: `FINAL_APPROVE`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#37",
+    "input": "Extract integration administration routes",
+    "output": "## Summary\n\n- extract the contiguous import-job, provider-integration, and feedback-sync routes into one cohesive module\n- preserve the exact 20-route order and the app-scoped repository, request-service, pool, queue, auth, and client-factory identities\n- move the existing integration route behavior tests unchanged and add an exact route-ownership contract\n- reduce `app.ts` from 3,711 to 2,816 lines and `app.test.ts` from 4,165 to 3,788 lines\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm shared-contracts`\n- `pnpm test` (967 passed; 104 PostgreSQL-gated skipped; 21 tool tests passed)\n- disposable PostgreSQL 17 suite (107/107)\n- `pnpm large-files`\n- `git diff --check`\n- exact byte comparison: 814 handler lines, 74 helper lines, and 376 moved test lines\n- fresh Agent Bridge Claude Opus/high review of exact SHA `da9e8553390de8300de6683322e4e65b2d24ce9c`: `FINAL_APPROVE`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#38",
+    "input": "Extract legacy evidence administration routes",
+    "output": "## Summary\n\n- extract the 22 session-side case, verdict, golden-set, diagnostic, export, and review-queue routes into an explicit legacy-evidence module\n- preserve the `ungoverned_legacy` boundary, route order, repository/pool identity, audit side effects, and final not-found/error-handler ordering\n- move the CSV helpers and governance marker unchanged and add an exact route-ownership contract\n- reduce `app.ts` from 2,816 to 2,025 lines\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm shared-contracts`\n- `pnpm test` (968 passed; 104 PostgreSQL-gated skipped; 21 tool tests passed)\n- disposable PostgreSQL 17 suite (107/107)\n- `pnpm large-files`\n- `git diff --check`\n- exact byte comparison: 8 governance-marker lines, 709 handler lines, and 68 CSV-helper lines\n- fresh Agent Bridge Claude Opus/high review of exact SHA `d7a7529e996c9264dfa392014434147e62c53a2d`: `FINAL_APPROVE`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#39",
+    "input": "Refactor v1 agent administration routes",
+    "output": "## Summary\n\n- extract the contiguous v1 bootstrap, read, criterion, and evaluator-suite contract routes from the API composition root\n- keep all `/api/v1/*` body limits, authentication, project membership, and rate limiting centralized in `app.ts`\n- pin the new route module's exact ordered 15-route ownership without changing production behavior\n\n## Structural evidence\n\n- the 707-line handler block is byte-identical to `main`\n- the global route manifest is unchanged\n- `app.ts` drops from 2,025 to 1,305 lines; the new cohesive module is 784 lines\n- no product, wire, schema, persistence, migration, or compatibility behavior changes\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm shared-contracts` (21 modules, 890 TypeScript exports, 491 runtime exports, no cycles)\n- `pnpm test` (969 passed, 104 skipped; 21 tool tests passed)\n- disposable PostgreSQL 17 suite (107/107)\n- focused route/bootstrap/findings/criteria/project tests\n- `pnpm large-files` (`review_required: 0`)\n- `git diff --check`\n- fresh Agent Bridge Claude Opus/high review plus same-thread rereview: final approve on `5fd645cc54f577d17356be2ef4c61f6d90543a2a`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#4",
+    "input": "Build the beginner first-result flow",
+    "output": "## Summary\n- replace the four-step setup path with a shared Run → Check → Result journey\n- keep setup state derived from the current Check and durable project data for tracing and supplied-example projects\n- make expected labels, protected examples, and governed comparison optional follow-up work instead of first-run blockers\n- rewrite project creation, provisional state, first-result, pending-result, and setup-receipt copy for people new to evals\n- route new projects through Overview and backfill an existing Run when the user creates their first Check\n- persist import evaluation as version-scoped runs with one durable provider attempt per case\n- show queued, running, failed, and saved-but-not-queued states honestly, then open the exact linked Result\n\n## Validation\n- `pnpm test` (905 passed, 97 skipped) plus 12 tool tests\n- `pnpm test:pg` (100 passed)\n- `pnpm typecheck`\n- `pnpm build`\n- independent review and remediation passes against the complete PR\n\n## Product boundaries\n- a Result is explicitly the Check opinion, not human truth, accuracy proof, or permission to ship\n- Coeval reads recorded runs and does not imply tool replay or side-effect verification\n- ordinary backfill remains distinct from evaluator regression-gate governance\n- Golden/protected examples and governed human truth remain later, distinct workflows\n- this flow targets clean installs; it carries no compatibility shim or parallel legacy onboarding path",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#40",
+    "input": "Refactor v1 evaluation routes",
+    "output": "## Summary\n\n- extract the contiguous v1 judge, batch, assessment-receipt, eval-run, and deprecated gate routes from the API composition root\n- inject the existing app-scoped request-service container and guardrail values without recreating rate, resolver, dispatch, queue, or provider state\n- remove `app.ts` from the oversized-file inventory now that it is 899 lines\n\n## Structural evidence\n\n- the 390-line handler block is byte-identical to `main`\n- the base64 verifier is byte-identical and the receipt comparison schema uses the same resolved body-size guardrail\n- the global route manifest is unchanged; all v1 body-limit/auth/project/rate middleware remains centralized\n- no product, wire, schema, persistence, migration, or clean-install behavior changes\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm shared-contracts` (21 modules, 890 TypeScript exports, 491 runtime exports, no cycles)\n- `pnpm test` (970 passed, 104 skipped; 21 tool tests passed)\n- disposable PostgreSQL 17 suite (107/107)\n- focused judge/batch/receipt/gate/manifest/request-service tests\n- `pnpm large-files` (`review_required: 0`)\n- `git diff --check`\n- fresh Agent Bridge Claude Opus/high review: final approve on `1e78a2c2ead4314b9ad19ea2f8b1b7abeb75991d`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#41",
+    "input": "Guard repository transaction boundaries",
+    "output": "## Summary\n- add a checked, ordered map of all main PgRepository connection owners and PoolClient commands\n- fail closed on transaction/control-flow drift, nested owners, client substitution, source loss, and unapproved pool handoffs\n- document CURRENT PostgreSQL ownership plus TARGET DemoRepository shared-store boundaries\n\n## Verification\n- Node 24 typecheck and full build\n- 970 non-Postgres tests plus 29 tool tests\n- PostgreSQL 17: 107/107\n- shared contract, large-file, repository-boundary, and diff checks\n- Claude Opus/high commit-qualified review: FINAL_APPROVE on 3bcfcbf111f884abad7809fc54117309cc619d79",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#42",
+    "input": "refactor(api): extract repository boundary contracts",
+    "output": "## Summary\n- extract repository input/output contracts into a declaration-only module\n- extract stable typed errors and pure repository helpers behind the existing compatibility entry\n- pin the exact 120-name compiler surface, 65 type-only exports, 55 runtime exports, and runtime binding identity\n\n## Verification\n- pnpm build\n- pnpm typecheck\n- pnpm test (972 passed, 104 skipped; 29 tool tests)\n- pnpm test:pg (107 passed)\n- pnpm shared-contracts\n- pnpm repository-boundaries\n- pnpm large-files\n- git diff --check\n- fresh Claude Opus/high review plus same-thread rereviews: FINAL_APPROVE",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#43",
+    "input": "refactor(api): split repository facade into ports",
+    "output": "## Summary\n- split the 161-method CoevalRepository facade into 17 internal, declaration-only consumer ports\n- preserve the root facade, runtime/type surface, DemoRepository, and all behavior\n- pin exact port membership, signatures, direct symbol heritage, and runtime emptiness\n\n## Validation\n- Node 24 typecheck and full build\n- 974 non-PG tests + 29 tooling tests\n- PG17: 107/107\n- shared-contracts, repository-boundaries, large-files, diff-check\n- Claude Opus/high final review of exact cd823c1459cbad98ae71ea2749fd449696b64cac: FINAL_APPROVE",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#44",
+    "input": "refactor(api): centralize demo repository state",
+    "output": "## Summary\n- introduce one internal `DemoRepositoryStore` that owns the existing demo facade fields\n- preserve `DemoRepository` identity, callable behavior, seeded fixtures, and cross-domain object identity\n- add compiler-backed store ownership/state guards and a four-collection rollback characterization test\n- document the CURRENT shared-store seam before domain implementation slices\n\n## Verification\n- Node 24 `pnpm typecheck`\n- Node 24 `pnpm build`\n- Node 24 full non-PG suite: 982 passed / 104 skipped; tools 29/29\n- `pnpm shared-contracts` (890 TS / 491 runtime / no cycles)\n- `pnpm repository-boundaries` (35 transaction / 1 session-lock / 16 client commands)\n- `pnpm large-files`\n- `git diff --check`\n- same-thread Agent Bridge Claude Opus final review: `FINAL_APPROVE` on exact `73b8a36ee5034c072aa591d0842b1b6830b0a9c9`\n\nPG17 107/107 evidence was established on the production extraction; final amendments changed only characterization tests, snapshots, and documentation.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#45",
+    "input": "refactor(api): extract demo project repository",
+    "output": "## Summary\n- extract the seven ProjectRepositoryPort methods into one internal DemoProjectRepository slice\n- keep DemoRepository as the stable facade with one shared DemoRepositoryStore and narrow cross-port callbacks\n- add compiler-backed ownership guards and direct shared-state/dashboard behavior characterization\n- update CURRENT repository-boundary guidance and the large-file inventory\n\n## Verification\n- pnpm typecheck\n- pnpm build\n- pnpm shared-contracts\n- pnpm repository-boundaries\n- pnpm test (985 passed, 104 PG-gated skipped; 29 tool tests passed)\n- pnpm large-files\n- git diff --check\n- independent Claude Opus/high Agent Bridge review: FINAL_APPROVE on exact 031b4aa5753a6520dd8010e09cf5c4df8b26a5cc",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#46",
+    "input": "refactor(api): extract demo criterion suite repository",
+    "output": "## Summary\n- extract the nine criterion and evaluator-suite operations from `DemoRepository` into a state-free `DemoCriterionSuiteRepository`\n- preserve the public repository facade, shared store identity, error identity, canonical suite behavior, and cross-domain visibility\n- add compiler/runtime ownership guards and direct behavior coverage; update the repository-boundary documentation and large-file inventory\n\n## Verification\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm shared-contracts`\n- `pnpm repository-boundaries`\n- focused API tests: 24 passed\n- full `pnpm test`: 988 passed, 104 PostgreSQL-gated skipped; 29 tool tests passed\n- `pnpm large-files`\n- `git diff --check`\n- fresh Claude Opus/high review: `FINAL_APPROVE` / `BATCH4F_DEMO_CRITERION_REVIEW_COMPLETE`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#47",
+    "input": "refactor(api): extract demo skill lifecycle repository",
+    "output": "## Summary\n- extract the 15-method Demo skill-lifecycle port behind the stable repository facade\n- preserve shared-store, provider, immutable revision, and subclass-dispatch behavior through narrow dependencies\n- add exact ownership guards and direct selector, onboarding, signoff, regression, exposure, and polymorphism coverage\n- update repository-boundary documentation and large-file inventory\n\n## Verification\n- pnpm typecheck\n- pnpm build\n- pnpm test: 994 passed, 104 skipped; 29 tool tests passed\n- pnpm shared-contracts\n- pnpm repository-boundaries\n- pnpm large-files\n- git diff --check\n- fresh Claude Opus/high review plus same-thread rereviews: FINAL_APPROVE on exact 5075816448a6d81bc909cadc7fa21dc319759570\n\nNo persistence, migration, auth, wire-contract, or product-policy behavior changes.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#48",
+    "input": "refactor(api): extract demo golden evidence repository",
+    "output": "## Summary\n- extract all eight Demo golden-evidence port methods and the private case-detail builder behind the stable repository facade\n- preserve the single shared store, exact error identities, frozen revision refresh, and facade polymorphic dispatch through narrow callbacks\n- add structural ownership guards plus direct promotion, retirement, revision, conflict, and cross-slice behavior coverage\n- update CURRENT repository-boundary guidance and the large-file inventory\n\n## Verification\n- Node 24 pnpm typecheck\n- Node 24 pnpm build\n- Node 24 pnpm test: 999 passed, 104 PostgreSQL-gated skipped; 29 tool tests passed\n- pnpm shared-contracts: 21 modules, 890 TypeScript exports, 491 runtime exports, no cycles\n- pnpm repository-boundaries: 35 transaction owners, 1 session lock, 16 client commands\n- pnpm large-files: review_required 0\n- git diff --check\n- fresh Claude Opus/high Agent Bridge review plus same-session rereview: FINAL_APPROVE",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#49",
+    "input": "refactor: extract demo trace import repository",
+    "output": "## Summary\n- extract the seven TraceImportRepositoryPort methods and private job lookup into one internal DemoTraceImportRepository\n- preserve the exact shared DemoRepositoryStore, facade version-resolution dispatch, and dataset-example compensating rollback boundary\n- add structural and mutation-sensitive behavior coverage for trace identity/redaction/recursion and import-job lifecycle, ordering, limits, clones, counts, and errors\n- update CURRENT repository-boundary documentation and large-file inventory\n\n## Verification\n- Node 24 typecheck and full workspace build\n- full non-PG suite: 1003 passed / 104 PG-gated skipped; 29 tool tests passed\n- focused trace-import/store/ingestion/redaction suites: 23 passed\n- shared-contracts: 21 modules / 890 TS / 491 runtime / initialized / no cycles\n- repository-boundaries: 35 transaction owners / 1 session lock / 16 commands\n- large-files: review_required 0\n- git diff --check\n- fresh Claude Opus/high Agent Bridge review plus same-thread rereview: FINAL_APPROVE on exact 273880f2d3f11fdcc63a3e13a569f9f61280dc41\n\nProtected CI remains authoritative for PostgreSQL coverage.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#5",
+    "input": "Guide beginners through first Check creation",
+    "output": "## What changed\n- replace the full first-run evaluator editor with one short Check-focus choice and an inspectable proposal\n- add **Decide for me**, optional refinement, session-scoped draft recovery, evidence limits, and explicit `Starter · unvalidated` framing\n- append the exact visible quality question and bind it to the immutable evaluator version in one repository transaction\n- keep technical details available without leading the beginner flow\n\n## Validation\n- `pnpm test` (909 passed, 98 skipped)\n- `pnpm test:pg` (101 passed)\n- `pnpm typecheck`\n- `pnpm build`\n- local browser QA at desktop and 390px mobile widths\n\n## Product boundary\nThis creates a usable starter Check. It does not create governed human truth, calibration, evaluator approval, or a release decision.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#50",
+    "input": "refactor(api): extract demo credential repository",
+    "output": "## Summary\n- extract API-key and judge-credential DemoRepository ports into one internal shared-store slice\n- preserve all eight method bodies and the public compatibility facade\n- add direct security, identity, ownership, and ordering characterization\n- update shared-store guards and CURRENT repository-boundary navigation\n\n## Verification\n- Node 24 full test: 1007 passed, 104 PG-gated skipped; 29 tool tests passed\n- full build and typecheck\n- shared contracts: 890 TypeScript / 491 runtime exports, initialized, no cycles\n- repository boundaries: 35 transaction owners / 1 session lock / 16 commands\n- large-file report: review_required 0\n- fresh Claude Opus/high Agent Bridge review plus same-thread final rereviews: FINAL_APPROVE\n\nNo auth, wire, schema, persistence, migration, product, or PostgreSQL implementation change.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#51",
+    "input": "refactor(api): extract demo integration repository",
+    "output": "## Summary\n- extract all 23 Demo `IntegrationRepositoryPort` methods into one internal `DemoIntegrationRepository`\n- preserve the exact shared store and facade resolver boundary for provider privacy, polling, version selection, Ironside quarantine, and cursor CAS\n- add direct structural/security/behavior characterization plus shared-store guard and repository-boundary documentation updates\n\n## Verification\n- Node 24 `pnpm test` (1013 passed, 104 PG-gated skipped; 29 tool tests passed)\n- `pnpm build`\n- `pnpm typecheck`\n- `pnpm shared-contracts`\n- `pnpm repository-boundaries`\n- `pnpm large-files`\n- `git diff --check`\n- fresh Claude Opus/high Agent Bridge review + same-thread rereviews: FINAL_APPROVE on exact `4cd2bdd6e089d1b1cad6036972af048037a584dc`\n\nPG17 107/107 remains prior author evidence; protected CI is authoritative for this PR.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#52",
+    "input": "refactor(api): extract demo judge feedback repository",
+    "output": "## Summary\n- extract the complete 10-method `JudgeFeedbackRepositoryPort` into internal `DemoJudgeFeedbackRepository`\n- preserve the single shared demo store, exact facade delegates, built-in trace synthesis, and same-port worker-context subclass dispatch\n- pin judge-run and feedback-sync behavior including provenance, credential privacy, dedupe, project/provider filtering, bounds, and state transitions\n- update shared-store guards, repository-boundary documentation, and large-file inventory\n\n## Verification\n- Node 24 `pnpm typecheck`\n- Node 24 `pnpm build`\n- Node 24 `pnpm test` (1017 passed, 104 PG-gated skipped; 29 tool tests passed)\n- `pnpm shared-contracts`\n- `pnpm repository-boundaries`\n- `pnpm large-files`\n- `git diff --check`\n- all 10 moved method bodies match the base after only the two dependency qualifications\n\n## Independent review\n- fresh Claude Opus/high Agent Bridge review plus same-thread rereviews\n- final reviewed SHA: `1c3ba6891e94a9b47df3bfece6d1d15027ea2121`\n- final markers: `FINAL_APPROVE`, `BATCH4L_DEMO_FEEDBACK_FINAL_REREVIEW_COMPLETE`\n\nNo route, auth, wire, schema, migration, persistence, or product behavior is changed.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#53",
+    "input": "refactor(api): extract demo review queue repository",
+    "output": "## Summary\n- extract the complete seven-method ReviewQueueRepositoryPort into an internal DemoReviewQueueRepository\n- preserve the exact shared store plus facade callbacks for case ownership and current evaluator selection\n- add direct structural and behavior coverage for validation, criterion binding, dedupe, lifecycle, assignment, and verdict completion\n- update shared-store composition guards and CURRENT boundary documentation\n\n## Verification\n- Node 24 pnpm build\n- Node 24 pnpm typecheck\n- Node 24 pnpm test: 1021 passed, 104 PostgreSQL-gated skipped; 29 tool tests passed\n- pnpm shared-contracts\n- pnpm repository-boundaries\n- pnpm large-files\n- git diff --check\n- fresh Claude Opus/high Agent Bridge review: FINAL_APPROVE on exact eb3b9814be808cd4cbf5869792b3e7960b806a8e",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#54",
+    "input": "refactor(api): extract demo run comparison repository",
+    "output": "## Summary\n- extract the complete three-method RunComparisonRepositoryPort into an internal DemoRunComparisonRepository\n- preserve exact shared-store revision and eval-run validation, project isolation, deterministic ordering, limits, and copy boundaries\n- add whole-program ownership coverage and mutation-resistant direct behavior tests\n- update CURRENT repository-boundary documentation and large-file inventory\n\n## Verification\n- Node 24 build and typecheck\n- Node 24 full test: 1024 passed, 104 PostgreSQL-gated skipped; 29 tool tests passed\n- shared-contracts, repository-boundaries, large-files, diff-check\n- fresh Claude Opus/high Agent Bridge review plus same-thread rereviews: FINAL_APPROVE on exact 2da3eb3d418987df0a900df3f3586ede64aa743c",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#55",
+    "input": "refactor(api): extract demo historical gate repository",
+    "output": "## Summary\n- extract the complete deprecated HistoricalGateEvidenceRepositoryPort implementation into one internal DemoHistoricalGateEvidenceRepository\n- preserve the exact shared store and lazy facade callbacks for getGateCheckDetail, getEvalRunDetail, and getEvalRun\n- add compiler-backed ownership coverage plus direct historical projection, defaults, threshold, isolation, ordering, and limit tests\n- update Demo store composition documentation, snapshot, and large-file inventory\n\n## Verification\n- Node 24 build and typecheck\n- full non-PG suite: 1028 passed, 104 skipped; 29 tool tests passed\n- shared-contracts: 21 modules, 890 TypeScript exports, 491 runtime exports, initialized root, no cycles\n- repository-boundaries: 35 transaction owners, 1 session-lock owner, 16 client-scoped commands\n- large-files: review_required 0\n- exact four-method base comparison passed\n- git diff --check passed\n\n## Independent review\nFresh Claude Opus/high Agent Bridge review and two same-session replacement rereviews. Final exact commit ac268bf792ed835d3cc8225332824e568f5ee7e4 received FINAL_APPROVE and BATCH4O_DEMO_HISTORICAL_GATE_FINAL_REREVIEW_COMPLETE. No material or cleanup finding remains.\n\nNo product, release-policy, auth, wire, schema, migration, or PostgreSQL behavior changes.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#56",
+    "input": "refactor(api): extract demo trace-test repository",
+    "output": "## Summary\n- extract the complete seven-method demo TraceTestRepositoryPort and two private projection helpers behind the stable DemoRepository facade\n- preserve the exact shared store and lazy getCaseDetail facade callback for cross-domain visibility and subclass dispatch\n- add compiler-backed ownership checks plus direct source, revision, validation, enablement, isolation, cloning, ordering, and funnel characterization\n- update the shared-store inventory, CURRENT repository-boundary documentation, and large-file rationale\n\n## Verification\n- Node 24 pnpm build\n- Node 24 pnpm typecheck\n- Node 24 focused trace/store/barrel tests: 43 passed\n- Node 24 full pnpm test: 1033 passed, 104 PG-gated skipped; 29 tool tests passed\n- pnpm shared-contracts: 21 modules, 890 TypeScript exports, 491 runtime exports, initialized root, no cycles\n- pnpm repository-boundaries: 35 transaction owners, 1 session-lock owner, 16 client-scoped commands\n- pnpm large-files: review_required 0\n- git diff --check\n\n## Independent review\nFresh Agent Bridge Claude Opus/high review and two same-session commit-qualified rereviews completed on exact commit 660265820a74e11bed3b9b2ae4ab1f4503b23a4e. Final markers: FINAL_APPROVE and BATCH4P_DEMO_TRACE_TEST_FINAL_REREVIEW_COMPLETE. All identified coverage gaps were resolved and mutation-verified.\n\nPostgres was not rerun because production persistence is unchanged; the parent database evidence applies to this structural extraction.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#57",
+    "input": "refactor(api): extract demo dataset repository",
+    "output": "## Summary\n- extract the complete 12-method Demo dataset and immutable-revision port into one internal shared-store slice\n- preserve facade polymorphism for trace import, item insertion, case checks, same-port reads, and golden selection\n- move and strengthen the four-collection rollback and defensive-copy characterizations\n- update current repository-boundary documentation and large-file inventory\n\n## Verification\n- Node 24 typecheck and full build\n- focused cross-domain suite: 62/62\n- full non-PG suite: 140 files, 1036 tests passed, 104 expected PG skips; 29/29 tool tests\n- shared contracts: 21 modules, 890 TypeScript exports, 491 runtime exports, no cycles\n- repository boundaries: 35 transaction owners, 1 session-lock owner, 16 client commands\n- large-file guard and git diff check\n\n## Independent review\nFresh Claude Opus/high Agent Bridge thread coeval-demo-datasets-b4-opus-20260901 reviewed exact final SHA 2548bd44de926ca1fd6e8ce98340384ca3ec8f53 against base f7982e59317c2d2a55b3735d6f2e160bf808075b. Same-thread rereviews closed defensive-copy coverage and documentation findings. Final markers: FINAL_APPROVE and BATCH4Q_DEMO_DATASETS_FINAL_REREVIEW_COMPLETE.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#58",
+    "input": "refactor(api): extract demo case evidence repository",
+    "output": "## Summary\n- extract the DemoRepository case-evidence surface into an internal cohesive repository slice\n- preserve lazy facade dispatch, shared-store identity, and the root-only repository contract\n- add exact ownership/dependency guards and direct characterization for case-evidence filters, ordering, errors, and actor projection\n- update repository-boundary and large-file documentation/inventory\n\n## Verification\n- Node 24 typecheck and full build\n- 141 Vitest files: 1040 passed, 104 PostgreSQL-gated skipped\n- 29 tool tests\n- shared-contracts: 21 modules, 890 TypeScript exports, 491 runtime exports, no cycles\n- repository-boundaries: 35 transaction owners, 1 session-lock owner, 16 commands\n- large-files and git diff --check\n- independent Claude Opus/high Agent Bridge review: FINAL_APPROVE\n\n## Invariants\n- no product, auth, wire, schema, migration, or persistence behavior change\n- all 13 moved members remain equivalent after store/dependency qualification\n- exact same app-scoped DemoRepositoryStore object is retained",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#59",
+    "input": "refactor(api): extract demo evaluation repository",
+    "output": "## Summary\n- extract the coupled demo evaluation-run and assessment-receipt consistency group behind one internal repository slice\n- preserve all 30 public facade methods, the exact shared store, and lazy facade dispatch for every prior public-to-public call\n- pin terminal receipt minting, incomplete evidence, object-identity-preserving rollback, module ownership, and store topology\n\n## Verification\n- Node 24 `pnpm typecheck`\n- Node 24 `pnpm build`\n- Node 24 `pnpm test` (1043 passed, 104 PG-gated skipped; 29 tool tests passed)\n- `pnpm shared-contracts`\n- `pnpm repository-boundaries`\n- `pnpm large-files`\n- `git diff --check`\n- exact 37/37 normalized method-body comparison against base\n- fresh Claude Opus/high Agent Bridge review plus same-session replacement rereview: `FINAL_APPROVE`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#6",
+    "input": "Add conversational external-agent onboarding",
+    "output": "## Summary\n- add a reusable coeval-setup skill that inspects project context, limits question fatigue, and offers Finish setup or Refine the Check\n- split the app external-agent flow into a no-secret proposal prompt followed by the short-lived connection\n- require agent bootstrap to bind the exact beginner-visible Check question to an immutable criterion version\n- hand ongoing capture and submission to coeval-audit, with updated README and API guidance\n\n## Validation\n- skill-creator validation passed\n- forward-tested the skill against a beginner-style initialize/use-best-judgment request\n- pnpm typecheck\n- pnpm test: 923 passed, 99 skipped; 12 Node tests passed\n- pnpm test:pg: 102 passed\n- web production build passed\n\nThe new Check remains Starter · unvalidated; agent setup still stops before human adjudication, Golden promotion, governed activation, and release decisions.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#60",
+    "input": "refactor(api): extract golden repository helpers",
+    "output": "## Summary\n- extract pure golden regression, prior-verdict, and health computations from the repository facade\n- preserve root exports and runtime binding identity for Demo and Postgres consumers\n- add compiler-backed surface/signature guards and extend repository ownership documentation\n\n## Verification\n- `pnpm typecheck`\n- `pnpm test` (1044 passed, 104 PG-gated skipped; tools 29/29)\n- `pnpm build`\n- `pnpm shared-contracts`\n- `pnpm repository-boundaries`\n- `pnpm large-files`\n- focused golden/store/barrel tests\n- fresh Claude Opus/high Agent Bridge review: `FINAL_APPROVE` / `BATCH4T_GOLDEN_HELPERS_REVIEW_COMPLETE`\n\nNo production behavior, auth, wire contract, persistence, schema, or release-policy change.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#61",
+    "input": "refactor(api): extract demo repository composition",
+    "output": "## Summary\n- extract DemoRepository fixture seeding and fifteen-slice construction into a state-free composition module\n- preserve the single facade-owned store, provider identity, lazy facade callbacks, private root fields, and all 161 delegate bodies\n- add exact composition/seed/runtime-shape characterization and update slice ownership guards and repository-boundary docs\n- remove repository.ts from the large-file inventory after reducing it to 993 lines\n\n## Verification\n- Node 24 `pnpm test`: 1,047 passed, 104 PG-gated skipped; tools 29/29\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm shared-contracts`\n- `pnpm repository-boundaries`\n- `pnpm large-files`\n- `git diff --check`\n- fresh Claude Opus/high review plus same-session rereview: `FINAL_APPROVE`, `BATCH4U_DEMO_COMPOSITION_REREVIEW_COMPLETE`\n\nNo production behavior, auth, wire contract, persistence, receipt, transaction, or product-boundary change.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#62",
+    "input": "refactor(api): isolate demo repository facade",
+    "output": "## Summary\n\n- move the exact DemoRepository implementation into repository/demo-repository.ts\n- keep repository.ts as the stable compatibility barrel and preserve the root runtime binding\n- repoint all 15 domain ownership suites and the whole-program store guard to the implementation owner\n- add an exact facade/barrel/type-only-edge guard and update CURRENT repository-boundary documentation\n\n## Invariants\n\n- the 813-line class body is byte-identical to main\n- all 161 methods, constructor/private fields, ordering, identities, defaults, and delegation remain unchanged\n- root runtime/type export surfaces remain exact; root.DemoRepository === deep.DemoRepository\n- the deep-to-root edge is type-only and both import orders initialize without a cycle or TDZ\n- no product, auth, wire, schema, persistence, transaction, migration, or clean-install behavior changes\n- both production files remain below the 1,000-line large-file trigger\n\n## Verification\n\n- pnpm test — 1,048 passed / 104 PG-gated skipped\n- tool tests — 29/29\n- pnpm typecheck\n- pnpm build\n- pnpm shared-contracts — 21 modules, 890 TS / 491 runtime, initialized, no cycles\n- pnpm repository-boundaries — 35 transaction / 1 session-lock / 16 client commands\n- pnpm large-files — review_required: 0\n- git diff --check\n- Node 24.15 root-first and deep-first runtime identity probes\n\n## Independent review\n\nFresh Claude Opus/high Agent Bridge review, followed by a same-session commit-qualified rereview after its sole readability finding was resolved. Final markers:\n\n- FINAL_APPROVE\n- BATCH4V_DEMO_FACADE_REREVIEW_COMPLETE",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#63",
+    "input": "refactor(api): extract postgres repository support",
+    "output": "## Summary\n\n- move all 48 pure PostgreSQL result/value declarations plus the gate-check column projection into repository.pg/mappers.ts\n- move loadGoldenSetRetirementContext into the first internal PoolClient command module\n- preserve the entire PgRepository class byte-for-byte\n- extend the deterministic boundary fixture across both new internal modules\n- add exact private-surface, ownership, purity, and command behavior tests\n\n## Invariants\n\n- the 7,155-line PgRepository class is byte-identical to main\n- all 49 moved declarations are byte-identical after removing only required export modifiers\n- public PgRepository runtime/type surface remains exactly one class with 161 public port methods\n- mappers own no pool, client, query, connection, or mutable repository state\n- the golden command uses exactly its caller-owned PoolClient and owns no connection or transaction\n- boundary inventory remains 35 transaction owners, one session-lock owner, and 16 client-scoped commands\n- fixture control paths and event order have zero semantic drift after qualifying moved symbols\n- no product, auth, wire, schema, persistence, migration, or clean-install behavior change\n\n## Verification\n\n- pnpm test — 1,051 passed / 104 PG-gated skipped\n- tool tests — 29/29\n- pnpm typecheck\n- pnpm build\n- pnpm shared-contracts — 21 modules, 890 TS / 491 runtime, initialized, no cycles\n- pnpm repository-boundaries — 35 transaction / 1 session-lock / 16 client commands\n- pnpm large-files — review_required: 0\n- git diff --check\n- deterministic boundary-fixture regeneration\n- declaration-by-declaration exact-object comparison against main\n\n## Independent review\n\nFresh Claude Opus/high Agent Bridge review on the exact commit. Final markers:\n\n- FINAL_APPROVE\n- BATCH4W_PG_SUPPORT_REVIEW_COMPLETE",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#64",
+    "input": "refactor(api): extract postgres trace import commands",
+    "output": "## Summary\n\n- extract trace identity locking and trace insertion into a private PostgreSQL command module\n- retain importTrace and importDatasetExamples as the exact transaction owners\n- path-qualify the executable repository-boundary map and add direct non-PG characterization\n- preserve the 161-method public repository facade, SQL bytes, product boundaries, and clean-install behavior\n\n## Verification\n\n- Node 24 pnpm typecheck\n- Node 24 pnpm test: 1056 passed, 104 PG-gated skipped; 29 tool tests passed\n- Node 24 pnpm build\n- pnpm repository-boundaries: 35 transaction owners, 1 session-lock owner, 16 client commands\n- pnpm shared-contracts: 890 TypeScript / 491 runtime exports, no cycles\n- pnpm large-files and git diff --check\n- fresh Claude Opus/high review plus same-thread amended rereview: FINAL_APPROVE\n\nPG was not rerun locally because PG_SMOKE_DATABASE_URL is unset; CI supplies PostgreSQL.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#65",
+    "input": "refactor(api): extract postgres dataset revision commands",
+    "output": "## Summary\n\n- extract five caller-owned PostgreSQL dataset-revision commands into one private module\n- preserve all five public transaction owners and the stable 161-method repository facade\n- path-qualify the executable boundary map and add direct non-PG characterization\n- preserve exact SQL, digest/provenance behavior, parent conflict and content reuse, identity recovery, and verdict ordering\n\n## Verification\n\n- Node 24 pnpm typecheck\n- Node 24 pnpm test: 1061 passed, 104 PG-gated skipped; 29 tool tests passed\n- Node 24 pnpm build\n- pnpm repository-boundaries: 35 transaction owners, 1 session-lock owner, 16 client commands\n- pnpm large-files and git diff --check\n- fresh Claude Opus/high review plus same-thread amended rereview: FINAL_APPROVE\n\nPG was not rerun locally because PG_SMOKE_DATABASE_URL is unset; CI supplies PostgreSQL.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#66",
+    "input": "refactor(api): extract assessment receipt commands",
+    "output": "## Summary\n- extract receipt minting and eval-run counter updates into caller-owned PostgreSQL command functions\n- preserve all six receipt transaction owners, two counter callers, SQL bytes, receipt v1 canonicalization, and the 161-method public facade\n- add direct command characterization, exact boundary-fixture coverage, and current repository-boundary documentation\n\n## Verification\n- `pnpm test` — 1070 passed, 104 PG-gated skipped; 29/29 tool tests\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm shared-contracts`\n- `pnpm repository-boundaries`\n- `pnpm large-files`\n- `git diff --check`\n- fresh Claude Opus/high Agent Bridge review and same-thread rereview: FINAL_APPROVE\n\nPostgreSQL suites were not run locally because `PG_SMOKE_DATABASE_URL` is unset; CI supplies PostgreSQL and fails closed if it is absent.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#67",
+    "input": "Extract PostgreSQL skill-version commands",
+    "output": "## Summary\n- extract skill-version numbering, governed reviewer-subject binding, and immutable version insertion into a caller-owned PoolClient command module\n- preserve createCriterion and pending-version transaction ordering and the 161-method public repository facade\n- add direct SQL/privacy/version characterization and update the repository-boundary fixture and documentation\n\n## Verification\n- Node 24 pnpm test: 150 files, 1077 passed, 104 expected PG skips; 29 tool tests passed\n- pnpm typecheck\n- pnpm build\n- pnpm shared-contracts\n- pnpm repository-boundaries\n- pnpm large-files\n- git diff --check\n- fresh Claude Opus/high Agent Bridge review: FINAL_APPROVE on exact SHA 8ff64e89ddf409c33815bba3b2b662826a2f0117",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#68",
+    "input": "Extract PostgreSQL credential command",
+    "output": "## Summary\n- extract the caller-owned judge-provider credential upsert and paired audit append into a focused PostgreSQL command module\n- preserve direct replacement and agent-setup transaction ordering and the 161-method repository facade\n- add direct encryption, masking, audit, failure, and surface characterization plus boundary/docs updates\n\n## Verification\n- Node 24 pnpm test: 151 files, 1081 passed, 104 expected PG skips; 29 tool tests passed\n- pnpm typecheck\n- pnpm build\n- pnpm shared-contracts\n- pnpm repository-boundaries\n- pnpm large-files\n- git diff --check\n- fresh Claude Opus/high Agent Bridge review plus same-thread rereview: FINAL_APPROVE on exact SHA 5b1804121d735c909b0173a6a24b2798a702dcd7",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#69",
+    "input": "Extract PostgreSQL regression-run command",
+    "output": "## Summary\n- extract immutable regression-run insertion into a caller-owned PoolClient command module\n- preserve successful and failed evaluator-gate transaction ordering, exposure evidence, override audit, and the 161-method repository facade\n- add direct SQL, binding, nullability, evidence, failure, surface, boundary, and documentation characterization\n\n## Verification\n- Node 24 pnpm test: 152 files, 1085 passed, 104 expected PG skips; 29 tool tests passed\n- pnpm typecheck\n- pnpm build\n- pnpm shared-contracts\n- pnpm repository-boundaries\n- pnpm large-files\n- git diff --check\n- fresh Claude Opus/high Agent Bridge review plus same-thread rereview: FINAL_APPROVE on exact SHA 1a36ce13797b6cbdec9c3ededcf20d1ce0f5f121",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#7",
+    "input": "Keep Settings visible in every display mode",
+    "output": "## Summary\n- keep the Settings destination visible in Guided, Summary, and Technical displays\n- preserve the simplified beginner navigation without treating workspace administration as technical-only\n- allow project-level Settings to open before a multi-criterion choice exists\n- add route-policy, rendered-sidebar, and behavioral deep-link coverage for tracing and bench projects\n\n## Navigation audit\n- swept the registered workspace routes and their in-app references\n- Settings was the only primary system destination hidden by every beginner-facing display; detail and workflow routes remain contextually linked, while secondary diagnostics remain available in Technical display by design\n\n## Validation\n- `vitest run` — 930 passed, 99 skipped\n- Node CLI/MCP tests — 12 passed\n- `tsc -b`\n- web production build\n- `git diff --check`\n\nCloses #2",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#72",
+    "input": "refactor(api): extract PostgreSQL project repository",
+    "output": "## Summary\n- extract the complete seven-method PostgreSQL project port behind the unchanged PgRepository facade\n- preserve three transaction owners and lazy cross-port read dispatch with exact pool identity\n- add fail-closed composition/read-model characterization and update boundary/documentation inventories\n\n## Verification\n- Node 24 typecheck and full build\n- full test suite: 1096 passed, 104 PG-gated skipped; 29 tooling tests passed\n- repository-boundaries: 35 transaction owners, 1 session-lock owner, 16 client commands\n- shared-contracts and large-files guards\n- fresh Claude Opus/high review plus same-session rereview: FINAL_APPROVE",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#73",
+    "input": "refactor(api): extract PostgreSQL API-key repository",
+    "output": "## Summary\n- extract the complete four-method PostgreSQL API-key port behind unchanged PgRepository delegates\n- preserve one-time plaintext return, digest-only persistence, project-scoped revocation, and revoked-key rejection\n- extend exact facade composition, module ownership, mapper-shape, and security-behavior characterization\n\n## Verification\n- Node 24 typecheck and full build\n- full test suite: 1099 passed, 104 PG-gated skipped; 29 tooling tests passed\n- repository-boundaries unchanged at 35 transaction owners, 1 session lock, 16 client commands\n- shared-contracts and large-files guards\n- fresh Claude Opus/high review plus same-session rereview: FINAL_APPROVE",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#74",
+    "input": "refactor(api): extract PostgreSQL judge-credential repository",
+    "output": "## Summary\n- extract the complete PostgreSQL judge-credential port behind one facade-owned slice\n- preserve masked owner reads, worker-only decryption, audited deletion, and transaction ownership\n- pin allocation, pool identity, facade delegation, boundary events, and behavior with focused tests\n\n## Verification\n- Node 24 typecheck and full build\n- 1104 Vitest tests passed / 104 PG-gated skipped\n- 29 tool tests passed\n- shared-contracts, repository-boundaries, large-files, and diff-check passed\n- fresh Claude Opus/high Agent Bridge review and same-session rereview: FINAL_APPROVE\n\nPG/Docker suites were not rerun because production SQL bodies are exact moves and the prior merged baseline supplies the database evidence.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#75",
+    "input": "refactor(api): extract PostgreSQL run-comparison repository",
+    "output": "## Summary\n- extract the complete PostgreSQL run-comparison port behind one facade-owned slice\n- preserve exact participant bindings, project scoping, deterministic ordering, limits, and row mapping\n- pin allocation, pool identity, facade delegation, nullable revisions, multi-row ordering, and checked source ownership\n\n## Verification\n- Node 24 typecheck and full build\n- 1107 Vitest tests passed / 104 PG-gated skipped\n- 29 tool tests passed\n- shared-contracts, repository-boundaries, large-files, and diff-check passed\n- fresh Claude Opus/high Agent Bridge review and same-session rereview: FINAL_APPROVE\n\nPG/Docker suites were not rerun because production SQL bodies are exact moves and the merged baseline supplies the database evidence.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#76",
+    "input": "refactor(api): extract PostgreSQL historical gate evidence",
+    "output": "## Summary\n- extract the PostgreSQL historical gate-evidence compatibility port behind the existing repository facade\n- preserve the atomic gate/item transaction, project-scoped derived projection, and fail-closed reload\n- add structural, multi-item transaction, SQL, projection, and boundary characterization\n\n## Verification\n- pnpm typecheck\n- pnpm repository-boundaries\n- pnpm large-files\n- pnpm shared-contracts\n- pnpm test\n- focused historical gate/support/project repository tests\n- independent Claude Opus/high review and same-session rereview: FINAL_APPROVE\n\nNo product, auth, wire, schema, migration, or release-policy behavior changes.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#77",
+    "input": "refactor(api): extract PostgreSQL assessment receipt repository",
+    "output": "## Summary\n- extract the five-method PostgreSQL assessment-receipt repository slice behind the unchanged facade\n- preserve receipt-v1 canonical bytes, historical-freeze provenance, append-only corrections, and transaction ordering\n- add direct structural/transaction characterization and update repository boundary inventories/docs\n\n## Verification\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm test` (1,119 passed; 104 PostgreSQL-gated skipped; 29 tool tests passed)\n- `pnpm repository-boundaries` (35 transaction / 1 session-lock / 16 command)\n- `pnpm shared-contracts` (890 TypeScript / 491 runtime)\n- `pnpm large-files`\n- focused receipt repository tests 6/6\n- same-thread Claude Opus/high Agent Bridge rereview: `FINAL_APPROVE` / `BATCH4AK_PG_ASSESSMENT_RECEIPT_REREVIEW_COMPLETE`\n\nNo product, route, auth, schema, migration, wire-contract, or release-policy behavior changes.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#78",
+    "input": "refactor(api): extract PostgreSQL review queue repository",
+    "output": "## Summary\n- extract the complete seven-method PostgreSQL governed review-queue port behind the unchanged facade\n- preserve the exact pool, lazy current-skill resolution, criterion binding, queue transactions, deduplication, FIFO ordering, and project scoping\n- add direct structural/transaction/SQL characterization and update executable boundary/docs inventories\n\n## Verification\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm test` (1,125 passed; 104 PostgreSQL-gated skipped; 29 tool tests passed)\n- `pnpm repository-boundaries` (35 transaction / 1 session-lock / 16 command)\n- `pnpm shared-contracts` (890 TypeScript / 491 runtime)\n- `pnpm large-files`\n- focused repository tests 14/14\n- same-thread Claude Opus/high Agent Bridge rereview: `FINAL_APPROVE` / `BATCH4AL_PG_REVIEW_QUEUE_REREVIEW_COMPLETE`\n\nNo product, route, auth, schema, migration, wire-contract, persistence-format, or release-policy behavior changes.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#79",
+    "input": "refactor(api): extract PostgreSQL trace import repository",
+    "output": "## Summary\n- extract the complete seven-method PostgreSQL trace/import-job port behind the unchanged `PgRepository` facade\n- preserve the single trace transaction, caller-owned command, exact evaluator-version authorization, project-scoped job lifecycle, and existing dataset-example transaction\n- pin the slice allocation, lazy callbacks, SQL/transaction behavior, boundary fixture, documentation, and large-file inventory\n\n## Verification\n- `pnpm typecheck`\n- `pnpm repository-boundaries`\n- `pnpm test` (1131 passed, 104 PG-gated skipped; 29 tool tests passed)\n- `pnpm build`\n- `pnpm shared-contracts`\n- `pnpm large-files`\n- focused PostgreSQL trace-import slice tests (6/6)\n- independent Claude Opus/high Agent Bridge review: `FINAL_APPROVE`\n\nNo production product, authorization, wire, schema, migration, or release-policy behavior changes.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#80",
+    "input": "refactor(api): extract PostgreSQL provider operations",
+    "output": "## Summary\n- extract the complete PostgreSQL integration provider port behind the stable PgRepository facade\n- extract judge-run and feedback-sync persistence as the complete JudgeFeedback port\n- preserve exact pool, authorization, transaction, project-scoping, and public facade behavior\n- add compiler-backed ownership checks and direct provider/feedback characterization\n\n## Verification\n- Node 24 typecheck and full build\n- 1,137 Vitest tests passed; 104 PostgreSQL-gated tests skipped as expected\n- 29 Node tool tests passed\n- shared-contracts, repository-boundaries, large-files, and diff-check passed\n- fresh Claude Opus/high Agent Bridge review approved exact ea29cea18ed999caeb1abbb1893b8ea5d9b041ce",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#81",
+    "input": "refactor(api): extract PostgreSQL trace and dataset repositories",
+    "output": "## Summary\n- extract the complete PostgreSQL trace-test port into PgTraceTestRepository\n- extract the complete PostgreSQL dataset port into PgDatasetRepository\n- keep PgRepository as a direct facade with the same pool, public order, and transaction boundaries\n- update structural, repository-boundary, documentation, and large-file guards\n\n## Verification\n- 19/19 moved method bodies byte-identical to base\n- Node 24 typecheck and full build\n- pnpm test: 1,143 passed / 104 expected PG-gated skips; 29 tool tests passed\n- shared contracts: 890 TypeScript / 491 runtime exports, no cycles\n- repository boundaries: 35 transaction owners / 1 session lock / 16 client commands\n- large-file inventory: 0 review-required\n- independent Claude Opus/high review: FINAL_APPROVE",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#82",
+    "input": "Extract PostgreSQL golden and case evidence repositories",
+    "output": "## Summary\n- extract the complete GoldenEvidenceRepositoryPort implementation into a dedicated PostgreSQL repository\n- extract the complete CaseEvidenceRepositoryPort implementation into a dedicated PostgreSQL repository\n- preserve facade order, lazy cross-port callbacks, transaction ownership, project scoping, and public contracts\n- add compiler-backed structural ownership tests and update repository-boundary documentation and fixtures\n\n## Verification\n- Node 24 typecheck and full build\n- full non-PG suite: 1148 passed, 104 PG-gated skipped\n- tool tests: 29 passed\n- shared-contracts: 890 TypeScript / 491 runtime exports, no cycles\n- repository-boundaries: 35 transaction owners, 1 session lock, 16 client commands\n- large-files and diff-check pass\n- independent Claude Opus review: FINAL_APPROVE\n\nThis combines two cohesive repository slices into one reviewed CI batch to reduce Actions usage.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#83",
+    "input": "refactor(api): extract PostgreSQL eval and skill lifecycle",
+    "output": "## Summary\n- extract EvalRunRepositoryPort into a dedicated PostgreSQL repository slice\n- extract SkillLifecycleRepositoryPort with explicit lazy cross-port dependencies\n- preserve the PgRepository facade, transaction ordering, signatures, defaults, and runtime behavior\n- add fail-closed composition, identity, ordering, and analysis-population rejection coverage\n\n## Verification\n- Node 24 typecheck and full build\n- full non-PostgreSQL test suite: 1153 passed, 104 environment-gated skipped; 29 tool tests passed\n- shared-contracts: 890 TypeScript / 491 runtime exports, no cycles\n- repository-boundaries: 35 transaction owners / 1 session lock / 16 commands\n- large-files and diff-check\n- independent Claude Opus/high review and same-thread rereviews: FINAL_APPROVE\n\n## Notes\nPostgreSQL integration tests were not rerun locally because the configured database is unavailable; method bodies and transaction ordering are byte/AST-equivalent to the previously validated baseline.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#84",
+    "input": "refactor(api): split analysis repository internals",
+    "output": "## Summary\n- split analysis population and study PostgreSQL internals into domain-local support modules\n- preserve exact public repositories, transaction ownership, SQL ordering, and root surfaces\n- add compiler-backed boundary guards for methods, exports, module edges, defaults, and Pool/PoolClient propagation\n- document specialist repository boundaries and reclassify the three cohesive PG suites\n\n## Verification\n- Node 24 typecheck and full build\n- full non-PG test suite: 1,155 passed; 104 PG-gated skipped; 29 tool tests passed\n- shared-contracts, repository-boundaries, large-files, and diff-check\n- same-thread Claude Opus/high adversarial review: FINAL_APPROVE\n\nPostgreSQL/Docker was not rerun in review; existing PG suites remain byte-preserved and CI is the authoritative database gate.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#86",
+    "input": "Refactor evidence libraries and eval tests",
+    "output": "Summary:\n- split governed-review verification into artifact, evidence, state, and internal common modules behind the stable facade\n- retain binary calibration as a documented canonical-v1 structural exception with an exact surface and stage guard\n- shard the eval-service suite into five focused files with complete title ownership protection\n\nVerification:\n- Node 24 forced TypeScript build\n- full local test suite: 1162 passed, 104 PostgreSQL-gated skipped, 29 tool tests passed\n- full workspace build\n- shared-contracts, repository-boundaries, and large-files guards\n- fresh Claude Opus/high Agent Bridge review and same-session rereview: FINAL_APPROVE\n\nThis deliberately combines three cohesive large-file slices so CI runs once for the pack.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#87",
+    "input": "Refactor API repository and test boundaries",
+    "output": "## Summary\n- classify the explicit PostgreSQL repository compatibility facade as the reviewed structural endpoint over 17 cohesive ports\n- split the 3,788-line API suite into seven focused shards with shared support\n- split the 2,460-line PostgreSQL smoke suite into four focused shards with shared support\n- pin exact static ownership and all 125 tests as collected by Vitest\n\n## Verification\n- Node 24 typecheck and full workspace build\n- 1,166 tests passed, 104 PostgreSQL-gated tests skipped locally, 29 tool tests passed\n- shared contract, repository boundary, and large-file guards passed\n- exact AST preservation: 91 API tests, 34 PostgreSQL tests, 10 helpers\n- fresh Claude Opus review and same-session rereviews: FINAL_APPROVE\n\nCI is the single PostgreSQL-backed verification run for this combined pack.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#88",
+    "input": "Refactor web data workflows into cohesive modules",
+    "output": "## Summary\n- split the web API client into transport and cohesive resource modules behind the unchanged compatibility barrel\n- keep datasets and trace-test-builder journey state in their roots while extracting dialogs, parsers, panels, and result cards\n- preserve exact public API exports and runtime binding identity with fail-closed source, accessibility, row-action, and terminology guards\n- reduce the large-file inventory to the final two web refactor candidates\n\n## Verification\n- Node 24 full typecheck and build\n- 1168 Vitest tests passed, 104 PostgreSQL-gated tests skipped\n- 29 Node tool tests passed\n- shared-contracts, repository-boundaries, large-files, and diff-check passed\n- independent Claude Opus review and same-session rereview: FINAL_APPROVE",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#89",
+    "input": "Refactor final web workflows into cohesive modules",
+    "output": "## Summary\n\n- split the skill editor into cohesive ordinary-editor and regression/governed-lifecycle modules\n- split the analysis study workspace into coding, findings, journey, study, and shared-support modules\n- extend extraction ownership guards and update the large-file inventory/documentation\n- reduce the large-file backlog to zero refactor candidates, zero cohesion reviews, and zero review-required files\n\n## Verification\n\n- Node 24 typecheck\n- full test suite: 1168 Vitest tests plus 29 Node tool tests passed; 104 PG-gated tests skipped locally\n- full production build\n- shared-contracts: 890 TypeScript exports, 491 runtime exports, no cycles\n- repository-boundaries: 35 transaction owners, 1 session-lock owner, 16 client commands\n- focused web extraction tests\n- large-files and git diff check\n- same-session Claude Opus high-effort review: FINAL_APPROVE\n\nThis is a structural-only refactor. Product behavior, UI copy, auth, wire contracts, persistence, and evidence semantics are unchanged.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#9",
+    "input": "Add Coeval logo mark",
+    "output": "## Summary\n\n- add the approved flat Coeval C/e wrapped monogram\n- use a transparent PNG with a uniform oxblood fill\n- remove the baked checkerboard while preserving the approved geometry\n- exclude glow, pseudo-3D treatment, rejected SVG reconstruction, and experimental candidates\n\n## Validation\n\n- verified PNG dimensions and alpha channel\n- verified this PR contains exactly one asset file",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#90",
+    "input": "chore: relicense Coeval under the MIT License",
+    "output": "## Summary\n\nBatch 1 of the marketability work. The owner decided to move Coeval from the Coeval Sustainable Use License v1.0 to MIT, since lock-in is the loudest buyer complaint in this category and the reference open-source competitor is MIT.\n\n- Replace `LICENSE.md` with the MIT License text (filename kept so links keep working).\n- Update the README badge and License section, and the root `package.json` license field. No workspace package declares a license field; no other docs, deploy files, skills, or UI strings referenced the old license.\n- `docs/self-hosting.md`: `v0.2.0` is now stated as the first installable release, since `ghcr.io/luka-zivkovic/coeval-api:0.2.0` and `coeval-web:0.2.0` were verified anonymously pullable.\n\nNo version bump, no product-scope or ADR changes.\n\n## Verification\n\n- `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm repository-boundaries`, `pnpm shared-contracts`, `pnpm large-files`: all passed.\n- Postgres suite left to CI.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#91",
+    "input": "Package the skills as a Claude Code plugin, rewrite the README for a first-time reader, gate the plugin with Casefile",
+    "output": "## Summary\n\nBatches 2 and 5 of the marketability work for Coeval. Documentation and packaging only: no source, schema, ADR, or version changes.\n\n- **Claude Code plugin.** `.claude-plugin/marketplace.json` at the repo root and `plugins/coeval/.claude-plugin/plugin.json` (version 0.2.0). The two existing skills moved with `git mv` into `plugins/coeval/skills/`; `skills/README.md` explains the new location. Every path reference was updated (README, agent-setup, MCP README, evidence-tier doc, web copy, shared placeholder, tests, tool comments). No CI workflow referenced the old path.\n- **README rewrite.** The first screenful is now a one-sentence promise in plain words, who it is for, and a \"Ten-minute start\" with four verified paths: the plugin, self-hosting the published 0.2.0 images with the exact required env vars, from source, and the existing demo mode (documented as the zero-infrastructure path with its limits: nothing persists, auth is off, governed review and sealed calibration need Postgres). Charter vocabulary moved into a \"Concepts\" table. New \"Coeval is not\" list from the charter and \"Where Coeval fits\" list naming Ironside, Dailies and Casefile with honest status. All prior sections are retained below. No superiority claims.\n- **Casefile gate.** `casefile.config.json` records the single reviewed suppression with its reason (the audit skill's submit script is the HTTP transport to the user's own Coeval instance). `.github/workflows/casefile.yml` scans `plugins/coeval` with the Casefile composite Action on relevant pushes and pull requests, `--strict`, `--fail-on warning`.\n- `docs/agent-setup.md` leads with the plugin path and keeps copying the folders as the alternative.\n\n## Verification\n\n- `pnpm install --frozen-lockfile`, `pnpm large-files`, `pnpm shared-contracts`, `pnpm repository-boundaries`, `pnpm typecheck`: passed. Node tool tests (17) and the vitest specs touching moved paths (13): passed.\n- Relative-link and anchor check over README, agent-setup, both skills and the MCP README: all resolve. The `v0.2.0` tag's compose bundle was confirmed byte-identical to main, since the self-host step fetches it from the tag.\n- Casefile scan of `plugins/coeval` with the policy: 0 active findings, 1 suppressed, exit 0. Two earlier warnings and two info findings were fixed by rewording, not suppression. The Action script was dry-run locally against the plugin with the same result.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "coeval#92",
+    "input": "ci: report the audit skill's network call as a warning instead of suppressing it",
+    "output": "## Summary\n\nThe Casefile gate over `plugins/coeval` now fails only on critical findings. The audit skill's submit script makes HTTP calls to the user's own Coeval instance by design, so that finding should show up in every scan summary as a warning rather than be hidden behind an operator suppression.\n\n- `.github/workflows/casefile.yml`: `fail-on: critical`, comment updated to say warnings are reported, not blocked.\n- `casefile.config.json` removed; nothing is suppressed anymore.\n\n## Verification\n\n- Local dry run of the Casefile Action script against `plugins/coeval` with the new gate: exit 0, summary lists 1 warning (`capability/network-call` at `skills/coeval-audit/scripts/coeval-submit.mjs:144`), 0 suppressed.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "dailies#1",
+    "input": "v0 shadow-runner: candidate vs baseline over historical inputs, judged promote/block",
+    "output": "## Summary\n- `shadow-run` CLI: runs historical inputs (JSONL) through a candidate (command or HTTP), judges each result via the gate contract (`POST /judge`) or exact-match, emits promote/block report.json + report.md\n- Zod-validated config + versioned report schema, retry-once semantics (failures never silently skipped), order-preserving concurrency pool\n- Runnable demo fixture; exit codes 0 promote / 1 block / 2 error verified live\n- PLAN.md records the full product thesis (control plane + data plane) and the ≥3-design-partner build trigger\n\n## Test plan\n- `npm test` (21/21), `npm run build`\n- `node dist/cli.js --config fixtures/shadow.config.json`",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "dailies#2",
+    "input": "Add retry behavior tests",
+    "output": "## Summary\n\n- add focused unit coverage for `withRetry`\n- verify default and configurable retry counts\n- verify exhaustion reports the final failure\n- verify non-`Error` rejection values are preserved\n\n## Why\n\nThe retry helper previously had no dedicated unit test file. These cases make its attempt-count and error-propagation contract explicit without changing production behavior.\n\n## Impact\n\nTest-only change. Runtime behavior and public APIs are unchanged.\n\n## Validation\n\n- `npx vitest run test/retry.test.ts` — 7 tests passed\n- `npm test` — 56 tests passed\n- `npm run build` — passed",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "dailies#4",
+    "input": "docs: add contributing guide and harden CI matrix",
+    "output": "## Summary\n\nBatch 1 of the marketability work: repository hygiene that removes stale or drift-prone signals before any public push.\n\n- Add `CONTRIBUTING.md` modeled on Casefile's, adapted to the Dailies boundary (evidence labels, no proposed-ADR implementation, local checks). Linked from the README.\n- Run CI on a Node.js 20 and 22 matrix and add `npm run invariant:batch6` (9s locally) as a CI step.\n- Stop hardcoding the test count in the README (it was accurate at 292 but drifts by construction) and describe the CI matrix accurately.\n- Record the changes under `Unreleased` in `CHANGELOG.md`.\n\nNo version bump, no product-scope or ADR changes.\n\n## Verification\n\n- `npm ci && npm run build && npm test`: 27 files, 292 tests passed.\n- `npm run invariant:batch6`: 24 scenarios, 48 trials, passed.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "dailies#5",
+    "input": "feat: add Claude Code plugin marketplace and release-gate skill",
+    "output": "## Summary\n\nBatch 2 of the marketability work: make Dailies installable from a coding agent in one line, using the same plugin-marketplace layout that already works in Overclock.\n\n- `.claude-plugin/marketplace.json` at the repo root and `plugins/dailies/.claude-plugin/plugin.json` (version 0.3.0, matching `package.json`).\n- `plugins/dailies/skills/release-gate/SKILL.md`: walks an agent through `dailies init`, the three trust classes in plain words, the run, and reading `report.md` and exit codes 0/1/2 as promote, block, or inconclusive. It states that `inconclusive` means missing or untrusted evidence and must not be cleared by an override unless a human decides so, and gives the exact digest-recompute commands. One claim was checked against source: a digest mismatch throws before a report exists, so the skill describes that error rather than an inconclusive report.\n- README: \"Install with your coding agent\" section with the two `/plugin` commands and a paste-a-prompt alternative for Codex and other agents.\n- CHANGELOG Unreleased entry.\n\nNo product-scope, PRODUCT.md, ADR, or version changes.\n\n## Verification\n\n- Casefile scan of `plugins/dailies`: 0 findings across 3 files. Repo-level scan on tracked files: 0 critical, 1 pre-existing warning in `src/http.ts` (the product's own HTTP client), nothing suppressed.\n- `npm test`: 292 passed on two consecutive runs. One earlier run had a single failure in a Coeval poll/retry test that was not touched; it passed on rerun and is noted as a flake candidate for follow-up.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "dailies#6",
+    "input": "Make the release gate CI-native: digest command, composite Action, runnable v5/v6 examples",
+    "output": "## Summary\n\nBatch 3 of the marketability work. The job to be done is a CI gate, and until now Dailies shipped no Action, no digest helper, and no runnable example beyond schema v4. No decision semantics, exit codes, trust classes, report schemas, or version were changed, and nothing depends on a Proposed ADR. Dailies stays off the serving path.\n\n- **`dailies digest --config <path> [--check]`** (`src/digest.ts`). Recomputes the SHA-256 and non-blank line count of the configured JSONL artifact (same counting rule as the loader) and patches only the `digest` and `expectedItems` tokens in place, preserving key order and formatting; falls back to key-order-preserving reserialization only when a unique in-place patch is impossible. Refuses schema versions outside 4, 5 and 6. `--check` never writes and exits 1 on mismatch. This removes the single largest onboarding friction: every corpus edit used to stop the run with `input artifact digest mismatch`.\n- **Composite GitHub Action** (`action.yml`, `scripts/action-run.sh`). Inputs `config`, `version` (default 0.3.0), `fail-on-inconclusive` (default true), `summary` (default true); outputs `decision`, `exit-code`, `report-json`, `report-md`. Runs the pinned npm release, reads the decision only from a report written by this run (stale reports are detected by content hash), appends `report.md` to the job summary, fails on `block`, and fails on `inconclusive` unless explicitly opted out, in which case it emits a warning and still reports `inconclusive`. An exit 0 without a readable `promote` report is refused.\n- **Runnable v5 and v6 examples** under `fixtures/examples/`, generated from the vendored Coeval contract fixtures by `scripts/build-examples.mjs`. Receipt evidence in v5 and v6 always comes from a Coeval HTTP endpoint, so `scripts/mock-coeval.mjs` is a minimal local stub for the batch, poll and receipt endpoints with scripted labels. The examples README states plainly that a `promote` here is a demonstration of the report, not evidence about any real system.\n- README: \"Run in GitHub Actions\" section, CLI reference, and digest guidance; release-gate skill updated; CHANGELOG Unreleased entries. `yaml` added as a devDependency for the Action test.\n\n## Verification\n\n- `npm run build && npm test && npm run invariant:batch6`: 317 passed across 30 files (was 292 across 27). New tests: digest (8), Action script driven with a fake `npx` on PATH (11), examples generator byte-equality and v4/v5/v6 end-to-end including block and inconclusive paths (6).\n- Casefile scan of `plugins/dailies` with `--strict`: 0 findings.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "dailies#7",
+    "input": "Clear four fast-uri advisories and make the Coeval bounds-polling test deterministic",
+    "output": "## Summary\n\nTwo maintenance items surfaced during the marketability work.\n\n- **Dependency alerts.** All four high-severity Dependabot alerts on main resolve to one dev-only transitive package, `fast-uri` 3.1.5, pulled in by `ajv` (used only in contract tests): GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp. `npm audit fix` bumped it to 3.1.8 in the lockfile only. No direct or runtime dependency changed; `npm audit` now reports zero vulnerabilities.\n- **Flaky test.** `bounds polling and maps a never-terminal run to judge timeout` in `test/coeval.test.ts` used a 25 ms wall-clock poll deadline and asserted an exact `deadline` termination. When the first poll round-trip exceeded that budget, the product correctly recorded a `timeout` attempt instead and the equality assertion failed. The test now fakes only `Date` and has the mock server advance the clock past the deadline while serving the first poll, so the crossing is deterministic. It also pins exactly one poll, zero receipt calls, and report-schema validity. Test-only change: no product code, no raised timeout, no skip or retry.\n\nCHANGELOG Unreleased entries added for both.\n\n## Verification\n\n- The original failure was reproduced deterministically by delaying the mock poll by 40 ms in a scratch test; the same delay passes with the fix.\n- `npm run build && npm test && npm run invariant:batch6`: 317 tests across 30 files passed, invariant gate passed; 10 further stability runs clean.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "ironside#1",
+    "input": "Make Ironside's first screen beginner friendly",
+    "output": "## What changed\n\n- explain plainly what Ironside records before asking for credentials\n- show the actual first-time journey: owner, project, connection, first trace\n- replace user-facing “setup capability” with “one-time setup code”\n- align the host command and self-hosting instructions with the screen\n- add a rendered-screen regression test for the beginner hierarchy and wording\n\n## Validation\n\n- focused owner setup tests: 3 passed\n- TypeScript project build: passed\n- web production build: passed\n- visual and accessibility-tree inspection at the local `/setup` route: passed\n- full unit run: 389 passed; infrastructure-backed suites were unavailable locally because the pre-existing Postgres/ClickHouse test services were missing or had obsolete pre-release schema history; fresh GitHub CI remains the authoritative full-suite gate",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "ironside#10",
+    "input": "Relicense Ironside to MIT and mark 0.2.0 images installable",
+    "output": "## Summary\n\nBatch 1 of the marketability work. The owner decided to move Ironside from the Ironside Sustainable Use License to MIT, since lock-in is the loudest buyer complaint in trace storage and the reference open-source competitor is MIT.\n\n- Replace `LICENSE.md` and `packages/sdk/LICENSE.md` with the MIT License text (filenames kept).\n- Update the README badge and license line, the SDK README, `CONTRIBUTING.md`, and the `license` field in the root and SDK `package.json`. No web UI strings referenced the old license.\n- `spec/self-host-release-v1.md`: license section rewritten for MIT; the hosted-cloud and enterprise monetization intent is kept as an explicit TARGET statement independent of the license.\n- `docs/coolify.md` and `docs/self-hosting.md`: state that the `0.2.0` images are public and installable now. All three `ghcr.io/luka-zivkovic/ironside-{api,worker,web}:0.2.0` manifests were verified anonymously pullable (amd64 and arm64).\n\nNo version bump, no tags, no roadmap or product-scope changes.\n\n## Verification\n\n- `pnpm install --frozen-lockfile` and `pnpm typecheck`: passed.\n- Infra-free vitest subset (sdk, mappers, shared, web, and API/worker tests without DB, ClickHouse, S3 or Redis clients): 46 files, 353 tests passed. The full stack suite is left to CI.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "ironside#11",
+    "input": "Add Claude Code setup plugin and \"Where Ironside fits\" section",
+    "output": "## Summary\n\nBatch 2 of the marketability work: make Ironside installable from a coding agent in one line and state plainly where it sits among the sibling tools.\n\n- `.claude-plugin/marketplace.json` and `plugins/ironside/.claude-plugin/plugin.json` (version 0.2.0, matching the monorepo), using the same layout that already works in Overclock.\n- `plugins/ironside/skills/setup/SKILL.md`: turns `docs/agent-setup.md` into a skill. It checks Git, Docker Compose v2 and the default ports, reuses an existing checkout, starts the stack, verifies health, guides owner setup and project creation with the setup code kept out of chat and Git, then connects the user's app through the Node SDK or OTLP and verifies one trace. It refuses destructive Compose commands without asking.\n- README: \"Install with your coding agent\" now leads with the two `/plugin` commands and keeps the paste-a-prompt path for Codex and other agents. New \"Where Ironside fits\" table covering Coeval, Dailies, Casefile and Overclock with current-status labels; the one forward-looking sentence is marked as a direction, not a commitment.\n- `docs/agent-setup.md`: Claude Code plugin section added; the prompt path is kept for other agents.\n\nNo product-scope, roadmap, or version changes. No typed code touched.\n\n## Verification\n\n- Casefile scan of `plugins/ironside`: classified as a plugin, 3 files, 0 findings, nothing suppressed.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "ironside#12",
+    "input": "ci: gate the published plugin with the Casefile Action",
+    "output": "## Summary\n\nIronside now publishes a Claude Code plugin but, unlike Coeval, had no Casefile gate over it. This adds `.github/workflows/casefile.yml`, which scans `plugins/ironside` with the Casefile composite Action on relevant pushes and pull requests, `--strict`, failing only on critical findings so warnings stay visible in the job summary without blocking. Reports are uploaded as a workflow artifact.\n\n## Verification\n\n- Local scan of `plugins/ironside` at the critical gate with `--strict`: no findings, exit 0.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "ironside#3",
+    "input": "Use the approved Ironside mark across the app",
+    "output": "## What changed\n\n- use PR #2’s approved Ironside mark as the browser and home-screen icon\n- add a reusable accessible wordmark component\n- replace first-letter placeholders in owner setup, project setup, loading/error states, desktop sidebar, and mobile topbar\n- keep the image decorative so the visible product name remains the accessible label\n\n## Validation\n\n- complete web suite: 78 passed\n- TypeScript project build: passed\n- production web build: passed\n- local browser verification: mark and favicon load at their intended rendered sizes",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "ironside#4",
+    "input": "Add supported self-host release and upgrade path",
+    "output": "## Summary\n\n- publish immutable multi-architecture Ironside API, worker, and web images from exact version tags\n- add platform-neutral and Coolify Compose bundles with exact infrastructure images and checksum validation\n- freeze the deployed Postgres and ClickHouse baselines and enforce append-only, checksum-verified migrations\n- boot the actual published images through the release Compose bundle before drafting a release\n- document installation, backup coverage, upgrades, and migration-aware recovery\n\nThe standalone trustctl bootstrap is intentionally kept out of the product runtime and will live in its own repository.\n\n## Validation\n\n- Node 24: all 669 tests passed locally against disposable Postgres, ClickHouse, Redis, and MinIO\n- pnpm build and pnpm typecheck passed locally\n- self-host Compose checksum and render validation passed\n- real seven-container Ironside and combined 10-container stack smoke tests passed locally, including owner setup\n- all pull-request checks passed on GitHub, including the full infrastructure suite and SDK packaging on Node 20, 22, and 24\n\n## Release gate\n\nAfter a tag publishes every image, CI pulls the exact GHCR tags, boots the generic stack, verifies its public health route and owner-setup command, and only then creates a draft GitHub release. The draft remains unpublished until anonymous GHCR pulls and the migration declaration have been reviewed. Default installer discovery uses only published, non-prerelease GitHub releases.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "ironside#5",
+    "input": "Prepare Ironside 0.2.0 release",
+    "output": "## Summary\n\nBump the root release version to 0.2.0 so the exact v0.2.0 tag can publish the first supported self-host images and deployment bundles.\n\n## Release sequence\n\n- full CI must pass on this PR\n- merge without tagging from an unreviewed commit\n- push the exact v0.2.0 tag on the merged main commit\n- require the release workflow to build all images, boot the published generic stack, verify health and owner setup, and create a draft release\n- verify anonymous GHCR pulls and add the migration declaration before publishing the draft",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "ironside#6",
+    "input": "Add native evaluator integration protocol",
+    "output": "## Summary\n\n- add the versioned `ironside/evaluator/v1` machine contract and project/capability discovery\n- expose settled trace bootstrap, durable opaque-cursor activity feed, exact version detail reads, and idempotent assessment writeback\n- publish trace/observation activity only after materialization, while keeping score writes out of settlement\n- document recovery, retention, capability, rollout, and non-goal boundaries\n\n## Correctness\n\n- serialize commit-ordered feed publication with microsecond-safe cursors\n- durably recover raw ingest and pull-import snapshots across crashes and deploys\n- keep provider scores source-owned and score-only changes invisible to evaluator trace versions\n- fence materialization against retention and retain or delete complete trace trees atomically\n- fail closed on missing retention cutoffs, stale leases, and incomplete snapshots\n\n## Verification\n\n- `pnpm typecheck`\n- `pnpm build`\n- `pnpm test` (105 files, 709 tests)\n- focused real Postgres/Redis/MinIO/ClickHouse protocol, recovery, import, and retention regressions\n\n## Follow-up\n\nThe dependent Coeval PR consumes this protocol and should merge after this PR.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "ironside#8",
+    "input": "Trace summary strip and independently scrolling record panes",
+    "output": "## Summary\n\n- **Analytics:** the trace explorer now shows a summary strip (traces, tokens with input/output split, cost, latency p50 with p95/p99) built on the existing `/traces/aggregates` endpoint, which the web client already wrapped but nothing used. It honors the active filters and a new time-range preset (`range=1h|24h|7d|30d`, default all time) carried in the URL.\n- **Record inspector scroll fix:** the observation tree and record inspector are now viewport-capped panes that scroll independently. Previously the inspector was sticky with no height cap, so a long record could only be reached by scrolling the whole page past the tree. Below 1100px the panes still stack uncapped.\n- Formatting and usage-vocabulary collapsing (native `input_tokens`, LangFuse `input`, OTLP `gen_ai.usage.*`) live in `apps/web/src/lib/trace-analytics.ts` with unit tests.\n\n## Validation\n\n- `pnpm typecheck` and all web tests pass (86 tests, 2 new files).\n- Built the compose stack locally, seeded 49 traces with usage/cost, and verified both screens headlessly at 1440px and 900px: panes are capped at the viewport with `overflow: auto`, the page scrolls only past the header, and the summary tiles show the aggregates response.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  },
+  {
+    "id": "ironside#9",
+    "input": "Derive model cost at ingest from a vendored price table and project overrides",
+    "output": "## Summary\n\nBrings Ironside to parity with LangFuse, LangSmith, Phoenix, Opik, Helicone, and Braintrust on cost: when an observation reports token usage and a model but no cost, the worker derives `costDetails` at ingest. Until now direct SDK, OTLP, and native JSON ingest produced no cost unless the caller computed it (the deferral recorded in `spec/direct-ingest-primacy-v1.md`); only imported LangFuse/LangSmith data carried cost.\n\nDesign follows the patterns those platforms share (see `spec/cost-pricing-v1.md`):\n\n- **Client cost wins.** Any non-empty client `costDetails` is stored verbatim. Unknown models get no cost, never zero.\n- **Vendored table, not a runtime fetch.** `packages/pricing/data/model-prices.json` is trimmed from LiteLLM's community list (the same source Opik vendors): 3,276 models with input, output, cache-read, and cache-write prices per token and a `syncedAt` date. Refresh with `pnpm --filter @ironside/pricing sync-prices`.\n- **Deterministic matching.** Opik-style ordered exact-match chain: name as reported → lower-cased → without `provider/` prefix → without date/version suffix → under known provider prefixes. No table-wide regexes.\n- **Project overrides first.** New `project_model_prices` table (baseline; checksum pinned in the migrate test updated) with `GET`/`PUT /api/v1/projects/:id/model-prices` (owner session, whole ordered list replaced) and a **Configuration → Model prices** section that edits USD per million tokens. Patterns are case-insensitive regexes validated at the boundary.\n- **Provenance and freezing.** Each derived cost stamps `ironside:cost_source`, `ironside:cost_model`, and `ironside:cost_table` into observation metadata; stored costs are never rewritten when the table or rules change.\n\nAlso aligns the SDK readme's cost example with the `input`/`output`/`total` convention every mapper uses.\n\n## Validation\n\n- `pnpm build` and `pnpm typecheck` pass. New tests: `packages/pricing/test` (11), `apps/api/test/model-prices.test.ts` (4), `apps/worker/test/cost-enrichment.test.ts` (2, runs the real ingest processor against ClickHouse).\n- Full suite: 715/726 pass. The 11 failures are `langfuse-importer`, `langsmith-importer`, and `retention-runner` tests that pass individually and fail only when those three files run in parallel against a ClickHouse that already holds old-partition data (the retention sweep drops partitions the importer tests then read). They exercise no code this PR touches; CI on `main` runs the same `pnpm test` on a clean database and is green.\n- Verified end to end on a rebuilt compose stack: a generation with client cost was kept verbatim (no provenance keys), a generation with only usage got `claude-haiku-4-5-20251001` table pricing with provenance, a project rule overrode the table, and the settings section saved and reloaded rules.",
+    "steps": [],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "source": "original"
+  }
+]

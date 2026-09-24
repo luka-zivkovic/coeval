@@ -1,0 +1,12 @@
+{
+  "key": "ai_tell_vocabulary",
+  "title": "No AI-tell vocabulary",
+  "question": "Does this prose avoid AI-tell vocabulary such as delve, leverage, utilize, robust, seamless, crucial, pivotal, tapestry, realm, landscape, testament, paradigm, synergy, unlock, empower, elevate?",
+  "passDescription": "None of the AI-tell words or performed-casual openers appear; plain words are used.",
+  "failDescription": "At least one AI-tell word or performed-casual opener appears in the prose.",
+  "abstention": false,
+  "mockCues": {
+    "positive": [],
+    "negative": []
+  }
+}

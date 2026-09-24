@@ -1,0 +1,12 @@
+{
+  "key": "missing_contractions",
+  "title": "Uses contractions naturally",
+  "question": "Does this prose use contractions naturally, the way a person explaining something to a colleague would?",
+  "passDescription": "At least one natural contraction such as don't, it's, or you'll appears in prose of any real length.",
+  "failDescription": "The prose is long enough to expect contractions and contains none.",
+  "abstention": false,
+  "mockCues": {
+    "positive": [],
+    "negative": []
+  }
+}

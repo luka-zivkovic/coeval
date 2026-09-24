@@ -1,0 +1,363 @@
+{
+  "experiment": "skilloop",
+  "split": {
+    "seed": 11,
+    "heldOutFraction": 0.4,
+    "shown": [
+      "coeval#12",
+      "coeval#31",
+      "coeval#44",
+      "coeval#42",
+      "coeval#20",
+      "coeval#1",
+      "coeval#35",
+      "coeval#15",
+      "coeval#40",
+      "coeval#16",
+      "coeval#10",
+      "coeval#11",
+      "casefile#9",
+      "casefile#6",
+      "casefile#5",
+      "coeval#34",
+      "coeval#41",
+      "coeval#14",
+      "coeval#30",
+      "coeval#18",
+      "coeval#17",
+      "coeval#45",
+      "coeval#21",
+      "casefile#3",
+      "coeval#23",
+      "coeval#37",
+      "coeval#26",
+      "coeval#28",
+      "coeval#46",
+      "coeval#24"
+    ],
+    "heldOut": [
+      "coeval#36",
+      "coeval#27",
+      "casefile#7",
+      "coeval#3",
+      "casefile#1",
+      "coeval#13",
+      "coeval#22",
+      "coeval#4",
+      "coeval#38",
+      "casefile#8",
+      "coeval#29",
+      "coeval#33",
+      "coeval#25",
+      "coeval#39",
+      "casefile#2",
+      "casefile#4",
+      "coeval#43",
+      "coeval#19",
+      "casefile#10",
+      "coeval#32"
+    ]
+  },
+  "rewriter": "claude-opus-5",
+  "judge": "claude-opus-5",
+  "author": {
+    "name": "claude-skill-author",
+    "model": "claude-fable-5-1"
+  },
+  "originalsHeldOut": {
+    "lexical": {
+      "texts": 20,
+      "violationsPerText": 1.9,
+      "cleanRate": 0,
+      "textsFailingByRule": {
+        "dash_connective": 5,
+        "ai_tell_vocabulary": 0,
+        "bot_scaffolding": 0,
+        "decorative_bold": 0,
+        "missing_contractions": 20
+      }
+    }
+  },
+  "baselineHeldOut": {
+    "lexical": {
+      "texts": 20,
+      "violationsPerText": 4.1,
+      "cleanRate": 0,
+      "textsFailingByRule": {
+        "dash_connective": 14,
+        "ai_tell_vocabulary": 0,
+        "bot_scaffolding": 0,
+        "decorative_bold": 4,
+        "missing_contractions": 20
+      }
+    },
+    "preservation": {
+      "texts": 20,
+      "meanFaithful": 0.916,
+      "lowFaithfulRate": 0,
+      "pairSeparationRate": 1,
+      "inputTokens": 55231
+    },
+    "style": {
+      "texts": 20,
+      "perRule": {
+        "varied_rhythm": 0.756,
+        "no_flourish": 0.82,
+        "concrete": 0.917
+      },
+      "mean": 0.831,
+      "inputTokens": 27796
+    }
+  },
+  "initial": {
+    "heldOut": {
+      "lexical": {
+        "texts": 20,
+        "violationsPerText": 0.75,
+        "cleanRate": 0.25,
+        "textsFailingByRule": {
+          "dash_connective": 0,
+          "ai_tell_vocabulary": 0,
+          "bot_scaffolding": 0,
+          "decorative_bold": 0,
+          "missing_contractions": 15
+        }
+      },
+      "preservation": {
+        "texts": 20,
+        "meanFaithful": 0.89,
+        "lowFaithfulRate": 0,
+        "pairSeparationRate": 1,
+        "inputTokens": 54488
+      },
+      "style": {
+        "texts": 20,
+        "perRule": {
+          "varied_rhythm": 0.637,
+          "no_flourish": 0.802,
+          "concrete": 0.934
+        },
+        "mean": 0.791,
+        "inputTokens": 27422
+      }
+    },
+    "shown": {
+      "lexical": {
+        "texts": 30,
+        "violationsPerText": 0.867,
+        "cleanRate": 0.167,
+        "textsFailingByRule": {
+          "dash_connective": 1,
+          "ai_tell_vocabulary": 0,
+          "bot_scaffolding": 0,
+          "decorative_bold": 0,
+          "missing_contractions": 24
+        }
+      },
+      "preservation": {
+        "texts": 20,
+        "meanFaithful": 0.871,
+        "lowFaithfulRate": 0,
+        "pairSeparationRate": 1,
+        "inputTokens": 51700
+      },
+      "style": {
+        "texts": 20,
+        "perRule": {
+          "varied_rhythm": 0.535,
+          "no_flourish": 0.841,
+          "concrete": 0.917
+        },
+        "mean": 0.764,
+        "inputTokens": 26948
+      }
+    }
+  },
+  "final": {
+    "version": 0,
+    "heldOut": {
+      "lexical": {
+        "texts": 20,
+        "violationsPerText": 0.75,
+        "cleanRate": 0.25,
+        "textsFailingByRule": {
+          "dash_connective": 0,
+          "ai_tell_vocabulary": 0,
+          "bot_scaffolding": 0,
+          "decorative_bold": 0,
+          "missing_contractions": 15
+        }
+      },
+      "preservation": {
+        "texts": 20,
+        "meanFaithful": 0.89,
+        "lowFaithfulRate": 0,
+        "pairSeparationRate": 1,
+        "inputTokens": 54488
+      },
+      "style": {
+        "texts": 20,
+        "perRule": {
+          "varied_rhythm": 0.637,
+          "no_flourish": 0.802,
+          "concrete": 0.934
+        },
+        "mean": 0.791,
+        "inputTokens": 27422
+      }
+    }
+  },
+  "accepted": 0,
+  "rounds": [
+    {
+      "round": 1,
+      "kind": "replace_passage",
+      "target": "6. **Use everyday words and contractions.** Write the way you'd explain it to a smart friend. \"Don't\", \"it's\", \"you'll\" are natural, not sloppy.",
+      "replacement": "6. **Use everyday words and contractions.** Write the way you'd explain it to a smart friend. In the fallback house style, contractions are the default, not an option: contract the common pairs wherever they occur (\"do not\" → \"don't\", \"it is\" → \"it's\", \"you will\" → \"you'll\", \"cannot\" → \"can't\", \"we are\" → \"we're\", \"that is\" → \"that's\") unless the author's established voice avoids them, the words sit inside a quoted span, or an uncontracted form is deliberate emphasis. A multi-paragraph revision with no contractions at all is a formality tell: reread it and contract before returning. Contracting changes only tone, never the claim, so this is always safe for meaning.",
+      "rationale": "missing_contractions still fails on 24 of 30 texts while every other lexical rule is at or near zero, so rule 6 is the one to sharpen. The edit turns a permissive note (\"contractions are natural\") into a default with a concrete mapping and a self-check for zero-contraction output, while carving out author voice, quotes, and deliberate emphasis. Contracting word pairs alters tone only, not modals, caveats, actors, or numbers, so it cannot weaken claim preservation and encourages no deletion.",
+      "accepted": false,
+      "reasons": [
+        "pair separation fell 1 → 0.95"
+      ],
+      "heldOut": {
+        "lexical": {
+          "texts": 20,
+          "violationsPerText": 0.6,
+          "cleanRate": 0.4,
+          "textsFailingByRule": {
+            "dash_connective": 0,
+            "ai_tell_vocabulary": 0,
+            "bot_scaffolding": 0,
+            "decorative_bold": 0,
+            "missing_contractions": 12
+          }
+        },
+        "preservation": {
+          "texts": 20,
+          "meanFaithful": 0.855,
+          "lowFaithfulRate": 0.05,
+          "pairSeparationRate": 0.95,
+          "inputTokens": 54540
+        },
+        "style": {
+          "texts": 20,
+          "perRule": {
+            "varied_rhythm": 0.637,
+            "no_flourish": 0.789,
+            "concrete": 0.921
+          },
+          "mean": 0.782,
+          "inputTokens": 27447
+        }
+      }
+    },
+    {
+      "round": 2,
+      "kind": "replace_passage",
+      "target": "6. **Use everyday words and contractions.** Write the way you'd explain it to a smart friend. \"Don't\", \"it's\", \"you'll\" are natural, not sloppy.",
+      "replacement": "6. **Use everyday words and contractions.** Write the way you'd explain it to a smart friend. In the fallback house style, contract the standard pairs wherever they occur outside quoted spans: do not → don't, does not → doesn't, is not → isn't, it is → it's, that is → that's, you will → you'll, we are → we're, cannot → can't. A multi-sentence revision that contains no contractions has not applied this rule; before returning, scan for uncontracted pairs and contract them. Contracting changes only the surface form, never the claim, negation, modal, or caveat, so it is always safe. Leave a pair uncontracted only inside a quotation, in a name or title, or when the author's established voice demonstrably avoids contractions.",
+      "rationale": "missing_contractions still fails on 24 of 30 texts while every other lexical rule is near zero, so rule 6 is the one to sharpen. The prior attempt was rejected on pair separation, so this version keeps the same rule scope and adds a concrete mechanical check (a zero-contraction revision is a violation; scan for listed pairs) rather than vaguer voice guidance. Contraction is a pure surface transformation that explicitly preserves negation, modals, and caveats and exempts quoted spans, so it cannot reduce claim preservation.",
+      "accepted": false,
+      "reasons": [
+        "no improvement: violations per text 0.75 → 0.85, judged style 0.791 → 0.787",
+        "dash_connective got worse: 0 → 2 texts"
+      ],
+      "heldOut": {
+        "lexical": {
+          "texts": 20,
+          "violationsPerText": 0.85,
+          "cleanRate": 0.45,
+          "textsFailingByRule": {
+            "dash_connective": 2,
+            "ai_tell_vocabulary": 0,
+            "bot_scaffolding": 0,
+            "decorative_bold": 0,
+            "missing_contractions": 10
+          }
+        },
+        "preservation": {
+          "texts": 20,
+          "meanFaithful": 0.901,
+          "lowFaithfulRate": 0,
+          "pairSeparationRate": 1,
+          "inputTokens": 54552
+        },
+        "style": {
+          "texts": 20,
+          "perRule": {
+            "varied_rhythm": 0.628,
+            "no_flourish": 0.81,
+            "concrete": 0.923
+          },
+          "mean": 0.787,
+          "inputTokens": 27453
+        }
+      }
+    },
+    {
+      "round": 3,
+      "kind": "replace_passage",
+      "target": "\"Don't\", \"it's\", \"you'll\" are natural, not sloppy.",
+      "replacement": "\"Don't\", \"it's\", \"you'll\" are natural, not sloppy. In the fallback house style, contractions are the default, not an option: a multi-paragraph draft or revision with none is a violation, so contract \"do not\", \"it is\", \"that is\", \"you will\", \"cannot\", \"we are\", \"there is\" wherever they occur in ordinary running sentences. Leave the full form only inside a quoted span, where the author's established voice avoids contractions, or where the uncontracted word carries deliberate stress; the contraction never changes what the sentence claims.",
+      "rationale": "missing_contractions still fails on 24 of 30 texts while every other lexical rule is at 0 or 1, so rule 6 remains the one to sharpen; the prior two edits touched the rule header and evidently did not make the requirement operational. This replacement keeps the header intact and instead states that a contraction-free draft is itself a violation, lists the exact phrases to contract, and preserves the quote/voice/emphasis exceptions. Contracting function words cannot alter any claim, modal, or qualifier, and the explicit quoted-span exception keeps verbatim material untouched, so claim preservation should hold.",
+      "accepted": false,
+      "reasons": [
+        "no improvement: violations per text 0.75 → 1, judged style 0.791 → 0.801",
+        "violations per text rose 0.75 → 1",
+        "dash_connective got worse: 0 → 2 texts",
+        "pair separation fell 1 → 0.95"
+      ],
+      "heldOut": {
+        "lexical": {
+          "texts": 20,
+          "violationsPerText": 1,
+          "cleanRate": 0.5,
+          "textsFailingByRule": {
+            "dash_connective": 2,
+            "ai_tell_vocabulary": 0,
+            "bot_scaffolding": 0,
+            "decorative_bold": 0,
+            "missing_contractions": 10
+          }
+        },
+        "preservation": {
+          "texts": 20,
+          "meanFaithful": 0.892,
+          "lowFaithfulRate": 0,
+          "pairSeparationRate": 0.95,
+          "inputTokens": 54476
+        },
+        "style": {
+          "texts": 20,
+          "perRule": {
+            "varied_rhythm": 0.647,
+            "no_flourish": 0.822,
+            "concrete": 0.934
+          },
+          "mean": 0.801,
+          "inputTokens": 27416
+        }
+      }
+    }
+  ],
+  "versions": [
+    {
+      "number": 0,
+      "parent": null,
+      "digest": "c95c88e97b12b0e5be093208e8cf6c459b7049f964cf8ffc0988ac2b15132fea",
+      "text": "---\nname: natural-writing\ndescription: \"Draft or revise multi-sentence human-facing prose such as blog posts, articles, essays, newsletters, landing copy, and narrative documentation. Match the author's or project's established voice; when none exists, use a plainspoken house style that avoids canned AI scaffolding, showy vocabulary, repetitive rhythm, and decorative analogies while preserving claims, uncertainty, caveats, and quoted spans exactly. Use for editing prose around quotations as well as prose without them. Do NOT use for code, code comments, commit messages, one-line UI strings, or API, legal, and reference text whose exact terminology is load-bearing.\"\n---\n\n# Natural Writing\n\nWrite prose in the author's voice. When the project supplies no voice or style guide, use the\nplainspoken defaults below. They are fallback house style, not a detector for whether a person or a\nmodel wrote the text.\n\nIt is stateless and lightweight on purpose: a writing discipline, not a tool. No memory, no ceremony.\n\n## When it fires (and when it doesn't)\n\nFires for **multi-sentence prose meant for human readers**: blog posts, articles, essays, newsletters, landing copy, narrative sections of docs.\n\nStay silent. Do not apply this for:\n- Code, code comments, config.\n- Commit messages, PR titles.\n- API / reference docs where a precise technical term is the *right* word.\n- One-line UI strings, labels, error messages.\n- A request concerning only a quote that must remain verbatim. A larger article containing that\n  quote remains in scope: preserve the quoted/cited span or verbatim data byte-for-byte while\n  editing its surrounding prose.\n- Legal or precise technical text where a qualifier is load-bearing.\n\nNever run the full pass on a single sentence. If someone asks to reword one line, just reword it.\n\n## The rules\n\n1. **Use punctuation intentionally.** In the fallback house style, prefer a comma, period, colon,\n   parentheses, or two sentences over an em dash used as a generic connective. Prefer \"to\" for a\n   prose range. Preserve an author's deliberate dash usage, conventional notation, and any project\n   rule that calls for it; never rewrite a quoted dash.\n2. **Cut AI-tell vocabulary.** Replace with the plain word: delve → look at; leverage → use; utilize → use; tapestry / realm / landscape → drop; testament to → shows; underscore / highlight → show; crucial / pivotal / vital → important (or cut); robust / seamless / synergy / paradigm / \"boasts\" → say what you mean. Delete performed-casual openers (\"here's the thing\", \"here's the kicker\", \"the magic is\", \"let's be real\"), announced honesty (\"my honest take\", \"to be frank\"), and unsupported value verbs (\"unlock\", \"empower\", \"elevate\", \"supercharge\", \"transform\"). Keep one only when its literal meaning or the author's voice requires it.\n3. **Drop bot scaffolding.** No \"In conclusion\", \"Furthermore\", \"Moreover\", \"Firstly / Secondly\", \"Let's dive in\", \"Without further ado\", \"Buckle up.\" Just say the thing. Don't preview an argument before you make it or recap it after.\n4. **Write for information, not manufactured impact.** Cut a symmetrical contrast, verbless\n   parallel, summary button, significance tail, or flourish ending when its main job is to sound\n   punchy or conclusive. State the supported point once and stop. Preserve a contrast that marks a\n   real distinction, an ending that adds information, or a recognizable authorial choice. This is\n   an editing test, not a ban on a sentence shape.\n5. **Vary the rhythm.** Mix short sentences with longer ones. Uniform sentence length is the second loudest tell, and so is a run of identical short ones. A two-word sentence is fine. Join closely related ideas with a plain \"and\", \"because\", or \"so\" when they belong together; only split ideas that are genuinely separate. Over-splitting makes prose choppy. Don't chain a long run of clauses with \"and… and… and.\"\n6. **Use everyday words and contractions.** Write the way you'd explain it to a smart friend. \"Don't\", \"it's\", \"you'll\" are natural, not sloppy.\n7. **Be concrete without inventing.** Prefer a supported noun, number, date, actor, or example over\n   a vague placeholder (\"situation\", \"process\", \"factor\"), and a named source over \"experts say\" or\n   \"studies show.\" If the source text does not supply the detail, keep the uncertainty or ask for it.\n8. **Lead with the point without strengthening it.** Move the claim before throat-clearing when that\n   reads better, then keep every caveat that changes its truth conditions. \"Mixed evidence\" must\n   remain mixed; \"may\" must not become \"does\" merely to sound confident.\n9. **Cut canned or decorative analogies.** Say the thing directly instead of reaching for\n   the stock symphony, dance, tapestry, or journey. Preserve an author's original metaphor\n   when it carries meaning or voice, and do not invent a new one unless the user wants it.\n10. **Use strong verbs.** Don't bury the action in a noun: \"decide\", not \"make a decision\"; \"investigate\", not \"conduct an investigation\"; \"to configure the runner, set…\", not \"configuring the runner involves…\".\n11. **Use active voice when the actor is known.** \"The team missed the deadline\" is clearer than\n    \"the deadline was missed\" only when the source establishes that the team did it. Keep passive\n    voice when the actor is unknown, contested, irrelevant, or deliberately withheld.\n12. **Don't bold for decoration.** Bolding the lead phrase of every bullet just for emphasis is a classic AI tell. Bold is fine only as a real structural header on a list item, where the bold text names the thing and the rest explains it, e.g. \"**Live feedback loop.** Poll the file and react as events arrive.\"\n\nSee `references/examples.md` for before/after pairs that calibrate the fallback style.\n\n## How to work\n\n- **Drafting:** write it naturally with these rules from the start, not as a cleanup afterthought.\n- **Ground concepts before prose leans on them.** A term, name, or idea the reader can't be\n  assumed to know must be introduced — or be a stated prerequisite of the piece — before a later\n  sentence depends on it. While drafting or revising, track where each concept first appears; when\n  a passage leans on something introduced later or never, move the introduction earlier or add the\n  one-line grounding at first use. Ground in place; don't bolt on a glossary. (Structural\n  counterpart to the style rules: reordering here is fine, but it still preserves the author's\n  meaning and voice.)\n- **Revising a draft — two passes:**\n  - *Pass 1 — fix violations.* Go rule by rule above and fix what breaks them.\n  - *Pass 2 — cut what doesn't earn its place.* Check hooks and paragraph endings first: remove\n    restatements, editorialized significance, and cadence-only closers. Then remove other words,\n    sentences, and whole sections that add nothing. Preserve the author's meaning and voice, and\n    keep every caveat that changes the claim. Cutting a real qualifier to sound confident is worse\n    than leaving it.\n- Match how the author actually writes. Don't flatten their voice into a generic plain one.\n- Before returning a revision, compare every factual claim, actor, number, date, causal statement,\n  modal (\"may\", \"will\"), and scope qualifier against the original. Restore anything that was\n  invented, dropped, or strengthened.\n\n## Revision report (strictly opt-in)\n\nBy default, return only the rewritten prose. Produce the visual report only when the user\nexplicitly asks for a report, visual diff, or change-by-change view. Length or edit size alone is\nnever permission to create one.\n\n1. Read `references/revision-report-schema.md`, then build a JSON file from the exact original and\n   revised strings. The ordered changes must reconstruct both strings exactly.\n2. Resolve the absolute directory of this loaded skill from the host's skill context. Also resolve\n   the authorized project root, normally with `git rev-parse --show-toplevel`. Run the bundled\n   helper by absolute path, never a target-repository `scripts/` path:\n   ```bash\n   python3 /absolute/path/to/natural-writing/scripts/build_revision_report.py DATA_JSON OUTPUT_HTML --root /absolute/project/root\n   ```\n   This helper is mandatory: it validates the schema, confines input/output paths to the project,\n   verifies exact reconstruction, refuses linked input or output paths, and embeds UTF-8 JSON as\n   base64 so HTML or `</script>` cannot become executable markup. Do not read or edit files under\n   `assets/`; the helper owns that trusted asset. Never insert report data manually. If the helper\n   cannot run, report the error and do not create fallback HTML. Use `--replace` only after the\n   user explicitly approves replacing the named existing regular file.\n3. Remove the temporary JSON data file unless the user asked to keep it, then tell the user\n   the report path. It renders Original, Revised, and Diff tabs.\n\nNever generate the report for a one-liner or a trivial edit. It is opt-in, so it stays out of the way.\n\n## Overrides\n\nThese are defaults, not laws. The user's request and the project's applicable style instructions\nwin. Preserve a demonstrable authorial choice unless the user asks to change it.\n"
+    }
+  ],
+  "cost": {
+    "claude-opus-5": {
+      "input_tokens": 912653,
+      "output_tokens": 71460,
+      "estimatedUsd": 6.3498
+    },
+    "claude-fable-5-1": {
+      "input_tokens": 14816,
+      "output_tokens": 2718,
+      "estimatedUsd": 0.2841
+    }
+  }
+}

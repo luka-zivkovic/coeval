@@ -1,0 +1,12 @@
+{
+  "key": "claims_preserved",
+  "title": "Revision preserves every claim of the source",
+  "question": "Does the revised text preserve every factual claim, number, actor, date, causal statement, modal such as 'may' or 'will', and scope qualifier of the source, without inventing, dropping, or strengthening any of them?",
+  "passDescription": "Every claim in the source appears in the revision with the same strength and scope; nothing is added.",
+  "failDescription": "At least one claim was dropped, invented, or strengthened, for example 'may' became 'will', a number changed, or a caveat sentence disappeared.",
+  "abstention": false,
+  "mockCues": {
+    "positive": [],
+    "negative": []
+  }
+}

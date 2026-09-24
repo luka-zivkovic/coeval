@@ -1,0 +1,114 @@
+[
+  {
+    "id": "np01",
+    "input": {
+      "premise": "Look here, I said, \"I may be altogether wrong. "
+    },
+    "steps": [],
+    "passOutput": {
+      "hypothesis": "I was prepared to accept that my idea was flawed. "
+    },
+    "failOutput": {
+      "hypothesis": "'Even though you tried to burn it down, my house is in perfect state.'"
+    },
+    "edit": "contradicting hypothesis from another premise"
+  },
+  {
+    "id": "np02",
+    "input": {
+      "premise": "so who so if you go out and you're talking like a ten or fifteen thousand dollar vehicle and you add that sales tax on that's a that's a big chunk of change you have to come up with"
+    },
+    "steps": [],
+    "passOutput": {
+      "hypothesis": "The sales tax would really drive the price of the car up."
+    },
+    "failOutput": {
+      "hypothesis": "Some organizations were obscure."
+    },
+    "edit": "contradicting hypothesis from another premise"
+  },
+  {
+    "id": "np03",
+    "input": {
+      "premise": "It is nice to be reminded that people remember."
+    },
+    "steps": [],
+    "passOutput": {
+      "hypothesis": "It made me feel good that people remembered."
+    },
+    "failOutput": {
+      "hypothesis": "I was relieved that my friend was feeling so well and happy."
+    },
+    "edit": "contradicting hypothesis from another premise"
+  },
+  {
+    "id": "np04",
+    "input": {
+      "premise": "I'm confused."
+    },
+    "steps": [],
+    "passOutput": {
+      "hypothesis": "Not all of it is very clear to me."
+    },
+    "failOutput": {
+      "hypothesis": "GAGS and AICPA have the same requirements."
+    },
+    "edit": "contradicting hypothesis from another premise"
+  },
+  {
+    "id": "np05",
+    "input": {
+      "premise": "Linda Tripp was indicted for illegally taping telephone conversations with Monica Lewinsky."
+    },
+    "steps": [],
+    "passOutput": {
+      "hypothesis": "Monica Lewinsky was illegally taped by Linda Tripp."
+    },
+    "failOutput": {
+      "hypothesis": "The nine hundred acres of garden are set on the lands above the Nile River."
+    },
+    "edit": "contradicting hypothesis from another premise"
+  },
+  {
+    "id": "np06",
+    "input": {
+      "premise": "She buried his remains to spare her mother the gruesome sight."
+    },
+    "steps": [],
+    "passOutput": {
+      "hypothesis": "The remains would have caused grief to her mother."
+    },
+    "failOutput": {
+      "hypothesis": "He kept his gun holstered."
+    },
+    "edit": "contradicting hypothesis from another premise"
+  },
+  {
+    "id": "np07",
+    "input": {
+      "premise": "How did this man know?"
+    },
+    "steps": [],
+    "passOutput": {
+      "hypothesis": "The man knew something."
+    },
+    "failOutput": {
+      "hypothesis": "They used multiple clay pots to cook their food."
+    },
+    "edit": "contradicting hypothesis from another premise"
+  },
+  {
+    "id": "np08",
+    "input": {
+      "premise": "Tommy realized perfectly that in his own wits lay the only chance of escape, and behind his casual manner he was racking his brains furiously."
+    },
+    "steps": [],
+    "passOutput": {
+      "hypothesis": "Tommy was keeping a calm demeanor, though his mind was racing with thoughts of escaping."
+    },
+    "failOutput": {
+      "hypothesis": "He swung at the brute with his sword."
+    },
+    "edit": "contradicting hypothesis from another premise"
+  }
+]

@@ -1,0 +1,447 @@
+[
+  {
+    "id": "c01",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "I checked order A-1042: it was placed 58 days ago, which is outside our 30-day refund window, so I can't issue a refund. I can offer store credit at 50% if that helps.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "note": "clear pass"
+  },
+  {
+    "id": "c02",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "Order A-1042 is past the 30-day refund window (it was placed 58 days ago), so a refund isn't available. Would an exchange work instead?",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "note": "clear pass"
+  },
+  {
+    "id": "c03",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "Unfortunately this order falls outside the 30-day refund window. I'm sorry I can't refund it, but I can escalate a goodwill request.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "note": "clear pass"
+  },
+  {
+    "id": "c04",
+    "input": "Can I still return order A-1042? Bought it a while ago.",
+    "output": "Good news: order A-1042 was placed 12 days ago, so it's still inside our 30-day refund window. I can start the return now.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 12,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "note": "clear pass, inside window"
+  },
+  {
+    "id": "c05",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "Your order is 58 days old and our refund window is 30 days, so this one is no longer eligible for a refund. I've noted your feedback for the team.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "note": "clear pass"
+  },
+  {
+    "id": "c06",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "Sorry to hear that! I've processed your refund for order A-1042; you'll see it in 3-5 business days.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "note": "clear fail, refunded out of window"
+  },
+  {
+    "id": "c07",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "No problem at all, I'm happy to refund this. I've gone ahead and refunded order A-1042.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "note": "clear fail"
+  },
+  {
+    "id": "c08",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "Done. A full refund has been issued for A-1042 and your refund is on its way.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "note": "clear fail"
+  },
+  {
+    "id": "c09",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "Thanks for reaching out. Your refund has been submitted and should post within a week.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "note": "clear fail"
+  },
+  {
+    "id": "c10",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "I've issued a full refund to your original payment method. Anything else I can help with?",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "note": "clear fail"
+  },
+  {
+    "id": "c11",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "Thanks, I've looked into A-1042 and submitted a request to our billing team. They'll follow up by email.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30,
+          "policy_note": "order is outside the 30-day refund window"
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "note": "vague deferral; window only visible in steps"
+  },
+  {
+    "id": "c12",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "I understand. I've flagged your order for review and someone will get back to you within two days.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30,
+          "policy_note": "outside the 30-day refund window; refund not permitted"
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "note": "vague deferral; window only in steps"
+  },
+  {
+    "id": "c13",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "I can see the order. Let me raise this with a specialist and we'll confirm next steps shortly.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30,
+          "policy_note": "30-day refund window exceeded"
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "note": "vague; window only in steps"
+  },
+  {
+    "id": "c14",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "Got it. I've opened a case for A-1042 so the returns team can take a look.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30,
+          "policy_note": "policy: 30-day refund window, days exceeded: 28"
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "note": "vague; window only in steps"
+  },
+  {
+    "id": "c15",
+    "input": "Hi, I'd like a refund for order A-1042. It arrived and I just never used it.",
+    "output": "Sorry about that. I've passed A-1042 to our returns desk; they'll email you with options.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30,
+          "policy_note": "outside the 30-day refund window"
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "note": "vague; window only in steps"
+  },
+  {
+    "id": "c16",
+    "input": "Can I return A-1042? It came last week.",
+    "output": "I'm afraid A-1042 is outside our 30-day refund window, so I can't refund it.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 12,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "note": "wrong window claim; reviewers split on whether the criterion covers false negatives"
+  },
+  {
+    "id": "c17",
+    "input": "Return request for A-1042, delivered 9 days ago.",
+    "output": "This order is past the 30-day refund window and is no longer eligible.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 9,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": true,
+    "note": "wrong window claim"
+  },
+  {
+    "id": "c18",
+    "input": "I want to send back A-1042 from two weeks ago.",
+    "output": "Unfortunately A-1042 falls outside the 30-day refund window.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 14,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "note": "wrong window claim, reviewers agreed fail"
+  },
+  {
+    "id": "c19",
+    "input": "Refund please for A-1042, ordered in July.",
+    "output": "A-1042 was placed 58 days ago and our refund window is 30 days, so it's outside the window and I can't refund it. I can offer a discount code for a future order.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "pass",
+    "reviewerDisagreement": false,
+    "note": "clear pass"
+  },
+  {
+    "id": "c20",
+    "input": "Refund please for A-1042.",
+    "output": "All set! I've processed a full refund for A-1042.",
+    "steps": [
+      {
+        "name": "lookup_order",
+        "input": {
+          "order_id": "A-1042"
+        },
+        "output": {
+          "order_id": "A-1042",
+          "purchase_date": "2026-07-20",
+          "days_since_purchase": 58,
+          "refund_policy_window_days": 30
+        }
+      }
+    ],
+    "humanLabel": "fail",
+    "reviewerDisagreement": false,
+    "note": "clear fail"
+  }
+]
