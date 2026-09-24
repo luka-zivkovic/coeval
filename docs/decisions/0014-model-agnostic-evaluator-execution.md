@@ -114,9 +114,9 @@ Decision owner: Luka Živković (founder).
 
 The spike is at tag `jev-comparison-2026-09-24`, under
 `tools/typesafe-loop/results/2026-09-24-compare`. Its data is public and not
-governed truth. All five judges completed every set; the first Anthropic key
-ran out of credit, and the refused calls were resumed with identical
-requests.
+governed truth. The first Anthropic key ran out of credit, and the refused
+calls were resumed with identical requests. Every judge answered every set,
+except one Sonnet 5 MT-Bench verdict that still has no rationale.
 
 - **Judges and deviations.**
   - `jev-1.13.0`: one `noul` question per case.
@@ -124,14 +124,16 @@ requests.
     Rubrist's seeded default; Sonnet 5; and Opus 5.5.
   - Deviations, each recorded per judge: Sonnet 5 and Opus 5.5 ran without
     temperature, and Opus 5.5 with `tool_choice: auto`.
-  - Every Claude run predates #121.
+  - Every Claude run used the pre-#121 verdict instructions.
 - **Short-context results.** On ChaosMNLI (200 cases) and MT-Bench (150
   cases, both response orders), McNemar found no accuracy difference between
   Jev and Sonnet 4.6, Sonnet 5, or Opus 5.5 (p ≥ 0.065). That is "no
-  difference detected", not equivalence. Against Opus 5.5 the AUCs agree
-  within 0.01.
-- **Cost and latency.** Jev cost 0.8–1.4% of Haiku 4.5 per trace and
-  0.1–0.2% of Opus 5.5, and its median latency was 8–12% of Haiku's.
+  difference detected", not equivalence. The paired bootstrap does separate
+  Jev from Sonnet 5 on original-order MT-Bench, with Jev ahead (0.048
+  [0.007, 0.088]). Against Opus 5.5 the AUCs agree within 0.01.
+- **Cost and latency.** On the short-context sets, Jev cost 0.8–1.4% of
+  Haiku 4.5 per trace and 0.1–0.2% of Opus 5.5, and its median latency was
+  8–12% of Haiku's.
 - **Order consistency on MT-Bench** (the same pick with the responses
   swapped):
 
@@ -150,8 +152,11 @@ requests.
     Sonnet 5 was only slightly above.
   - Opus beat Jev by 0.24 [0.14, 0.34] in paired accuracy (McNemar
     p < 0.001).
-  - Opus reasoned first by default. The other Claude judges were forced to
-    call the verdict tool, which rules out thinking first.
+  - Opus 5.5 reasoned first by default: its responses carried thinking
+    blocks in our checks.
+  - The other judges answered without thinking. Haiku 4.5 and Sonnet 4.6
+    don't reason unless asked, and a spot check of Sonnet 5 under the forced
+    verdict call returned no thinking.
   - The run didn't isolate whether reasoning, model capability, or the kind
     of task explains the gap, and it can't separate trace length from task
     type.
