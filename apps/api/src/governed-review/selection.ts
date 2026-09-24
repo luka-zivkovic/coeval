@@ -25,6 +25,8 @@ export type GovernedSelectionRequest =
 
 export interface GovernedSelectionResult {
   method: GovernedSelectionRequest["method"];
+  /** Who chose the members: Rubrist's seeded draw, or the caller's directed list. */
+  drawExecutor: "rubrist_server" | "caller_selected";
   selected: GovernedSelectionFrameItem[];
   seed: string | null;
   rngVersion: "sha256-rank/v1" | "sha256-systematic/v1" | null;
@@ -64,6 +66,7 @@ export function executeGovernedReviewSelection(input: {
   let rngVersion: GovernedSelectionResult["rngVersion"] = null;
   let selected: GovernedSelectionFrameItem[];
   let strata: GovernedSelectionResult["strata"] = [];
+  let drawExecutor: GovernedSelectionResult["drawExecutor"] = "rubrist_server";
 
   if (method === "simple_random") {
     assertBudget(input.selection.fixedBudget, frame.length);
@@ -112,6 +115,7 @@ export function executeGovernedReviewSelection(input: {
   ) {
     const directed = input.selection as Extract<GovernedSelectionRequest, { selectedSourceItemIds: string[] }>;
     const ids = directed.selectedSourceItemIds;
+    drawExecutor = "caller_selected";
     assertUnique(ids, "selected source item");
     selected = ids.map((id) => {
       const item = byId.get(id);
@@ -127,6 +131,7 @@ export function executeGovernedReviewSelection(input: {
   const serveOrderSeed = input.serveOrderSeed ?? generateGovernedSelectionSeed();
   return {
     method,
+    drawExecutor,
     selected,
     seed,
     rngVersion,

@@ -66,6 +66,14 @@ stratified random draw from one exact finite, frozen population with a fixed
 stop. Systematic, convenience, manual, uncertainty, failure-hunting, and
 incomplete samples remain explicitly nonrepresentative.
 
+Every batch records who chose its members. Rubrist executes random and
+systematic draws (`rubrist_server`); for convenience, uncertainty,
+failure-hunting, and manual batches the caller picked the items
+(`caller_selected`), and PostgreSQL ties each value to its methods. A frozen
+batch's ineligibility reasons use the same sorted `RepresentativeClaimReason`
+codes as binary calibration, so a directed batch reports both
+`draw_not_server_executed` and `selection_method_not_eligible`.
+
 ## Legacy review
 
 Existing `verdicts`, review queues, golden promotions, and historical

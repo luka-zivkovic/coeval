@@ -8620,24 +8620,29 @@ begin
       new.representative_ineligible_reasons := '{}'::text[];
     else
       new.representative_of_population_id := null;
+      -- Calibration's RepresentativeClaimReason vocabulary, sorted.
       new.representative_ineligible_reasons := array_remove(array[
-        case when batch.selection_method not in ('simple_random','stratified_random')
-          then 'selection_method_not_representative' end,
-        case when batch.population_definition = '{}'::jsonb
-          or batch.population_collection_provenance = '{}'::jsonb
-          then 'population_provenance_incomplete' end,
-        case when batch.selection_seed is null or batch.rng_version is null
-          or batch.draw_digest <> governed_review_draw_digest(batch.id)
-          then 'selection_or_draw_not_reproducible' end,
         case when exists (
           select 1 from governed_active_review_labels active
           where active.batch_id = batch.id and active.label = 'cannot_determine'
         ) then 'cannot_determine_present' end,
+        case when batch.population_collection_provenance = '{}'::jsonb
+          then 'collection_provenance_unverified' end,
+        case when batch.selection_method in ('simple_random','stratified_random')
+          and (batch.selection_seed is null or batch.rng_version is null
+            or batch.draw_digest <> governed_review_draw_digest(batch.id))
+          then 'draw_not_reproducible' end,
+        case when batch.draw_executed_by <> 'rubrist_server'
+          then 'draw_not_server_executed' end,
+        case when batch.population_definition = '{}'::jsonb
+          then 'population_frame_incomplete' end,
         case when exists (
           select 1 from governed_review_tasks task
           where task.batch_id = batch.id
             and governed_review_current_task_state(task.id) <> 'submitted'
-        ) then 'review_coverage_incomplete' end
+        ) then 'review_coverage_incomplete' end,
+        case when batch.selection_method not in ('simple_random','stratified_random')
+          then 'selection_method_not_eligible' end
       ]::text[], null);
     end if;
   end if;
@@ -11281,7 +11286,7 @@ CREATE TABLE governed_review_batches (
     CONSTRAINT governed_review_batches_content_digest_check CHECK ((content_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
     CONSTRAINT governed_review_batches_custodian_role_at_review_check CHECK (((custodian_role_at_review IS NULL) OR ((length(custodian_role_at_review) > 0) AND (octet_length(custodian_role_at_review) <= 256)))),
     CONSTRAINT governed_review_batches_draw_digest_check CHECK ((draw_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
-    CONSTRAINT governed_review_batches_draw_executed_by_check CHECK ((draw_executed_by = 'rubrist_server'::text)),
+    CONSTRAINT governed_review_batches_draw_executed_by_check CHECK ((((draw_executed_by = 'rubrist_server'::text) AND (selection_method = ANY (ARRAY['simple_random'::text, 'stratified_random'::text, 'systematic'::text]))) OR ((draw_executed_by = 'caller_selected'::text) AND (selection_method = ANY (ARRAY['convenience'::text, 'uncertainty'::text, 'failure_hunting'::text, 'manual'::text]))))),
     CONSTRAINT governed_review_batches_fixed_budget_check CHECK (((fixed_budget > 0) AND (fixed_budget <= 10000))),
     CONSTRAINT governed_review_batches_idempotency_key_check CHECK (((length(idempotency_key) > 0) AND (octet_length(idempotency_key) <= 1024))),
     CONSTRAINT governed_review_batches_population_collection_provenance_check CHECK ((octet_length((population_collection_provenance)::text) <= 262144)),

@@ -461,13 +461,32 @@ run("PgGovernedReviewRepository", () => {
       batchKey: "batch-systematic",
       instructionVersionId: instruction.instructionVersionId,
       reviewer: REVIEWER_A,
-      selectionMethod: "systematic"
+      selection: { method: "systematic", fixedBudget: 1 }
     });
-    expect(systematic.representativeness).toMatchObject({
+    expect(systematic.representativeness).toEqual({
       status: "ineligible",
       populationId: null,
-      reasons: expect.arrayContaining(["selection_method_not_representative"])
+      reasons: ["selection_method_not_eligible"]
     });
+    expect((await pool.query(`select draw_executed_by from governed_review_batches where id=$1`, [systematic.batchId]))
+      .rows[0]).toEqual({ draw_executed_by: "rubrist_server" });
+
+    const directedSourceItemId = (await pool.query<{ id: string }>(
+      `select id from dataset_revision_items where revision_id=$1 order by position limit 1`, [sourceRevisionId]
+    )).rows[0]!.id;
+    const directed = await completeSingleRaterBatch({
+      batchKey: "batch-directed-freeze",
+      instructionVersionId: instruction.instructionVersionId,
+      reviewer: REVIEWER_A,
+      selection: { method: "manual", selectedSourceItemIds: [directedSourceItemId] }
+    });
+    expect(directed.representativeness).toEqual({
+      status: "ineligible",
+      populationId: null,
+      reasons: ["draw_not_server_executed", "selection_method_not_eligible"]
+    });
+    expect((await pool.query(`select draw_executed_by from governed_review_batches where id=$1`, [directed.batchId]))
+      .rows[0]).toEqual({ draw_executed_by: "caller_selected" });
 
     const abstention = await repository.createBatchDraft(OWNER, {
       instructionVersionId: instruction.instructionVersionId,
@@ -925,13 +944,13 @@ async function completeSingleRaterBatch(input: {
   batchKey: string;
   instructionVersionId: string;
   reviewer: GovernedReviewActor;
-  selectionMethod: "simple_random" | "systematic";
+  selection: { method: "simple_random" | "systematic"; fixedBudget: 1 } | { method: "manual"; selectedSourceItemIds: string[] };
 }) {
   const batch = await repository.createBatchDraft(OWNER, {
     instructionVersionId: input.instructionVersionId,
     roleIntent: "analysis_authoring",
     source: { kind: "dataset_revision", revisionId: sourceRevisionId },
-    selection: { method: input.selectionMethod, fixedBudget: 1 },
+    selection: input.selection,
     reviewerUserIds: [input.reviewer.userId],
     fixedStopAt: STOP_AT,
     idempotencyKey: input.batchKey

@@ -1,4 +1,5 @@
 import type { PoolClient } from "pg";
+import type { RepresentativeClaimReason } from "@rubrist/shared";
 
 import {
   datasetRevisionContentDigest,
@@ -692,20 +693,20 @@ export async function materializeFrozenTruth(
      where batch_id=$1 and governed_review_current_task_state(id)<>'submitted' limit 1`,
     [batch.id]
   )).rowCount);
-  const populationComplete = !isEmptyObject(parseJson(batch.population_definition)) &&
-    !isEmptyObject(parseJson(batch.population_collection_provenance));
-  const eligible = ["simple_random", "stratified_random"].includes(batch.selection_method) &&
-    Boolean(batch.selection_seed) && Boolean(batch.rng_version) && drawMatches &&
-    populationComplete && !hasCannotDetermine && !incompleteTask;
-  const reasons = eligible ? [] : [
-    ...(!["simple_random", "stratified_random"].includes(batch.selection_method)
-      ? ["selection_method_not_representative"] : []),
-    ...(!populationComplete ? ["population_provenance_incomplete"] : []),
-    ...(!batch.selection_seed || !batch.rng_version || !drawMatches
-      ? ["selection_or_draw_not_reproducible"] : []),
-    ...(hasCannotDetermine ? ["cannot_determine_present"] : []),
-    ...(incompleteTask ? ["review_coverage_incomplete"] : [])
+  // The same reason vocabulary calibration uses (RepresentativeClaimReason),
+  // sorted; the freeze trigger derives the identical array.
+  const probabilityMethod = ["simple_random", "stratified_random"].includes(batch.selection_method);
+  const reasons: RepresentativeClaimReason[] = [
+    ...(hasCannotDetermine ? ["cannot_determine_present" as const] : []),
+    ...(isEmptyObject(parseJson(batch.population_collection_provenance)) ? ["collection_provenance_unverified" as const] : []),
+    ...(probabilityMethod && (!batch.selection_seed || !batch.rng_version || !drawMatches)
+      ? ["draw_not_reproducible" as const] : []),
+    ...(batch.draw_executed_by !== "rubrist_server" ? ["draw_not_server_executed" as const] : []),
+    ...(isEmptyObject(parseJson(batch.population_definition)) ? ["population_frame_incomplete" as const] : []),
+    ...(incompleteTask ? ["review_coverage_incomplete" as const] : []),
+    ...(!probabilityMethod ? ["selection_method_not_eligible" as const] : [])
   ];
+  const eligible = reasons.length === 0;
   const eventId = stableId("grbe", batch.id, command.idempotencyKey);
   const details = {
     materializedItemCount: preparedItems.length,
