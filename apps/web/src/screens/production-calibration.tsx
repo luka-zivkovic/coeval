@@ -109,6 +109,9 @@ function PersistentProductionCalibrationScreen() {
   const [importResult, setImportResult] = useState<ProductionRecordImportResult | null>(null);
   const [snapshots, setSnapshots] = useState<ProductionCalibrationSnapshotSummary[] | null>(null);
   const [settings, setSettings] = useState<ProductionCalibrationSettings | null>(null);
+  const [settingsFailed, setSettingsFailed] = useState(false);
+  // The snapshot an in-flight open is loading, so deleting it can cancel that load.
+  const openingSnapshot = useRef<string | null>(null);
   const [retentionDraft, setRetentionDraft] = useState("");
   const [savingRetention, setSavingRetention] = useState(false);
   const [eraseDecisionId, setEraseDecisionId] = useState("");
@@ -151,14 +154,16 @@ function PersistentProductionCalibrationScreen() {
         setSettings(loaded);
         setRetentionDraft(String(loaded.retentionDays));
       } catch (cause) {
+        setSettingsFailed(true);
         setError(describeError(cause));
       }
     })();
   }, [refreshSnapshots]);
 
-  // Owner-only controls stay hidden from members once the role is known.
+  // Owner-only controls show while the role is loading and for owners; after
+  // the role arrives, or if it cannot be loaded, members never see them.
   const isOwner = settings?.projectRole === "owner";
-  const showOwnerControls = settings === null || isOwner;
+  const showOwnerControls = settings === null ? !settingsFailed : isOwner;
 
   async function saveRetention(): Promise<void> {
     const days = Number(retentionDraft);
@@ -199,6 +204,11 @@ function PersistentProductionCalibrationScreen() {
   async function deleteSnapshot(snapshotId: string): Promise<void> {
     if (!window.confirm("Delete this snapshot? Its saved report cannot be recovered.")) return;
     setError(null);
+    if (openingSnapshot.current === snapshotId) {
+      inflight.current?.abort();
+      inflight.current = null;
+      openingSnapshot.current = null;
+    }
     try {
       await deleteProductionSnapshot(snapshotId);
       if (reading?.source.kind === "snapshot" && reading.source.snapshot.id === snapshotId) setReading(null);
@@ -292,6 +302,7 @@ function PersistentProductionCalibrationScreen() {
     inflight.current?.abort();
     const controller = new AbortController();
     inflight.current = controller;
+    openingSnapshot.current = snapshotId;
     setError(null);
     try {
       const { snapshot, artifact } = await fetchProductionSnapshot(snapshotId, controller.signal);
@@ -303,6 +314,7 @@ function PersistentProductionCalibrationScreen() {
       setError(describeError(cause));
     } finally {
       if (inflight.current === controller) inflight.current = null;
+      if (openingSnapshot.current === snapshotId) openingSnapshot.current = null;
     }
   }
 
@@ -559,7 +571,7 @@ function PersistentProductionCalibrationScreen() {
           ) : null}
           {erased ? (
             <p className="font-mono text-[10.5px] text-ink-3" aria-live="polite">
-              erased {erased.decisionId} · {erased.counts.decisions} decisions · {erased.counts.actions} actions · {erased.counts.outcomes} outcomes · later records for it are rejected
+              erased {erased.decisionId} · {erased.counts.decisions} decisions · {erased.counts.actions} actions · {erased.counts.outcomes} outcomes · later records for it are rejected · rebuild a report to reflect it
             </p>
           ) : null}
           <p className="text-[11.5px] leading-5 text-ink-3">

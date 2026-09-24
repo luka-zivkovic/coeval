@@ -63,7 +63,7 @@ describe("production calibration screen interactions", () => {
   let root: Root;
   let calls: Array<{ url: string; method: string; body: unknown }>;
   let snapshotResponse: Promise<Response> | null;
-  let role: "owner" | "member";
+  let role: "owner" | "member" | "unavailable";
 
   beforeEach(() => {
     (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -76,6 +76,7 @@ describe("production calibration screen interactions", () => {
       const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : null;
       calls.push({ url, method, body });
       if (url.endsWith("/settings")) {
+        if (role === "unavailable") return json({ error: "unavailable" }, 500);
         return json({ retentionDays: method === "PUT" ? body?.retentionDays : 90, projectRole: role });
       }
       if (url.endsWith("/records/erase")) return json({ erased: { decisions: 1, actions: 0, outcomes: 2 } });
@@ -194,5 +195,26 @@ describe("production calibration screen interactions", () => {
     await act(async () => button("Delete").click());
     await settle();
     expect(calls.some((call) => call.url.endsWith("/snapshots/pcs_old") && call.method === "DELETE")).toBe(true);
+  });
+
+  it("hides owner controls when the role cannot be loaded", async () => {
+    role = "unavailable";
+    act(() => root.render(createElement(ProductionCalibrationScreen)));
+    await settle();
+    expect(button("Import .jsonl (owners)")).toBeUndefined();
+    expect(button("Delete")).toBeUndefined();
+  });
+
+  it("cancels an in-flight open of a snapshot that is deleted", async () => {
+    let release: (response: Response) => void = () => undefined;
+    snapshotResponse = new Promise((resolve) => { release = resolve; });
+    act(() => root.render(createElement(ProductionCalibrationScreen)));
+    await settle();
+    await act(async () => button("Open").click());
+    await act(async () => button("Delete").click());
+    await settle();
+    await act(async () => release(json({ snapshot, artifact })));
+    await settle();
+    expect(source()).toBeNull();
   });
 });
