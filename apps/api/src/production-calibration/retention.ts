@@ -7,9 +7,10 @@ import type { ProductionDecisionRecordRepository, ProductionRetentionRun } from 
 
 const DEFAULT_INTERVAL_MS = 60 * 60 * 1000;
 const MAX_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const MIN_INTERVAL_MS = 60 * 1000;
 
 export interface ProductionRetentionSweeperOptions {
-  /** 0 or less disables the timer; the sweep can still be run by hand. */
+  /** 0 or less starts no timer (tests run the sweep by hand); deployments always get one through parseProductionRetentionIntervalMs. */
   intervalMs?: number | undefined;
   now?: (() => Date) | undefined;
 }
@@ -58,8 +59,14 @@ export function registerProductionRetentionSweeper(
   };
 }
 
+/**
+ * The deployment's sweep interval. Retention cannot be switched off (ADR-0013
+ * section 5), so an unset, non-numeric, zero, or negative value falls back to
+ * the hourly default, and anything shorter than a minute becomes a minute.
+ */
 export function parseProductionRetentionIntervalMs(value: string | undefined): number {
   if (value === undefined || value.trim() === "") return DEFAULT_INTERVAL_MS;
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : DEFAULT_INTERVAL_MS;
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_INTERVAL_MS;
+  return Math.max(parsed, MIN_INTERVAL_MS);
 }

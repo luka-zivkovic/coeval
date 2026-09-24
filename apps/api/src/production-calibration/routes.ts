@@ -143,7 +143,7 @@ class PreviewHttpError extends Error {
   constructor(
     message: string,
     readonly code: string,
-    readonly status: 400 | 403 | 404 | 409 | 410 | 413 | 422 | 501 | 503,
+    readonly status: 400 | 401 | 403 | 404 | 409 | 410 | 413 | 422 | 501 | 503,
     readonly details?: unknown
   ) {
     super(message);

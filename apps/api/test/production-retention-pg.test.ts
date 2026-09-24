@@ -56,6 +56,11 @@ run("production record retention, erasure, and purges", () => {
     [action]
   )).rows;
   const pause = () => new Promise((resolve) => setTimeout(resolve, 25));
+  const lockKey = `rubrist/production-records/v1:${PROJECT_ID}`;
+  const settled = (promise: Promise<unknown>) => Promise.race([
+    promise.then(() => true, () => true),
+    new Promise((resolve) => setTimeout(() => resolve(false), 150))
+  ]);
 
   beforeAll(async () => {
     ({ pool, cleanup } = await openPostgresTestDatabase("production_retention"));
@@ -115,8 +120,14 @@ run("production record retention, erasure, and purges", () => {
       cutoff: middle.toISOString(),
       deleted: { decisions: 1, actions: 0, outcomes: 2 }
     });
-    // A rerun at the same time deletes nothing and writes no audit entry.
+    // A rerun at the same time deletes nothing: no project entry, but the run itself is recorded.
+    const applied = (await audits("production.retention.apply")).length;
     await expect(repository.applyRetention(new Date(middle.getTime() + 90 * DAY_MS))).resolves.toEqual({ skipped: false, projects: [] });
+    expect(await audits("production.retention.apply")).toHaveLength(applied);
+    expect((await audits("production.retention.run")).at(-1)?.metadata).toMatchObject({
+      projectsWithDeletions: 0,
+      deleted: { decisions: 0, actions: 0, outcomes: 0 }
+    });
   });
 
   it("lets only one retention run delete at a time and a sweeper run on demand", async () => {
@@ -159,12 +170,6 @@ run("production record retention, erasure, and purges", () => {
   });
 
   it("serializes erasure with appends in flight, in both directions", async () => {
-    const lockKey = `rubrist/production-records/v1:${PROJECT_ID}`;
-    const settled = (promise: Promise<unknown>) => Promise.race([
-      promise.then(() => true, () => true),
-      new Promise((resolve) => setTimeout(() => resolve(false), 150))
-    ]);
-
     // An append in flight (holding the shared lock, its row inserted but not
     // committed) makes erasure wait, and erasure then removes what it wrote.
     const writer = await pool.connect();
@@ -199,6 +204,58 @@ run("production record retention, erasure, and purges", () => {
     }
   });
 
+  it("serializes a key's purge with its appends in flight, in both directions", async () => {
+    await pool.query(
+      `insert into api_keys (id, project_id, name, key_hash, key_prefix, capability)
+       values ('key_inflight', $1, 'inflight', 'hash_inflight', 'rubrist_sk_inf…', 'production_ingest'),
+              ('key_waiting', $1, 'waiting', 'hash_waiting', 'rubrist_sk_wai…', 'production_ingest')`,
+      [PROJECT_ID]
+    );
+
+    // An append that passed its key check before the revoke is still writing
+    // (shared lock held, row inserted, not committed). The purge waits for it
+    // and then removes what it wrote.
+    const writer = await pool.connect();
+    try {
+      await writer.query("begin");
+      await writer.query(`select pg_advisory_xact_lock_shared(hashtextextended($1, 0))`, [lockKey]);
+      const live = await writer.query(
+        `select 1 from api_keys where id = 'key_inflight' and project_id = $1 and revoked_at is null`,
+        [PROJECT_ID]
+      );
+      expect(live.rowCount).toBe(1);
+      await writer.query(
+        `insert into production_decision_records (id, project_id, kind, decision_id, record_at, content, content_digest, submitted_by_api_key_id)
+         values ('pdr_inflight', $1, 'decision', 'inflight', $2, $3::jsonb, governed_content_v1_digest('rubrist/production-decision-record/v1', $3::jsonb), 'key_inflight')`,
+        [PROJECT_ID, "2026-09-20T10:00:00.000Z", JSON.stringify(decision("inflight"))]
+      );
+      await pool.query(`update api_keys set revoked_at = now() where id = 'key_inflight'`);
+      const purging = repository.purgeApiKeyRecords({ projectId: PROJECT_ID, userId: OWNER_ID, apiKeyId: "key_inflight" });
+      expect(await settled(purging)).toBe(false);
+      await writer.query("commit");
+      await expect(purging).resolves.toEqual({ decisions: 1, actions: 0, outcomes: 0 });
+    } finally {
+      writer.release();
+    }
+    expect(await ids()).not.toContain("decision:inflight");
+
+    // An append that authenticated while its key was live but is still waiting
+    // for the lock when the key is revoked is refused once the lock frees.
+    const holder = await pool.connect();
+    try {
+      await holder.query("begin");
+      await holder.query(`select pg_advisory_xact_lock(hashtextextended($1, 0))`, [lockKey]);
+      const appending = append([decision("late")], { kind: "api_key", apiKeyId: "key_waiting" });
+      expect(await settled(appending)).toBe(false);
+      await pool.query(`update api_keys set revoked_at = now() where id = 'key_waiting'`);
+      await holder.query("commit");
+      await expect(appending).rejects.toMatchObject({ code: "api_key_revoked" });
+    } finally {
+      holder.release();
+    }
+    expect(await ids()).not.toContain("decision:late");
+  });
+
   it("purges exactly what a revoked key sent, and only after it is revoked", async () => {
     await append([decision("from_leak"), outcome("new", false)], { kind: "api_key", apiKeyId: "key_leaked" });
     await append([decision("from_live")], { kind: "api_key", apiKeyId: "key_live" });
@@ -215,7 +272,10 @@ run("production record retention, erasure, and purges", () => {
     );
     expect(remaining.rows.map((row) => row.submitted_by_api_key_id)).not.toContain("key_leaked");
     expect(await ids()).toContain("decision:from_live");
-    expect((await audits("production.api_key.purge")).map((row) => row.target_id)).toEqual(["key_leaked"]);
+    expect((await audits("production.api_key.purge")).at(-1)).toMatchObject({
+      target_id: "key_leaked",
+      metadata: { deleted: { decisions: 1, actions: 0, outcomes: 1 } }
+    });
   });
 
   it("deletes a snapshot only through the owner operation", async () => {

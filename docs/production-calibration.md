@@ -348,8 +348,9 @@ awaitingDecision }`. Retrying a batch is safe.
 - Store rejections answer `production_ingest_<code>`: `conflicting_decision`
   is 409; `batch_too_large` and `record_too_large` are 413;
   `future_dated_record`, `invalid_record`, and `empty_batch` are 400;
-  `project_not_found` is 404; and `write_contention` is 503 with
-  `Retry-After: 1`.
+  `project_not_found` is 404; `api_key_revoked` (the key was revoked while
+  the request was in flight) is 401; `erased_decision` is 410; and
+  `write_contention` is 503 with `Retry-After: 1`.
 - Each request costs one unit of the key's ingest budget before its body is
   parsed, so malformed bodies are metered too, and each record after the
   first costs one more. The budget is separate from the judge request bucket:
@@ -423,12 +424,15 @@ append-only themselves; that is unchanged.
   (which also answers the caller's `projectRole`) and owners change it with
   `PUT` (`{ "retentionDays": n }`, audited as
   `production.retention.update`). Every API process runs a sweep hourly
-  (`PRODUCTION_RETENTION_INTERVAL_MS`, 0 disables the timer), and an advisory
-  lock lets one run delete at a time. A sweep uses Rubrist's receive time, never
+  (`PRODUCTION_RETENTION_INTERVAL_MS`, at least one minute; an unset, zero,
+  negative, or invalid value means hourly, so a deployment cannot switch
+  retention off), and an advisory lock lets one run delete at a time. A sweep uses Rubrist's receive time, never
   the caller's `at`: a decision received before its project's cutoff is
   deleted with all of its actions and outcomes, even newer ones, and an orphan
   goes by its own receive time. Each project that loses records gets a
-  `production.retention.apply` entry with the cutoff and counts.
+  `production.retention.apply` entry with the cutoff and counts, and every run
+  that executes, including one that deletes nothing, writes a
+  `production.retention.run` entry with its time and totals.
 - **Decision erasure.** `POST /api/production-calibration/records/erase`
   (`{ "decisionId": ... }`) deletes every record of that decision and leaves a
   tombstone holding only the decision ID's SHA-256. Later records for that ID
@@ -444,7 +448,13 @@ append-only themselves; that is unchanged.
   (`{ "apiKeyId": ... }`) deletes every record that API key sent, including
   outcomes posted in advance for decisions that never arrived. The key must
   already be revoked (`409 production_calibration_api_key_not_revoked`; an
-  unknown key is 404). Audited as `production.api_key.purge`.
+  unknown key is 404). Audited as `production.api_key.purge`. An append
+  re-checks that its key is still live under the project's record lock, which
+  a purge holds exclusively, so a request that authenticated before the revoke
+  and writes afterwards is refused with `401 production_ingest_api_key_revoked`
+  instead of landing after the purge. Identical records are stored once with
+  their first sender, so a record the purged key sent first is removed even if
+  another producer later sent the same bytes; that producer must re-send it.
 - **Snapshot deletion.** `DELETE /api/production-calibration/snapshots/:id`
   answers 204, or 404 for an unknown ID, and is audited as
   `production.snapshot.delete` with the snapshot's digest. Retention and

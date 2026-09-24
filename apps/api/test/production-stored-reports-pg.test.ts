@@ -70,6 +70,11 @@ run("stored production reports and snapshots", () => {
       `insert into projects (id,organization_id,name,trace_provider) values ($1,'org_stored_reports','Reports','manual')`,
       [PROJECT_ID]
     );
+    await pool.query(
+      `insert into api_keys (id, project_id, name, key_hash, key_prefix, capability)
+       values ('key_ingest', $1, 'ingest', 'hash_ingest', 'rubrist_sk_ing…', 'production_ingest')`,
+      [PROJECT_ID]
+    );
     // d1 day 1, d2 day 3 (its outcome arrives on day 9), d3 day 8; an orphan on day 2 and one on day 9.
     await repository.appendRecords({ projectId: PROJECT_ID, submitter: KEY, records: [
       decision("d1", day(1), 0.9), outcome("d1", day(1), true),
