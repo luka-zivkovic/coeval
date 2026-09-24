@@ -121,7 +121,7 @@ response when the two responses are swapped:
 | Jev | 143 of 150 (95%) |
 | Haiku 4.5 | 81 of 150 (54%) |
 | Sonnet 4.6 | 130 of 148 (88%) |
-| Sonnet 5 | 127 of 145 (88%) |
+| Sonnet 5 | 128 of 147 (87%) |
 | Opus 5.5 | 148 of 150 (99%) |
 
 **Paired comparisons with Jev.** McNemar tests correctness on the same
