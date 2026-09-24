@@ -699,7 +699,7 @@ export async function materializeFrozenTruth(
   const reasons: RepresentativeClaimReason[] = [
     ...(hasCannotDetermine ? ["cannot_determine_present" as const] : []),
     ...(isEmptyObject(parseJson(batch.population_collection_provenance)) ? ["collection_provenance_unverified" as const] : []),
-    ...(probabilityMethod && (!batch.selection_seed || !batch.rng_version || !drawMatches)
+    ...(probabilityMethod && (batch.selection_seed === null || batch.rng_version === null || !drawMatches)
       ? ["draw_not_reproducible" as const] : []),
     ...(batch.draw_executed_by !== "rubrist_server" ? ["draw_not_server_executed" as const] : []),
     ...(isEmptyObject(parseJson(batch.population_definition)) ? ["population_frame_incomplete" as const] : []),
