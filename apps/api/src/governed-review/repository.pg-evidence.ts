@@ -106,7 +106,7 @@ export class PgGovernedReviewEvidenceRepository {
         await lockBatch(client, actor.projectId, String(unlocked.batch_id));
         const row = (await client.query(
           `select task.*,batch.criterion_version_id,batch.instruction_version_id,
-                  item.review_payload_snapshot,batch_item.draw_position,
+                  item.review_payload_snapshot,
                   instruction.title,instruction.instructions,instruction.failure_code_guidance,
                   instruction.allowed_labels,instruction.content_digest as instruction_digest,
                   criterion.criterion_id,criterion.name as criterion_name,

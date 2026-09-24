@@ -649,6 +649,8 @@ async function insertPromotionHandoffBatch(
        'selectionMethod','manual',
        'selectionSeed',null,
        'separationOfDutiesRequired',false,
+       'serveOrderSeed',repeat('5e',32),
+       'serveOrderVersion','sha256-serve-rank/v1',
        'sourcePopulationId',$8::text,
        'sourcePopulationKind','analysis_promotion_handoff',
        'stateMachineVersion','governed-review-state/v1',
@@ -673,11 +675,11 @@ async function insertPromotionHandoffBatch(
        draw_digest,strata,required_labels_per_item,evaluator_blind,
        peer_blind_until_labeling_closed,separation_of_duties_required,
        custodian_subject_id,custodian_role_at_review,state_machine_version,content_digest,
-       idempotency_key,request_digest,created_by_subject_id)
+       idempotency_key,request_digest,created_by_subject_id,serve_order_seed,serve_order_version)
      values ($1,$2,$3,$4,'analysis_authoring','analysis_promotion_handoff',$5,$6,$7::jsonb,
              $8::jsonb,1,$9,null,null,'manual',null,null,'manual/v1','rubrist_server',1,
              'fixed',$10,$11,'[]'::jsonb,1,true,true,false,null,null,
-             'governed-review-state/v1',$12,$13,$14,$15)`,
+             'governed-review-state/v1',$12,$13,$14,$15,repeat('5e',32),'sha256-serve-rank/v1')`,
     [batchId, evidence.projectId, promotion.criterionVersionId, instructionId,
       promotion.promotionId, evidence.sourceRevisionId, JSON.stringify(populationDefinition),
       JSON.stringify(collectionProvenance), evidence.sourceRevisionContentDigest, stopAt,
@@ -810,13 +812,13 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
                  evaluator_blind,peer_blind_until_labeling_closed,
                  separation_of_duties_required,custodian_subject_id,custodian_role_at_review,
                  state_machine_version,content_digest,idempotency_key,request_digest,
-                 created_by_subject_id)
+                 created_by_subject_id,serve_order_seed,serve_order_version)
                values ('same_tx_sealed_attack',$1,$2,'sealed_attack_instruction',
                  'sealed_validation','sealed_intake','sealed_attack_population',
                  'sealed_attack_population','{}','{}',1,$3,null,null,'manual',null,null,
                  'manual/v1','rubrist_server',1,'fixed','2099-01-01T00:00:00.000Z',$3,
                  '[]',2,true,true,true,$4,'owner','governed-review-state/v1',$3,
-                 'same-tx-sealed-attack',$3,$4)`,
+                 'same-tx-sealed-attack',$3,$4,repeat('5e',32),'sha256-serve-rank/v1')`,
               [evidence.projectId, promotion.criterionVersionId,
                 `sha256:${"a".repeat(64)}`, evidence.ownerSubjectId]
             );

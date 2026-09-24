@@ -112,10 +112,10 @@ export async function loadBatchProjection(
   const row = result.rows[0];
   if (!row) throw new GovernedReviewNotFoundError();
   const members = await db.query(
-    `select item.id,item.draw_position,resolution.resolution_kind,resolution.resolved_label
+    `select item.id,item.serve_position,resolution.resolution_kind,resolution.resolved_label
      from governed_review_batch_items item
      cross join lateral governed_review_item_resolution(item.id) resolution
-     where item.batch_id=$1 order by item.draw_position,item.id`,
+     where item.batch_id=$1 order by item.serve_position,item.id`,
     [batchId]
   );
   const frozen = row.state === "frozen";
@@ -147,7 +147,7 @@ export async function loadBatchProjection(
     itemCount: Number(row.fixed_budget),
     items: members.rows.map((item) => ({
       batchItemId: String(item.id),
-      servePosition: Number(item.draw_position),
+      servePosition: Number(item.serve_position),
       resolutionKind: mayProjectResolution ? item.resolution_kind : null,
       resolvedLabel: mayProjectResolution ? item.resolved_label : null
     })),

@@ -166,6 +166,8 @@ export const GovernedReviewSelectionPlanSchema = z.object({
 }).strict();
 export type GovernedReviewSelectionPlan = z.infer<typeof GovernedReviewSelectionPlanSchema>;
 
+// Members are listed in draw order. Reviewers are served in the separate
+// servePosition order, which the batch's serve-order seed reproduces.
 export const GovernedReviewBatchMemberSchema = z.object({
   reviewItemId: z.string().min(1),
   reviewItemDigest: DatasetEvidenceDigestSchema,
@@ -198,6 +200,8 @@ export const GovernedReviewBatchSchema = z.object({
   stateMachineVersion: z.literal("governed-review-state/v1"),
   idempotencyKey: z.string().min(1).max(200),
   requestDigest: DatasetEvidenceDigestSchema,
+  serveOrderSeed: z.string().regex(/^[0-9a-f]{64}$/),
+  serveOrderVersion: z.literal("sha256-serve-rank/v1"),
   members: z.array(GovernedReviewBatchMemberSchema).min(1).max(10_000),
   batchDigest: DatasetEvidenceDigestSchema,
   fixedStopAt: z.string().datetime({ offset: true }),

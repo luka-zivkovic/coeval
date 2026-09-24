@@ -430,6 +430,8 @@ export class PgGovernedReviewAdministrationRepository {
           selectionMethod: selection.method,
           selectionSeed: selection.seed,
           separationOfDutiesRequired: input.roleIntent === "sealed_validation",
+          serveOrderSeed: selection.serveOrder.seed,
+          serveOrderVersion: selection.serveOrder.version,
           sourcePopulationId: frame.sourcePopulationId,
           sourcePopulationKind: frame.sourcePopulationKind,
           stateMachineVersion: "governed-review-state/v1",
@@ -449,10 +451,10 @@ export class PgGovernedReviewAdministrationRepository {
               fixed_budget,stopping_rule,stop_at,draw_digest,strata,required_labels_per_item,
               evaluator_blind,peer_blind_until_labeling_closed,separation_of_duties_required,
               custodian_subject_id,custodian_role_at_review,state_machine_version,content_digest,
-              idempotency_key,request_digest,created_by_subject_id)
+              idempotency_key,request_digest,created_by_subject_id,serve_order_seed,serve_order_version)
            values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11,$12,$13,$14,$15,$16,$17,$18,
                    'rubrist_server',$19,'fixed',$20,$21,$22::jsonb,$23,true,true,$24,$25,$26,
-                   'governed-review-state/v1',$27,$28,$29,$30)`,
+                   'governed-review-state/v1',$27,$28,$29,$30,$31,$32)`,
           [batchId, actor.projectId, instruction.criterion_version_id, input.instructionVersionId,
             input.roleIntent, frame.sourcePopulationKind, frame.sourcePopulationId, frame.populationId,
             JSON.stringify(frame.populationDefinition), JSON.stringify(frame.collectionProvenance),
@@ -461,20 +463,25 @@ export class PgGovernedReviewAdministrationRepository {
             selection.algorithmVersion, selection.selected.length, input.fixedStopAt, drawDigest,
             JSON.stringify(strata), reviewerSubjects.length, input.roleIntent === "sealed_validation",
             frame.custodianSubjectId, frame.custodianRole, batchDigest,
-            input.idempotencyKey, requestDigest, creator.id]
+            input.idempotencyKey, requestDigest, creator.id,
+            selection.serveOrder.seed, selection.serveOrder.version]
         );
         for (const member of drawMembers) {
           const batchItemId = stableId("grbi", batchId, member.reviewItemId);
+          // The serve position stays out of the draw digest: shuffling what
+          // reviewers see never changes what was drawn.
+          const servePosition = selection.serveOrder.positions[member.drawPosition]!;
           const contentDigest = await dbDigest(client, "governed-review-batch-item/v1", {
             batchId,
-            ...member
+            ...member,
+            servePosition
           });
           await client.query(
             `insert into governed_review_batch_items
-               (id,project_id,batch_id,review_item_id,draw_position,frame_member_digest,
+               (id,project_id,batch_id,review_item_id,draw_position,serve_position,frame_member_digest,
                 stratum_key,inclusion_probability,sampling_weight,content_digest)
-             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-            [batchItemId, actor.projectId, batchId, member.reviewItemId, member.drawPosition,
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            [batchItemId, actor.projectId, batchId, member.reviewItemId, member.drawPosition, servePosition,
               member.frameMemberDigest, member.stratumKey, member.inclusionProbability,
               member.samplingWeight, contentDigest]
           );
@@ -485,7 +492,7 @@ export class PgGovernedReviewAdministrationRepository {
               batchItemId,
               reviewerRoleAtReview: reviewer.role,
               reviewerSubjectId: reviewer.id,
-              serveOrder: member.drawPosition
+              serveOrder: servePosition
             };
             const taskDigest = await dbDigest(client, "governed-review-task/v1", taskContent);
             await client.query(
@@ -494,7 +501,7 @@ export class PgGovernedReviewAdministrationRepository {
                   serve_order,content_digest,idempotency_key,request_digest)
                values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
               [taskId, actor.projectId, batchId, batchItemId, reviewer.id, reviewer.role,
-                member.drawPosition, taskDigest, `assignment:${batchId}:${batchItemId}:${reviewer.id}`,
+                servePosition, taskDigest, `assignment:${batchId}:${batchItemId}:${reviewer.id}`,
                 governedReviewRequestDigest(taskContent)]
             );
           }
