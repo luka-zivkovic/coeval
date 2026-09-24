@@ -158,7 +158,9 @@ export const GovernedReviewSelectionPlanSchema = z.object({
   weight: z.number().positive().nullable(),
   fixedBudget: z.number().int().positive(),
   stoppingRule: z.literal("fixed"),
-  drawExecutor: z.literal("rubrist_server"),
+  // Rubrist executes random and systematic draws; directed methods record the
+  // caller as the selector, which can never earn a representative claim.
+  drawExecutor: z.enum(["rubrist_server", "caller_selected"]),
   drawItemDigests: z.array(DatasetEvidenceDigestSchema).min(1).max(10_000),
   drawDigest: DatasetEvidenceDigestSchema,
   strata: z.array(GovernedReviewSelectionStratumSchema).max(1_000),

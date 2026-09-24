@@ -413,7 +413,7 @@ export class PgGovernedReviewAdministrationRepository {
           custodianRoleAtReview: frame.custodianRole,
           custodianSubjectId: frame.custodianSubjectId,
           drawDigest,
-          drawExecutedBy: "rubrist_server",
+          drawExecutedBy: selection.drawExecutor,
           evaluatorBlind: true,
           fixedBudget: selection.selected.length,
           instructionVersionId: input.instructionVersionId,
@@ -447,14 +447,15 @@ export class PgGovernedReviewAdministrationRepository {
              (id,project_id,criterion_version_id,instruction_version_id,role_intent,
               source_population_kind,source_population_id,population_id,population_definition,
               population_collection_provenance,population_size,population_digest,window_start,window_end,
-              selection_method,selection_seed,rng_version,selection_algorithm_version,draw_executed_by,
+              selection_method,selection_seed,rng_version,selection_algorithm_version,
               fixed_budget,stopping_rule,stop_at,draw_digest,strata,required_labels_per_item,
               evaluator_blind,peer_blind_until_labeling_closed,separation_of_duties_required,
               custodian_subject_id,custodian_role_at_review,state_machine_version,content_digest,
-              idempotency_key,request_digest,created_by_subject_id,serve_order_seed,serve_order_version)
+              idempotency_key,request_digest,created_by_subject_id,serve_order_seed,serve_order_version,
+              draw_executed_by)
            values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11,$12,$13,$14,$15,$16,$17,$18,
-                   'rubrist_server',$19,'fixed',$20,$21,$22::jsonb,$23,true,true,$24,$25,$26,
-                   'governed-review-state/v1',$27,$28,$29,$30,$31,$32)`,
+                   $19,'fixed',$20,$21,$22::jsonb,$23,true,true,$24,$25,$26,
+                   'governed-review-state/v1',$27,$28,$29,$30,$31,$32,$33)`,
           [batchId, actor.projectId, instruction.criterion_version_id, input.instructionVersionId,
             input.roleIntent, frame.sourcePopulationKind, frame.sourcePopulationId, frame.populationId,
             JSON.stringify(frame.populationDefinition), JSON.stringify(frame.collectionProvenance),
@@ -464,7 +465,7 @@ export class PgGovernedReviewAdministrationRepository {
             JSON.stringify(strata), reviewerSubjects.length, input.roleIntent === "sealed_validation",
             frame.custodianSubjectId, frame.custodianRole, batchDigest,
             input.idempotencyKey, requestDigest, creator.id,
-            selection.serveOrder.seed, selection.serveOrder.version]
+            selection.serveOrder.seed, selection.serveOrder.version, selection.drawExecutor]
         );
         for (const member of drawMembers) {
           const batchItemId = stableId("grbi", batchId, member.reviewItemId);

@@ -53,6 +53,7 @@ export interface BatchRow {
   selection_seed: string | null;
   rng_version: string | null;
   selection_algorithm_version: string;
+  draw_executed_by: "rubrist_server" | "caller_selected";
   fixed_budget: number;
   stop_at: Date | string;
   draw_digest: string;

@@ -131,6 +131,11 @@ export function verifyGovernedReviewSelectionPlan(raw: unknown): GovernedReviewS
   assertUnique(plan.drawItemDigests, "governed review draw item digest");
   assertSortedUnique(plan.strata.map((stratum) => stratum.key), "governed review stratum key");
 
+  const serverDrawn = plan.method === "simple_random" || plan.method === "stratified_random" ||
+    plan.method === "systematic";
+  if (plan.drawExecutor !== (serverDrawn ? "rubrist_server" : "caller_selected")) {
+    throw new Error("governed review draw executor does not match its selection method");
+  }
   const isRandom = plan.method === "simple_random" || plan.method === "stratified_random";
   if (isRandom && (plan.seed === null || plan.rngVersion === null)) {
     throw new Error("random governed review selection requires a seed and RNG version");

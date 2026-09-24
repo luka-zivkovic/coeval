@@ -161,7 +161,7 @@ function selectionPlan(
     weight: method === "simple_random" ? populationSize / fixedBudget : null,
     fixedBudget,
     stoppingRule: "fixed" as const,
-    drawExecutor: "rubrist_server" as const,
+    drawExecutor: random || method === "systematic" ? "rubrist_server" as const : "caller_selected" as const,
     drawItemDigests: reviewItemDigests,
     strata: [],
     ...without(overrides, "selectionPlanDigest", "drawDigest")
@@ -716,9 +716,25 @@ describe("representative claims and imported provenance", () => {
       expect(deriveRepresentativeClaimEligibility({
         batch: biasedBatch, batchState: "resolved", resolvedReviewItemIds: [ITEM_ID], deferredTaskIds: [],
         expiredTaskIds: [], cannotDetermineLabelIds: []
-      })).toMatchObject({ representativeClaimEligible: false, reasons: ["selection_method_not_eligible"] });
+      })).toMatchObject({
+        representativeClaimEligible: false,
+        reasons: method === "systematic"
+          ? ["selection_method_not_eligible"]
+          : ["selection_method_not_eligible", "draw_not_server_executed"]
+      });
     }
   );
+
+  it("requires the recorded draw executor to match who chose the members", () => {
+    const digests = [item().itemDigest];
+    expect(verifyGovernedReviewSelectionPlan(selectionPlan(digests, { method: "manual", seed: null, rngVersion: null, inclusionProbability: null, weight: null })))
+      .toMatchObject({ drawExecutor: "caller_selected" });
+    expect(() => verifyGovernedReviewSelectionPlan(selectionPlan(digests, {
+      method: "manual", seed: null, rngVersion: null, inclusionProbability: null, weight: null, drawExecutor: "rubrist_server"
+    }))).toThrow("draw executor does not match its selection method");
+    expect(() => verifyGovernedReviewSelectionPlan(selectionPlan(digests, { drawExecutor: "caller_selected" })))
+      .toThrow("draw executor does not match its selection method");
+  });
 
   it("never upgrades caller-supplied proof-shaped JSON to verified attestation", () => {
     const claimedVerified = importedTruth("verified_signature", sha256Digest({ proof: "signature" }));

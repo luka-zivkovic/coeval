@@ -71,6 +71,79 @@ async function insertSubject(
   );
 }
 
+interface FixtureBatchInput {
+  batchId: string;
+  criterionVersionId: string;
+  instructionId: string;
+  revisionId: string;
+  populationId: string;
+  drawDigest: string;
+  idempotencyKey: string;
+  selectionMethod: "simple_random" | "manual";
+  drawExecutedBy: "rubrist_server" | "caller_selected";
+}
+
+async function insertFixtureBatch(client: Pool | PoolClient, input: FixtureBatchInput): Promise<void> {
+  const random = input.selectionMethod === "simple_random";
+  const selectionSeed = random ? "seed-1" : null;
+  const rngVersion = random ? "sha256-order/v1" : null;
+  const stopAt = String((await client.query(
+    `select to_jsonb('2099-01-01T00:00:00Z'::timestamptz) as value`,
+  )).rows[0]?.value);
+  const batchDigest = await digest(client, "governed-review-batch/v1", {
+    criterionVersionId: input.criterionVersionId,
+    custodianRoleAtReview: null,
+    custodianSubjectId: null,
+    drawDigest: input.drawDigest,
+    drawExecutedBy: input.drawExecutedBy,
+    evaluatorBlind: true,
+    fixedBudget: 1,
+    instructionVersionId: input.instructionId,
+    peerBlindUntilLabelingClosed: true,
+    populationCollectionProvenance: { source: "immutable_revision" },
+    populationDefinition: { revisionId: input.revisionId },
+    populationDigest: sha("1"),
+    populationId: input.populationId,
+    populationSize: 1,
+    requiredLabelsPerItem: 2,
+    rngVersion,
+    roleIntent: "analysis_authoring",
+    selectionAlgorithmVersion: "simple-random/v1",
+    selectionMethod: input.selectionMethod,
+    selectionSeed,
+    separationOfDutiesRequired: false,
+    serveOrderSeed: "5e".repeat(32),
+    serveOrderVersion: "sha256-serve-rank/v1",
+    sourcePopulationId: input.revisionId,
+    sourcePopulationKind: "dataset_revision",
+    stateMachineVersion: "governed-review-state/v1",
+    stopAt,
+    stoppingRule: "fixed",
+    strata: [],
+    windowEnd: null,
+    windowStart: null,
+  });
+  await client.query(`
+    insert into governed_review_batches
+      (id, project_id, criterion_version_id, instruction_version_id, role_intent,
+       source_population_kind, source_population_id, population_id, population_definition,
+       population_collection_provenance, population_size, population_digest,
+       selection_method, selection_seed, rng_version, selection_algorithm_version,
+       draw_executed_by, fixed_budget, stopping_rule, stop_at, draw_digest, strata,
+       required_labels_per_item, evaluator_blind, peer_blind_until_labeling_closed,
+       separation_of_duties_required, state_machine_version, content_digest,
+       idempotency_key, request_digest, created_by_subject_id, serve_order_seed, serve_order_version)
+    values ($1,'proj_gov',$2,$3,'analysis_authoring','dataset_revision',$4,$5,$6::jsonb,
+            $7::jsonb,1,$8,$12,$13,$14,'simple-random/v1',
+            $15,1,'fixed','2099-01-01T00:00:00Z',$9,'[]',2,true,true,false,
+            'governed-review-state/v1',$10,$16,$11,'subject_dev',
+            repeat('5e', 32),'sha256-serve-rank/v1')
+  `, [input.batchId, input.criterionVersionId, input.instructionId, input.revisionId, input.populationId,
+    JSON.stringify({ revisionId: input.revisionId }), JSON.stringify({ source: "immutable_revision" }),
+    sha("1"), input.drawDigest, batchDigest, sha("7"), input.selectionMethod, selectionSeed, rngVersion,
+    input.drawExecutedBy, input.idempotencyKey]);
+}
+
 async function createFixture(client: Pool): Promise<Fixture> {
   await client.query(`insert into organizations (id, name) values ('org_gov', 'Governed Org')`);
   for (const [id, name] of [
@@ -205,60 +278,10 @@ async function createFixture(client: Pool): Promise<Fixture> {
     stratumKey: null,
   };
   const drawDigest = await digest(client, "governed-review-draw/v1", [drawMember]);
-  const stopAt = String((await client.query(
-    `select to_jsonb('2099-01-01T00:00:00Z'::timestamptz) as value`,
-  )).rows[0]?.value);
-  const batchDigest = await digest(client, "governed-review-batch/v1", {
-    criterionVersionId,
-    custodianRoleAtReview: null,
-    custodianSubjectId: null,
-    drawDigest,
-    drawExecutedBy: "rubrist_server",
-    evaluatorBlind: true,
-    fixedBudget: 1,
-    instructionVersionId: instructionId,
-    peerBlindUntilLabelingClosed: true,
-    populationCollectionProvenance: { source: "immutable_revision" },
-    populationDefinition: { revisionId },
-    populationDigest: sha("1"),
-    populationId,
-    populationSize: 1,
-    requiredLabelsPerItem: 2,
-    rngVersion: "sha256-order/v1",
-    roleIntent: "analysis_authoring",
-    selectionAlgorithmVersion: "simple-random/v1",
-    selectionMethod: "simple_random",
-    selectionSeed: "seed-1",
-    separationOfDutiesRequired: false,
-    serveOrderSeed: "5e".repeat(32),
-    serveOrderVersion: "sha256-serve-rank/v1",
-    sourcePopulationId: revisionId,
-    sourcePopulationKind: "dataset_revision",
-    stateMachineVersion: "governed-review-state/v1",
-    stopAt,
-    stoppingRule: "fixed",
-    strata: [],
-    windowEnd: null,
-    windowStart: null,
+  await insertFixtureBatch(client, {
+    batchId, criterionVersionId, instructionId, revisionId, populationId, drawDigest,
+    idempotencyKey: "batch-once", selectionMethod: "simple_random", drawExecutedBy: "rubrist_server"
   });
-  await client.query(`
-    insert into governed_review_batches
-      (id, project_id, criterion_version_id, instruction_version_id, role_intent,
-       source_population_kind, source_population_id, population_id, population_definition,
-       population_collection_provenance, population_size, population_digest,
-       selection_method, selection_seed, rng_version, selection_algorithm_version,
-       draw_executed_by, fixed_budget, stopping_rule, stop_at, draw_digest, strata,
-       required_labels_per_item, evaluator_blind, peer_blind_until_labeling_closed,
-       separation_of_duties_required, state_machine_version, content_digest,
-       idempotency_key, request_digest, created_by_subject_id, serve_order_seed, serve_order_version)
-    values ($1,'proj_gov',$2,$3,'analysis_authoring','dataset_revision',$4,$5,$6::jsonb,
-            $7::jsonb,1,$8,'simple_random','seed-1','sha256-order/v1','simple-random/v1',
-            'rubrist_server',1,'fixed','2099-01-01T00:00:00Z',$9,'[]',2,true,true,false,
-            'governed-review-state/v1',$10,'batch-once',$11,'subject_dev',
-            repeat('5e', 32),'sha256-serve-rank/v1')
-  `, [batchId, criterionVersionId, instructionId, revisionId, populationId,
-    JSON.stringify({ revisionId }), JSON.stringify({ source: "immutable_revision" }),
-    sha("1"), drawDigest, batchDigest, sha("7")]);
 
   const batchItemDigest = await digest(client, "governed-review-batch-item/v1", {
     batchId,
@@ -546,6 +569,34 @@ run("Batch 4 governed human truth PostgreSQL invariants", () => {
       await expect(pool.query(
         `update governed_review_tasks set serve_order = 1 where id = $1`, [fixture.taskA]
       )).rejects.toMatchObject({ code: "55000" });
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("records who chose a batch's members and ties that to the selection method", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("governed_draw_executor");
+    try {
+      await runMigrations(pool);
+      const fixture = await createFixture(pool);
+      const batch = (overrides: Pick<FixtureBatchInput, "batchId" | "selectionMethod" | "drawExecutedBy">) =>
+        insertFixtureBatch(pool, {
+          criterionVersionId: fixture.criterionVersionId,
+          instructionId: fixture.instructionId,
+          revisionId: fixture.revisionId,
+          populationId: fixture.populationId,
+          drawDigest: sha("c"),
+          idempotencyKey: `batch-${overrides.batchId}`,
+          ...overrides
+        });
+      await batch({ batchId: "grb_directed", selectionMethod: "manual", drawExecutedBy: "caller_selected" });
+      for (const [batchId, selectionMethod, drawExecutedBy] of [
+        ["grb_directed_as_drawn", "manual", "rubrist_server"],
+        ["grb_drawn_as_directed", "simple_random", "caller_selected"]
+      ] as const) {
+        await expect(batch({ batchId, selectionMethod, drawExecutedBy }))
+          .rejects.toMatchObject({ code: "23514", constraint: "governed_review_batches_draw_executed_by_check" });
+      }
     } finally {
       await cleanup();
     }
