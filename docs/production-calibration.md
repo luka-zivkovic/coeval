@@ -1,6 +1,6 @@
 # Production calibration
 
-Status: **CURRENT shared contract, pure analysis, a compute-only preview route, an append-only record store, API-key ingest, an owner import, reports and snapshots over stored records, and a project view over all of them; retention and erasure are not built yet**
+Status: **CURRENT shared contract, pure analysis, a compute-only preview route, an append-only record store, API-key ingest, an owner import, reports and snapshots over stored records, retention, erasure, and purges, and a project view over records and snapshots; the view has no retention or erasure controls yet**
 
 Production calibration reports whether a classifier's stated probabilities held
 up against the outcomes that arrived later on the customer's own traffic. It
@@ -402,13 +402,53 @@ pasted ledger.
   keeps the report version it was built with and is never recomputed.
 - Without database-backed mode these routes answer 501.
 
+## CURRENT: retention, erasure, and purges
+
+Records and snapshots are append-only (ADR-0013 section 5). UPDATE is always
+rejected. DELETE is allowed once the project row is gone, or inside the four
+operations below, which set a transaction-local marker
+(`rubrist.production_deletion`) that the append-only guards check and write
+their `audit_logs` entry in the same transaction. Audit entries are not
+append-only themselves; that is unchanged.
+
+- **Retention.** Each project keeps production records for
+  `production_record_retention_days`: 90 by default, 1 to 730, and it cannot
+  be switched off. Members read it with `GET /api/production-calibration/settings`
+  and owners change it with `PUT` (`{ "retentionDays": n }`, audited as
+  `production.retention.update`). Every API process runs a sweep hourly
+  (`PRODUCTION_RETENTION_INTERVAL_MS`, 0 disables the timer), and an advisory
+  lock lets one run delete at a time. A sweep uses Rubrist's receive time, never
+  the caller's `at`: a decision received before its project's cutoff is
+  deleted with all of its actions and outcomes, even newer ones, and an orphan
+  goes by its own receive time. Each project that loses records gets a
+  `production.retention.apply` entry with the cutoff and counts.
+- **Decision erasure.** `POST /api/production-calibration/records/erase`
+  (`{ "decisionId": ... }`) deletes every record of that decision and leaves a
+  tombstone holding only the decision ID's SHA-256. Later records for that ID
+  are rejected: `410 production_ingest_erased_decision` (or
+  `production_calibration_erased_decision`) naming the line, and the insert
+  guard enforces the same rule. The `production.decision.erase` entry keeps
+  the decision ID's digest and the erased record digests, never the ID or the
+  record content. Erasing again is harmless.
+- **Revoked-key purge.** `POST /api/production-calibration/records/purge`
+  (`{ "apiKeyId": ... }`) deletes every record that API key sent, including
+  outcomes posted in advance for decisions that never arrived. The key must
+  already be revoked (`409 production_calibration_api_key_not_revoked`; an
+  unknown key is 404). Audited as `production.api_key.purge`.
+- **Snapshot deletion.** `DELETE /api/production-calibration/snapshots/:id`
+  answers 204, or 404 for an unknown ID, and is audited as
+  `production.snapshot.delete` with the snapshot's digest. Retention and
+  erasure never touch snapshots.
+
+Changing retention, erasing, purging, and deleting snapshots are owner-only
+(`403 production_calibration_owner_required` for members).
+
 ## Not implemented
 
-- **Retention and erasure.** Records and snapshots are kept until the project
-  is erased. Scheduled retention, decision erasure with tombstones,
-  revoked-key purges, and snapshot deletion are TARGET under accepted
-  [ADR-0013](decisions/0013-production-outcome-monitoring.md) and Batch 7 in
-  [`implementation-batches.md`](implementation-batches.md).
+- **Retention and erasure controls in the view.** The web view reads stored
+  records and snapshots but has no retention setting, erasure, purge, or
+  snapshot deletion controls; the API routes above are the owners' current
+  surface.
 - **Pulled import.** Rubrist does not poll a running system for decisions;
   producers push them to the ingest route or an owner imports a file.
 - **Governed-review routing of a low-confidence sample.** The advisor names

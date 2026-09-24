@@ -12,6 +12,8 @@ import {
 import { productionRecordErrorStatus } from "./ingest-routes.js";
 import { LedgerParseError, parseLedgerRecords as parseLedger } from "./ledger.js";
 import {
+  PRODUCTION_RECORD_RETENTION_MAX_DAYS,
+  PRODUCTION_RECORD_RETENTION_MIN_DAYS,
   PRODUCTION_REPORT_DEFAULT_MAX_RECORDS,
   ProductionRecordRepositoryError,
   type ProductionDecisionRecordRepository
@@ -64,6 +66,20 @@ export const ProductionCalibrationStoredReportRequestSchema = z.object({
 export type ProductionCalibrationStoredReportRequest = z.infer<typeof ProductionCalibrationStoredReportRequestSchema>;
 
 type ReportParameters = Omit<ProductionCalibrationStoredReportRequest, "from" | "to">;
+
+export const ProductionCalibrationRetentionRequestSchema = z.object({
+  retentionDays: z.number().int()
+    .min(PRODUCTION_RECORD_RETENTION_MIN_DAYS)
+    .max(PRODUCTION_RECORD_RETENTION_MAX_DAYS)
+}).strict();
+
+export const ProductionCalibrationEraseRequestSchema = z.object({
+  decisionId: z.string().min(1).max(4_096)
+}).strict();
+
+export const ProductionCalibrationPurgeRequestSchema = z.object({
+  apiKeyId: z.string().min(1).max(256)
+}).strict();
 
 export const ProductionCalibrationImportRequestSchema = z.object({
   /** JSON Lines text, or an array of records. */
@@ -127,7 +143,7 @@ class PreviewHttpError extends Error {
   constructor(
     message: string,
     readonly code: string,
-    readonly status: 400 | 403 | 404 | 409 | 413 | 422 | 501 | 503,
+    readonly status: 400 | 403 | 404 | 409 | 410 | 413 | 422 | 501 | 503,
     readonly details?: unknown
   ) {
     super(message);
@@ -142,6 +158,7 @@ export function createProductionCalibrationRouter(options: CreateProductionCalib
     await next();
   });
   router.onError((error, context) => {
+    if (error instanceof ResponseError) return error.response;
     if (error instanceof PreviewHttpError) {
       return context.json({
         error: error.message,
@@ -256,6 +273,70 @@ export function createProductionCalibrationRouter(options: CreateProductionCalib
     }
     return context.json(snapshot);
   });
+  // Retention and erasure (ADR-0013 section 5). Members read the retention
+  // period; only owners change it, erase a decision, purge a revoked key's
+  // records, or delete a snapshot. Each deletion is audited in its own
+  // transaction by the repository.
+  router.get("/settings", async (context) => {
+    const access = await resolveAccess(context, options);
+    if (access instanceof Response) return access;
+    const retentionDays = await withRecordErrors(context, () => requireRepository(options).getRetentionDays(access.projectId));
+    return context.json({ retentionDays });
+  });
+  router.put("/settings", async (context) => {
+    const { access, repository } = await ownerAccess(context, options);
+    const parsed = ProductionCalibrationRetentionRequestSchema.safeParse(await readJsonBody(context));
+    if (!parsed.success) {
+      throw new PreviewHttpError(
+        `Retention must be a whole number of days from ${PRODUCTION_RECORD_RETENTION_MIN_DAYS} to ${PRODUCTION_RECORD_RETENTION_MAX_DAYS}`,
+        "production_calibration_invalid_retention",
+        400,
+        { validation: z.treeifyError(parsed.error) }
+      );
+    }
+    const retentionDays = await withRecordErrors(context, () => repository.setRetentionDays({
+      projectId: access.projectId,
+      userId: access.userId,
+      retentionDays: parsed.data.retentionDays
+    }));
+    return context.json({ retentionDays });
+  });
+  router.post("/records/erase", async (context) => {
+    const { access, repository } = await ownerAccess(context, options);
+    const parsed = ProductionCalibrationEraseRequestSchema.safeParse(await readJsonBody(context));
+    if (!parsed.success) {
+      throw new PreviewHttpError("Send { \"decisionId\": ... }", "production_calibration_invalid_request", 400);
+    }
+    const erased = await withRecordErrors(context, () => repository.eraseDecision({
+      projectId: access.projectId,
+      userId: access.userId,
+      decisionId: parsed.data.decisionId
+    }));
+    return context.json({ erased });
+  });
+  router.post("/records/purge", async (context) => {
+    const { access, repository } = await ownerAccess(context, options);
+    const parsed = ProductionCalibrationPurgeRequestSchema.safeParse(await readJsonBody(context));
+    if (!parsed.success) {
+      throw new PreviewHttpError("Send { \"apiKeyId\": ... }", "production_calibration_invalid_request", 400);
+    }
+    const purged = await withRecordErrors(context, () => repository.purgeApiKeyRecords({
+      projectId: access.projectId,
+      userId: access.userId,
+      apiKeyId: parsed.data.apiKeyId
+    }));
+    return context.json({ purged });
+  });
+  router.delete("/snapshots/:snapshotId", async (context) => {
+    const { access, repository } = await ownerAccess(context, options);
+    const deleted = await repository.deleteSnapshot({
+      projectId: access.projectId,
+      userId: access.userId,
+      snapshotId: context.req.param("snapshotId")
+    });
+    if (!deleted) throw new PreviewHttpError("Snapshot not found", "production_calibration_snapshot_not_found", 404);
+    return context.body(null, 204);
+  });
   router.post("/records", async (context) => {
     const access = await resolveAccess(context, options);
     if (access instanceof Response) return access;
@@ -288,6 +369,19 @@ class ResponseError extends Error {
     super("access refused");
     this.name = "ResponseError";
   }
+}
+
+/** Owner session plus the record store, or the matching refusal. */
+async function ownerAccess(
+  context: Context,
+  options: CreateProductionCalibrationRouterOptions
+): Promise<{ access: RouteAccess; repository: ProductionDecisionRecordRepository }> {
+  const access = await resolveAccess(context, options);
+  if (access instanceof Response) throw new ResponseError(access);
+  if (access.projectRole !== "owner") {
+    throw new PreviewHttpError("Only project owners can change retention or delete production records", "production_calibration_owner_required", 403);
+  }
+  return { access, repository: requireRepository(options) };
 }
 
 function requireRepository(options: CreateProductionCalibrationRouterOptions): ProductionDecisionRecordRepository {

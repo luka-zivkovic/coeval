@@ -92,6 +92,29 @@ export interface ProductionCalibrationSnapshot {
   artifact: ProductionCalibrationArtifact;
 }
 
+/** Retention for production records, in days (ADR-0013 section 5). */
+export const PRODUCTION_RECORD_RETENTION_DEFAULT_DAYS = 90;
+export const PRODUCTION_RECORD_RETENTION_MIN_DAYS = 1;
+export const PRODUCTION_RECORD_RETENTION_MAX_DAYS = 730;
+
+export interface ProductionRecordDeletionCounts {
+  decisions: number;
+  actions: number;
+  outcomes: number;
+}
+
+export interface ProductionRetentionRun {
+  /** Another instance held the retention lock, so this run deleted nothing. */
+  skipped: boolean;
+  /** Projects that lost records, with the receive-time cutoff that applied. */
+  projects: Array<{ projectId: string; cutoff: string; deleted: ProductionRecordDeletionCounts }>;
+}
+
+export interface ProductionRecordActor {
+  projectId: string;
+  userId: string;
+}
+
 export interface ProductionDecisionRecordRepository {
   /** Append a batch atomically: every new record is written, or none is. */
   appendRecords(input: AppendProductionRecordsInput): Promise<AppendProductionRecordsResult>;
@@ -104,6 +127,20 @@ export interface ProductionDecisionRecordRepository {
   /** Newest first. */
   listSnapshots(projectId: string): Promise<ProductionCalibrationSnapshotSummary[]>;
   getSnapshot(projectId: string, snapshotId: string): Promise<ProductionCalibrationSnapshot | null>;
+  getRetentionDays(projectId: string): Promise<number>;
+  setRetentionDays(input: ProductionRecordActor & { retentionDays: number }): Promise<number>;
+  /**
+   * Delete whole decisions received before each project's cutoff with their
+   * actions and outcomes, and orphans by their own receive time. One instance
+   * runs at a time; each project that loses records gets an audit entry.
+   */
+  applyRetention(now: Date): Promise<ProductionRetentionRun>;
+  /** Delete every record of one decision and leave a tombstone that rejects it later. */
+  eraseDecision(input: ProductionRecordActor & { decisionId: string }): Promise<ProductionRecordDeletionCounts>;
+  /** Delete every record a revoked API key sent. */
+  purgeApiKeyRecords(input: ProductionRecordActor & { apiKeyId: string }): Promise<ProductionRecordDeletionCounts>;
+  /** False when no such snapshot exists in the project. */
+  deleteSnapshot(input: ProductionRecordActor & { snapshotId: string }): Promise<boolean>;
 }
 
 export type ProductionRecordRepositoryErrorCode =
@@ -116,7 +153,10 @@ export type ProductionRecordRepositoryErrorCode =
   | "project_not_found"
   | "write_contention"
   | "record_ceiling_exceeded"
-  | "snapshot_too_large";
+  | "snapshot_too_large"
+  | "erased_decision"
+  | "api_key_not_found"
+  | "api_key_not_revoked";
 
 export class ProductionRecordRepositoryError extends Error {
   constructor(

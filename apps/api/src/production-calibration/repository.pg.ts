@@ -18,6 +18,9 @@ import {
   type AppendProductionRecordsResult,
   type LoadedProductionRecords,
   type LoadProductionRecordsInput,
+  type ProductionRecordActor,
+  type ProductionRecordDeletionCounts,
+  type ProductionRetentionRun,
   type ProductionCalibrationSnapshot,
   type ProductionCalibrationSnapshotSummary,
   type ProductionDecisionRecordRepository,
@@ -66,6 +69,7 @@ export class PgProductionDecisionRecordRepository implements ProductionDecisionR
     const userId = input.submitter.kind === "user" ? input.submitter.userId : null;
     return this.transaction(async (client) => {
       await rejectFutureDated(client, rows);
+      await rejectErasedDecisions(client, input.projectId, rows);
       const inserted = await client.query<{ kind: string }>(
         `insert into production_decision_records
            (id, project_id, kind, decision_id, record_at, content, content_digest,
@@ -203,6 +207,164 @@ export class PgProductionDecisionRecordRepository implements ProductionDecisionR
     };
   }
 
+  async getRetentionDays(projectId: string): Promise<number> {
+    const result = await this.pool.query<{ days: number }>(
+      `select production_record_retention_days as days from projects where id = $1`,
+      [projectId]
+    );
+    const days = result.rows[0]?.days;
+    if (days === undefined) throw new ProductionRecordRepositoryError("project_not_found", "The project no longer exists");
+    return Number(days);
+  }
+
+  async setRetentionDays(input: ProductionRecordActor & { retentionDays: number }): Promise<number> {
+    return this.transaction(async (client) => {
+      const result = await client.query<{ days: number }>(
+        `update projects set production_record_retention_days = $2, updated_at = now()
+         where id = $1 returning production_record_retention_days as days`,
+        [input.projectId, input.retentionDays]
+      );
+      if (!result.rows[0]) throw new ProductionRecordRepositoryError("project_not_found", "The project no longer exists");
+      await insertAudit(client, input.projectId, input.userId, "production.retention.update", "project", input.projectId, {
+        retentionDays: input.retentionDays
+      });
+      return Number(result.rows[0].days);
+    });
+  }
+
+  async applyRetention(now: Date): Promise<ProductionRetentionRun> {
+    return this.transaction(async (client) => {
+      const lock = await client.query<{ locked: boolean }>(
+        `select pg_try_advisory_xact_lock(hashtextextended('rubrist/production-retention/v1', 0)) as locked`
+      );
+      if (!lock.rows[0]?.locked) return { skipped: true, projects: [] };
+      await client.query("set local rubrist.production_deletion = 'on'");
+      // Retention runs on Rubrist's receive time, never the caller's `at`. A
+      // decision received before the cutoff goes with all of its actions and
+      // outcomes; an orphan goes by its own receive time.
+      const deleted = await client.query<{
+        project_id: string; cutoff: Date; decisions: number; actions: number; outcomes: number;
+      }>(
+        `with cutoffs as (
+           select id as project_id,
+                  $1::timestamptz - make_interval(days => production_record_retention_days) as cutoff
+           from projects
+         ), expired as (
+           select record.project_id, record.decision_id
+           from production_decision_records record
+           join cutoffs on cutoffs.project_id = record.project_id
+           where record.kind = 'decision' and record.received_at < cutoffs.cutoff
+         ), deleted as (
+           delete from production_decision_records record
+           using cutoffs
+           where record.project_id = cutoffs.project_id and (
+             exists (
+               select 1 from expired
+               where expired.project_id = record.project_id and expired.decision_id = record.decision_id
+             )
+             or (
+               record.kind <> 'decision' and record.received_at < cutoffs.cutoff
+               and not exists (
+                 select 1 from production_decision_records decision
+                 where decision.project_id = record.project_id and decision.kind = 'decision'
+                   and decision.decision_id = record.decision_id
+               )
+             )
+           )
+           returning record.project_id, record.kind
+         )
+         select deleted.project_id, cutoffs.cutoff,
+                count(*) filter (where deleted.kind = 'decision')::integer as decisions,
+                count(*) filter (where deleted.kind = 'action')::integer as actions,
+                count(*) filter (where deleted.kind = 'outcome')::integer as outcomes
+         from deleted join cutoffs on cutoffs.project_id = deleted.project_id
+         group by deleted.project_id, cutoffs.cutoff
+         order by deleted.project_id`,
+        [now.toISOString()]
+      );
+      const projects = deleted.rows.map((row) => ({
+        projectId: row.project_id,
+        cutoff: row.cutoff.toISOString(),
+        deleted: { decisions: row.decisions, actions: row.actions, outcomes: row.outcomes }
+      }));
+      for (const project of projects) {
+        await insertAudit(client, project.projectId, null, "production.retention.apply", "project", project.projectId, {
+          cutoff: project.cutoff,
+          deleted: project.deleted
+        });
+      }
+      return { skipped: false, projects };
+    });
+  }
+
+  async eraseDecision(input: ProductionRecordActor & { decisionId: string }): Promise<ProductionRecordDeletionCounts> {
+    const decisionIdDigest = textDigest(input.decisionId);
+    return this.transaction(async (client) => {
+      await client.query("set local rubrist.production_deletion = 'on'");
+      const deleted = await client.query<{ kind: string; content_digest: string }>(
+        `delete from production_decision_records where project_id = $1 and decision_id = $2
+         returning kind, content_digest`,
+        [input.projectId, input.decisionId]
+      );
+      await client.query(
+        `insert into production_decision_tombstones (project_id, decision_id_digest, erased_by_user_id)
+         values ($1, $2, $3) on conflict do nothing`,
+        [input.projectId, decisionIdDigest, input.userId]
+      );
+      const counts = deletionCounts(deleted.rows);
+      // The audit entry keeps digests only; the decision ID itself may be personal data.
+      await insertAudit(client, input.projectId, input.userId, "production.decision.erase", "production_decision", decisionIdDigest, {
+        decisionIdDigest,
+        erasedRecordDigests: deleted.rows.map((row) => row.content_digest).sort(),
+        deleted: counts
+      });
+      return counts;
+    });
+  }
+
+  async purgeApiKeyRecords(input: ProductionRecordActor & { apiKeyId: string }): Promise<ProductionRecordDeletionCounts> {
+    return this.transaction(async (client) => {
+      const key = await client.query<{ revoked_at: Date | null }>(
+        `select revoked_at from api_keys where id = $1 and project_id = $2 for share`,
+        [input.apiKeyId, input.projectId]
+      );
+      const row = key.rows[0];
+      if (!row) throw new ProductionRecordRepositoryError("api_key_not_found", "No such API key in this project");
+      if (!row.revoked_at) {
+        throw new ProductionRecordRepositoryError(
+          "api_key_not_revoked",
+          "Revoke the API key before purging what it sent"
+        );
+      }
+      await client.query("set local rubrist.production_deletion = 'on'");
+      const deleted = await client.query<{ kind: string }>(
+        `delete from production_decision_records where project_id = $1 and submitted_by_api_key_id = $2 returning kind`,
+        [input.projectId, input.apiKeyId]
+      );
+      const counts = deletionCounts(deleted.rows);
+      await insertAudit(client, input.projectId, input.userId, "production.api_key.purge", "api_key", input.apiKeyId, {
+        deleted: counts
+      });
+      return counts;
+    });
+  }
+
+  async deleteSnapshot(input: ProductionRecordActor & { snapshotId: string }): Promise<boolean> {
+    return this.transaction(async (client) => {
+      await client.query("set local rubrist.production_deletion = 'on'");
+      const deleted = await client.query<{ artifact_digest: string }>(
+        `delete from production_calibration_snapshots where project_id = $1 and id = $2 returning artifact_digest`,
+        [input.projectId, input.snapshotId]
+      );
+      const row = deleted.rows[0];
+      if (!row) return false;
+      await insertAudit(client, input.projectId, input.userId, "production.snapshot.delete", "production_snapshot", input.snapshotId, {
+        artifactDigest: row.artifact_digest
+      });
+      return true;
+    });
+  }
+
   private async transaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
     try {
@@ -277,6 +439,58 @@ function prepareRecords(records: readonly ProductionDecisionLedgerRecord[]): Pre
   return [...byDigest.values()].sort((left, right) =>
     Number(right.kind === "decision") - Number(left.kind === "decision") ||
     (order(left) < order(right) ? -1 : order(left) > order(right) ? 1 : 0));
+}
+
+/** An erased decision stays erased: reject any record for its ID, naming the first one. */
+async function rejectErasedDecisions(client: PoolClient, projectId: string, rows: readonly PreparedRecord[]): Promise<void> {
+  const result = await client.query<{ line: number; decision_id: string }>(
+    `select batch.line, batch.decision_id
+     from jsonb_to_recordset($2::jsonb) as batch(line integer, decision_id text)
+     join production_decision_tombstones tombstone
+       on tombstone.project_id = $1
+      and tombstone.decision_id_digest = 'sha256:' || encode(sha256(convert_to(batch.decision_id, 'UTF8')), 'hex')
+     order by batch.line
+     limit 1`,
+    [projectId, JSON.stringify(rows.map((row) => ({ line: row.line, decision_id: row.decision_id })))]
+  );
+  const erased = result.rows[0];
+  if (erased) {
+    throw new ProductionRecordRepositoryError(
+      "erased_decision",
+      `Record ${erased.line} belongs to decision ${erased.decision_id}, which was erased`,
+      { line: erased.line, decisionId: erased.decision_id }
+    );
+  }
+}
+
+function textDigest(value: string): string {
+  return `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
+}
+
+function deletionCounts(rows: ReadonlyArray<{ kind: string }>): ProductionRecordDeletionCounts {
+  const counts = { decisions: 0, actions: 0, outcomes: 0 };
+  for (const row of rows) {
+    if (row.kind === "decision") counts.decisions += 1;
+    else if (row.kind === "action") counts.actions += 1;
+    else counts.outcomes += 1;
+  }
+  return counts;
+}
+
+async function insertAudit(
+  client: PoolClient,
+  projectId: string,
+  actorUserId: string | null,
+  action: string,
+  targetType: string,
+  targetId: string,
+  metadata: Record<string, unknown>
+): Promise<void> {
+  await client.query(
+    `insert into audit_logs (id, project_id, actor_user_id, action, target_type, target_id, metadata)
+     values ($1,$2,$3,$4,$5,$6,$7::jsonb)`,
+    [`audit_${randomUUID()}`, projectId, actorUserId, action, targetType, targetId, JSON.stringify(metadata)]
+  );
 }
 
 /** Name the first record dated more than five minutes after the database's receive time. */
@@ -389,6 +603,9 @@ function mapPgError(error: unknown): Error {
   }
   if (code === "23514" && constraint === "production_decision_records_content_check") {
     return new ProductionRecordRepositoryError("record_too_large", "A record exceeds the stored content limit");
+  }
+  if (code === "23514" && constraint === "production_decision_records_erased_check") {
+    return new ProductionRecordRepositoryError("erased_decision", "A record belongs to an erased decision");
   }
   if (code === "23514" && constraint === "production_calibration_snapshots_canonical_bytes_check") {
     return snapshotTooLarge(null);

@@ -9417,6 +9417,12 @@ begin
   if tg_op = 'UPDATE' then
     raise exception '% rows are append-only', tg_table_name using errcode = '55000';
   end if;
+  -- Retention, erasure, purge, and snapshot deletion (ADR-0013 section 5) set
+  -- this transaction-local marker and write their audit entry in the same
+  -- transaction. Nothing else may delete while the project exists.
+  if tg_op = 'DELETE' and current_setting('rubrist.production_deletion', true) = 'on' then
+    return old;
+  end if;
   if tg_op = 'DELETE' and exists (select 1 from projects where id = old.project_id) then
     raise exception '% rows are append-only while their project exists', tg_table_name using errcode = '55000';
   end if;
@@ -9465,6 +9471,12 @@ begin
   if tg_op = 'UPDATE' then
     raise exception '% rows are append-only', tg_table_name using errcode = '55000';
   end if;
+  -- Retention, erasure, purge, and snapshot deletion (ADR-0013 section 5) set
+  -- this transaction-local marker and write their audit entry in the same
+  -- transaction. Nothing else may delete while the project exists.
+  if tg_op = 'DELETE' and current_setting('rubrist.production_deletion', true) = 'on' then
+    return old;
+  end if;
   if tg_op = 'DELETE' and exists (select 1 from projects where id = old.project_id) then
     raise exception '% rows are append-only while their project exists', tg_table_name using errcode = '55000';
   end if;
@@ -9500,7 +9512,34 @@ begin
     governed_content_v1_digest('rubrist/production-decision-record/v1', new.content) then
     raise exception 'production decision record digest must match its content' using errcode = '23514';
   end if;
+  if exists (
+    select 1 from production_decision_tombstones tombstone
+    where tombstone.project_id = new.project_id
+      and tombstone.decision_id_digest = 'sha256:' || encode(sha256(convert_to(new.decision_id, 'UTF8')), 'hex')
+  ) then
+    raise exception 'production decision % was erased', new.decision_id
+      using errcode = '23514', constraint = 'production_decision_records_erased_check';
+  end if;
   return new;
+end;
+$$;
+
+
+--
+-- Name: guard_production_decision_tombstone_append_only(); Type: FUNCTION; Schema: current; Owner: -
+--
+
+CREATE FUNCTION guard_production_decision_tombstone_append_only() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  if tg_op = 'UPDATE' then
+    raise exception '% rows are append-only', tg_table_name using errcode = '55000';
+  end if;
+  if tg_op = 'DELETE' and exists (select 1 from projects where id = old.project_id) then
+    raise exception '% rows are append-only while their project exists', tg_table_name using errcode = '55000';
+  end if;
+  return old;
 end;
 $$;
 
@@ -11594,6 +11633,19 @@ CREATE TABLE production_decision_records (
 
 
 --
+-- Name: production_decision_tombstones; Type: TABLE; Schema: current; Owner: -
+--
+
+CREATE TABLE production_decision_tombstones (
+    project_id text NOT NULL,
+    decision_id_digest text NOT NULL,
+    erased_by_user_id text NOT NULL,
+    erased_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT production_decision_tombstones_decision_id_digest_check CHECK ((decision_id_digest ~ '^sha256:[0-9a-f]{64}$'::text))
+);
+
+
+--
 -- Name: project_members; Type: TABLE; Schema: current; Owner: -
 --
 
@@ -11623,7 +11675,9 @@ CREATE TABLE projects (
     trace_retention_days integer,
     last_retention_pruned_at timestamp with time zone,
     mode text DEFAULT 'tracing'::text NOT NULL,
+    production_record_retention_days integer DEFAULT 90 NOT NULL,
     CONSTRAINT projects_mode_check CHECK ((mode = ANY (ARRAY['tracing'::text, 'bench'::text]))),
+    CONSTRAINT projects_production_record_retention_days_check CHECK (((production_record_retention_days >= 1) AND (production_record_retention_days <= 730))),
     CONSTRAINT projects_trace_retention_days_positive CHECK (((trace_retention_days IS NULL) OR (trace_retention_days > 0)))
 );
 
@@ -13894,6 +13948,14 @@ ALTER TABLE ONLY production_decision_records
 
 
 --
+-- Name: production_decision_tombstones production_decision_tombstones_pkey; Type: CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY production_decision_tombstones
+    ADD CONSTRAINT production_decision_tombstones_pkey PRIMARY KEY (project_id, decision_id_digest);
+
+
+--
 -- Name: project_members project_members_pkey; Type: CONSTRAINT; Schema: current; Owner: -
 --
 
@@ -15232,6 +15294,13 @@ CREATE INDEX production_decision_records_project_decision_at_idx ON production_d
 --
 
 CREATE INDEX production_decision_records_project_decision_idx ON production_decision_records USING btree (project_id, decision_id);
+
+
+--
+-- Name: production_decision_records_project_received_idx; Type: INDEX; Schema: current; Owner: -
+--
+
+CREATE INDEX production_decision_records_project_received_idx ON production_decision_records USING btree (project_id, received_at);
 
 
 --
@@ -16583,6 +16652,13 @@ CREATE TRIGGER production_decision_records_append_only BEFORE DELETE OR UPDATE O
 --
 
 CREATE TRIGGER production_decision_records_insert_guard BEFORE INSERT ON production_decision_records FOR EACH ROW EXECUTE FUNCTION guard_production_decision_record_insert();
+
+
+--
+-- Name: production_decision_tombstones production_decision_tombstones_append_only; Type: TRIGGER; Schema: current; Owner: -
+--
+
+CREATE TRIGGER production_decision_tombstones_append_only BEFORE DELETE OR UPDATE ON production_decision_tombstones FOR EACH ROW EXECUTE FUNCTION guard_production_decision_tombstone_append_only();
 
 
 --
@@ -19151,6 +19227,14 @@ ALTER TABLE ONLY production_calibration_snapshots
 
 ALTER TABLE ONLY production_decision_records
     ADD CONSTRAINT production_decision_records_project_id_fkey FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: production_decision_tombstones production_decision_tombstones_project_id_fkey; Type: FK CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY production_decision_tombstones
+    ADD CONSTRAINT production_decision_tombstones_project_id_fkey FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
 
 
 --
