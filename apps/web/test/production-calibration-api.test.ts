@@ -7,8 +7,13 @@ import {
 import {
   PRODUCTION_CALIBRATION_SAMPLE_PATH,
   ProductionCalibrationApiError,
+  buildStoredProductionReport,
   fetchProductionCalibrationSample,
-  previewProductionCalibration
+  fetchProductionSnapshot,
+  importProductionRecords,
+  listProductionSnapshots,
+  previewProductionCalibration,
+  saveProductionSnapshot
 } from "../src/lib/production-calibration-api.js";
 
 const ledgerText = readFileSync(
@@ -90,5 +95,59 @@ describe("production calibration preview client", () => {
     expect(PRODUCTION_CALIBRATION_SAMPLE_PATH).toBe("/samples/production-decision-ledger.flaky-triage.jsonl");
     vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 404 })));
     await expect(fetchProductionCalibrationSample()).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe("stored production report client", () => {
+  const recordSetDigest = `sha256:${"a".repeat(64)}`;
+  const snapshot = {
+    id: "pcs_1",
+    projectId: "project_1",
+    reportContract: "rubrist/production-calibration/v2",
+    artifactDigest: `sha256:${"b".repeat(64)}`,
+    window: { from: "2026-09-01T00:00:00.000Z", to: null },
+    parameters: { bins: 10 },
+    recordCount: 48,
+    recordSetDigest,
+    builtAt: "2026-09-21T09:00:00.000Z",
+    createdByUserId: "user_1",
+    createdAt: "2026-09-21T09:00:01.000Z"
+  };
+
+  it("builds a stored report over a window and never sends records", async () => {
+    const fetchMock = vi.fn(async () => json({ artifact, summary, projectRole: "owner", recordCount: 48, recordSetDigest }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("localStorage", { getItem: () => "project_1" });
+    const report = await buildStoredProductionReport({ from: "2026-09-01T00:00:00.000Z", to: null, bins: 5 });
+    expect(report).toMatchObject({ recordCount: 48, recordSetDigest, projectRole: "owner" });
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/production-calibration/report");
+    expect(JSON.parse(String(init.body))).toEqual({ from: "2026-09-01T00:00:00.000Z", bins: 5 });
+  });
+
+  it("saves, lists, and opens snapshots and rejects a malformed digest", async () => {
+    vi.stubGlobal("localStorage", { getItem: () => null });
+    vi.stubGlobal("fetch", vi.fn(async () => json({ snapshot }, 201)));
+    await expect(saveProductionSnapshot({ from: "2026-09-01T00:00:00.000Z" })).resolves.toMatchObject({ id: "pcs_1", recordCount: 48 });
+    vi.stubGlobal("fetch", vi.fn(async () => json({ snapshots: [snapshot] })));
+    await expect(listProductionSnapshots()).resolves.toHaveLength(1);
+    const fetchMock = vi.fn(async () => json({ snapshot, artifact }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(fetchProductionSnapshot("pcs_1")).resolves.toMatchObject({ snapshot: { id: "pcs_1" }, artifact });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/production-calibration/snapshots/pcs_1");
+    vi.stubGlobal("fetch", vi.fn(async () => json({ snapshots: [{ ...snapshot, artifactDigest: "sha256:short" }] })));
+    await expect(listProductionSnapshots()).rejects.toThrow("Invalid artifactDigest");
+  });
+
+  it("imports a ledger and surfaces an owner-only refusal with its code", async () => {
+    vi.stubGlobal("localStorage", { getItem: () => null });
+    vi.stubGlobal("fetch", vi.fn(async () => json({ inserted: { decisions: 16, actions: 0, outcomes: 32 }, duplicates: 0, awaitingDecision: 0 })));
+    await expect(importProductionRecords(ledgerText)).resolves.toEqual({
+      inserted: { decisions: 16, actions: 0, outcomes: 32 }, duplicates: 0, awaitingDecision: 0
+    });
+    vi.stubGlobal("fetch", vi.fn(async () => json({
+      error: "Only project owners can import decision records", code: "production_calibration_owner_required"
+    }, 403)));
+    await expect(importProductionRecords(ledgerText)).rejects.toMatchObject({ status: 403, code: "production_calibration_owner_required" });
   });
 });

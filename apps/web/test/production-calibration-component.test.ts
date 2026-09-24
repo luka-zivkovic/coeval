@@ -56,6 +56,21 @@ describe("production calibration reading components", () => {
     expect(html).toContain("95% Wilson interval");
   });
 
+  it("disables the threshold and cost controls for a saved snapshot", () => {
+    const artifact = buildProductionCalibrationArtifact(flakyTriage, { now, threshold: 0.7 });
+    const html = renderToStaticMarkup(createElement(BooleanReading, {
+      entry: question(artifact, "is_flaky", "boolean"),
+      threshold: 0.7,
+      onThresholdChange: () => undefined,
+      costs: { falsePositive: "", falseNegative: "", humanReview: "" },
+      onCostsChange: () => undefined,
+      pending: false,
+      readOnly: true
+    }));
+    expect(html).toContain("saved snapshot · confusion at 0.70");
+    expect(html.match(/disabled=""/g)).toHaveLength(4);
+  });
+
   it("renders the boolean reading with denominators, intervals, threshold state, advisor state, and drift flags", () => {
     const artifact = buildProductionCalibrationArtifact(flakyTriage, { now, threshold: 0.85, costs: { falsePositive: 1, falseNegative: 4 } });
     const entry = question(artifact, "is_flaky", "boolean");

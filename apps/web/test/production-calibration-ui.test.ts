@@ -19,6 +19,7 @@ import {
   formatRateCompact,
   formatReportWindow,
   questionOptionLabel,
+  storedWindowBounds,
   questionOptions,
   recommendationText,
   reliabilityDiagramLayout,
@@ -131,6 +132,20 @@ describe("production calibration presentation helpers", () => {
     expect(costsFromInputs({ falsePositive: "-1", falseNegative: "4", humanReview: "" })).toBeNull();
     const artifact = buildProductionCalibrationArtifact(records, { now });
     expect(booleanEntry(artifact, "is_flaky").drift.windows.map(driftFlags)).toEqual([[]]);
+  });
+
+  it("turns two UTC dates into an inclusive-from, exclusive-to stored window", () => {
+    expect(storedWindowBounds("2026-09-01", "2026-09-30")).toEqual({
+      from: "2026-09-01T00:00:00.000Z",
+      to: "2026-10-01T00:00:00.000Z"
+    });
+    expect(storedWindowBounds("2026-09-05", "2026-09-05")).toEqual({
+      from: "2026-09-05T00:00:00.000Z",
+      to: "2026-09-06T00:00:00.000Z"
+    });
+    expect(storedWindowBounds("2026-09-06", "2026-09-05")).toBeNull();
+    expect(storedWindowBounds("2026-02-30", "2026-03-01")).toBeNull();
+    expect(storedWindowBounds("", "2026-03-01")).toBeNull();
   });
 
   it("states the report window, level errors, bias direction, and score exclusions in words", () => {
