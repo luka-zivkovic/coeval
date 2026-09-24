@@ -253,11 +253,13 @@ export function structuredVerdictToLegacy(verdict: StructuredVerdict): JudgeVerd
       confidence: norm
     };
   }
+  // The binary score is P(pass); confidence is in the returned label, so a
+  // fail scored 0.1 is 0.9 confident. An abstention keeps the score as is.
   return {
     label,
     score: verdict.score,
     reason: verdict.rationale,
-    confidence: verdict.score
+    confidence: verdict.label === "fail" ? 1 - verdict.score : verdict.score
   };
 }
 

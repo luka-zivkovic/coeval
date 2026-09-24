@@ -28,7 +28,7 @@ const VERDICT_FUNCTION_PARAMETERS = {
       type: "number",
       minimum: 0,
       maximum: 1,
-      description: "Confidence-weighted score in [0,1]. 1 = strong pass, 0 = strong fail."
+      description: "Score in [0,1] for how strongly the trace passes: 1 = strong pass, 0 = strong fail."
     },
     reason: {
       type: "string",
