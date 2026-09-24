@@ -1,6 +1,6 @@
 # Production calibration
 
-Status: **CURRENT shared contract, pure analysis, a compute-only preview route, a project view, an append-only record store, API-key ingest, an owner import, and reports and snapshots over stored records; the view does not use stored records yet**
+Status: **CURRENT shared contract, pure analysis, a compute-only preview route, an append-only record store, API-key ingest, an owner import, reports and snapshots over stored records, and a project view over all of them; retention and erasure are not built yet**
 
 Production calibration reports whether a classifier's stated probabilities held
 up against the outcomes that arrived later on the customer's own traffic. It
@@ -53,14 +53,30 @@ this first slice stores nothing: closing the browser tab discards the reading.
 The web view lives at `/production-calibration`, under "Ungoverned
 diagnostics" beside Reliability signals in the project navigation (visible in
 the Technical display, like the other diagnostics), and needs a project but not
-a selected criterion. It takes a pasted or uploaded ledger, or the bundled
-sample (a CI flaky-test triage bot's 16 decisions with 32 human outcomes, served
-from the web app's static assets; digests, probabilities, and option names
-only). A question selector lists each question with its type and counts. A
+a selected criterion. It reads three sources:
+
+- **Stored records.** A from and through date (UTC; the through day is
+  included) build a report from the project's stored records, "Save snapshot"
+  saves the stored report on screen with its own window and current
+  parameters (it is enabled only while a finished stored report is shown, so
+  edited date inputs, a preview, or an open snapshot are never what it
+  saves), and owners can
+  import a `.jsonl` ledger into the project, seeing how many records were
+  inserted, were duplicates, or await their decision.
+- **Snapshots.** Saved reports are listed newest first with their window,
+  record count, and digest; opening one shows it read-only, with the threshold
+  and cost controls disabled because its parameters are fixed.
+- **A pasted ledger.** A pasted or uploaded ledger, or the bundled sample (a CI
+  flaky-test triage bot's 16 decisions with 32 human outcomes, served from the
+  web app's static assets; digests, probabilities, and option names only), is
+  previewed without being stored.
+
+Reliability bins and the drift window apply to all three. Every reading names
+its source. A question selector lists each question with its type and counts. A
 boolean question shows the reliability diagram (inline SVG: predicted on x,
 observed rate on y, the diagonal, marks sized by bin count, each bin's Wilson
 interval as a vertical range) beside the bin table, a threshold slider that
-re-requests the preview scoped to that question and redraws the confusion
+re-requests the live reading (preview or stored report) scoped to that question and redraws the confusion
 matrix and its four rates, the advisor with three cost inputs whose state
 (no costs, no outcomes, fewer than 30 outcomes, recommendation or band) is
 always visible, the drift table with its model-change and drift flags, and the
@@ -388,11 +404,11 @@ pasted ledger.
 
 ## Not implemented
 
-- **The view over stored records, and retention.** The web view still reads
-  pasted ledgers only and has no import, stored report, or snapshot controls.
-  Retention, erasure, revoked-key purges, and snapshot deletion are TARGET
-  under accepted [ADR-0013](decisions/0013-production-outcome-monitoring.md)
-  and Batch 7 in [`implementation-batches.md`](implementation-batches.md).
+- **Retention and erasure.** Records and snapshots are kept until the project
+  is erased. Scheduled retention, decision erasure with tombstones,
+  revoked-key purges, and snapshot deletion are TARGET under accepted
+  [ADR-0013](decisions/0013-production-outcome-monitoring.md) and Batch 7 in
+  [`implementation-batches.md`](implementation-batches.md).
 - **Pulled import.** Rubrist does not poll a running system for decisions;
   producers push them to the ingest route or an owner imports a file.
 - **Governed-review routing of a low-confidence sample.** The advisor names

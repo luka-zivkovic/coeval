@@ -33,7 +33,14 @@ describe("production calibration screen", () => {
   it("opens with the provenance line, the ledger input, and the sample affordance in a signed-in project", () => {
     screenState.demoMode = false;
     const html = renderToStaticMarkup(createElement(ProductionCalibrationScreen));
-    expect(html).toContain("Production calibration · ungoverned · compute-only");
+    expect(html).toContain("Production calibration · ungoverned");
+    expect(html).toContain("Stored records");
+    expect(html).toContain("Build report");
+    expect(html).toContain("Save snapshot");
+    expect(html).toContain("Import .jsonl (owners)");
+    expect(html).toContain("Loading snapshots…");
+    expect(html).toContain('aria-label="Window from date"');
+    expect(html).toContain("Preview a ledger");
     expect(html).toContain("Outcomes from production sources are development feedback. Independent validation is a separate step.");
     expect(html).toContain("routed through governed review, is a separate future step");
     expect(html).toContain('aria-label="Decision ledger (JSON Lines)"');

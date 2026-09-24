@@ -23,9 +23,11 @@ export interface BooleanReadingProps {
   costs: CostInputs;
   onCostsChange: (costs: CostInputs) => void;
   pending: boolean;
+  /** A saved snapshot: its parameters are fixed, so the threshold and cost controls are disabled. */
+  readOnly?: boolean;
 }
 
-export function BooleanReading({ entry, threshold, onThresholdChange, costs, onCostsChange, pending }: BooleanReadingProps) {
+export function BooleanReading({ entry, threshold, onThresholdChange, costs, onCostsChange, pending, readOnly = false }: BooleanReadingProps) {
   const { calibration, drift } = entry;
   const advice = adviceState(entry.thresholdAdvice);
   const confusion = calibration.confusion;
@@ -77,14 +79,17 @@ export function BooleanReading({ entry, threshold, onThresholdChange, costs, onC
               step={0.01}
               value={threshold}
               onChange={(event) => onThresholdChange(Number(event.target.value))}
+              disabled={readOnly}
               aria-label="Decision threshold"
               className="w-full max-w-[420px] accent-[var(--ink)]"
             />
           </label>
           <span className="font-mono text-[10px] text-ink-4" aria-live="polite">
-            {pending
-              ? `recomputing at ${threshold.toFixed(2)}…`
-              : `showing confusion at ${confusion.threshold.toFixed(2)}`}
+            {readOnly
+              ? `saved snapshot · confusion at ${confusion.threshold.toFixed(2)}`
+              : pending
+                ? `recomputing at ${threshold.toFixed(2)}…`
+                : `showing confusion at ${confusion.threshold.toFixed(2)}`}
           </span>
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-[auto_minmax(0,1fr)]">
@@ -133,16 +138,19 @@ export function BooleanReading({ entry, threshold, onThresholdChange, costs, onC
             label="Cost of a false positive"
             value={costs.falsePositive}
             onChange={(value) => onCostsChange({ ...costs, falsePositive: value })}
+            disabled={readOnly}
           />
           <CostField
             label="Cost of a false negative"
             value={costs.falseNegative}
             onChange={(value) => onCostsChange({ ...costs, falseNegative: value })}
+            disabled={readOnly}
           />
           <CostField
             label="Cost of one human review (optional)"
             value={costs.humanReview}
             onChange={(value) => onCostsChange({ ...costs, humanReview: value })}
+            disabled={readOnly}
           />
         </div>
         <div
@@ -326,7 +334,12 @@ function AdviceSweep({ advice }: { advice: NonNullable<BooleanQuestion["threshol
   );
 }
 
-function CostField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function CostField({ label, value, onChange, disabled = false }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
   return (
     <label className="grid gap-1 font-mono text-[9.5px] uppercase tracking-[0.09em] text-ink-4">
       {label}
@@ -337,6 +350,7 @@ function CostField({ label, value, onChange }: { label: string; value: string; o
         step="any"
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
         placeholder="0"
         className="h-8 w-full rounded-sm border border-rule bg-paper px-2 font-sans text-[12px] normal-case tracking-normal text-ink"
       />

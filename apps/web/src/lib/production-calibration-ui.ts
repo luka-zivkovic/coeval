@@ -58,6 +58,24 @@ export function formatWindow(window: ProductionCalibrationDriftWindow): string {
   return `${window.start.slice(0, 10)} to ${window.end.slice(0, 10)}`;
 }
 
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * A stored-report window from two UTC dates: `from` is that day's midnight
+ * (inclusive) and `to` the midnight after the `through` day (exclusive).
+ * Null when either date is not a real date or the range runs backwards.
+ */
+export function storedWindowBounds(fromDate: string, throughDate: string): { from: string; to: string } | null {
+  if (!DATE_ONLY.test(fromDate) || !DATE_ONLY.test(throughDate)) return null;
+  const from = new Date(`${fromDate}T00:00:00.000Z`);
+  const through = new Date(`${throughDate}T00:00:00.000Z`);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(through.getTime())) return null;
+  if (from.toISOString().slice(0, 10) !== fromDate || through.toISOString().slice(0, 10) !== throughDate) return null;
+  if (from.getTime() > through.getTime()) return null;
+  const to = new Date(through.getTime() + 24 * 60 * 60 * 1000);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
 /** The decisions a report covers; an unbounded side is said in words. */
 export function formatReportWindow(window: ProductionCalibrationWindow): string {
   if (window.from === null && window.to === null) return "every decision supplied";

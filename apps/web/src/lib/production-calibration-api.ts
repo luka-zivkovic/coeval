@@ -4,9 +4,11 @@ import {
   type ProductionCalibrationModelIdentity
 } from "@rubrist/shared";
 
-// Compute-only client for POST /api/production-calibration/preview. The ledger
-// travels with each request and nothing is stored server-side, so every
-// recomputation (a new threshold, new costs) is a fresh preview.
+// Client for the production calibration session routes. The preview is
+// compute-only: the ledger travels with each request and nothing is stored,
+// so every recomputation is a fresh preview. Stored reports and snapshots are
+// built by the server from the project's stored decision records, and an
+// owner can import a ledger file into those records.
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 const PROJECT_KEY = "rubrist.project";
@@ -81,6 +83,162 @@ export async function previewProductionCalibration(
     throw new Error("Production calibration preview omitted the project role");
   }
   return { artifact, summary: normalizeSummary(record.summary), projectRole };
+}
+
+/** Report parameters shared by the preview and stored reports. */
+export type ProductionCalibrationReportParameters = Omit<ProductionCalibrationPreviewInput, "records">;
+
+export interface ProductionCalibrationStoredReportInput extends ProductionCalibrationReportParameters {
+  /** Inclusive lower bound on decision time, ISO with an offset; omitted means unbounded. */
+  from?: string | null;
+  /** Exclusive upper bound on decision time; omitted means unbounded. */
+  to?: string | null;
+}
+
+export interface ProductionCalibrationStoredReport extends ProductionCalibrationPreview {
+  recordCount: number;
+  recordSetDigest: string;
+}
+
+export interface ProductionCalibrationSnapshotSummary {
+  id: string;
+  artifactDigest: string;
+  window: { from: string | null; to: string | null };
+  recordCount: number;
+  recordSetDigest: string;
+  builtAt: string;
+  createdByUserId: string;
+  createdAt: string;
+}
+
+export interface ProductionCalibrationSnapshot {
+  snapshot: ProductionCalibrationSnapshotSummary;
+  artifact: ProductionCalibrationArtifact;
+}
+
+export interface ProductionRecordImportResult {
+  inserted: { decisions: number; actions: number; outcomes: number };
+  duplicates: number;
+  awaitingDecision: number;
+}
+
+export async function buildStoredProductionReport(
+  input: ProductionCalibrationStoredReportInput,
+  signal?: AbortSignal
+): Promise<ProductionCalibrationStoredReport> {
+  const response = await projectFetch(`${API_BASE}/api/production-calibration/report`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(storedReportBody(input)),
+    ...(signal ? { signal } : {})
+  });
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw apiError(response, payload, "Production calibration report failed");
+  const record = object(payload, "production calibration report response");
+  const projectRole = record.projectRole;
+  if (projectRole !== "owner" && projectRole !== "member") {
+    throw new Error("Production calibration report omitted the project role");
+  }
+  return {
+    artifact: ProductionCalibrationArtifactSchema.parse(record.artifact),
+    summary: normalizeSummary(record.summary),
+    projectRole,
+    recordCount: count(record.recordCount, "recordCount"),
+    recordSetDigest: digestText(record.recordSetDigest, "recordSetDigest")
+  };
+}
+
+/** Build a report from stored records on the server and save it; the client never sends an artifact. */
+export async function saveProductionSnapshot(
+  input: ProductionCalibrationStoredReportInput
+): Promise<ProductionCalibrationSnapshotSummary> {
+  const response = await projectFetch(`${API_BASE}/api/production-calibration/snapshots`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(storedReportBody(input))
+  });
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw apiError(response, payload, "Saving the snapshot failed");
+  return snapshotSummary(object(payload, "snapshot response").snapshot);
+}
+
+export async function listProductionSnapshots(): Promise<ProductionCalibrationSnapshotSummary[]> {
+  const response = await projectFetch(`${API_BASE}/api/production-calibration/snapshots`);
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw apiError(response, payload, "Loading snapshots failed");
+  const snapshots = object(payload, "snapshot list").snapshots;
+  if (!Array.isArray(snapshots)) throw new Error("Invalid snapshot list");
+  return snapshots.map(snapshotSummary);
+}
+
+export async function fetchProductionSnapshot(snapshotId: string, signal?: AbortSignal): Promise<ProductionCalibrationSnapshot> {
+  const response = await projectFetch(
+    `${API_BASE}/api/production-calibration/snapshots/${encodeURIComponent(snapshotId)}`,
+    signal ? { signal } : undefined
+  );
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw apiError(response, payload, "Loading the snapshot failed");
+  const record = object(payload, "snapshot");
+  return {
+    snapshot: snapshotSummary(record.snapshot),
+    artifact: ProductionCalibrationArtifactSchema.parse(record.artifact)
+  };
+}
+
+/** Owner-only: append a JSON Lines ledger to the project's stored records. */
+export async function importProductionRecords(records: string): Promise<ProductionRecordImportResult> {
+  const response = await projectFetch(`${API_BASE}/api/production-calibration/records`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ records })
+  });
+  const payload = await response.json().catch(() => null) as unknown;
+  if (!response.ok) throw apiError(response, payload, "Importing the ledger failed");
+  const record = object(payload, "import result");
+  const inserted = object(record.inserted, "inserted counts");
+  return {
+    inserted: {
+      decisions: count(inserted.decisions, "decisions"),
+      actions: count(inserted.actions, "actions"),
+      outcomes: count(inserted.outcomes, "outcomes")
+    },
+    duplicates: count(record.duplicates, "duplicates"),
+    awaitingDecision: count(record.awaitingDecision, "awaitingDecision")
+  };
+}
+
+function storedReportBody(input: ProductionCalibrationStoredReportInput): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (input.from) body.from = input.from;
+  if (input.to) body.to = input.to;
+  if (input.question !== undefined) body.question = input.question;
+  if (input.threshold !== undefined) body.threshold = input.threshold;
+  if (input.bins !== undefined) body.bins = input.bins;
+  if (input.windowDays !== undefined) body.windowDays = input.windowDays;
+  if (input.costs !== undefined) body.costs = input.costs;
+  return body;
+}
+
+function snapshotSummary(raw: unknown): ProductionCalibrationSnapshotSummary {
+  const value = object(raw, "snapshot summary");
+  const window = object(value.window, "snapshot window");
+  const bound = (entry: unknown, label: string) => entry === null ? null : text(entry, label);
+  return {
+    id: text(value.id, "snapshot id"),
+    artifactDigest: digestText(value.artifactDigest, "artifactDigest"),
+    window: { from: bound(window.from, "window.from"), to: bound(window.to, "window.to") },
+    recordCount: count(value.recordCount, "recordCount"),
+    recordSetDigest: digestText(value.recordSetDigest, "recordSetDigest"),
+    builtAt: text(value.builtAt, "builtAt"),
+    createdByUserId: text(value.createdByUserId, "createdByUserId"),
+    createdAt: text(value.createdAt, "createdAt")
+  };
+}
+
+function digestText(value: unknown, label: string): string {
+  const digest = text(value, label);
+  if (!/^sha256:[0-9a-f]{64}$/.test(digest)) throw new Error(`Invalid ${label}`);
+  return digest;
 }
 
 /** The bundled sample ledger: a CI triage bot's decisions with human outcomes, digests only. */
