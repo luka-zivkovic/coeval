@@ -10,6 +10,8 @@ import { PgAnalysisPromotionRepository } from "./analysis-promotion/index.js";
 import { PgEvaluatorLifecycleRepository } from "./evaluator-lifecycle/index.js";
 import { PgAnalysisMeasurementRepository } from "./analysis-measurement/index.js";
 import { createAuth } from "./lib/auth.js";
+import { PgProductionDecisionRecordRepository } from "./production-calibration/repository.pg.js";
+import { parseProductionRetentionIntervalMs, registerProductionRetentionSweeper } from "./production-calibration/retention.js";
 import { createPgPool } from "./lib/db.js";
 import { createStrictJudgeProvider } from "./lib/judge-provider.js";
 import { DemoRepository } from "./repository.js";
@@ -48,6 +50,12 @@ const pollers: Array<{ stop(): void | Promise<void> }> = [];
 
 if (analysisStudyRepository) {
   pollers.push(await registerAnalysisStudyDeadlineCloser(analysisStudyRepository));
+}
+
+if (pool) {
+  pollers.push(registerProductionRetentionSweeper(new PgProductionDecisionRecordRepository(pool), {
+    intervalMs: parseProductionRetentionIntervalMs(process.env.PRODUCTION_RETENTION_INTERVAL_MS)
+  }));
 }
 
 if (queue) {

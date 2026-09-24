@@ -39,6 +39,12 @@ class FakeRecordRepository implements ProductionDecisionRecordRepository {
   saveSnapshot(): never { throw new Error("not used by ingest"); }
   listSnapshots(): never { throw new Error("not used by ingest"); }
   getSnapshot(): never { throw new Error("not used by ingest"); }
+  getRetentionDays(): never { throw new Error("not used by ingest"); }
+  setRetentionDays(): never { throw new Error("not used by ingest"); }
+  applyRetention(): never { throw new Error("not used by ingest"); }
+  eraseDecision(): never { throw new Error("not used by ingest"); }
+  purgeApiKeyRecords(): never { throw new Error("not used by ingest"); }
+  deleteSnapshot(): never { throw new Error("not used by ingest"); }
 }
 
 async function setup(records: FakeRecordRepository | null = new FakeRecordRepository()) {
