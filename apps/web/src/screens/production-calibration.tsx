@@ -46,7 +46,15 @@ const EMPTY_COSTS: CostInputs = { falsePositive: "", falseNegative: "", humanRev
 /** Where the reading on screen came from; only live readings recompute when the threshold or costs change. */
 type ReadingSource =
   | { kind: "preview"; records: string }
-  | { kind: "stored"; from: string | null; to: string | null; recordCount: number; recordSetDigest: string }
+  | {
+    kind: "stored";
+    from: string | null;
+    to: string | null;
+    /** The parameters this reading was built with, so a snapshot saves exactly what is shown. */
+    params: ProductionCalibrationReportParameters;
+    recordCount: number;
+    recordSetDigest: string;
+  }
   | { kind: "snapshot"; snapshot: ProductionCalibrationSnapshotSummary };
 
 interface Reading {
@@ -93,8 +101,6 @@ function PersistentProductionCalibrationScreen() {
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ProductionRecordImportResult | null>(null);
-  // The parameters of the stored reading on screen, so a snapshot saves what the reader sees.
-  const [storedParams, setStoredParams] = useState<ProductionCalibrationReportParameters | null>(null);
   const [snapshots, setSnapshots] = useState<ProductionCalibrationSnapshotSummary[] | null>(null);
   const [loadingSample, setLoadingSample] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -148,9 +154,8 @@ function PersistentProductionCalibrationScreen() {
       } else {
         const next = await buildStoredProductionReport({ from: source.from, to: source.to, ...params }, controller.signal);
         if (controller.signal.aborted) return;
-        setStoredParams(params);
         setReading({
-          source: { ...source, recordCount: next.recordCount, recordSetDigest: next.recordSetDigest },
+          source: { ...source, params, recordCount: next.recordCount, recordSetDigest: next.recordSetDigest },
           artifact: next.artifact,
           summary: next.summary
         });
@@ -188,18 +193,18 @@ function PersistentProductionCalibrationScreen() {
       return;
     }
     resetSelection();
-    void run({ kind: "stored", ...storedWindow, recordCount: 0, recordSetDigest: "" }, baseParams, "compute");
+    void run({ kind: "stored", ...storedWindow, params: baseParams, recordCount: 0, recordSetDigest: "" }, baseParams, "compute");
   }
 
+  // Save exactly the stored reading on screen: its own window and parameters,
+  // never the date inputs if they were edited after the build.
+  const savable = reading?.source.kind === "stored" && !computing && !recomputing ? reading.source : null;
   async function saveSnapshot(): Promise<void> {
-    if (!storedWindow) {
-      setError("Choose a from date on or before the through date.");
-      return;
-    }
+    if (!savable) return;
     setSaving(true);
     setError(null);
     try {
-      await saveProductionSnapshot({ ...storedWindow, ...(storedParams ?? baseParams) });
+      await saveProductionSnapshot({ from: savable.from, to: savable.to, ...savable.params });
       await refreshSnapshots();
     } catch (cause) {
       setError(describeError(cause));
@@ -209,14 +214,22 @@ function PersistentProductionCalibrationScreen() {
   }
 
   async function openSnapshot(snapshotId: string): Promise<void> {
+    // A snapshot load takes part in the same abort guard as builds, so
+    // whichever the reader asked for last is what stays on screen.
     inflight.current?.abort();
+    const controller = new AbortController();
+    inflight.current = controller;
     setError(null);
     try {
-      const { snapshot, artifact } = await fetchProductionSnapshot(snapshotId);
+      const { snapshot, artifact } = await fetchProductionSnapshot(snapshotId, controller.signal);
+      if (controller.signal.aborted) return;
       resetSelection();
       setReading({ source: { kind: "snapshot", snapshot }, artifact, summary: null });
     } catch (cause) {
+      if (controller.signal.aborted) return;
       setError(describeError(cause));
+    } finally {
+      if (inflight.current === controller) inflight.current = null;
     }
   }
 
@@ -352,7 +365,13 @@ function PersistentProductionCalibrationScreen() {
             <Button variant="primary" size="sm" onClick={buildStored} disabled={computing}>
               {computing ? "Building…" : "Build report"}
             </Button>
-            <Button variant="default" size="sm" onClick={() => void saveSnapshot()} disabled={saving}>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => void saveSnapshot()}
+              disabled={saving || !savable}
+              title={savable ? "Save the stored report on screen" : "Build a stored report first"}
+            >
               {saving ? "Saving…" : "Save snapshot"}
             </Button>
             <Button variant="default" size="sm" onClick={() => importInput.current?.click()} disabled={importing}>
@@ -373,7 +392,7 @@ function PersistentProductionCalibrationScreen() {
             </p>
           ) : null}
           <p className="text-[11.5px] leading-5 text-ink-3">
-            A snapshot saves the report built from the stored records in this window, as exact bytes with their digest. It keeps its history after record retention removes the records.
+            A snapshot saves the stored report on screen, with its window and parameters, as exact bytes with their digest. It keeps its history after record retention removes the records.
           </p>
         </CardContent>
       </Card>

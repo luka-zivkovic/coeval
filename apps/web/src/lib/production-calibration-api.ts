@@ -171,8 +171,11 @@ export async function listProductionSnapshots(): Promise<ProductionCalibrationSn
   return snapshots.map(snapshotSummary);
 }
 
-export async function fetchProductionSnapshot(snapshotId: string): Promise<ProductionCalibrationSnapshot> {
-  const response = await projectFetch(`${API_BASE}/api/production-calibration/snapshots/${encodeURIComponent(snapshotId)}`);
+export async function fetchProductionSnapshot(snapshotId: string, signal?: AbortSignal): Promise<ProductionCalibrationSnapshot> {
+  const response = await projectFetch(
+    `${API_BASE}/api/production-calibration/snapshots/${encodeURIComponent(snapshotId)}`,
+    signal ? { signal } : undefined
+  );
   const payload = await response.json().catch(() => null) as unknown;
   if (!response.ok) throw apiError(response, payload, "Loading the snapshot failed");
   const record = object(payload, "snapshot");

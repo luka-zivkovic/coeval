@@ -57,7 +57,10 @@ a selected criterion. It reads three sources:
 
 - **Stored records.** A from and through date (UTC; the through day is
   included) build a report from the project's stored records, "Save snapshot"
-  saves that report with the reading's current parameters, and owners can
+  saves the stored report on screen with its own window and current
+  parameters (it is enabled only while a finished stored report is shown, so
+  edited date inputs, a preview, or an open snapshot are never what it
+  saves), and owners can
   import a `.jsonl` ledger into the project, seeing how many records were
   inserted, were duplicates, or await their decision.
 - **Snapshots.** Saved reports are listed newest first with their window,
