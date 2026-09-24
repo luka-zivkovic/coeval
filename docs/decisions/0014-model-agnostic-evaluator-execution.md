@@ -10,7 +10,7 @@ Decision owner: Luka Živković (founder).
   judge. They chose to decide the temperature problem (#120) and TypeSafe
   Jev as an evaluator provider (#101) in one record, so Dailies sees one
   contract revision.
-- An independent review of the first draft on 2026-09-24 added:
+- Two independent review passes on 2026-09-24 added:
   - separating identity from resolution;
   - pinning injected text;
   - revalidation before sealed runs;
@@ -60,10 +60,14 @@ Decision owner: Luka Živković (founder).
   - the injected protocol text (`TRUSTED_JUDGE_PROTOCOL`, the verdict
     instructions, the tool-schema descriptions);
   - the provider-side schema transform;
-  - `max_tokens` (a fixed 1,200).
+  - the output token limit: the Anthropic adapter sends a fixed
+    `max_tokens: 1200`, and the OpenAI adapter sends none.
 - #121 changed what every judge receives without changing any digest.
-- The default prompt template and the trusted protocol both tell the model
-  to use the verdict tool.
+- The trusted protocol tells the model to use the verdict tool, and so do
+  these templates:
+  - the default prompt template;
+  - the seed template;
+  - the web starter templates.
 
 **The evidence contracts disagree on outcomes.**
 
@@ -136,8 +140,9 @@ and not governed truth.
   | Haiku 4.5 | 81 of 150 |
   | Opus 5.5 | 43 of 44 (partial run) |
 
-- **Long agent trajectories are unresolved.** On tau-bench, Jev was at
-  chance (AUC 0.547, below the always-pass baseline). The Anthropic account
+- **Long agent trajectories are unresolved.** On tau-bench, Jev's accuracy
+  was 0.505, against 0.578 for always answering pass, and its AUC was
+  0.547. The Anthropic account
   ran out of credit before the Claude judges finished that set. In the
   earlier run, Haiku was at chance and Sonnet 5 only weakly above it (AUC
   0.64). Trace length was not established as the cause.
@@ -182,9 +187,15 @@ An evaluator version has three parts.
   - the verdict protocol id and version;
   - for OpenRouter, the routing requirements in section 2.
 - **Resolution record** (not identity). It holds the capability-snapshot
-  digest, the preflight outcomes and their cost, the credential source
-  (project key or platform key), the time of the check, and a status of
-  `resolved` or `unresolved`.
+  digest, the probe outcomes and their cost, the credential source (project
+  key or platform key), the time of the check, and a status of `resolved`,
+  `unresolved`, or `failed`.
+
+Every part of the execution binding is fixed when the version is saved,
+including the verdict protocol (section 3). Resolution can confirm a binding
+or fail it; it never changes it. Evaluator versions are immutable, so a
+binding that fails resolution is fixed by creating a new evaluator
+version.
 
 `skillDigest` v2 covers the definition and the execution binding, never the
 resolution record. Two identical definitions saved at different times
@@ -196,32 +207,41 @@ canonical JSON `null`; it is never omitted.
 - **Sampling** (`temperature`, `topP`) is either an explicit value or unset,
   and unset means not sent. v2 is the first version that actually sends
   `topP`.
-- **Governed gates.** At candidate creation, activation, and sealed
-  calibration, a sampling parameter must be explicit whenever the
-  resolution shows the model accepts it. It may be unset only where the
-  model rejects it. Otherwise a provider could change its default under a
-  pinned model id, and "unset" evidence couldn't tell those runs apart.
-  Authoring may leave it unset. The seeded default binding keeps an explicit
-  temperature of 0 where the model accepts it.
+- **Governed gates.**
+  - At candidate creation, activation, and sealed calibration,
+    `temperature` must be explicit whenever the model accepts it. It may be
+    unset only where resolution recorded the model rejecting an explicit
+    temperature. Otherwise a provider could change its default under a
+    pinned model id, and "unset" evidence couldn't tell those runs apart.
+  - `topP` may stay unset at the gates. Some models reject `temperature`
+    and `top_p` together.
+  - Authoring may leave either unset.
+  - The seeded default binding keeps an explicit temperature of 0 and
+    reasoning `disabled` wherever the model accepts them.
 - **Reasoning** has a closed, typed shape per provider family:
   - Anthropic: `thinking` of `disabled`, `enabled` with a token budget, or
     `adaptive`, plus an effort level where supported.
   - OpenAI: `reasoning_effort`.
   - OpenRouter: its `reasoning` object.
 
-  "Unset" follows the same governed-gate rule as sampling. Observed
-  reasoning is recorded as observed provenance, next to the observed model
-  identity: whether thinking blocks came back, and the reasoning token
-  count.
+  - At the governed gates reasoning must be explicit. A model with a
+    single mode, such as `claude-opus-5-5` with adaptive only, states that
+    mode explicitly.
+  - Observed reasoning is recorded as observed provenance, next to the
+    observed model identity: whether thinking blocks came back, and the
+    reasoning token count where the provider reports it.
 - **The output token limit** is part of the binding, and the protocol
   version pins its parameter name (`max_tokens` or
-  `max_completion_tokens`).
-- **Endpoint.** Evidence-producing runs call the endpoint the binding
-  names. A platform `OPENAI_BASE_URL` override is either recorded as the
-  binding's endpoint identity or not used.
+  `max_completion_tokens`). It may be unset where the provider allows it;
+  Anthropic requires one.
+- **Endpoint.** Evidence-producing runs call exactly the endpoint the
+  binding names. A platform `OPENAI_BASE_URL` override is recorded in the
+  binding as its endpoint identity, the digest of the base URL. It is never
+  applied implicitly.
 - **OpenRouter.** Bindings send `provider.require_parameters: true` and
   `provider.allow_fallbacks: false`, and record both, so every call goes to
-  an upstream that honours the stated parameters.
+  an upstream that honours the stated parameters. The upstream that served
+  each call is recorded as observed provenance.
 - **No parameter changes after a rejection.** Rubrist never drops,
   rewrites, or retries with changed parameters. A rejected request is a
   failed call, classified in section 6. The ordinary-path "retry without
@@ -238,7 +258,10 @@ A verdict protocol is a named, versioned id: `anthropic.structured-output/v1`,
 
 Each version pins:
 
+- the judge preamble;
 - the injected protocol and verdict-instruction text;
+- the user-message wrapper;
+- the evidence serialization (`canonical-json-html-safe-v1`);
 - the output schema and its descriptions;
 - the provider-side schema transform;
 - the token-limit parameter;
@@ -246,16 +269,26 @@ Each version pins:
 
 Any change to injected text, of the kind #121 made, is a new protocol
 version, and therefore a new evaluator identity for bindings that adopt it.
-Old versions stay runnable, so an evaluator can be reproduced. The default
-prompt template stops naming a mechanism ("use the verdict tool"); the
-protocol text supplies it.
+Old versions stay runnable, so an evaluator can be reproduced. The default,
+seed, and starter templates stop naming a mechanism ("use the verdict
+tool"); the protocol text supplies it.
 
-Rubrist chooses the protocol when the binding is saved, in a fixed order:
+The protocol is fixed when the binding is saved:
 
-1. native structured output;
-2. a forced tool or function.
+1. Where capability data exists, Rubrist takes the first supported
+   protocol in this order: native structured output, then a forced tool or
+   function.
+2. Where no capability data exists, probes choose the protocol in the same
+   order.
+3. Where probes can't run, such as when no credential exists yet, the
+   provider family's deterministic default applies:
+   - Anthropic, OpenAI, and OpenRouter: structured output;
+   - custom endpoints: forced function.
 
-The author can override the choice to reproduce an earlier evaluator.
+   Resolution later confirms or fails that choice.
+
+The author can override the choice, for example to reproduce an earlier
+evaluator.
 Whether to add `prompted-json/v1` as a last resort is an open question. If
 it is added, its parse rule is strict: the whole response is exactly one
 JSON object, and a verdict is never extracted from prose.
@@ -266,10 +299,14 @@ JSON object, and a verdict is never extracted from prose.
 
 1. **Read capability data** where the provider publishes it: Anthropic's
    `capabilities` and OpenRouter's `supported_parameters`.
-2. **Probe with a fixed, non-sensitive input.** Rubrist sends the exact
-   request shape until one protocol succeeds, in the section 3 order, with
-   at most 3 probe calls. Where metadata already settles the protocol, one
-   probe checks the stated parameters.
+2. **Probe with a fixed, non-sensitive input.**
+   - Rubrist sends the exact request shape: one probe when the protocol is
+     already fixed, otherwise up to three in the section 3 order.
+   - For a binding that leaves `temperature` unset, it sends one extra
+     probe with an explicit temperature and records whether the model
+     accepts it. The governed-gate rule in section 2 depends on that
+     record.
+   - A binding costs at most 4 probe calls.
 3. **Store the resolution record.** A binding that can't be probed is saved
    `unresolved`: for example, no credential yet (projects are seeded before
    any key exists), a 429, a 5xx, or a timeout. The record includes the
@@ -309,8 +346,9 @@ A typed-question evaluator's definition holds:
 
 The execution binding carries the pinned model and `typed-question/v1`, and
 #108's alias rule applies (`jev-latest` is refused at governed gates). The
-verdict record and the receipt item state `rationale: not_provided`; it is
-never an empty string or an invented summary.
+verdict record states `rationale: not_provided`; it is never an empty
+string or an invented summary. Receipts carry no rationale for any
+evaluator, in v1 or v2.
 
 Guidance for criterion authors says what the spike did and didn't show.
 Short-context criteria looked promising. Long agent trajectories are
@@ -357,15 +395,17 @@ ADR-0003's questions as follows.
     calibrated one;
   - `self_reported_score`: an LLM's score.
 
-  The field is absent when there is no score. A score produced by a
-  protocol version that didn't state its orientation is never recorded.
+  It is `null` when there is no score. A score produced by a protocol
+  version that didn't state its orientation is never recorded.
 - **Calibration linkage and transport.** A receipt never embeds
   calibration. Calibration stays a separately addressed artifact
   (ADR-0009). A consumer retrieves it by the evaluator version's immutable
   identity, never by a field the receipt can change.
 - **Compatibility and downgrade.**
   - v1 receipts stay verifiable, and nothing rewrites them.
-  - After rollout, new assessments emit v2.
+  - Evaluator versions created after rollout have v2 bindings and emit v2
+    receipts.
+  - A v1 evaluator version keeps emitting v1 until it is retired.
   - A v2 receipt is never down-converted to v1.
 - **Binding.** `requestedModelBinding` is replaced by the v2 evaluator
   definition and execution binding, and `skillDigest` v2 covers them.
@@ -388,10 +428,17 @@ as `skill-format/v1`; the export refuses instead.
 - A v2 receipt links only to a v2 manifest and v2 calibration.
 - The compatibility window ends when Dailies ships v2 verification and
   Rubrist stops emitting v1.
-- Under ADR-0011's clean-install policy, no stored binding is migrated. If
-  ADR-0011's exit is reached before rollout, a v1 binding maps to explicit
-  temperature, unset `topP` (v1 never sent it), `*.forced-tool/v1` or
-  `*.forced-function/v1`, unset reasoning, and a token limit of 1,200.
+- Under ADR-0011's clean-install policy, no stored binding is migrated.
+- If ADR-0011's exit is reached before rollout, existing v1 evaluator
+  versions stay v1 and never get a second digest. Moving one to v2 means a
+  new evaluator version, and ADR-0009's reuse barrier applies to it.
+  - That successor's default binding copies the v1 request:
+    - explicit temperature;
+    - unset `topP` (v1 never sent it);
+    - `anthropic.forced-tool/v1` or `openai.forced-function/v1`;
+    - reasoning `disabled` where the model accepts it, otherwise the
+      model's only mode, stated explicitly;
+    - a token limit of 1,200 for Anthropic, unset for the OpenAI family.
 
 ### 8. Rollout
 
@@ -429,20 +476,21 @@ Dailies vendors the v2 contracts before any v2 evidence is published.
   reasoning, and what the provider reported back.
 - Evaluator identity finally covers the injected text. A change like #121
   becomes visible as a new protocol version.
-- A provider changing behaviour stops a governed run before it starts,
-  instead of wasting sealed truth.
+- A provider change that is visible at the re-check stops a governed run
+  before any sealed item is exposed. A change that happens during a run
+  still ends it incomplete, and ADR-0009's reuse barrier counts that run.
 - Receipts gain a shared failure taxonomy, a completeness rule that matches
   calibration, and a clearly sourced score. #102's uncertainty selection
   can then use a real probability source.
 - Dailies must ship v2 support before Rubrist publishes v2 evidence.
-- Each new binding costs up to three probe calls, and each governed run
+- Each new binding costs up to four probe calls, and each governed run
   costs one re-check call. Both are recorded.
 
 ## Open questions for the founder
 
-1. **Explicit sampling at governed gates.** Should an explicit temperature
-   be required wherever the model accepts it, as proposed, or only
-   recommended?
+1. **Explicit settings at governed gates.** Should an explicit temperature
+   and reasoning setting be required wherever the model accepts them, as
+   proposed, or only recommended?
 2. **Default reasoning for new bindings.** Should it be `none`, which is
    cheaper and more repeatable, or an explicit provider-default level that
    is recorded as such?
