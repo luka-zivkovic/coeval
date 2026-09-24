@@ -4,248 +4,449 @@ Status: **Proposed**
 
 Date: 2026-09-24
 
-Decision owner: Luka Živković (founder). The founder asked on 2026-09-24 that
-anyone be able to run any model as a judge, and chose to decide the
-temperature problem (#120) and TypeSafe Jev as an evaluator provider (#101) in
-one record, so Dailies sees one contract revision. Nothing here is built until
-the founder accepts it.
+Decision owner: Luka Živković (founder).
+
+- On 2026-09-24 the founder asked that anyone be able to run any model as a
+  judge. They chose to decide the temperature problem (#120) and TypeSafe
+  Jev as an evaluator provider (#101) in one record, so Dailies sees one
+  contract revision.
+- An independent review of the first draft on 2026-09-24 added:
+  - separating identity from resolution;
+  - pinning injected text;
+  - revalidation before sealed runs;
+  - one failure taxonomy;
+  - the completeness rule;
+  - the rules for moving between versions;
+  - OpenRouter routing.
+- Nothing here is built until the founder accepts it.
 
 ## Context
 
-CURRENT facts, checked on 2026-09-24:
+### CURRENT, checked on 2026-09-24
 
-- **Rubrist can't judge with current Claude 5 models (#120).**
-  - Every runtime Anthropic judge uses the single-physical-call policy. The
-    eval-item worker keeps an honest one-call ledger, and sealed calibration
-    counts physical calls.
-  - That policy always sends `temperature` and always forces the verdict tool
-    with `tool_choice: {type: "tool"}`.
-  - `claude-sonnet-5`, `claude-opus-5-5`, and `claude-fable-5-1` reject
-    `temperature`, and `claude-opus-5-5` also rejects a forced tool choice.
-    Both rejections are HTTP 400.
-  - The OpenAI adapter has the same shape: it always sends `temperature` and
-    forces its verdict function.
-- **The model binding can't say "not sent."** `ModelBindingInputSchema`,
-  `assessment-receipt/v1` (`requestedModelBinding.temperature`), and
-  `binary-calibration/v1` (`requestedModelBinding.temperatureDecimal`, inside
-  `requestedBindingDigest`) all require a temperature.
-  - `skillDigest` hashes the whole binding, and
-    `evaluator-suite-manifest/v1` pins `skillDigest` as frozen by receipt v1.
-  - Dailies vendors all three contracts.
-  - ADR-0001 closes v1: changing a field needs a new contract version and a
-    coordinated compatibility window. ADR-0011 keeps that rule before launch.
-- **Evidence doesn't say how a verdict was produced.** Neither receipt nor
-  calibration records the request protocol (forced tool, structured output),
-  whether the model reasoned first, or at what effort. `claude-opus-5-5`
-  thinks by default before it answers.
-- **Providers publish capability data.**
-  - Anthropic's Models API returns per-model `capabilities`: for example,
-    `structured_outputs`, `effort` levels, and supported `thinking` types.
-    Both `claude-opus-5-5` and `claude-haiku-4-5-20251001` report
-    structured outputs as supported. The API doesn't report temperature
-    support.
-  - OpenRouter lists `supported_parameters` per model (`temperature`,
-    `tools`, `tool_choice`, `structured_outputs`, `response_format`, and
-    others).
-  - OpenAI-compatible custom endpoints publish nothing reliable.
-- **A typed-question model is a different kind of evaluator (#101).** Jev
-  answers `noul`/`choice`/`score` questions with a probability and no
-  rationale.
-  - The spike on branch `spike/jev-evaluator-comparison` compared
-    `jev-1.13.0` with Rubrist's LLM judge request on public human-labeled
-    data. The Claude judges were Haiku 4.5; Sonnet 4.6, Rubrist's seeded
-    default; Sonnet 5; and Opus 5.5.
-  - On ChaosMNLI (200 cases) and MT-Bench (150 cases, both response orders),
-    Jev's accuracy was statistically indistinguishable from Sonnet 4.6,
-    Sonnet 5, and Opus 5.5 (paired McNemar p > 0.1). Opus 5.5 completed one
-    response order; the account ran out of credit during the other.
-  - On the same sets Jev cost under 1.5% of Haiku 4.5 per trace and had
-    under 12% of its median latency.
-  - Jev was the most order-consistent MT-Bench judge: it made the same call
-    with the two responses swapped 95% of the time, against 54% for
-    Haiku 4.5.
-  - This is ASSUMPTION-class evidence: the data is public, not governed
-    truth.
-  - The spike also found that Rubrist's verdict instructions didn't say
-    which way the binary `score` points; only the tool schema did. Judges
-    often reported confidence in their own label instead (#121, fixed on
-    2026-09-24).
+**Rubrist can't judge with current Claude 5 models (#120).**
 
-How comparable tools handle the same problem (dated market context, not
-product authority):
+- Every runtime Anthropic judge uses the single-physical-call policy. The
+  eval-item worker keeps a one-call ledger, and sealed calibration counts
+  physical calls.
+- That policy always sends `temperature` and forces the verdict tool with
+  `tool_choice: {type: "tool"}`. The OpenAI adapter always sends
+  `temperature` and forces its verdict function.
+- `claude-sonnet-5`, `claude-opus-5-5`, and `claude-fable-5-1` reject
+  `temperature` with HTTP 400.
+- `claude-opus-5-5` also rejects a forced tool choice. Structured outputs
+  work on it, and it thinks by default before answering.
 
-- LiteLLM (`drop_params`) and Vercel's AI SDK (`unsupported-setting`
-  warnings) silently drop parameters a model rejects.
-- Inspect AI treats an unset setting as not sent, adapts per provider, and
-  records the config it used.
-- OpenRouter exposes capability metadata and can refuse to route to an
-  endpoint that can't honour a required parameter.
-- Instructor picks a structured-output mode per model.
+**The binding can't say "not sent", and some recorded values aren't sent.**
 
-Silently dropping a parameter is acceptable for an application. For Rubrist it
-would make the evidence claim a request that never happened.
+- `ModelBindingInputSchema` requires `temperature`, and so do three
+  contracts: `assessment-receipt/v1`, `binary-calibration/v1` (inside
+  `requestedBindingDigest`), and `skill-format/v1`.
+  `GET /api/skills/:skillId/versions/:versionId/skill-format` exports
+  `skill-format/v1` documents.
+- `topP` is accepted, stored, and recorded in receipt v1 and `skillDigest`,
+  but neither adapter sends `top_p`. Receipt v1 can therefore already state
+  a request that never happened. Sealed calibration refuses `topP` bindings
+  outright.
+- An `openai` binding names no endpoint, yet eval runs honour an
+  `OPENAI_BASE_URL` override. Sealed calibration always calls
+  `api.openai.com`.
+
+**Evaluator identity leaves out what the model is actually shown.**
+
+- `skillDigest` hashes the rubric, the prompt template, the binding, and
+  the output contract.
+- It leaves out:
+  - the injected protocol text (`TRUSTED_JUDGE_PROTOCOL`, the verdict
+    instructions, the tool-schema descriptions);
+  - the provider-side schema transform;
+  - `max_tokens` (a fixed 1,200).
+- #121 changed what every judge receives without changing any digest.
+- The default prompt template and the trusted protocol both tell the model
+  to use the verdict tool.
+
+**The evidence contracts disagree on outcomes.**
+
+- Receipt v1 marks the whole receipt incomplete if any item abstained.
+  Calibration v1 counts an abstention as a completed observation with lower
+  coverage.
+- Calibration v1 has a closed error-code set:
+  - `provider_unavailable`
+  - `provider_authentication`
+  - `provider_rate_limit`
+  - `provider_timeout`
+  - `provider_transport`
+  - `provider_protocol`
+  - `invalid_evaluator_output`
+  - `outcome_unknown`
+  - `internal`
+
+  Receipt v1 has a free-text error.
+
+**Contracts are closed and vendored.**
+
+- `skillDigest` is pinned by `evaluator-suite-manifest/v1`.
+- Dailies vendors the receipt, calibration, and suite-manifest contracts,
+  and checks that `receipt.skillDigest` equals `member.skillDigest`.
+- ADR-0001 closes v1: changing a field needs a new contract version and a
+  coordinated compatibility window. ADR-0011 keeps that rule before launch.
+
+**Providers publish some capability data.**
+
+- Anthropic's Models API returns per-model `capabilities`. These include:
+  - `structured_outputs`;
+  - effort levels;
+  - supported `thinking` types (`claude-opus-5-5`: adaptive only;
+    `claude-haiku-4-5-20251001`: enabled only, with no effort).
+
+  It doesn't report temperature support.
+- OpenRouter's models API lists `supported_parameters` per model. That list
+  is a union across upstream providers, and OpenRouter drops a parameter
+  an upstream doesn't support unless `provider.require_parameters` is set.
+- OpenAI's models API and OpenAI-compatible custom endpoints publish no
+  capability data.
+
+### ASSUMPTION: the #101 spike
+
+The spike is on branch `spike/jev-evaluator-comparison`, commit `29a8039`,
+under `tools/typesafe-loop/results/2026-09-24-compare`. Its data is public
+and not governed truth.
+
+- **Judges and deviations.**
+  - `jev-1.13.0`: one `noul` question per case.
+  - Four Claude judges on Rubrist's verdict request: Haiku 4.5; Sonnet 4.6,
+    Rubrist's seeded default; Sonnet 5; and Opus 5.5.
+  - Deviations, each recorded per judge: Sonnet 5 and Opus 5.5 ran without
+    temperature, and Opus 5.5 with `tool_choice: auto`.
+  - Every Claude run predates #121.
+- **Short-context results.** On ChaosMNLI (200 cases) and MT-Bench (150
+  cases in its original order), no paired test found an accuracy difference
+  between Jev and Sonnet 4.6, Sonnet 5, or Opus 5.5 (McNemar p > 0.1). That
+  is "no difference detected", not equivalence.
+- **Cost and latency.** Jev cost 0.8–1.4% of Haiku 4.5 per trace, and its
+  median latency was 8–12% of Haiku's.
+- **Order consistency on MT-Bench** (the same pick with the responses
+  swapped):
+
+  | Judge | Same pick in both orders |
+  | --- | --- |
+  | Jev | 143 of 150 |
+  | Sonnet 4.6 | 130 of 148 |
+  | Sonnet 5 | 127 of 145 |
+  | Haiku 4.5 | 81 of 150 |
+  | Opus 5.5 | 43 of 44 (partial run) |
+
+- **Long agent trajectories are unresolved.** On tau-bench, Jev was at
+  chance (AUC 0.547, below the always-pass baseline). The Anthropic account
+  ran out of credit before the Claude judges finished that set. In the
+  earlier run, Haiku was at chance and Sonnet 5 only weakly above it (AUC
+  0.64). Trace length was not established as the cause.
+- **Score orientation.** Before #121, Rubrist's verdict instructions didn't
+  say which way the binary `score` points. On ChaosMNLI, judges' scores
+  contradicted their own labels (Haiku 4.5 in 81 of 191 verdicts).
+
+### Dated market context (not product authority), 2026-09-24
+
+- [LiteLLM](https://docs.litellm.ai/docs/completion/drop_params) raises an
+  error on an unsupported parameter by default. With `drop_params` enabled
+  it drops the parameter.
+- [Vercel's AI SDK](https://ai-sdk.dev/docs/ai-sdk-core/settings) drops
+  unsupported settings and reports each one in the result's `warnings`. Its
+  per-model rules are keyed on model ids and
+  [can go stale](https://github.com/vercel/ai/issues/10932).
+- [Inspect AI](https://inspect.aisi.org.uk/models.html) sends no key for an
+  unset setting and records the generation config in its eval log.
+- [OpenRouter](https://openrouter.ai/docs/guides/overview/models) publishes
+  `supported_parameters` and can refuse to route to an upstream that can't
+  honour them.
+
+Evidence can't use any mechanism that drops a parameter after the binding
+has stated it.
 
 ## Decision
 
-### 1. The binding states exactly what is sent
+### 1. Identity, execution binding, and resolution are separate
 
-A model binding records the provider, model id, and model version as today,
-plus explicit execution settings. Rubrist sends exactly these settings and
-nothing else.
+An evaluator version has three parts.
 
-- **Sampling parameters** (`temperature`, `topP`) are optional.
-  - Unset means the parameter is not sent and the provider's default
-    applies. Evidence records it as unset, never as a default value.
-  - New bindings leave them unset unless the author sets them.
-- **Reasoning** is explicit: `none`, or a provider-supported effort level or
-  thinking mode. Unset means the provider's default, and that is recorded.
-- **Verdict protocol** is a named, versioned id, for example
-  `anthropic.structured-output/v1`, `anthropic.forced-tool/v1`,
-  `openai.structured-output/v1`, `openai.forced-function/v1`,
-  `prompted-json/v1`, or `typed-question/v1`. Each protocol produces the same
-  verdict schema.
-- **Rubrist never drops, rewrites, or retries with changed parameters.**
-  - A request the provider rejects is a failed call with an error kind. It
-    is never followed by a second call with different parameters.
-  - The ordinary-path "retry without temperature" fallback is removed.
+- **Evaluator definition** (identity). It has one of two kinds:
+  - `prompted`: the rubric, the prompt template, and the output contract;
+  - `typed-question`: section 5.
+- **Execution binding** (identity). It holds:
+  - the provider;
+  - the endpoint identity: `managed`, or the digest of a custom base URL;
+  - the model id and model version;
+  - sampling settings;
+  - reasoning settings;
+  - the output token limit;
+  - the verdict protocol id and version;
+  - for OpenRouter, the routing requirements in section 2.
+- **Resolution record** (not identity). It holds the capability-snapshot
+  digest, the preflight outcomes and their cost, the credential source
+  (project key or platform key), the time of the check, and a status of
+  `resolved` or `unresolved`.
 
-### 2. Capabilities are resolved when a binding is saved, not at call time
+`skillDigest` v2 covers the definition and the execution binding, never the
+resolution record. Two identical definitions saved at different times
+therefore have the same digest. In every v2 contract, an unset value is
+canonical JSON `null`; it is never omitted.
 
-When an evaluator version's binding is created, Rubrist resolves it once:
+### 2. The binding states exactly what is sent
 
-1. **Read the provider's capability data** where it exists: Anthropic's
-   `capabilities`, or OpenRouter's `supported_parameters`.
-2. **Choose the verdict protocol** in a fixed order: native structured
-   output, then a forced tool or function, then `prompted-json/v1` as a last
-   resort that is labelled as such.
-3. **Make one preflight call** with the exact request shape, on a fixed
-   probe input. This covers what metadata can't tell, such as temperature
-   support or a custom endpoint.
-4. **Store the resolution with the binding**: the chosen protocol, a
-   capability-snapshot digest, the preflight outcome, and the time of the
-   check.
+- **Sampling** (`temperature`, `topP`) is either an explicit value or unset,
+  and unset means not sent. v2 is the first version that actually sends
+  `topP`.
+- **Governed gates.** At candidate creation, activation, and sealed
+  calibration, a sampling parameter must be explicit whenever the
+  resolution shows the model accepts it. It may be unset only where the
+  model rejects it. Otherwise a provider could change its default under a
+  pinned model id, and "unset" evidence couldn't tell those runs apart.
+  Authoring may leave it unset. The seeded default binding keeps an explicit
+  temperature of 0 where the model accepts it.
+- **Reasoning** has a closed, typed shape per provider family:
+  - Anthropic: `thinking` of `disabled`, `enabled` with a token budget, or
+    `adaptive`, plus an effort level where supported.
+  - OpenAI: `reasoning_effort`.
+  - OpenRouter: its `reasoning` object.
 
-If the author requested a parameter the model rejects, saving fails with the
-provider's message and a suggestion, such as "leave temperature unset". It
-doesn't silently drop the parameter. Execution never re-resolves the
-binding, so the single-physical-call rule holds.
+  "Unset" follows the same governed-gate rule as sampling. Observed
+  reasoning is recorded as observed provenance, next to the observed model
+  identity: whether thinking blocks came back, and the reasoning token
+  count.
+- **The output token limit** is part of the binding, and the protocol
+  version pins its parameter name (`max_tokens` or
+  `max_completion_tokens`).
+- **Endpoint.** Evidence-producing runs call the endpoint the binding
+  names. A platform `OPENAI_BASE_URL` override is either recorded as the
+  binding's endpoint identity or not used.
+- **OpenRouter.** Bindings send `provider.require_parameters: true` and
+  `provider.allow_fallbacks: false`, and record both, so every call goes to
+  an upstream that honours the stated parameters.
+- **No parameter changes after a rejection.** Rubrist never drops,
+  rewrites, or retries with changed parameters. A rejected request is a
+  failed call, classified in section 6. The ordinary-path "retry without
+  temperature" fallback is removed.
+- **Evidence attests what was sent, not what the endpoint honoured.** This
+  matters most for OpenAI-compatible custom endpoints, which can accept a
+  parameter and ignore it.
 
-### 3. Typed-question evaluators (#101)
+### 3. Verdict protocols pin everything the model is shown
+
+A verdict protocol is a named, versioned id: `anthropic.structured-output/v1`,
+`anthropic.forced-tool/v1`, `openai.structured-output/v1`,
+`openai.forced-function/v1`, `typed-question/v1`, and `mock/v1`.
+
+Each version pins:
+
+- the injected protocol and verdict-instruction text;
+- the output schema and its descriptions;
+- the provider-side schema transform;
+- the token-limit parameter;
+- the parse rule.
+
+Any change to injected text, of the kind #121 made, is a new protocol
+version, and therefore a new evaluator identity for bindings that adopt it.
+Old versions stay runnable, so an evaluator can be reproduced. The default
+prompt template stops naming a mechanism ("use the verdict tool"); the
+protocol text supplies it.
+
+Rubrist chooses the protocol when the binding is saved, in a fixed order:
+
+1. native structured output;
+2. a forced tool or function.
+
+The author can override the choice to reproduce an earlier evaluator.
+Whether to add `prompted-json/v1` as a last resort is an open question. If
+it is added, its parse rule is strict: the whole response is exactly one
+JSON object, and a verdict is never extracted from prose.
+
+### 4. Capabilities are resolved when a binding is saved and re-checked before governed runs
+
+**Resolution.** When a binding is saved, Rubrist resolves it:
+
+1. **Read capability data** where the provider publishes it: Anthropic's
+   `capabilities` and OpenRouter's `supported_parameters`.
+2. **Probe with a fixed, non-sensitive input.** Rubrist sends the exact
+   request shape until one protocol succeeds, in the section 3 order, with
+   at most 3 probe calls. Where metadata already settles the protocol, one
+   probe checks the stated parameters.
+3. **Store the resolution record.** A binding that can't be probed is saved
+   `unresolved`: for example, no credential yet (projects are seeded before
+   any key exists), a 429, a 5xx, or a timeout. The record includes the
+   credential source, because capabilities can differ per key.
+
+**Where resolution is required.** Drafts and authoring may use unresolved
+bindings. Candidate creation, activation, and sealed calibration require
+`resolved`. If the author requested a parameter the model rejects,
+resolution fails with the provider's message and a suggestion, such as
+"leave temperature unset".
+
+**Re-check before governed runs.** Before a sealed calibration is
+authorized, which happens before its exposure event, and before any
+governed run starts, Rubrist repeats the stored probe on the probe input,
+never on sealed data. If the resolution no longer holds, the run doesn't
+start and no sealed item is exposed. This keeps a provider change from
+wasting a sealed revision: ADR-0009 counts an incomplete run toward the
+reuse barrier, and the only remedy then is a new evaluator version.
+Execution itself never re-resolves, so every item is still one physical
+call.
+
+### 5. Typed-question evaluators (#101)
 
 `typesafe` becomes an optional provider. Rubrist must never depend on it.
+This ADR covers only binary `noul` questions. `choice` and `score` wait for
+ADR-0004's categorical and scalar calibration.
 
-- **Identity.** The evaluator's definition is a typed question set (the
-  question kind, instructions, and criteria per option). Its digest replaces
-  the rendered prompt in the evaluator's identity.
-- **Pinning.** The model is pinned to a version, and #108's alias rule
-  applies (`jev-latest` is refused at governed gates).
-- **Labels.** The evaluator declares a decision threshold, which maps its
-  probability to pass or fail for receipts and binary calibration. The
+A typed-question evaluator's definition holds:
+
+- **the question**: its instructions and its true and false criteria, as a
+  digest;
+- **polarity**: `true` means pass;
+- **a decision threshold** that maps the probability to pass or fail. The
   threshold is part of the evaluator's identity, not release policy
-  (ADR-0004). Choosing one is the evaluator author's development decision,
-  measured by calibration like any other evaluator property.
-- **Rationale.** A verdict without a rationale records
-  `rationale: not_provided`. It is never an empty string or an invented
-  summary.
-- **Guidance.** Criterion authors get written guidance on injection (text in
-  the trace can move the answer) and on long traces. The spike didn't
-  establish a trace-length effect, so there is no length gate until one is
-  measured.
+  (ADR-0004). It is chosen on nonsealed data;
+- **an output contract**: a probability and no rationale.
 
-### 4. Evidence contracts, version 2
+The execution binding carries the pinned model and `typed-question/v1`, and
+#108's alias rule applies (`jev-latest` is refused at governed gates). The
+verdict record and the receipt item state `rationale: not_provided`; it is
+never an empty string or an invented summary.
 
-Three contracts move together to v2, in one Dailies compatibility window.
+Guidance for criterion authors says what the spike did and didn't show.
+Short-context criteria looked promising. Long agent trajectories are
+unresolved. Injection wasn't tested. There is no trace-length gate until an
+effect is measured.
 
-**`rubrist/assessment-receipt/v2`** answers the questions ADR-0003 requires
-before any v2:
+### 6. One failure taxonomy and one outcome model
 
-- **Abstention versus failure.** An item's evaluator outcome is `pass`,
-  `fail`, or `abstain`, and applies only when the call succeeded. A failed
-  item carries a `failureKind`: `provider_rejected`, `provider_error`,
-  `timeout`, `invalid_output`, or `outcome_unknown`. An abstention is never a
-  failure, and a failure is never an abstention.
-- **Uncertainty.** An item may carry `passProbability` with a
-  `probabilitySource`:
-  - `native_probability` for a typed-question model;
-  - `self_reported_score` for an LLM's own score, which is never called a
-    probability;
-  - absent.
+Receipt v2, calibration v2, and the calibration private ledger v2 share one
+closed item model.
 
-  #121 made the instructions state the score's orientation. A score
-  produced before that fix is never recorded as `self_reported_score`.
-- **Calibration linkage and transport.** A receipt never embeds calibration.
-  Calibration stays a separately addressed artifact (ADR-0009). A consumer
-  retrieves it by the evaluator version's immutable identity, never by a
-  field the receipt can change.
+- **Outcome** applies only to a successful call: `pass`, `fail`, or
+  `abstain`.
+- **Failure** takes one closed code:
+  - `provider_rejected_request` (a 4xx other than authentication or rate
+    limit)
+  - `provider_unavailable`
+  - `provider_authentication`
+  - `provider_rate_limit`
+  - `provider_timeout`
+  - `provider_transport`
+  - `provider_protocol`
+  - `invalid_evaluator_output`
+  - `outcome_unknown`
+  - `internal`
+- **`not_attempted`** marks an item that never reached the provider.
+- An abstention is never a failure, and a failure is never an abstention.
+- **Completeness.** A receipt is `complete` when every item was attempted
+  and has an outcome. Abstentions count as outcomes and reduce coverage,
+  which is reported, as in calibration. Any failure or `not_attempted` item
+  makes the receipt `incomplete`.
+
+### 7. Evidence contracts, version 2
+
+The contracts move together in one Dailies window. The receipt answers
+ADR-0003's questions as follows.
+
+**`rubrist/assessment-receipt/v2`**:
+
+- **Abstention versus failure:** section 6.
+- **Uncertainty.** An item may carry `evaluatorScore` with a `value` in
+  [0,1] and a `kind`:
+  - `native_probability`: the model's own stated probability, not a
+    calibrated one;
+  - `self_reported_score`: an LLM's score.
+
+  The field is absent when there is no score. A score produced by a
+  protocol version that didn't state its orientation is never recorded.
+- **Calibration linkage and transport.** A receipt never embeds
+  calibration. Calibration stays a separately addressed artifact
+  (ADR-0009). A consumer retrieves it by the evaluator version's immutable
+  identity, never by a field the receipt can change.
 - **Compatibility and downgrade.**
-  - v1 receipts stay verifiable forever, and nothing rewrites them.
-  - New assessments emit v2 after rollout.
-  - A v2 receipt is never down-converted to v1, because v1 can't express an
-    unset parameter, a protocol, or a probability.
-  - Consumers accept both versions during the window.
-- **Binding and identity.** `requestedModelBinding` becomes the v2 binding
-  from section 1: optional sampling, reasoning, and verdict protocol. For
-  typed-question evaluators it holds the question-set digest and threshold.
-  `skillDigest` v2 is defined over that binding.
+  - v1 receipts stay verifiable, and nothing rewrites them.
+  - After rollout, new assessments emit v2.
+  - A v2 receipt is never down-converted to v1.
+- **Binding.** `requestedModelBinding` is replaced by the v2 evaluator
+  definition and execution binding, and `skillDigest` v2 covers them.
 
-**`rubrist/binary-calibration/v2`**:
+**`rubrist/binary-calibration/v2`** and its private-ledger v2:
 
-- `requestedModelBinding` and `requestedBindingDigest` are defined over the
-  v2 binding.
-- Unset sampling parameters are `null` in canonical form.
-- The artifact names the verdict protocol and reasoning settings.
+- The requested binding and `requestedBindingDigest` are defined over the
+  v2 execution binding.
+- Error codes follow section 6.
 - Aggregate-only disclosure (ADR-0009) is unchanged.
 
-**`rubrist/evaluator-suite-manifest/v2`** references `skillDigest` v2. Its
-other rules are unchanged.
+**`rubrist/evaluator-suite-manifest/v2`** references `skillDigest` v2.
 
-### 5. Rollout
+**`skill-format/v2`** carries the v2 binding. A v2 binding is never exported
+as `skill-format/v1`; the export refuses instead.
 
-- Implementation follows its own batch in `docs/implementation-batches.md`,
-  vendored into Dailies and Casefile.
-- The batch plan updates the shared contracts and fixtures, the judge
-  runtime (protocols, capability resolution, preflight), binding validation
-  and persistence, and the model picker.
-- Dailies vendors the v2 contracts before any v2 evidence is published.
-- ADR-0011's clean-install policy means there is no stored binding to
-  migrate. Published v1 fixtures and any v1 artifacts remain verifiable.
+**Moving between versions:**
+
+- An evaluator version has exactly one digest version.
+- A v2 receipt links only to a v2 manifest and v2 calibration.
+- The compatibility window ends when Dailies ships v2 verification and
+  Rubrist stops emitting v1.
+- Under ADR-0011's clean-install policy, no stored binding is migrated. If
+  ADR-0011's exit is reached before rollout, a v1 binding maps to explicit
+  temperature, unset `topP` (v1 never sent it), `*.forced-tool/v1` or
+  `*.forced-function/v1`, unset reasoning, and a token limit of 1,200.
+
+### 8. Rollout
+
+Implementation follows its own batch in `docs/implementation-batches.md`,
+vendored into Dailies and Casefile. It covers:
+
+- the shared contracts, fixtures, and conformance vectors;
+- the judge runtime: protocols, capability resolution, probes, and
+  re-checks;
+- binding validation and persistence;
+- the model picker.
+
+Dailies vendors the v2 contracts before any v2 evidence is published.
 
 ## Alternatives considered
 
-- **Drop unsupported parameters silently**, as LiteLLM and Vercel do.
-  Rejected: evidence would state a request that never happened.
+- **Drop unsupported parameters**, like LiteLLM's `drop_params` or the
+  Vercel AI SDK. Rejected: the evidence would state a request that didn't
+  happen.
 - **Keep a hand-maintained list of which models accept what.** Rejected as
-  the primary mechanism: it goes stale, and Vercel's list already has for
-  reasoning-effort models. Provider metadata plus one preflight replaces it.
-- **Retry at call time with different parameters.** Rejected: it breaks the
-  single-physical-call ledger that sealed calibration depends on.
-- **Keep v1 and refuse models v1 can't express.** Rejected: it permanently
-  excludes the current frontier models, and the founder's requirement is
-  that any model can be run.
-- **Treat Jev as an OpenAI-compatible `custom` provider.** Not possible: its
-  API takes state and typed questions, not chat messages.
+  the primary mechanism, because it goes stale. Provider metadata and
+  probes replace it.
+- **Retry at call time with different parameters.** Rejected: it breaks
+  the single-physical-call ledger.
+- **Keep v1 and refuse models v1 can't express.** Rejected: it excludes
+  current frontier models, and the founder's requirement is that any model
+  can be run.
+- **Treat Jev as an OpenAI-compatible `custom` provider.** Not possible:
+  its API takes state and typed questions, not chat messages.
 
 ## Consequences
 
-- Any model whose request can be expressed and preflighted can be bound. The
-  evidence then states exactly what was sent and how the verdict was
-  produced.
-- Two calibrations of the same model under different protocols or reasoning
-  settings have different evaluator identities, as they should.
-- Receipts gain an explicit failure taxonomy and a clearly sourced
-  probability. That makes #102's uncertainty selection possible without
-  mistaking an LLM's self-reported score for a probability.
+- Any model whose request can be expressed and probed can be bound. The
+  evidence then states exactly what was sent, with which protocol and
+  reasoning, and what the provider reported back.
+- Evaluator identity finally covers the injected text. A change like #121
+  becomes visible as a new protocol version.
+- A provider changing behaviour stops a governed run before it starts,
+  instead of wasting sealed truth.
+- Receipts gain a shared failure taxonomy, a completeness rule that matches
+  calibration, and a clearly sourced score. #102's uncertainty selection
+  can then use a real probability source.
 - Dailies must ship v2 support before Rubrist publishes v2 evidence.
-- The judge runtime gains a capability-resolution step and a preflight call
-  per new binding, which costs one extra provider call per evaluator version.
+- Each new binding costs up to three probe calls, and each governed run
+  costs one re-check call. Both are recorded.
 
 ## Open questions for the founder
 
-1. **Default reasoning for new bindings.** Should a new binding default to
-   `none` or to the provider's default? `none` is cheaper and more repeatable.
-   The provider default may judge better, and its cost shows up in the
-   evidence either way.
-2. **`prompted-json/v1`.** Should the last-resort protocol be offered at all,
-   or should a model with neither structured output nor tools be refused?
-3. **Typed-evaluator threshold.** Is the threshold required per evaluator,
-   or should 0.5 be the default?
+1. **Explicit sampling at governed gates.** Should an explicit temperature
+   be required wherever the model accepts it, as proposed, or only
+   recommended?
+2. **Default reasoning for new bindings.** Should it be `none`, which is
+   cheaper and more repeatable, or an explicit provider-default level that
+   is recorded as such?
+3. **`prompted-json/v1`.** Should it be offered for models with neither
+   structured output nor tools, or should those models be refused?
+4. **Typed-evaluator threshold.** Should it be required per evaluator, or
+   default to 0.5?
