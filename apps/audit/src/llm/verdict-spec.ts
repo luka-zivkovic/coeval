@@ -214,7 +214,7 @@ export function buildVerdictToolSchema(spec: VerdictSpec, stepCount = 0): JsonSc
         type: "number",
         minimum: 0,
         maximum: 1,
-        description: "Confidence-weighted score in [0,1]. 1 = strong pass, 0 = strong fail."
+        description: "Score in [0,1] for how strongly the trace passes: 1 = strong pass, 0 = strong fail."
       },
       rationale,
       ...failingStep
@@ -359,5 +359,10 @@ function verdictInstructions(spec: VerdictSpec): string {
     const choices = Object.keys(spec.categoricalChoiceScores ?? {});
     return `Choose exactly one category from: ${choices.join(", ")}. Provide a short rationale.`;
   }
-  return "Return pass, fail, or ambiguous. Use ambiguous only when the rubric does not support either binary classification. Give a confidence-weighted score in [0,1] and a short rationale.";
+  // The score's direction must be stated here, not only in the tool schema:
+  // without it, judges often report confidence in their own label, so a
+  // confident fail arrives as 0.9 and the score can't be read as P(pass).
+  return "Return pass, fail, or ambiguous. Use ambiguous only when the rubric does not support either binary classification. " +
+    "Give a score in [0,1] for how strongly the trace passes: 1 = strong pass, 0 = strong fail, so a fail verdict has a score below 0.5. " +
+    "Give a short rationale.";
 }
