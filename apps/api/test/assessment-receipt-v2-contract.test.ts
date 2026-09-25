@@ -56,7 +56,7 @@ interface ConformanceCorpus {
 const contractRoot = new URL("../../../contracts/", import.meta.url);
 const pinnedFileDigests = {
   schema: "701aed7aa5931fad30e876ce3e075c7b3d4de992e0b5eb4537ed26d26c5b7826",
-  specification: "8067ddae66cf7544ea4a99d17bdaa407f651fc62da70d52f565cc9d97ec4ee3c",
+  specification: "7dc4c844c7da77559955f4bf0f5eb5a2b43ea899c84e5bd04889000b08f9b793",
   complete: "23b972a1ba9e78c5ea074ea9fb9abf7df74c108c8a58d14f473ee82d910e00eb",
   incomplete: "bdfb4378c78410274a78cf6f7545ed7440e10b67693161a0c211123e10f317b0",
   conformance: "f9269a1b5d35fa76ddb05a9d47d3722c7abc121d5437237c3e3fb0dba0f54432"

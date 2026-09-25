@@ -8,8 +8,9 @@ receipt.
 v2 keeps v1's shape and verification. Rubrist ADR-0014 section 7 changes what
 the two evaluator digests mean: `skillDigest` is v2, over the evaluator
 identity, and `outputContractDigest` is the v2 output-contract digest. v2
-replaces v1 (ADR-0014 decision 6); the v1 documents stay in this directory
-unchanged, as superseded history.
+replaces v1 (ADR-0014 decision 6); the v1 documents are deleted with the v1
+code, and at the launch baseline this contract takes the v1 name
+(decision 7).
 
 ## Boundary
 
@@ -155,6 +156,6 @@ by another member.
 ## Compatibility
 
 Manifest v2 is closed. New applicability kinds, trial semantics, member
-fields, or policy concepts require a new contract version and, under
-ADR-0001, a compatibility window. ADR-0014 decision 6 lifted that window only
-for the pre-launch switch from v1 to v2.
+fields, or policy concepts require, after launch, a new contract version and
+a compatibility window under ADR-0001. Before launch, ADR-0014 decision 7
+renumbers instead of keeping history.

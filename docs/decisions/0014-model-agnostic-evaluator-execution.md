@@ -103,7 +103,7 @@ Decision owner: Luka Živković (founder).
   and checks that `receipt.skillDigest` equals `member.skillDigest`.
 - ADR-0001 closes v1: changing a field needs a new contract version and a
   coordinated compatibility window. ADR-0011 keeps that rule before launch
-  (narrowed by decision 6).
+  (narrowed by decisions 6 and 7).
 
 **Providers publish some capability data.**
 
@@ -629,7 +629,9 @@ vendored into Dailies and Casefile. It covers:
 - the model picker.
 
 Rubrist and Dailies switch to the v2 contracts in one window, and v1 support
-is removed from both (decision 6).
+is removed from both (decision 6). When the batch is complete, a launch
+baseline restarts every versioned identifier in the three repositories at v1
+(decision 7, Batch 8G).
 
 ## Alternatives considered
 
@@ -670,7 +672,8 @@ is removed from both (decision 6).
   calibration, and a clearly sourced score. #102's uncertainty selection
   can then use a real probability source.
 - Rubrist and Dailies switch to v2 together, and v1 support is removed from
-  both. The frozen v1 documents stay as history.
+  both, documents and fixtures included. At the launch baseline every
+  contract and format restarts at v1 (decision 7).
 - Receipts never disclose rubric, prompt, or question text; they carry its
   digest.
 - Each capability check costs up to six probe calls, each resolution
@@ -721,14 +724,21 @@ is removed from both (decision 6).
    or Casefile has users, so none keeps version history or backward
    compatibility before launch. In the founder's words: "when we [are] done,
    i will expect for everything to basically be v1".
-   - When Batch 8 is complete, every contract and format restarts at v1. The
-     v2 contracts and the identity basis take the v1 names, for example
-     `rubrist/assessment-receipt/v1` and `rubrist/evaluator-identity/v1`,
-     and the superseded documents, fixtures, and code are deleted. Dailies'
-     configuration and report formats restart at v1 as well.
-   - This supersedes, before launch only, ADR-0011's rule that frozen
+   - When Batch 8 is complete, every versioned identifier in the three
+     repositories restarts at v1, and the superseded documents, fixtures,
+     and code are deleted. That covers the v2 contracts and the identity
+     basis (for example `rubrist/assessment-receipt/v1` and
+     `rubrist/evaluator-identity/v1`), `rubrist/production-calibration/v2`
+     and its metric definition, Dailies' configuration, report, and policy
+     versions, and Casefile's report version and content-hash basis.
+     Dailies records its side in its ADR-0008 and Casefile in its ADR-0003.
+   - This supersedes, before launch only, the rules that would otherwise
+     require a new version or keep history: ADR-0001's closed receipt v1
+     and new-version rule, ADR-0003's frozen v1 wire contract, ADR-0009's
+     accepted calibration v1 contract file, ADR-0011's rule that frozen
      schemas in `contracts/` remain unchanged, and the v1 documents kept as
-     history by decision 6.
+     history by decision 6. As with ADR-0012's rename, it is a one-time
+     pre-launch exception, not a change to how versions work after launch.
    - Integrity rules that aren't about compatibility stay: once evidence
      exists, it is immutable, and a change to injected text is a new
      protocol identity. ADR-0011's exit condition ends this decision.
