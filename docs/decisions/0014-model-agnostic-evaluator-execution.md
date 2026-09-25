@@ -234,28 +234,48 @@ canonical JSON `null`; it is never omitted.
   - Authoring may leave either unset.
   - The seeded default binding keeps an explicit temperature of 0 where
     the model accepts it.
-  - The model picker hides any sampling field the resolution shows the
-    model rejects. That field is recorded as not sent, and the author
-    never sees or sets it.
+  - The model picker hides any sampling field the model rejects, as far as
+    the pre-save lookup below can tell. That field is recorded as not sent,
+    and the author never sees or sets it.
 - **Reasoning** has a closed, typed shape per provider family:
   - Anthropic: `thinking` of `disabled`, `enabled` with a token budget, or
     `adaptive`, plus an effort level where supported.
   - OpenAI: `reasoning_effort`.
   - OpenRouter: its `reasoning` object.
 
-  - A new binding defaults to the provider's default reasoning, stated
-    explicitly. Resolution derives the default from capability data and the
-    provider's documented default for that capability set. For Anthropic,
-    that is `adaptive` where the model supports it and `disabled` otherwise.
-    Resolution records the value as the binding's setting.
-  - Where the default can't be determined, the author chooses. The author
-    can always override the default, for example `disabled` for a cheaper,
-    more repeatable judge.
-  - At the governed gates reasoning must be explicit. A model with a
-    single mode, such as `claude-opus-5-5` with adaptive only, states that
-    mode explicitly.
-  - The model picker offers only the reasoning modes the resolution shows
-    the model supports.
+  - **A new binding starts from the provider's default reasoning, which the
+    author saves explicitly.**
+    - Capability data can't say what a model's default is. ASSUMPTION, per
+      Anthropic's model documentation as reviewed on 2026-09-25:
+      `claude-opus-4-8` and `claude-opus-5-5` report the same thinking
+      capabilities, but the first defaults to no thinking and the second to
+      adaptive.
+    - So the default comes from a dated, versioned table of documented
+      provider defaults (`rubrist-reasoning-defaults/v1`, for example
+      `claude-sonnet-4-6`: `disabled`; `claude-opus-5-5`: `adaptive` at
+      effort `medium`). Each entry records its source.
+  - **A pre-save lookup fills the picker.** Before a binding is saved, the
+    model picker reads the capability data and that table. It shows the
+    documented default as the starting value, including effort where the
+    shape has one, and offers the other modes the capability data lists.
+  - **The author saves an explicit value.** Where the table has no entry,
+    the author chooses and there is no pre-filled default. The author can
+    choose another mode where the model accepts one. `claude-opus-5-5`, for
+    example, accepts only `adaptive`.
+  - **Resolution only confirms.** The protocol probe (section 4) sends the
+    saved reasoning. Resolution never writes it, and a mode the model
+    rejects fails resolution. A stale table entry can therefore only
+    suggest the wrong starting value. It can never put a request into the
+    evidence that wasn't sent.
+  - **Governed gates.** Reasoning must be explicit wherever the provider
+    family has a reasoning shape and the model accepts a setting. It may be
+    unset (`null`, not sent) only where the family has no reasoning shape,
+    as for `typesafe`, OpenAI non-reasoning models, and many custom
+    endpoints, or where resolution recorded the model rejecting the saved
+    setting.
+  - **The seeded default binding** states `claude-sonnet-4-6` with
+    temperature 0 and reasoning `disabled`, which is that model's documented
+    default. It needs no key to be complete.
   - Observed reasoning is recorded as observed provenance, next to the
     observed model identity: whether thinking blocks came back, and the
     reasoning token count where the provider reports it.
@@ -334,15 +354,21 @@ names it, and consumers can see it.
 2. **Probe with a fixed, non-sensitive input.**
    - Rubrist sends the exact request shape: one probe when the protocol is
      already fixed, otherwise up to three in the section 3 order.
+   - The probe sends the saved reasoning setting, so a rejected mode fails
+     resolution without an extra call.
    - For a binding that leaves `temperature` unset, it sends one extra
-     probe with an explicit temperature and records whether the model
-     accepts it. The governed-gate rule in section 2 depends on that
-     record.
+     probe with an explicit temperature and the binding's own reasoning,
+     because some models accept temperature only with thinking off. It
+     records whether the model accepts it. The governed-gate rule in
+     section 2 depends on that record.
    - A binding costs at most 4 probe calls.
 3. **Store the resolution record.** A binding that can't be probed is saved
    `unresolved`: for example, no credential yet (projects are seeded before
-   any key exists), a 429, a 5xx, or a timeout. The record includes the
-   credential source, because capabilities can differ per key.
+   any key exists), a 429, a 5xx, or a timeout. The record includes:
+   - the credential source, because capabilities can differ per key;
+   - the version of the reasoning-defaults table the picker used.
+
+   Resolution never changes the binding.
 
 **Where resolution is required.** Drafts and authoring may use unresolved
 bindings. Candidate creation, activation, and sealed calibration require
@@ -532,7 +558,11 @@ Dailies vendors the v2 contracts before any v2 evidence is published.
    accepts a setting, a governed evaluator states its value. The model
    picker hides a field the model doesn't support; section 2 covers this.
 2. **Default reasoning for new bindings: the provider's default, stated
-   explicitly.** Section 2 covers this.
+   explicitly.** The picker pre-fills it from a dated table of documented
+   defaults, and the author saves it; section 2 covers this. An
+   independent review on 2026-09-25 found that capability data can't
+   supply the default, so the table replaced that mechanism before
+   implementation.
 3. **`prompted-json/v1`: offered**, with the strict single-object parse
    described in section 3.
 4. **Typed-evaluator threshold: required per evaluator**, with no default.
