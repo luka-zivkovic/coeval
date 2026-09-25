@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { EvalRunStatusSchema } from "./evaluation-runs.js";
+import { containsLoneUtf16Surrogate } from "./judge.js";
 import {
   EvaluatorItemStateSchema,
   EvaluatorScoreSchema,
@@ -46,7 +47,7 @@ export type AssessmentReceiptV2Item = z.infer<typeof AssessmentReceiptV2ItemSche
 
 const CountSchema = z.number().int().nonnegative();
 
-export const AssessmentReceiptV2Schema = z.object({
+const AssessmentReceiptV2ObjectSchema = z.object({
   contract: z.literal(ASSESSMENT_RECEIPT_V2_CONTRACT),
   schemaVersion: z.literal(2),
   receiptId: IdentifierSchema,
@@ -70,7 +71,30 @@ export const AssessmentReceiptV2Schema = z.object({
   evaluator: SkillDigestInputSchema,
   skillDigest: Sha256DigestSchema,
   datasetDigest: Sha256DigestSchema,
-  items: z.array(AssessmentReceiptV2ItemSchema),
+  items: z.array(AssessmentReceiptV2ItemSchema).min(1),
   evidenceDigest: Sha256DigestSchema
 }).strict();
+
+/** Whether any object in a raw JSON value has an own `__proto__` key. */
+function containsOwnProtoKey(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(containsOwnProtoKey);
+  if (value !== null && typeof value === "object") {
+    return Object.hasOwn(value, "__proto__") || Object.values(value).some(containsOwnProtoKey);
+  }
+  return false;
+}
+
+/**
+ * The raw document is checked before the object parse: a strict object parse
+ * silently drops an own `__proto__` key, and canonical identities operate on
+ * Unicode scalar values, so both are refused wherever they appear.
+ */
+export const AssessmentReceiptV2Schema = z.unknown().superRefine((raw, ctx) => {
+  if (containsOwnProtoKey(raw)) {
+    ctx.addIssue({ code: "custom", message: "assessment receipts must not contain a __proto__ key" });
+  }
+  if (containsLoneUtf16Surrogate(raw)) {
+    ctx.addIssue({ code: "custom", message: "assessment receipts must not contain lone UTF-16 surrogates" });
+  }
+}).pipe(AssessmentReceiptV2ObjectSchema);
 export type AssessmentReceiptV2 = z.infer<typeof AssessmentReceiptV2Schema>;

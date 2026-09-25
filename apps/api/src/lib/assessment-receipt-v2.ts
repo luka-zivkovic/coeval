@@ -127,7 +127,9 @@ export function canonicalReceiptV2Bytes(receipt: AssessmentReceiptV2): Buffer {
 export function parseCanonicalReceiptV2Bytes(bytes: Uint8Array, expected: ReceiptV2Expectations = {}): AssessmentReceiptV2 {
   let text: string;
   try {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    // ignoreBOM keeps a leading byte-order mark, so such a copy fails the parse
+    // instead of passing as the canonical bytes.
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     throw new Error("Assessment receipt bytes are not valid UTF-8");
   }

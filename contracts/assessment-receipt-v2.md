@@ -25,19 +25,27 @@ characters.
   `{ "clientItemId": clientItemId, "contentDigest": contentDigest }`.
 - `evidenceDigest` hashes the complete receipt with only the
   `evidenceDigest` member omitted.
-- `evaluator.definitionDigest` hashes the evaluator definition. The
-  definition itself is not in the receipt; `skill-format/v2` carries it. A
-  typed-question definition holds its question as a digest of the question's
-  text.
+- `evaluator.definitionDigest` hashes the evaluator definition object. The
+  definition itself is not in the receipt; `skill-format/v2` carries it and
+  defines its shape, and both vectors below carry one. A typed-question
+  definition holds its question as `question.digest`, the digest of the
+  canonical object `{ "type": "noul", "instructions": ..., "criteria":
+  { "true": ..., "false": ... } }`.
 - `skillDigest` hashes the `evaluator` object:
   `{ "basis": "rubrist/evaluator-identity/v2", "definitionDigest": ...,
   "executionBinding": ... }`. A verifier recomputes it from the receipt
   alone and needs the definition only to check `definitionDigest`.
 
 Every string is a sequence of Unicode scalar values; a lone surrogate is
-refused. JSON Schema can't express that, so runtime validators check it.
-Model ids and versions are at most 240 UTF-16 code units. JSON Schema's
-`maxLength` counts code points, so producers must stay within both.
+refused anywhere in the receipt, keys included. JSON Schema can't express
+that, so runtime validators check it. Model ids and versions are at most 240
+UTF-16 code units. JSON Schema's `maxLength` counts code points, so
+producers must stay within both. Every integer is at most 2^53 − 1. No object
+has a `__proto__` key, which many JSON parsers would silently drop. A receipt
+has at least one item.
+
+A stored or served copy is exactly the UTF-8 bytes of the canonical JSON,
+with no byte-order mark.
 
 ## Evaluator and execution binding
 
@@ -121,10 +129,10 @@ Positive controls catch over-tightening as well as under-validation.
 
 The pinned SHA-256 file digests are:
 
-- schema: `85f37e528fee65c505690ab40add6bc02312a30188472378fa80aed18e73d74b`;
+- schema: `701aed7aa5931fad30e876ce3e075c7b3d4de992e0b5eb4537ed26d26c5b7826`;
 - complete fixture:
   `23b972a1ba9e78c5ea074ea9fb9abf7df74c108c8a58d14f473ee82d910e00eb`;
 - incomplete fixture:
   `bdfb4378c78410274a78cf6f7545ed7440e10b67693161a0c211123e10f317b0`;
 - conformance corpus:
-  `69c7149c99bb2a2bb509b8347b88e56194e97e266ea640f9a62d4f7776d4f946`.
+  `f9269a1b5d35fa76ddb05a9d47d3722c7abc121d5437237c3e3fb0dba0f54432`.

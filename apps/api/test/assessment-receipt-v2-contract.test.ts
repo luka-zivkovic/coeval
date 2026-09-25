@@ -55,11 +55,11 @@ interface ConformanceCorpus {
 
 const contractRoot = new URL("../../../contracts/", import.meta.url);
 const pinnedFileDigests = {
-  schema: "85f37e528fee65c505690ab40add6bc02312a30188472378fa80aed18e73d74b",
-  specification: "8634be8a8ad67a0a20df4d891817cc98a33217f89fab74fc7bd91e2af96ca805",
+  schema: "701aed7aa5931fad30e876ce3e075c7b3d4de992e0b5eb4537ed26d26c5b7826",
+  specification: "4d6859dec90b6c6204ccbbe57576653f7e95d20202ce3ff6dd09d953104c7352",
   complete: "23b972a1ba9e78c5ea074ea9fb9abf7df74c108c8a58d14f473ee82d910e00eb",
   incomplete: "bdfb4378c78410274a78cf6f7545ed7440e10b67693161a0c211123e10f317b0",
-  conformance: "69c7149c99bb2a2bb509b8347b88e56194e97e266ea640f9a62d4f7776d4f946"
+  conformance: "f9269a1b5d35fa76ddb05a9d47d3722c7abc121d5437237c3e3fb0dba0f54432"
 } as const;
 
 const fileBytes = (relativePath: string) => readFileSync(new URL(relativePath, contractRoot));
@@ -106,7 +106,8 @@ function applyMutation(receipt: Record<string, unknown>, mutation: Mutation): vo
     return;
   }
   if (Array.isArray(parent)) parent[Number(key)] = mutation.value;
-  else (parent as Record<string, unknown>)[key] = mutation.value;
+  // defineProperty makes even a `__proto__` key an own key, as JSON.parse does.
+  else Object.defineProperty(parent, key, { value: mutation.value, enumerable: true, writable: true, configurable: true });
 }
 
 function materialize(testCase: ConformanceCase, conformance: ConformanceCorpus): { vector: ContractFixture; raw: unknown } {
@@ -180,6 +181,27 @@ describe("assessment receipt v2 contract (ADR-0014 section 7)", () => {
     expect(incompleteText).not.toContain(incomplete.question!.criteria.true);
   });
 
+  it("maps each typed-question probability through the vector's threshold", () => {
+    const vector = fixture("assessment-receipt-v2.incomplete.json");
+    if (vector.definition.kind !== "typed-question") throw new Error("the incomplete vector is a typed-question evaluator");
+    const { threshold } = vector.definition;
+    const receipt = AssessmentReceiptV2Schema.parse(vector.receipt);
+    for (const item of receipt.items) {
+      if (item.result.state !== "outcome") continue;
+      expect(item.evaluatorScore!.value >= threshold, item.clientItemId).toBe(item.result.outcome === "pass");
+    }
+  });
+
+  it("refuses lone surrogates anywhere, which JSON Schema can't express", () => {
+    const receipt = structuredClone(fixture("assessment-receipt-v2.complete.json").receipt) as Record<string, unknown>;
+    for (const [path, value] of [["/receiptId", "\ud800"], ["/items/0/verdictId", "\udc00"], ["/items/0/observed/model", "claude\ud800"]] as const) {
+      const copy = structuredClone(receipt);
+      applyMutation(copy, { op: "replace", path, value });
+      applyMutation(copy, { op: "recompute-evidence-digest" });
+      expect(AssessmentReceiptV2Schema.safeParse(copy).success, path).toBe(false);
+    }
+  });
+
   it("treats an abstention as an outcome: complete, with lower coverage", () => {
     const receipt = AssessmentReceiptV2Schema.parse(fixture("assessment-receipt-v2.complete.json").receipt);
     expect(receipt.status).toBe("complete");
@@ -194,6 +216,8 @@ describe("assessment receipt v2 contract (ADR-0014 section 7)", () => {
     expect(parseCanonicalReceiptV2Bytes(bytes)).toEqual(receipt);
     expect(() => parseCanonicalReceiptV2Bytes(Buffer.from(JSON.stringify(receipt, null, 2)))).toThrow("not exact canonical JSON");
     expect(() => parseCanonicalReceiptV2Bytes(bytes, { skillDigest: `sha256:${"0".repeat(64)}` })).toThrow("expected evaluator");
+    expect(() => parseCanonicalReceiptV2Bytes(Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), bytes]))).toThrow("not valid JSON");
+    expect(() => parseCanonicalReceiptV2Bytes(Buffer.concat([bytes.subarray(0, 10), Buffer.from([0xff]), bytes.subarray(10)]))).toThrow("not valid UTF-8");
   });
 
   it("keeps JSON Schema and producer Zod acceptance aligned over the portable corpus", () => {
@@ -220,8 +244,12 @@ describe("assessment receipt v2 contract (ADR-0014 section 7)", () => {
         });
         verifyCandidateLinkage(receipt, vector);
       };
-      if (testCase.semantic === "accept") expect(verify, testCase.name).not.toThrow();
-      else expect(verify, testCase.name).toThrow(testCase.errorIncludes);
+      if (testCase.semantic === "accept") {
+        expect(verify, testCase.name).not.toThrow();
+      } else {
+        expect(testCase.errorIncludes, `${testCase.name} states its reason`).toBeTruthy();
+        expect(verify, testCase.name).toThrow(testCase.errorIncludes);
+      }
     }
   });
 });
