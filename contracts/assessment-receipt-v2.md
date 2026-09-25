@@ -115,7 +115,9 @@ checks the expected `evalRunId` and `skillVersionId`.
 Each corpus case starts from its `baseFixture`, or the corpus's, and applies
 its mutations in order:
 
-- `add`, `replace`, and `remove` target an RFC 6901 JSON Pointer;
+- `add`, `replace`, and `remove` target an RFC 6901 JSON Pointer. `add` and
+  `replace` create an own member, even for a `__proto__` key, as `JSON.parse`
+  does;
 - `reverse` reverses the target array;
 - `recompute-dataset-digest`, `recompute-skill-digest`, and
   `recompute-evidence-digest` apply the algorithms above to the current
