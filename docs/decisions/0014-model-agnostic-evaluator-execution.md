@@ -202,10 +202,13 @@ An evaluator version has three parts.
   - the output token limit;
   - the verdict protocol id and version;
   - for OpenRouter, the routing requirements in section 2.
-- **Resolution record** (not identity). It holds the capability-snapshot
-  digest, the probe outcomes and their cost, the credential source (project
-  key or platform key), the time of the check, and a status of `resolved`,
-  `unresolved`, or `failed`.
+- **Resolution record** (not identity). It holds:
+  - the capability check and probe outcomes, and their cost;
+  - the capability-snapshot digest;
+  - the credential source (project key or platform key);
+  - the reasoning-defaults table version;
+  - the time of the check;
+  - a status of `resolved`, `unresolved`, or `failed`.
 
 Every part of the execution binding is fixed when the version is saved,
 including the verdict protocol (section 3). Resolution can confirm a binding
@@ -226,17 +229,19 @@ canonical JSON `null`; it is never omitted.
 - **Governed gates.**
   - At candidate creation, activation, and sealed calibration,
     `temperature` must be explicit whenever the model accepts it. It may be
-    unset only where resolution recorded the model rejecting an explicit
-    temperature. Otherwise a provider could change its default under a
+    unset only where the resolution record shows the model rejecting an
+    explicit temperature, or where the family takes no sampling settings
+    (`typesafe`, `mock`). Otherwise a provider could change its default under a
     pinned model id, and "unset" evidence couldn't tell those runs apart.
   - `topP` may stay unset at the gates. Some models reject `temperature`
     and `top_p` together.
   - Authoring may leave either unset.
   - The seeded default binding keeps an explicit temperature of 0 where
     the model accepts it.
-  - The model picker hides any sampling field the model rejects, as far as
-    the pre-save lookup below can tell. That field is recorded as not sent,
-    and the author never sees or sets it.
+  - The model picker hides any sampling field the capability check (section
+    4) shows the model rejects. That field is recorded as not sent, and the
+    author never sees or sets it. Where no check could run, the field is
+    shown, and resolution decides the gate.
 - **Reasoning** has a closed, typed shape per provider family:
   - Anthropic: `thinking` of `disabled`, `enabled` with a token budget, or
     `adaptive`, plus an effort level where supported.
@@ -251,31 +256,45 @@ canonical JSON `null`; it is never omitted.
       capabilities, but the first defaults to no thinking and the second to
       adaptive.
     - So the default comes from a dated, versioned table of documented
-      provider defaults (`rubrist-reasoning-defaults/v1`, for example
-      `claude-sonnet-4-6`: `disabled`; `claude-opus-5-5`: `adaptive` at
-      effort `medium`). Each entry records its source.
-  - **A pre-save lookup fills the picker.** Before a binding is saved, the
-    model picker reads the capability data and that table. It shows the
-    documented default as the starting value, including effort where the
-    shape has one, and offers the other modes the capability data lists.
+      provider defaults (`rubrist-reasoning-defaults/v1`). Each entry
+      records its source. ASSUMPTION, per Anthropic's documentation as
+      reviewed on 2026-09-25:
+      - `claude-sonnet-4-6`: `disabled` at effort `high`;
+      - `claude-opus-5-5`: `adaptive` at effort `medium`.
+    - The table is a source of suggestions, not of capability truth. The
+      capability check decides what the model accepts, and the author's
+      saved value is what is sent.
+  - **The capability check fills the picker** (section 4). The picker shows
+    the documented default as the starting value, including effort where
+    the shape has one. It offers the modes the check found the model
+    accepts.
   - **The author saves an explicit value.** Where the table has no entry,
     the author chooses and there is no pre-filled default. The author can
-    choose another mode where the model accepts one. `claude-opus-5-5`, for
-    example, accepts only `adaptive`.
-  - **Resolution only confirms.** The protocol probe (section 4) sends the
-    saved reasoning. Resolution never writes it, and a mode the model
-    rejects fails resolution. A stale table entry can therefore only
-    suggest the wrong starting value. It can never put a request into the
-    evidence that wasn't sent.
-  - **Governed gates.** Reasoning must be explicit wherever the provider
-    family has a reasoning shape and the model accepts a setting. It may be
-    unset (`null`, not sent) only where the family has no reasoning shape,
-    as for `typesafe`, OpenAI non-reasoning models, and many custom
-    endpoints, or where resolution recorded the model rejecting the saved
-    setting.
-  - **The seeded default binding** states `claude-sonnet-4-6` with
-    temperature 0 and reasoning `disabled`, which is that model's documented
-    default. It needs no key to be complete.
+    choose another mode the model accepts. ASSUMPTION, per Anthropic's
+    documentation: `claude-opus-5-5` accepts only `adaptive`, and its
+    `disabled` returns an error.
+  - **Resolution only confirms.** The confirming probe sends the saved
+    reasoning. Resolution never writes it, and a mode the model rejects
+    fails resolution. A stale table entry can therefore only suggest the
+    wrong starting value. It can never put a request into the evidence
+    that wasn't sent.
+  - **Governed gates.** Reasoning must be explicit wherever the resolution
+    record shows the model accepting an explicit setting. It may be unset
+    (`null`, not sent) in two cases:
+    - where the family has no reasoning shape (`typesafe`, `mock`);
+    - where the record shows every probed explicit setting rejected, as for
+      OpenAI-compatible models that reject `reasoning_effort`.
+  - **The seeded default binding** states every identity field:
+    - `claude-sonnet-4-6`;
+    - temperature 0;
+    - thinking `disabled` at effort `high`, the table's documented default
+      (an ASSUMPTION as above);
+    - `anthropic.structured-output/v1`;
+    - an output token limit of 1,200.
+
+    It is saved `unresolved`, because projects are seeded before any key
+    exists, and it resolves the first time a governed gate needs it
+    (section 4).
   - Observed reasoning is recorded as observed provenance, next to the
     observed model identity: whether thinking blocks came back, and the
     reasoning token count where the provider reports it.
@@ -328,14 +347,14 @@ The protocol is fixed when the binding is saved:
 1. Where capability data exists, Rubrist takes the first supported
    protocol in this order: native structured output, then a forced tool or
    function, then `prompted-json/v1`.
-2. Where no capability data exists, probes choose the protocol in the same
-   order.
+2. Where no capability data exists, the capability check's probes choose
+   the protocol in the same order, before save.
 3. Where probes can't run, such as when no credential exists yet, the
    provider family's deterministic default applies:
    - Anthropic, OpenAI, and OpenRouter: structured output;
    - custom endpoints: forced function.
 
-   Resolution later confirms or fails that choice.
+   The author saves it, and resolution later confirms or fails it.
 
 The author can override the choice, for example to reproduce an earlier
 evaluator.
@@ -345,46 +364,75 @@ response must be exactly one JSON object, and a verdict is never extracted
 from prose. Because the protocol id is part of the binding, the evidence
 names it, and consumers can see it.
 
-### 4. Capabilities are resolved when a binding is saved and re-checked before governed runs
+### 4. Capabilities are checked before save, confirmed after, and re-checked before governed runs
 
-**Resolution.** When a binding is saved, Rubrist resolves it:
+**Capability check (before save).** When the author picks a model and a
+credential exists, the model picker runs a capability check.
 
-1. **Read capability data** where the provider publishes it: Anthropic's
-   `capabilities` and OpenRouter's `supported_parameters`.
-2. **Probe with a fixed, non-sensitive input.**
-   - Rubrist sends the exact request shape: one probe when the protocol is
-     already fixed, otherwise up to three in the section 3 order.
-   - The probe sends the saved reasoning setting, so a rejected mode fails
-     resolution without an extra call.
-   - For a binding that leaves `temperature` unset, it sends one extra
-     probe with an explicit temperature and the binding's own reasoning,
-     because some models accept temperature only with thinking off. It
-     records whether the model accepts it. The governed-gate rule in
-     section 2 depends on that record.
-   - A binding costs at most 4 probe calls.
-3. **Store the resolution record.** A binding that can't be probed is saved
-   `unresolved`: for example, no credential yet (projects are seeded before
-   any key exists), a 429, a 5xx, or a timeout. The record includes:
-   - the credential source, because capabilities can differ per key;
-   - the version of the reasoning-defaults table the picker used.
+1. **Read the published data.** It reads capability data where the provider
+   publishes it (Anthropic's `capabilities`, OpenRouter's
+   `supported_parameters`) and the reasoning-defaults table from section 2.
+2. **Probe with a fixed, non-sensitive input**, at most 6 calls:
+   - up to three protocol probes, in the section 3 order, until one
+     succeeds;
+   - one temperature probe, with an explicit temperature and the candidate
+     reasoning, because (ASSUMPTION, per Anthropic's documentation) some
+     models accept temperature only with thinking off;
+   - up to two reasoning probes: the documented default where there is one,
+     and the no-reasoning setting where the shape has one (`disabled`, or
+     `none` for OpenAI). These learn which modes the model accepts.
+3. **Record the outcomes, which drive the picker.** The picker:
+   - pre-selects the protocol that succeeded;
+   - shows the temperature field only if the model accepted it;
+   - offers only the reasoning modes the model accepted;
+   - pre-fills the documented default.
 
-   Resolution never changes the binding.
+**How probe failures are read.** A rejection that names the output
+mechanism (tool choice, response format) moves on to the next protocol. A
+rejection that names a parameter or reasoning setting marks that setting
+rejected; it doesn't move the protocol down.
+
+**Resolution (after save).** When the author saves, the check's outcomes
+become the binding's resolution record. Resolution then sends one confirming
+probe with the exact saved request. Resolution never changes the binding,
+and every identity field, including the protocol, is the author's saved
+value.
+
+**Unresolved bindings.** Where no check can run, the picker shows the
+provider family's fields, the table default, and the family's deterministic
+protocol from section 3. Examples:
+
+- no credential yet (projects are seeded before any key exists);
+- a 429, a 5xx, or a timeout.
+
+The binding is saved `unresolved`, and resolution runs automatically the
+first time a governed gate or governed run needs it, or on demand. At that
+point it sends the confirming probe, plus a temperature probe where
+temperature is unset and a reasoning probe where reasoning is unset, at most
+3 calls. That gives the gate rules in section 2 a recorded answer.
 
 **Where resolution is required.** Drafts and authoring may use unresolved
 bindings. Candidate creation, activation, and sealed calibration require
-`resolved`. If the author requested a parameter the model rejects,
-resolution fails with the provider's message and a suggestion, such as
-"leave temperature unset".
+`resolved`. A binding that fails resolution is fixed only by a new evaluator
+version. The failure carries the provider's message and a suggestion, such
+as "leave temperature unset".
+
+**The resolution record holds:**
+
+- the check and probe outcomes, and their cost;
+- the capability-snapshot digest;
+- the credential source, because capabilities can differ per key;
+- the version of the reasoning-defaults table.
 
 **Re-check before governed runs.** Before a sealed calibration is
 authorized, which happens before its exposure event, and before any
-governed run starts, Rubrist repeats the stored probe on the probe input,
-never on sealed data. If the resolution no longer holds, the run doesn't
-start and no sealed item is exposed. This keeps a provider change from
-wasting a sealed revision: ADR-0009 counts an incomplete run toward the
-reuse barrier, and the only remedy then is a new evaluator version.
-Execution itself never re-resolves, so every item is still one physical
-call.
+governed run starts, Rubrist repeats the confirming probe. Where temperature
+is unset, it also repeats the temperature probe. It uses the probe input and
+never sealed data. If the resolution no longer holds, the run doesn't start
+and no sealed item is exposed. This keeps a provider change from wasting a
+sealed revision: ADR-0009 counts an incomplete run toward the reuse barrier,
+and the only remedy then is a new evaluator version. Execution itself never
+re-resolves, so every item is still one physical call.
 
 ### 5. Typed-question evaluators (#101)
 
@@ -526,7 +574,9 @@ Dailies vendors the v2 contracts before any v2 evidence is published.
   happen.
 - **Keep a hand-maintained list of which models accept what.** Rejected as
   the primary mechanism, because it goes stale. Provider metadata and
-  probes replace it.
+  probes replace it. The only table Rubrist keeps, the documented reasoning
+  defaults, suggests a starting value. It never decides what a model
+  accepts or what is sent.
 - **Retry at call time with different parameters.** Rejected: it breaks
   the single-physical-call ledger.
 - **Keep v1 and refuse models v1 can't express.** Rejected: it excludes
@@ -549,20 +599,22 @@ Dailies vendors the v2 contracts before any v2 evidence is published.
   calibration, and a clearly sourced score. #102's uncertainty selection
   can then use a real probability source.
 - Dailies must ship v2 support before Rubrist publishes v2 evidence.
-- Each new binding costs up to four probe calls, and each governed run
-  costs one re-check call. Both are recorded.
+- Each capability check costs up to six probe calls, resolution up to
+  three, and each governed-run re-check one or two. All are recorded.
 
 ## Founder decisions on the open questions (2026-09-25)
 
 1. **Explicit settings at governed gates: required.** Where the model
-   accepts a setting, a governed evaluator states its value. The model
-   picker hides a field the model doesn't support; section 2 covers this.
+   accepts it, a governed evaluator states its temperature and reasoning.
+   The model picker hides a field the capability check shows the model
+   doesn't support. Where no check could run, resolution enforces the gate.
+   Sections 2 and 4 cover this.
 2. **Default reasoning for new bindings: the provider's default, stated
    explicitly.** The picker pre-fills it from a dated table of documented
-   defaults, and the author saves it; section 2 covers this. An
-   independent review on 2026-09-25 found that capability data can't
-   supply the default, so the table replaced that mechanism before
-   implementation.
+   defaults, and the author saves it. For a model with no table entry, the
+   author chooses. Section 2 covers this. An independent review on
+   2026-09-25 found that capability data can't supply the default, so the
+   table replaced that mechanism before implementation.
 3. **`prompted-json/v1`: offered**, with the strict single-object parse
    described in section 3.
 4. **Typed-evaluator threshold: required per evaluator**, with no default.
