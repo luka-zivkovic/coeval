@@ -203,7 +203,8 @@ An evaluator version has three parts.
   - the verdict protocol id and version;
   - for OpenRouter, the routing requirements in section 2.
 - **Resolution record** (not identity). It holds:
-  - the capability check and probe outcomes, and their cost;
+  - the capability check and probe outcomes, with the settings each probe
+    sent and its cost;
   - the capability-snapshot digest;
   - the credential source (project key or platform key);
   - the reasoning-defaults table version;
@@ -217,8 +218,8 @@ binding that fails resolution is fixed by creating a new evaluator
 version.
 
 `skillDigest` v2 covers the definition and the execution binding, never the
-resolution record. Two identical definitions saved at different times
-therefore have the same digest. In every v2 contract, an unset value is
+resolution record. Two versions with identical definitions and bindings
+therefore have the same digest, whenever they were saved. In every v2 contract, an unset value is
 canonical JSON `null`; it is never omitted.
 
 ### 2. The binding states exactly what is sent
@@ -229,9 +230,11 @@ canonical JSON `null`; it is never omitted.
 - **Governed gates.**
   - At candidate creation, activation, and sealed calibration,
     `temperature` must be explicit whenever the model accepts it. It may be
-    unset only where the resolution record shows the model rejecting an
-    explicit temperature, or where the family takes no sampling settings
-    (`typesafe`, `mock`). Otherwise a provider could change its default under a
+    unset only where the resolution record shows the model rejecting the
+    `temperature` parameter itself when sent with the saved reasoning, or
+    where the family takes no sampling settings (`typesafe`, `mock`). A
+    rejected value, such as a model that accepts only temperature 1, still
+    requires an explicit value. Otherwise a provider could change its default under a
     pinned model id, and "unset" evidence couldn't tell those runs apart.
   - `topP` may stay unset at the gates. Some models reject `temperature`
     and `top_p` together.
@@ -239,9 +242,12 @@ canonical JSON `null`; it is never omitted.
   - The seeded default binding keeps an explicit temperature of 0 where
     the model accepts it.
   - The model picker hides any sampling field the capability check (section
-    4) shows the model rejects. That field is recorded as not sent, and the
-    author never sees or sets it. Where no check could run, the field is
-    shown, and resolution decides the gate.
+    4) shows the model rejecting outright. That field is recorded as not
+    sent, and the author never sees or sets it. A temperature outcome holds
+    only for the reasoning it was probed with, so if the author saves
+    different reasoning, the field is shown again and resolution probes it.
+    Where no check could run, the field is shown, and resolution decides the
+    gate.
 - **Reasoning** has a closed, typed shape per provider family:
   - Anthropic: `thinking` of `disabled`, `enabled` with a token budget, or
     `adaptive`, plus an effort level where supported.
@@ -266,27 +272,32 @@ canonical JSON `null`; it is never omitted.
       saved value is what is sent.
   - **The capability check fills the picker** (section 4). The picker shows
     the documented default as the starting value, including effort where
-    the shape has one. It offers the modes the check found the model
-    accepts.
+    the shape has one. It offers every mode of the family's shape except
+    those that published data or a probe shows the model rejecting, and
+    marks modes no probe tested as "confirmed at resolution". Where the
+    model rejects the reasoning parameter itself, the field is hidden and
+    recorded as not sent.
   - **The author saves an explicit value.** Where the table has no entry,
     the author chooses and there is no pre-filled default. The author can
-    choose another mode the model accepts. ASSUMPTION, per Anthropic's
-    documentation: `claude-opus-5-5` accepts only `adaptive`, and its
-    `disabled` returns an error.
+    choose any offered mode. ASSUMPTION, per Anthropic's documentation:
+    `claude-opus-5-5` accepts only `adaptive`, and its `disabled` returns an
+    error.
   - **Resolution only confirms.** The confirming probe sends the saved
     reasoning. Resolution never writes it, and a mode the model rejects
     fails resolution. A stale table entry can therefore only suggest the
     wrong starting value. It can never put a request into the evidence
     that wasn't sent.
-  - **Governed gates.** Reasoning must be explicit wherever the resolution
-    record shows the model accepting an explicit setting. It may be unset
-    (`null`, not sent) in two cases:
+  - **Governed gates.** Reasoning must be explicit. It may be unset
+    (`null`, not sent) in only two cases:
     - where the family has no reasoning shape (`typesafe`, `mock`);
-    - where the record shows every probed explicit setting rejected, as for
-      OpenAI-compatible models that reject `reasoning_effort`.
+    - where the record shows the model rejecting the reasoning parameter
+      itself, not just some of its values, as for OpenAI-compatible models
+      that reject `reasoning_effort`.
   - **The seeded default binding** states every identity field:
-    - `claude-sonnet-4-6`;
-    - temperature 0;
+    - provider `anthropic` on its managed endpoint, with no OpenRouter
+      routing;
+    - model id and model version `claude-sonnet-4-6`;
+    - temperature 0, and `topP` unset;
     - thinking `disabled` at effort `high`, the table's documented default
       (an ASSUMPTION as above);
     - `anthropic.structured-output/v1`;
@@ -374,29 +385,38 @@ credential exists, the model picker runs a capability check.
    `supported_parameters`) and the reasoning-defaults table from section 2.
 2. **Probe with a fixed, non-sensitive input**, at most 6 calls:
    - up to three protocol probes, in the section 3 order, until one
-     succeeds;
-   - one temperature probe, with an explicit temperature and the candidate
-     reasoning, because (ASSUMPTION, per Anthropic's documentation) some
-     models accept temperature only with thinking off;
-   - up to two reasoning probes: the documented default where there is one,
-     and the no-reasoning setting where the shape has one (`disabled`, or
-     `none` for OpenAI). These learn which modes the model accepts.
+     succeeds. They send no optional sampling or reasoning fields, so a
+     parameter the model rejects can't hide which mechanism works;
+   - one temperature probe on that protocol, with an explicit temperature
+     and the documented default reasoning (no reasoning fields where the
+     table has no entry). Its outcome holds only for that reasoning,
+     because (ASSUMPTION, per Anthropic's documentation) some models accept
+     temperature only with thinking off;
+   - up to two reasoning probes on that protocol: the documented default,
+     or a middle value of the family's shape (such as effort `medium`)
+     where the table has no entry; and the no-reasoning setting where the
+     shape has one (`disabled`, or `none` for OpenAI).
 3. **Record the outcomes, which drive the picker.** The picker:
    - pre-selects the protocol that succeeded;
-   - shows the temperature field only if the model accepted it;
-   - offers only the reasoning modes the model accepted;
+   - hides the temperature field where the model rejected the parameter
+     with the reasoning the author has selected;
+   - offers the family's reasoning modes as section 2 describes, and hides
+     the field where the model rejected the reasoning parameter itself;
    - pre-fills the documented default.
 
 **How probe failures are read.** A rejection that names the output
 mechanism (tool choice, response format) moves on to the next protocol. A
-rejection that names a parameter or reasoning setting marks that setting
-rejected; it doesn't move the protocol down.
+rejection that names a parameter marks the parameter rejected outright; one
+that names only a value marks that value rejected. Neither moves the
+protocol down. A rejection Rubrist can't attribute counts as a value
+rejection, so it never lets a setting go unset.
 
 **Resolution (after save).** When the author saves, the check's outcomes
 become the binding's resolution record. Resolution then sends one confirming
-probe with the exact saved request. Resolution never changes the binding,
-and every identity field, including the protocol, is the author's saved
-value.
+probe with the exact saved request. Where temperature is unset and no
+temperature probe was sent with the saved reasoning, it also sends one, so
+at most 2 calls. Resolution never changes the binding, and every identity
+field, including the protocol, is the author's saved value.
 
 **Unresolved bindings.** Where no check can run, the picker shows the
 provider family's fields, the table default, and the family's deterministic
@@ -407,9 +427,19 @@ protocol from section 3. Examples:
 
 The binding is saved `unresolved`, and resolution runs automatically the
 first time a governed gate or governed run needs it, or on demand. At that
-point it sends the confirming probe, plus a temperature probe where
-temperature is unset and a reasoning probe where reasoning is unset, at most
-3 calls. That gives the gate rules in section 2 a recorded answer.
+point it sends the confirming probe, plus a temperature probe with the saved
+reasoning where temperature is unset, and a reasoning probe (the documented
+default, or a middle value) where reasoning is unset, at most 3 calls. That
+gives the gate rules in section 2 a recorded answer.
+
+**Which outcomes fail a binding.** Only the confirming probe can set
+`failed`, and only when the provider rejects the request
+(`provider_rejected_request`) or the response breaks the protocol
+(`provider_protocol`). Authentication, rate-limit, timeout, transport,
+availability, and invalid-output errors leave the binding `unresolved`: the
+gate or run doesn't proceed, and resolution runs again the next time it's
+needed. The record keeps the latest resolution attempt's probes, so an
+attempt that ended `unresolved` is replaced by the next one.
 
 **Where resolution is required.** Drafts and authoring may use unresolved
 bindings. Candidate creation, activation, and sealed calibration require
@@ -417,19 +447,20 @@ bindings. Candidate creation, activation, and sealed calibration require
 version. The failure carries the provider's message and a suggestion, such
 as "leave temperature unset".
 
-**The resolution record holds:**
-
-- the check and probe outcomes, and their cost;
-- the capability-snapshot digest;
-- the credential source, because capabilities can differ per key;
-- the version of the reasoning-defaults table.
+**The resolution record** holds the fields listed in section 1. It records
+the credential source because capabilities can differ per key.
 
 **Re-check before governed runs.** Before a sealed calibration is
 authorized, which happens before its exposure event, and before any
 governed run starts, Rubrist repeats the confirming probe. Where temperature
-is unset, it also repeats the temperature probe. It uses the probe input and
-never sealed data. If the resolution no longer holds, the run doesn't start
-and no sealed item is exposed. This keeps a provider change from wasting a
+is unset, it also repeats the temperature probe with the saved reasoning,
+and where reasoning is unset, the reasoning probe, so one to three calls. A
+provider that starts accepting an unset setting would otherwise apply its
+own default unseen. It uses the probe input and never sealed data. If the
+resolution no longer holds, the run doesn't start and no sealed item is
+exposed. The re-check is recorded with the run or authorization it guards,
+and it never changes the resolution record, so a transient error delays a
+run but never fails the binding. This keeps a provider change from wasting a
 sealed revision: ADR-0009 counts an incomplete run toward the reuse barrier,
 and the only remedy then is a new evaluator version. Execution itself never
 re-resolves, so every item is still one physical call.
@@ -600,7 +631,7 @@ Dailies vendors the v2 contracts before any v2 evidence is published.
   can then use a real probability source.
 - Dailies must ship v2 support before Rubrist publishes v2 evidence.
 - Each capability check costs up to six probe calls, resolution up to
-  three, and each governed-run re-check one or two. All are recorded.
+  three, and each governed-run re-check one to three. All are recorded.
 
 ## Founder decisions on the open questions (2026-09-25)
 
