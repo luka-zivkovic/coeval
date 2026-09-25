@@ -6,13 +6,20 @@ import {
   EvaluatorItemStateSchema,
   ExecutionBindingSchema,
   ResolutionRecordSchema,
+  SkillDigestInputSchema,
   verdictProtocolsFor,
   type CapabilityProbe,
   type EvaluatorIdentity,
   type ExecutionBinding,
   type TypedQuestion
 } from "@rubrist/shared";
-import { skillDigestV2, typedQuestionDigest } from "../src/lib/evaluator-identity.js";
+import {
+  evaluatorDefinitionDigest,
+  skillDigestInput,
+  skillDigestV2,
+  skillDigestV2FromInput,
+  typedQuestionDigest
+} from "../src/lib/evaluator-identity.js";
 
 const SONNET_46: ExecutionBinding = {
   provider: "anthropic",
@@ -198,11 +205,37 @@ describe("evaluator definition (ADR-0014 sections 1 and 5)", () => {
   });
 });
 
-describe("skillDigest v2 (ADR-0014 section 1)", () => {
+describe("skillDigest v2 (ADR-0014 section 1 and decision 5)", () => {
   // Conformance vectors, cross-checked against an independent canonical-JSON SHA-256.
   it("is pinned, so a change to the basis, a field name, or canonical JSON is visible", () => {
-    expect(skillDigestV2(PROMPTED)).toBe("sha256:d37c676d5a43b54dbaef0469cc5e44d02c9d35c663ec715956aad2c41fe7fd4b");
-    expect(skillDigestV2(JEV)).toBe("sha256:54b7f83cc6eb2a90390fbc333e14fdc2c7f31f382fcbc8f0c0b165bf3eae74df");
+    expect(evaluatorDefinitionDigest(PROMPTED_DEFINITION)).toBe("sha256:6fae541fcc112aa46455f2b5da1a4554e925597ebe81e8d6168489228537594e");
+    expect(skillDigestV2(PROMPTED)).toBe("sha256:55d92fe5a2fb99b58f6a66bd91df818cdc2ca7c1ae7a216329e59835c2238695");
+    expect(evaluatorDefinitionDigest(JEV_DEFINITION)).toBe("sha256:4ce367b4c6511c98e6a0ea6dd5d142dfa379b7523c7fb9b8aba0f76ebae4e3dc");
+    expect(skillDigestV2(JEV)).toBe("sha256:44a3d7d6f4bb07dcb57dafe33c50ce905bde19e4ab583eaf304ea96d9e662497");
+  });
+
+  it("is computed from the binding and a definition digest, so evidence never needs the definition's text", () => {
+    const input = skillDigestInput(PROMPTED);
+    expect(input).toEqual({ basis: EVALUATOR_IDENTITY_BASIS, definitionDigest: evaluatorDefinitionDigest(PROMPTED_DEFINITION), executionBinding: SONNET_46 });
+    expect(JSON.stringify(input)).not.toContain(PROMPTED_DEFINITION.rubricMarkdown);
+    expect(JSON.stringify(input)).not.toContain(PROMPTED_DEFINITION.prompt);
+    expect(skillDigestV2FromInput(input)).toBe(skillDigestV2(PROMPTED));
+    expect(SkillDigestInputSchema.safeParse({ ...input, definition: PROMPTED_DEFINITION }).success).toBe(false);
+    expect(() => skillDigestV2FromInput({ ...input, definitionDigest: "sha256:short" })).toThrow();
+  });
+
+  it("refuses to digest a definition that isn't exactly a valid definition", () => {
+    expect(() => evaluatorDefinitionDigest({ ...PROMPTED_DEFINITION, extra: 1 } as never)).toThrow();
+    const withProto = { ...PROMPTED_DEFINITION, ...JSON.parse(`{"outputSchema":{"type":"object","__proto__":{"x":1}}}`) };
+    expect(() => evaluatorDefinitionDigest(withProto)).toThrow();
+    const inherited = Object.create({ scalarRange: null });
+    Object.assign(inherited, { ...PROMPTED_DEFINITION });
+    delete inherited.scalarRange;
+    expect(() => evaluatorDefinitionDigest(inherited)).toThrow();
+  });
+
+  it("still applies whole-identity rules before producing a digest input", () => {
+    expect(() => skillDigestInput({ ...JEV, executionBinding: SONNET_46 })).toThrow();
   });
 
   it("is deterministic and covers every identity field", () => {
