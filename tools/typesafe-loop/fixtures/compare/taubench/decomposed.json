@@ -1,0 +1,29 @@
+{
+  "note": "The tau-bench retail criterion split into short, positive yes/no questions drawn from the retail policy in each case's input. A run passes only if every question holds; the combined probability is the smallest one. Written for the #101 follow-up on 2026-09-25, before any decomposed result was seen.",
+  "questions": {
+    "identity_verified": {
+      "instructions": "The agent confirmed the user's identity, by email or by name and zip code, before looking up or changing any order or account details.",
+      "criteria": { "true": "Identity was confirmed first.", "false": "The agent looked up or changed details before confirming identity." }
+    },
+    "changes_confirmed": {
+      "instructions": "Before every action that changed an order or the account, the agent listed the details and got the user's explicit yes. If nothing was changed, this holds.",
+      "criteria": { "true": "Every change was explicitly confirmed, or nothing was changed.", "false": "At least one change was made without explicit confirmation." }
+    },
+    "right_action": {
+      "instructions": "The actions the agent took match what the user asked for, with the right order, items, options, and payment method.",
+      "criteria": { "true": "The actions match the request.", "false": "An action used the wrong order, item, option, or payment method, or did something the user didn't ask for." }
+    },
+    "truthful": {
+      "instructions": "Everything the agent told the user is supported by the tool results or the policy.",
+      "criteria": { "true": "Every statement is supported.", "false": "The agent stated something the tool results or policy don't support." }
+    },
+    "permitted": {
+      "instructions": "Every action the agent took is allowed by the retail policy, for example only pending orders are cancelled or modified and only delivered orders are returned or exchanged.",
+      "criteria": { "true": "Every action is allowed.", "false": "At least one action breaks the policy." }
+    },
+    "resolved": {
+      "instructions": "By the end of the conversation the user's request was completely handled, or correctly refused under the policy.",
+      "criteria": { "true": "The request was fully handled or correctly refused.", "false": "Part of the request was left unhandled or handled wrongly." }
+    }
+  }
+}

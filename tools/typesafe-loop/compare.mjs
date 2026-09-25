@@ -14,6 +14,16 @@
 // `tool_choice: auto` with the same verdict tool; the report names each
 // deviation. The LLM probability is the verdict score.
 //
+// A judge name may carry one variant after "@", which becomes part of its
+// name, cache key, and report row:
+//   jev-…@decomposed           ask the set's decomposed.json questions in one
+//                              call; the run passes only if all hold, and its
+//                              probability is the smallest one
+//   claude-…@thinking-disabled send thinking {type: "disabled"}
+//   claude-…@thinking-adaptive send thinking {type: "adaptive"} with
+//                              tool_choice auto, since a forced tool can't
+//                              follow thinking
+//
 //   node --env-file=.env tools/typesafe-loop/compare.mjs \
 //     --judges jev-1.13.0,claude-haiku-4-5-20251001,claude-sonnet-4-6 [--limit 20]
 //
@@ -33,7 +43,7 @@ import { estimateCost } from "./autoloop.mjs";
 import { mcnemarExact, orderConsistency, pairedBootstrap, quantile, rate, spearman } from "./compare-stats.mjs";
 import { brierScore, expectedCalibrationError, rocAuc, round } from "./metrics.mjs";
 import { createTypeSafeProvider } from "./providers.mjs";
-import { canonicalJson, criterionQuestion, passProbability } from "./questions.mjs";
+import { canonicalJson, criterionQuestion, noul, passProbability } from "./questions.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..", "..");
@@ -73,32 +83,47 @@ function rubricFor(criterion) {
   return `# ${criterion.title}\n\n${criterion.question}\n\n## Pass\n\n${criterion.passDescription}\n\n## Fail\n\n${criterion.failDescription}`;
 }
 
-function jevJudge(model) {
+function jevJudge(model, variant) {
+  if (variant && variant !== "decomposed") throw new Error(`unknown Jev variant ${variant}`);
   const provider = createTypeSafeProvider({ model, timeoutMs: 30_000 });
-  const request = (criterion, testCase) => ({ model, state: traceState(testCase), questions: criterionQuestion(criterion) });
+  const questionsFor = (criterion) => {
+    if (!variant) return criterionQuestion(criterion);
+    if (!criterion.decomposed) throw new Error(`set for ${criterion.key} has no decomposed.json`);
+    return Object.fromEntries(Object.entries(criterion.decomposed.questions)
+      .map(([name, q]) => [name, noul(q.instructions, q.criteria)]));
+  };
+  const request = (criterion, testCase) => ({ model, state: traceState(testCase), questions: questionsFor(criterion) });
   return {
-    name: model,
-    transport: "POST /v1/systemone, one attempt",
+    name: variant ? `${model}@${variant}` : model,
+    transport: variant ? "POST /v1/systemone, one attempt, decomposed questions (all must hold)" : "POST /v1/systemone, one attempt",
     requestKey: async (criterion, testCase) => request(criterion, testCase),
     async judge(criterion, testCase) {
       const { state, questions } = request(criterion, testCase);
       const result = await provider.systemOne({ state, questions });
       if (result.model !== model) throw new Error(`jev reported ${result.model ?? "no model"} for pinned ${model}`);
-      const { p } = passProbability(result.answers[criterion.key]);
-      return { servedModel: result.model, p, label: p >= 0.5 ? "pass" : "fail", usage: result.usage };
+      if (!variant) {
+        const { p } = passProbability(result.answers[criterion.key]);
+        return { servedModel: result.model, p, label: p >= 0.5 ? "pass" : "fail", usage: result.usage };
+      }
+      const parts = Object.fromEntries(Object.keys(questions).map((name) => [name, passProbability(result.answers[name]).p]));
+      const p = Math.min(...Object.values(parts));
+      return { servedModel: result.model, p, label: p >= 0.5 ? "pass" : "fail", usage: result.usage, parts };
     }
   };
 }
 
-function claudeJudge(model) {
+function claudeJudge(model, variant) {
+  if (variant && !["thinking-disabled", "thinking-adaptive"].includes(variant)) throw new Error(`unknown Claude variant ${variant}`);
   const omitTemperature = noTemperature.has(model);
-  const autoTool = autoToolChoice.has(model);
+  const autoTool = autoToolChoice.has(model) || variant === "thinking-adaptive";
+  const thinking = variant === "thinking-disabled" ? { type: "disabled" } : variant === "thinking-adaptive" ? { type: "adaptive" } : null;
   const shape = (params) => {
     const { temperature, ...rest } = params;
     return {
       ...rest,
       ...(omitTemperature ? {} : { temperature }),
-      ...(autoTool ? { tool_choice: { type: "auto" } } : {})
+      ...(autoTool ? { tool_choice: { type: "auto" } } : {}),
+      ...(thinking ? { thinking, max_tokens: Math.max(rest.max_tokens, 16_000) } : {})
     };
   };
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0 });
@@ -120,11 +145,12 @@ function claudeJudge(model) {
   });
   const captured = Symbol("captured");
   return {
-    name: model,
+    name: variant ? `${model}@${variant}` : model,
     transport: [
       "single physical call, no SDK retries",
       omitTemperature ? "temperature not sent (#120)" : "temperature 0",
-      ...(autoTool ? ["tool_choice auto instead of the forced verdict tool (#120)"] : [])
+      ...(autoTool ? ["tool_choice auto instead of the forced verdict tool"] : []),
+      ...(thinking ? [`thinking ${thinking.type}`] : [])
     ].join(", "),
     /** The exact Messages request Rubrist's provider builds, captured without sending it. */
     async requestKey(criterion, testCase) {
@@ -233,7 +259,7 @@ function summarize(judge, cases, results) {
     latencyMs: { calls: measured.length, p50: quantile(measured, 0.5), p95: quantile(measured, 0.95) },
     meanInputTokens: withUsage.length ? Math.round(withUsage.reduce((s, r) => s + r.usage.input_tokens, 0) / withUsage.length) : null,
     costPer1kUsd: costPerThousand(judge.name, answered),
-    items: rows.map((r) => ({ id: r.id, truth: r.truth, label: r.label ?? null, p: r.p ?? null, ms: r.ms, cached: r.cached, error: r.error ?? null }))
+    items: rows.map((r) => ({ id: r.id, truth: r.truth, label: r.label ?? null, p: r.p ?? null, ms: r.ms, cached: r.cached, error: r.error ?? null, ...(r.parts ? { parts: r.parts } : {}) }))
   };
 }
 
@@ -253,11 +279,15 @@ function paired(a, b) {
   };
 }
 
-const judges = args.judges.split(",").map((name) => (name.startsWith("jev") ? jevJudge(name) : claudeJudge(name)));
+const judges = args.judges.split(",").map((spec) => {
+  const [name, variant] = spec.split("@");
+  return name.startsWith("jev") ? jevJudge(name, variant) : claudeJudge(name, variant);
+});
 const report = { generatedAt: new Date().toISOString(), cacheVersion: CACHE_VERSION, judges: judges.map((j) => ({ name: j.name, transport: j.transport })), sets: [] };
 for (const set of args.sets.split(",")) {
   const dir = path.join(args.fixtures, set);
   const criterion = JSON.parse(await readFile(path.join(dir, "criterion.json"), "utf8"));
+  criterion.decomposed = await readFile(path.join(dir, "decomposed.json"), "utf8").then(JSON.parse, () => undefined);
   const all = JSON.parse(await readFile(path.join(dir, "cases.json"), "utf8"));
   const cases = args.limit ? all.slice(0, Number(args.limit)) : all;
   const summaries = [];

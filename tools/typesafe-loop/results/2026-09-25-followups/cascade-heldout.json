@@ -1,0 +1,188 @@
+{
+  "report": "tools/typesafe-loop/results/2026-09-24-compare/report.json",
+  "cheap": "jev-1.13.0",
+  "strong": "claude-opus-5-5",
+  "seed": "cascade-v1",
+  "results": [
+    {
+      "set": "chaosmnli",
+      "cases": 200,
+      "bandsChosen": [
+        0.25,
+        0.3
+      ],
+      "cheapOnly": {
+        "accuracy": {
+          "k": 155,
+          "n": 200,
+          "rate": 0.775,
+          "wilson95": [
+            0.712,
+            0.827
+          ]
+        },
+        "costPer1kUsd": 0.0167
+      },
+      "strongOnly": {
+        "accuracy": {
+          "k": 157,
+          "n": 200,
+          "rate": 0.785,
+          "wilson95": [
+            0.723,
+            0.836
+          ]
+        },
+        "costPer1kUsd": 13.472
+      },
+      "cascadeHeldOut": {
+        "accuracy": {
+          "k": 160,
+          "n": 200,
+          "rate": 0.8,
+          "wilson95": [
+            0.739,
+            0.85
+          ]
+        },
+        "escalatedShare": 0.29,
+        "costPer1kUsd": 3.924
+      }
+    },
+    {
+      "set": "mtbench",
+      "cases": 150,
+      "bandsChosen": [
+        0.05,
+        0.15
+      ],
+      "cheapOnly": {
+        "accuracy": {
+          "k": 129,
+          "n": 150,
+          "rate": 0.86,
+          "wilson95": [
+            0.795,
+            0.907
+          ]
+        },
+        "costPer1kUsd": 0.0438
+      },
+      "strongOnly": {
+        "accuracy": {
+          "k": 125,
+          "n": 150,
+          "rate": 0.833,
+          "wilson95": [
+            0.766,
+            0.884
+          ]
+        },
+        "costPer1kUsd": 20.2491
+      },
+      "cascadeHeldOut": {
+        "accuracy": {
+          "k": 131,
+          "n": 150,
+          "rate": 0.873,
+          "wilson95": [
+            0.811,
+            0.917
+          ]
+        },
+        "escalatedShare": 0.06,
+        "costPer1kUsd": 1.259
+      }
+    },
+    {
+      "set": "mtbench-swapped",
+      "cases": 150,
+      "bandsChosen": [
+        0.1,
+        0.05
+      ],
+      "cheapOnly": {
+        "accuracy": {
+          "k": 130,
+          "n": 150,
+          "rate": 0.867,
+          "wilson95": [
+            0.803,
+            0.912
+          ]
+        },
+        "costPer1kUsd": 0.0438
+      },
+      "strongOnly": {
+        "accuracy": {
+          "k": 127,
+          "n": 150,
+          "rate": 0.847,
+          "wilson95": [
+            0.78,
+            0.896
+          ]
+        },
+        "costPer1kUsd": 20.3024
+      },
+      "cascadeHeldOut": {
+        "accuracy": {
+          "k": 131,
+          "n": 150,
+          "rate": 0.873,
+          "wilson95": [
+            0.811,
+            0.917
+          ]
+        },
+        "escalatedShare": 0.06,
+        "costPer1kUsd": 1.262
+      }
+    },
+    {
+      "set": "taubench",
+      "cases": 109,
+      "bandsChosen": [
+        0.35,
+        0.35
+      ],
+      "cheapOnly": {
+        "accuracy": {
+          "k": 55,
+          "n": 109,
+          "rate": 0.505,
+          "wilson95": [
+            0.412,
+            0.597
+          ]
+        },
+        "costPer1kUsd": 0.2002
+      },
+      "strongOnly": {
+        "accuracy": {
+          "k": 81,
+          "n": 109,
+          "rate": 0.743,
+          "wilson95": [
+            0.654,
+            0.816
+          ]
+        },
+        "costPer1kUsd": 52.7995
+      },
+      "cascadeHeldOut": {
+        "accuracy": {
+          "k": 81,
+          "n": 109,
+          "rate": 0.743,
+          "wilson95": [
+            0.654,
+            0.816
+          ]
+        },
+        "escalatedShare": 0.908,
+        "costPer1kUsd": 48.156
+      }
+    }
+  ]
+}
