@@ -5,8 +5,10 @@ import { createApp } from "../src/app.js";
 import { skillDigest } from "../src/lib/assessment-receipt.js";
 import { endpointBaseUrlDigest } from "../src/lib/evaluator-identity.js";
 import {
+  ExecutionBindingInputError,
   LegacyEvidenceUnsupportedError,
   executionBindingFromInput,
+  executionBindingInputProblem,
   legacyCalibrationBinding,
   legacyModelBinding,
   verifiedEndpointUrl
@@ -202,6 +204,18 @@ describe("binding input at the API boundary", () => {
     });
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({ error: expect.stringMatching(/^Invalid execution binding: /) });
+  });
+
+  it("takes canonical provider ids only, since the binding is identity", () => {
+    expect(() => executionBindingFromInput({ ...bindingInput(MOCK_BINDING), provider: " Mock " as never }, { openAIBaseUrl: null })).toThrow(ExecutionBindingInputError);
+  });
+
+  it("checks the stored binding's rules, not just the input schema", () => {
+    expect(executionBindingInputProblem(bindingInput(SEEDED_BINDING, { outputTokenLimit: null })))
+      .toMatch(/^Invalid execution binding: /);
+    expect(executionBindingInputProblem(bindingInput(MOCK_BINDING, { verdictProtocol: "anthropic.forced-tool/v1" })))
+      .toMatch(/^Invalid execution binding: /);
+    expect(executionBindingInputProblem(bindingInput(SEEDED_BINDING))).toBeNull();
   });
 
   it("parses the input schema, so a hand-built base URL with a query is refused", () => {

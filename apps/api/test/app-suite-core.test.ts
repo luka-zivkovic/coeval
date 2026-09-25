@@ -67,6 +67,10 @@ describe("Rubrist Hono API", () => {
       project: { apiKeyName: "Agent bootstrap" },
       skill: { model: { temperature: 0 } }
     });
+    expect(AgentBootstrapRequestSchema.parse({
+      ...base,
+      skill: { ...base.skill, model: { provider: "anthropic", modelId: "claude-opus-5-5", temperature: null } }
+    }).skill.model.temperature).toBeNull();
     expect(() => AgentBootstrapRequestSchema.parse({
       ...base,
       skill: { ...base.skill, model: { provider: "custom", baseUrl: "https://judge.example/v1" } }

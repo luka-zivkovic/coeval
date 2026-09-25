@@ -87,7 +87,8 @@ export const AgentBootstrapModelInputSchema = z
     // Optional for catalog providers (server pins the first available model)
     // and for mock (the built-in heuristic has one model). Required for custom.
     modelId: z.string().trim().min(1).max(240).optional(),
-    temperature: z.number().min(0).max(2).default(0),
+    // `null` sends no temperature, for models that reject it (ADR-0014).
+    temperature: z.number().min(0).max(2).nullable().default(0),
     baseUrl: HttpUrlSchema.optional()
   })
   .superRefine((model, ctx) => {
