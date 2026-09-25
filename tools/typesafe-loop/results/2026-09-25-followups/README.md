@@ -183,11 +183,11 @@ About $10.
 - **Against Opus.** Sonnet 5 with thinking still trailed default Opus by
   0.11 in accuracy (p = 0.05) and by 0.15 [0.08, 0.23] in AUC.
 
-**What it shows.** On these runs, Opus's tau-bench lead doesn't come from
-reasoning effort: Opus keeps it at low effort, and thinking doesn't give it
-to Sonnet 5. The model is the likelier explanation. This is one sample of
-109 labels from an automated check, so it rules out a large reasoning
-effect, not a small one.
+**What it shows.** Less reasoning didn't cost Opus its lead, and thinking
+didn't detectably help Sonnet 5, so the model, more than its reasoning
+effort, is the likelier explanation. That is as far as 109 labels from an
+automated check go: thinking's effect on Sonnet 5's accuracy has an interval
+from −4 to +11 points, so a moderate reasoning effect isn't excluded.
 
 ## 5. 1,000 new cases, and the cascade out of sample (`extra-report.json`, `cascade-transfer.json`, `cascade-heldout-extra.json`)
 
