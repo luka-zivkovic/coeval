@@ -494,6 +494,7 @@
     "SetJudgeProviderKeyInputSchema",
     "SettingSupportSchema",
     "SetupResponseSchema",
+    "SkillDigestInputSchema",
     "SkillFormatExampleSchema",
     "SkillFormatV1Schema",
     "SkillSchema",

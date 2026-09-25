@@ -221,6 +221,19 @@ export const EvaluatorIdentitySchema = z.object({
 });
 export type EvaluatorIdentity = z.infer<typeof EvaluatorIdentitySchema>;
 
+/**
+ * What evidence carries in place of the definition (ADR-0014 decision 5), and
+ * exactly what skillDigest v2 is computed from: the identity basis, the
+ * SHA-256 of the canonical definition, and the execution binding. It never
+ * holds rubric, prompt, or question text.
+ */
+export const SkillDigestInputSchema = z.object({
+  basis: z.literal(EVALUATOR_IDENTITY_BASIS),
+  definitionDigest: Sha256DigestSchema,
+  executionBinding: ExecutionBindingSchema
+}).strict();
+export type SkillDigestInput = z.infer<typeof SkillDigestInputSchema>;
+
 /** Shared item model for receipt v2, calibration v2, and the ledger v2 (ADR-0014 section 6). */
 export const EvaluatorItemOutcomeSchema = z.enum(["pass", "fail", "abstain"]);
 export type EvaluatorItemOutcome = z.infer<typeof EvaluatorItemOutcomeSchema>;
