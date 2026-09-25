@@ -78,6 +78,17 @@ describe("judge prompt injection boundary", () => {
     expect(buildStructuredJudgeMessages({ promptContent: PROMPT.content, trace, spec: BINARY })).toEqual(messages);
   });
 
+  it("states the binary score's direction in the verdict instructions, not only in the tool schema", () => {
+    const messages = buildStructuredJudgeMessages({ promptContent: PROMPT.content, trace: { id: "t", input: 1, output: 2 }, spec: BINARY });
+    const instructions = messages.system.slice(messages.system.indexOf("<verdict_instructions>"));
+    expect(instructions).toContain("1 = strong pass, 0 = strong fail");
+    expect(instructions).toContain("a fail verdict has a score below 0.5");
+    expect(instructions).not.toContain("confidence-weighted");
+    // The tool schema is read first (the trusted protocol says so), so it must say the same.
+    const score = (buildVerdictToolSchema(BINARY) as { properties: { score: { description: string } } }).properties.score;
+    expect(score.description).toBe("Score in [0,1] for how strongly the trace passes: 1 = strong pass, 0 = strong fail.");
+  });
+
   it("canonicalizes equivalent object insertion orders to identical prompt bytes", () => {
     const left = { z: 1, a: { y: 2, b: 1 }, list: [{ d: 4, c: 3 }] };
     const right = { list: [{ c: 3, d: 4 }], a: { b: 1, y: 2 }, z: 1 };

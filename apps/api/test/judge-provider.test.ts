@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createJudgeProvider, createStrictJudgeProvider, judgeProviderAvailability, JudgeProviderUnavailableError } from "../src/lib/judge-provider.js";
+import { createJudgeProvider, createStrictJudgeProvider, judgeProviderAvailability, JudgeProviderUnavailableError, structuredVerdictToLegacy } from "../src/lib/judge-provider.js";
 
 describe("judge provider registry", () => {
   it("uses modelId as the runtime request target, not catalog-only modelVersion", () => {
@@ -80,5 +80,15 @@ describe("judge provider registry", () => {
         { provider: "custom", modelId: "local-judge", modelVersion: "local-judge", temperature: 0, baseUrl: "https://models.example.test/v1" }
       )
     ).toThrow(JudgeProviderUnavailableError);
+  });
+});
+
+describe("structuredVerdictToLegacy", () => {
+  it("keeps the binary score as P(pass) and reports confidence in the returned label", () => {
+    const verdict = (label: "pass" | "fail" | "ambiguous", score: number) =>
+      structuredVerdictToLegacy({ kind: "binary", label, score, rationale: "r" });
+    expect(verdict("pass", 0.9)).toMatchObject({ label: "pass", score: 0.9, confidence: 0.9 });
+    expect(verdict("fail", 0.1)).toMatchObject({ label: "fail", score: 0.1, confidence: 0.9 });
+    expect(verdict("ambiguous", 0.5)).toMatchObject({ score: 0.5, confidence: 0.5 });
   });
 });
