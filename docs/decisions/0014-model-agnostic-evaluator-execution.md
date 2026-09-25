@@ -16,11 +16,15 @@ Decision owner: Luka Živković (founder).
   - revalidation before sealed runs;
   - one failure taxonomy;
   - the completeness rule;
-  - the rules for moving between versions;
+  - the rules for moving between versions (replaced by decision 6);
   - OpenRouter routing.
 - The founder accepted it on 2026-09-25 and settled its four open
   questions. The last section records the answers. Implementation follows
   Batch 8 in `docs/implementation-batches.md`.
+- Later on 2026-09-25, before any v2 evidence existed, the founder made two
+  more decisions, recorded as decisions 5 and 6:
+  - receipts carry a digest of the definition, not its text;
+  - v2 replaces v1 outright, because Rubrist has no production users.
 
 ## Context
 
@@ -95,7 +99,8 @@ Decision owner: Luka Živković (founder).
 - Dailies vendors the receipt, calibration, and suite-manifest contracts,
   and checks that `receipt.skillDigest` equals `member.skillDigest`.
 - ADR-0001 closes v1: changing a field needs a new contract version and a
-  coordinated compatibility window. ADR-0011 keeps that rule before launch.
+  coordinated compatibility window. ADR-0011 keeps that rule before launch
+  (narrowed by decision 6).
 
 **Providers publish some capability data.**
 
@@ -218,8 +223,17 @@ binding that fails resolution is fixed by creating a new evaluator
 version.
 
 `skillDigest` v2 covers the definition and the execution binding, never the
-resolution record. Two versions with identical definitions and bindings
-therefore have the same digest, whenever they were saved. In every v2
+resolution record:
+
+- the **definition digest** is the SHA-256 of the canonical definition;
+- `skillDigest` v2 is the SHA-256 of the canonical object holding the
+  identity basis (`rubrist/evaluator-identity/v2`), the definition digest,
+  and the execution binding.
+
+Two versions with identical definitions and bindings therefore have the
+same digest, whenever they were saved. Evidence can carry the binding and
+the definition digest, and a verifier can recompute `skillDigest` from them
+without the rubric, prompt, or question text (section 7). In every v2
 contract, an unset value is canonical JSON `null`; it is never omitted.
 
 ### 2. The binding states exactly what is sent
@@ -555,14 +569,17 @@ ADR-0003's questions as follows.
   calibration. Calibration stays a separately addressed artifact
   (ADR-0009). A consumer retrieves it by the evaluator version's immutable
   identity, never by a field the receipt can change.
-- **Compatibility and downgrade.**
-  - v1 receipts stay verifiable, and nothing rewrites them.
-  - Evaluator versions created after rollout have v2 bindings and emit v2
-    receipts.
-  - A v1 evaluator version keeps emitting v1 until it is retired.
-  - A v2 receipt is never down-converted to v1.
-- **Binding.** `requestedModelBinding` is replaced by the v2 evaluator
-  definition and execution binding, and `skillDigest` v2 covers them.
+- **Replacement, not coexistence** (decision 6). v2 replaces v1. Every
+  evaluator version is v2, Rubrist emits only v2 receipts, and nothing
+  converts between versions.
+- **Binding and disclosure** (decision 5). `requestedModelBinding` is
+  replaced by the execution binding and the definition digest. A receipt
+  never carries the rubric, prompt, or question text. A verifier recomputes
+  `skillDigest` v2 from the receipt's binding and definition digest (section
+  1). It needs the definition itself only to check that digest. Rules that
+  need the definition, such as a typed-question definition running only on
+  `typed-question/v1`, are enforced where the full definition is present:
+  at save and at export.
 
 **`rubrist/binary-calibration/v2`** and its private-ledger v2:
 
@@ -573,26 +590,28 @@ ADR-0003's questions as follows.
 
 **`rubrist/evaluator-suite-manifest/v2`** references `skillDigest` v2.
 
-**`skill-format/v2`** carries the v2 binding. A v2 binding is never exported
-as `skill-format/v1`; the export refuses instead.
+**`skill-format/v2`** carries the full definition, the v2 binding, and, for a
+typed-question evaluator, the question text its digest covers, since an
+export exists to move an evaluator. It replaces `skill-format/v1`.
 
-**Moving between versions:**
+**Retiring v1:**
 
-- An evaluator version has exactly one digest version.
-- A v2 receipt links only to a v2 manifest and v2 calibration.
-- The compatibility window ends when Dailies ships v2 verification and
-  Rubrist stops emitting v1.
-- Under ADR-0011's clean-install policy, no stored binding is migrated.
-- If ADR-0011's exit is reached before rollout, existing v1 evaluator
-  versions stay v1 and never get a second digest. Moving one to v2 means a
-  new evaluator version, and ADR-0009's reuse barrier applies to it.
-  - That successor's default binding copies the v1 request:
-    - explicit temperature;
-    - unset `topP` (v1 never sent it);
-    - `anthropic.forced-tool/v1` or `openai.forced-function/v1`;
-    - reasoning `disabled` where the model accepts it, otherwise the
-      model's only mode, stated explicitly;
-    - a token limit of 1,200 for Anthropic, unset for the OpenAI family.
+- Rubrist and Dailies switch to v2 in the same window. After it, no code in
+  either emits or verifies receipt v1, calibration v1 and its private ledger
+  v1, suite-manifest v1, or `skill-format/v1`.
+- On the Dailies side this changes Dailies-owned contracts: its report and
+  configuration versions name `rubrist_receipt_v1` and
+  `rubrist_binary_calibration_v1` evidence kinds, and its historical-report
+  inspection re-verifies embedded v1 receipts. Dailies records that change
+  in its own decision, on the pre-launch basis of its ADR-0007.
+- The v1 contract documents and fixtures stay unchanged in `contracts/` as
+  superseded history. ADR-0011 keeps frozen schemas unchanged, and they
+  cost nothing to keep.
+- Under ADR-0011's clean-install policy, the baseline is edited in place
+  and no stored binding is migrated.
+- This relies on ADR-0011's exit not being reached. If it is reached before
+  Batch 8 ships, decision 6 must be revisited before any v1 support is
+  removed.
 
 ### 8. Rollout
 
@@ -605,7 +624,8 @@ vendored into Dailies and Casefile. It covers:
 - binding validation and persistence;
 - the model picker.
 
-Dailies vendors the v2 contracts before any v2 evidence is published.
+Rubrist and Dailies switch to the v2 contracts in one window, and v1 support
+is removed from both (decision 6).
 
 ## Alternatives considered
 
@@ -624,6 +644,13 @@ Dailies vendors the v2 contracts before any v2 evidence is published.
   can be run.
 - **Treat Jev as an OpenAI-compatible `custom` provider.** Not possible:
   its API takes state and typed questions, not chat messages.
+- **Keep v1 alongside v2 until every v1 evaluator is retired.** Rejected
+  on 2026-09-25 (decision 6): there are no production users and no
+  externally held v1 evidence to keep verifiable.
+- **Embed the full definition in every receipt**, so a verifier needs
+  nothing else to recompute `skillDigest`. Rejected on 2026-09-25 (decision
+  5): it would disclose every evaluator's rubric and prompt to anyone who
+  holds a receipt.
 
 ## Consequences
 
@@ -638,7 +665,10 @@ Dailies vendors the v2 contracts before any v2 evidence is published.
 - Receipts gain a shared failure taxonomy, a completeness rule that matches
   calibration, and a clearly sourced score. #102's uncertainty selection
   can then use a real probability source.
-- Dailies must ship v2 support before Rubrist publishes v2 evidence.
+- Rubrist and Dailies switch to v2 together, and v1 support is removed from
+  both. The frozen v1 documents stay as history.
+- Receipts never disclose rubric, prompt, or question text; they carry its
+  digest.
 - Each capability check costs up to six probe calls, each resolution
   attempt up to three, and each governed-run re-check one to three. All
   are recorded.
@@ -664,3 +694,23 @@ Dailies vendors the v2 contracts before any v2 evidence is published.
    described in section 3.
 4. **Typed-evaluator threshold: required per evaluator**, with no default.
    Section 5 covers this.
+
+## Founder decisions after acceptance (2026-09-25)
+
+5. **Receipt disclosure: a definition digest, not the definition.** The
+   receipt carries the execution binding and the definition digest, and
+   `skillDigest` v2 is computed from them (sections 1 and 7).
+   `skill-format/v2` still carries the full definition. The
+   `skillDigestV2` merged in #125 hashed the whole identity; #127 changes
+   it to this construction before anything uses it.
+6. **No v1/v2 coexistence.** Rubrist has no production users, so v2
+   replaces v1 instead of running beside it (section 7).
+   - This narrowly supersedes the "coordinated compatibility window" of
+     ADR-0001, and the same clause in the frozen
+     `contracts/binary-calibration-v1.md` (made normative by ADR-0009) and
+     `contracts/evaluator-suite-manifest-v1.md`. It applies only to the v1
+     to v2 transition, and only while ADR-0011's exit is not reached.
+   - Dailies' side rests on its own pre-launch decision (section 7).
+   - It doesn't change versioned contract ids, the frozen v1 documents,
+     receipt immutability, or protocol versioning. A change to injected
+     text is still a new protocol version.
