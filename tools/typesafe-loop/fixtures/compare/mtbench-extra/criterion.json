@@ -1,0 +1,12 @@
+{
+  "key": "response_a_better",
+  "title": "Response A is better than response B",
+  "question": "Given the user's turns, is response A the better answer than response B at the judged turn (input.judged_turn; earlier turns are context)?",
+  "passDescription": "Response A is better than response B overall.",
+  "failDescription": "Response B is better than response A overall.",
+  "notes": "Adapted from lmsys/mt_bench_human_judgments (expert pairwise votes, multiple judges per pair). humanLabel is the majority vote; reviewerDisagreement is true when judges were not unanimous (including any tie vote). Comparison sample: the next 500 pairs in the same seed-103 order, disjoint from the 150-pair set.",
+  "mockCues": {
+    "positive": [],
+    "negative": []
+  }
+}

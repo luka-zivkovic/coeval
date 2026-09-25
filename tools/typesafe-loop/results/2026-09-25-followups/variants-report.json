@@ -1,0 +1,4478 @@
+{
+  "generatedAt": "2026-09-25T08:26:42.483Z",
+  "cacheVersion": "v2",
+  "judges": [
+    {
+      "name": "claude-opus-5-5",
+      "transport": "single physical call, no SDK retries, temperature not sent (#120), tool_choice auto instead of the forced verdict tool"
+    },
+    {
+      "name": "claude-opus-5-5@effort-low",
+      "transport": "single physical call, no SDK retries, temperature not sent (#120), tool_choice auto instead of the forced verdict tool, effort low"
+    },
+    {
+      "name": "claude-sonnet-5",
+      "transport": "single physical call, no SDK retries, temperature not sent (#120)"
+    },
+    {
+      "name": "claude-sonnet-5@thinking-adaptive",
+      "transport": "single physical call, no SDK retries, temperature not sent (#120), tool_choice auto instead of the forced verdict tool, thinking adaptive"
+    }
+  ],
+  "sets": [
+    {
+      "set": "taubench",
+      "criterion": {
+        "key": "request_resolved_per_policy",
+        "question": "Did the agent correctly and completely resolve the customer's request while following the retail agent policy (authenticate first, confirm before database changes, no invented information, only permitted actions)?",
+        "notes": "Adapted from tau-bench retail historical trajectories (gpt-4o). humanLabel is the environment reward from a database-state and output check, not a human label. reviewerDisagreement is a PROXY: true when the same task passed in some of its 4 trials and failed in others. Comparison sample: seed 107 sample of one trajectory per task, 109 of the 109 tasks (of 115) that have a trajectory up to 24,000 characters, from tau-bench 59a200c. The label is the environment reward, not a human label."
+      },
+      "cases": 109,
+      "prevalence": 0.578,
+      "summaries": [
+        {
+          "judge": "claude-opus-5-5",
+          "transport": "single physical call, no SDK retries, temperature not sent (#120), tool_choice auto instead of the forced verdict tool",
+          "servedModels": [
+            "claude-opus-5-5"
+          ],
+          "cases": 109,
+          "errors": 0,
+          "abstained": 0,
+          "accuracy": {
+            "k": 81,
+            "n": 109,
+            "rate": 0.743,
+            "wilson95": [
+              0.654,
+              0.816
+            ]
+          },
+          "accuracyCountingAbstentionsAndErrorsWrong": {
+            "k": 81,
+            "n": 109,
+            "rate": 0.743,
+            "wilson95": [
+              0.654,
+              0.816
+            ]
+          },
+          "passRecall": {
+            "k": 41,
+            "n": 63,
+            "rate": 0.651,
+            "wilson95": [
+              0.528,
+              0.757
+            ]
+          },
+          "failRecall": {
+            "k": 40,
+            "n": 46,
+            "rate": 0.87,
+            "wilson95": [
+              0.743,
+              0.939
+            ]
+          },
+          "falsePass": 6,
+          "falseFail": 22,
+          "scoreContradictsLabel": 0,
+          "accuracyWhenReviewersAgree": {
+            "k": 43,
+            "n": 63,
+            "rate": 0.683,
+            "wilson95": [
+              0.56,
+              0.784
+            ]
+          },
+          "accuracyWhenReviewersSplit": {
+            "k": 38,
+            "n": 46,
+            "rate": 0.826,
+            "wilson95": [
+              0.693,
+              0.909
+            ]
+          },
+          "brier": 0.188,
+          "auc": 0.818,
+          "aucIfScoreIsOwnLabelConfidence": 0.451,
+          "ece": 0.135,
+          "softLabel": null,
+          "latencyMs": {
+            "calls": 109,
+            "p50": 8765,
+            "p95": 11503
+          },
+          "meanInputTokens": 7237,
+          "costPer1kUsd": 52.9214,
+          "items": [
+            {
+              "id": "t001",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.35,
+              "ms": 8970,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t002",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 8456,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t003",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.7,
+              "ms": 7685,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t004",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.12,
+              "ms": 7162,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t005",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 6558,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t006",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.7,
+              "ms": 11218,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t007",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 9053,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t008",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.03,
+              "ms": 6040,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t009",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 6378,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t010",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 8092,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t011",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.68,
+              "ms": 10243,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t012",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.72,
+              "ms": 9732,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t013",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 7095,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t014",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.7,
+              "ms": 10119,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t015",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 8702,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t016",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.66,
+              "ms": 8568,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t017",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.08,
+              "ms": 6928,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t018",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.33,
+              "ms": 9702,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t019",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 8872,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t020",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 9031,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t021",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.65,
+              "ms": 9475,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t022",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 6686,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t023",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.72,
+              "ms": 10026,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t024",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 4845,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t025",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.03,
+              "ms": 6956,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t026",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 8158,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t027",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.92,
+              "ms": 7810,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t028",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 7474,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t029",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.73,
+              "ms": 10638,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t030",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.88,
+              "ms": 7707,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t031",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 5691,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t032",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 12078,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t033",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.03,
+              "ms": 9438,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t034",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 7106,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t035",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 9107,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t036",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.66,
+              "ms": 10053,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t037",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 11157,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t038",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.08,
+              "ms": 7231,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t039",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 7343,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t040",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 7273,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t041",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 9702,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t042",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.12,
+              "ms": 7320,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t043",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 7564,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t044",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.66,
+              "ms": 10236,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t045",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 9308,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t046",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 7155,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t047",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 10054,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t048",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 6418,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t049",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 8415,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t050",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 7315,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t051",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 10162,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t052",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 9750,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t053",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 8389,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t054",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 8824,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t055",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.65,
+              "ms": 9810,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t056",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.12,
+              "ms": 11048,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t057",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 7891,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t058",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.7,
+              "ms": 9397,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t059",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.66,
+              "ms": 10998,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t060",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.88,
+              "ms": 6269,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t061",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.12,
+              "ms": 7674,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t062",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 11503,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t063",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 11082,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t064",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 5215,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t065",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 8962,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t066",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 7820,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t067",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 6002,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t068",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 6206,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t069",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.35,
+              "ms": 11903,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t070",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4138,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t071",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.7,
+              "ms": 8179,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t072",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 7504,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t073",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 11070,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t074",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 5864,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t075",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.72,
+              "ms": 8744,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t076",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 11554,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t077",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.72,
+              "ms": 11273,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t078",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.72,
+              "ms": 8765,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t079",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.08,
+              "ms": 10298,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t080",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 6325,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t081",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 11647,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t082",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.35,
+              "ms": 10109,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t083",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.12,
+              "ms": 8928,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t084",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.74,
+              "ms": 9239,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t085",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.08,
+              "ms": 6604,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t086",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.7,
+              "ms": 9221,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t087",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.12,
+              "ms": 8153,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t088",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 9190,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t089",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 8344,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t090",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 8921,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t091",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 7171,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t092",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 7824,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t093",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 10487,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t094",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 8935,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t095",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.88,
+              "ms": 8779,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t096",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 7949,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t097",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 9060,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t098",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.75,
+              "ms": 6862,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t099",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 8026,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t100",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 8699,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t101",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 10754,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t102",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 7872,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t103",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 12687,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t104",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.78,
+              "ms": 9997,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t105",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.75,
+              "ms": 9969,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t106",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 9459,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t107",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.72,
+              "ms": 11220,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t108",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 8642,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t109",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 9328,
+              "cached": true,
+              "error": null
+            }
+          ]
+        },
+        {
+          "judge": "claude-opus-5-5@effort-low",
+          "transport": "single physical call, no SDK retries, temperature not sent (#120), tool_choice auto instead of the forced verdict tool, effort low",
+          "servedModels": [
+            "claude-opus-5-5"
+          ],
+          "cases": 109,
+          "errors": 0,
+          "abstained": 0,
+          "accuracy": {
+            "k": 79,
+            "n": 109,
+            "rate": 0.725,
+            "wilson95": [
+              0.634,
+              0.8
+            ]
+          },
+          "accuracyCountingAbstentionsAndErrorsWrong": {
+            "k": 79,
+            "n": 109,
+            "rate": 0.725,
+            "wilson95": [
+              0.634,
+              0.8
+            ]
+          },
+          "passRecall": {
+            "k": 39,
+            "n": 63,
+            "rate": 0.619,
+            "wilson95": [
+              0.496,
+              0.729
+            ]
+          },
+          "failRecall": {
+            "k": 40,
+            "n": 46,
+            "rate": 0.87,
+            "wilson95": [
+              0.743,
+              0.939
+            ]
+          },
+          "falsePass": 6,
+          "falseFail": 24,
+          "scoreContradictsLabel": 0,
+          "accuracyWhenReviewersAgree": {
+            "k": 42,
+            "n": 63,
+            "rate": 0.667,
+            "wilson95": [
+              0.544,
+              0.771
+            ]
+          },
+          "accuracyWhenReviewersSplit": {
+            "k": 37,
+            "n": 46,
+            "rate": 0.804,
+            "wilson95": [
+              0.668,
+              0.893
+            ]
+          },
+          "brier": 0.207,
+          "auc": 0.783,
+          "aucIfScoreIsOwnLabelConfidence": 0.421,
+          "ece": 0.147,
+          "softLabel": null,
+          "latencyMs": {
+            "calls": 109,
+            "p50": 6181,
+            "p95": 8335
+          },
+          "meanInputTokens": 7237,
+          "costPer1kUsd": 47.5382,
+          "items": [
+            {
+              "id": "t001",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 6099,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t002",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 5220,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t003",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 6961,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t004",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.12,
+              "ms": 6532,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t005",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 5307,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t006",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.72,
+              "ms": 6305,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t007",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 6874,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t008",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.03,
+              "ms": 4644,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t009",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.12,
+              "ms": 5954,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t010",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 5940,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t011",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.7,
+              "ms": 5522,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t012",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.75,
+              "ms": 6579,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t013",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 5156,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t014",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.72,
+              "ms": 6560,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t015",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 6229,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t016",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 5313,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t017",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 3878,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t018",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.35,
+              "ms": 8440,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t019",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 5849,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t020",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.35,
+              "ms": 6181,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t021",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 7107,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t022",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.88,
+              "ms": 3580,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t023",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.7,
+              "ms": 7004,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t024",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 3806,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t025",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 5299,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t026",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.08,
+              "ms": 4212,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t027",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 4382,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t028",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 5263,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t029",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.7,
+              "ms": 9367,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t030",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 5721,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t031",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 6055,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t032",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 7296,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t033",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.02,
+              "ms": 4502,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t034",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 5919,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t035",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 6640,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t036",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.66,
+              "ms": 7191,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t037",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 8263,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t038",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.08,
+              "ms": 5496,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t039",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 5595,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t040",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 4196,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t041",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 6346,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t042",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 3919,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t043",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 3859,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t044",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.78,
+              "ms": 6478,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t045",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.72,
+              "ms": 8024,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t046",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 5131,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t047",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 8025,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t048",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 5215,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t049",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 6928,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t050",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 5704,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t051",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 6965,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t052",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 7577,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t053",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 5234,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t054",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 5736,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t055",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.35,
+              "ms": 9041,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t056",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 7476,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t057",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 4610,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t058",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.4,
+              "ms": 8834,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t059",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 7236,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t060",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 5854,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t061",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 5752,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t062",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.7,
+              "ms": 6024,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t063",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 6994,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t064",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.12,
+              "ms": 5566,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t065",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 6521,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t066",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 7648,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t067",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 5139,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t068",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.08,
+              "ms": 6107,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t069",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.65,
+              "ms": 8849,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t070",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 3725,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t071",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 5902,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t072",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 3961,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t073",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 5976,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t074",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.08,
+              "ms": 3326,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t075",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.7,
+              "ms": 6867,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t076",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 6151,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t077",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.72,
+              "ms": 6825,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t078",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.75,
+              "ms": 6578,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t079",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.08,
+              "ms": 6748,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t080",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 4921,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t081",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 7519,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t082",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.35,
+              "ms": 7950,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t083",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 7660,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t084",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.7,
+              "ms": 7236,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t085",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.08,
+              "ms": 5476,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t086",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.66,
+              "ms": 8335,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t087",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 7645,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t088",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 7412,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t089",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 5936,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t090",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 6214,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t091",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 5505,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t092",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 5950,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t093",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 6926,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t094",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 6380,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t095",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 5322,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t096",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 5932,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t097",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 6728,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t098",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 4312,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t099",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 5964,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t100",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 6957,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t101",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 6189,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t102",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 5865,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t103",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 6690,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t104",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.7,
+              "ms": 7726,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t105",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.75,
+              "ms": 6363,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t106",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.35,
+              "ms": 7044,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t107",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.72,
+              "ms": 7809,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t108",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 7255,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t109",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 6386,
+              "cached": false,
+              "error": null
+            }
+          ]
+        },
+        {
+          "judge": "claude-sonnet-5",
+          "transport": "single physical call, no SDK retries, temperature not sent (#120)",
+          "servedModels": [
+            "claude-sonnet-5"
+          ],
+          "cases": 109,
+          "errors": 0,
+          "abstained": 0,
+          "accuracy": {
+            "k": 65,
+            "n": 109,
+            "rate": 0.596,
+            "wilson95": [
+              0.502,
+              0.684
+            ]
+          },
+          "accuracyCountingAbstentionsAndErrorsWrong": {
+            "k": 65,
+            "n": 109,
+            "rate": 0.596,
+            "wilson95": [
+              0.502,
+              0.684
+            ]
+          },
+          "passRecall": {
+            "k": 45,
+            "n": 63,
+            "rate": 0.714,
+            "wilson95": [
+              0.593,
+              0.811
+            ]
+          },
+          "failRecall": {
+            "k": 20,
+            "n": 46,
+            "rate": 0.435,
+            "wilson95": [
+              0.302,
+              0.578
+            ]
+          },
+          "falsePass": 26,
+          "falseFail": 18,
+          "scoreContradictsLabel": 0,
+          "accuracyWhenReviewersAgree": {
+            "k": 39,
+            "n": 63,
+            "rate": 0.619,
+            "wilson95": [
+              0.496,
+              0.729
+            ]
+          },
+          "accuracyWhenReviewersSplit": {
+            "k": 26,
+            "n": 46,
+            "rate": 0.565,
+            "wilson95": [
+              0.422,
+              0.698
+            ]
+          },
+          "brier": 0.338,
+          "auc": 0.632,
+          "aucIfScoreIsOwnLabelConfidence": 0.548,
+          "ece": 0.326,
+          "softLabel": null,
+          "latencyMs": {
+            "calls": 109,
+            "p50": 5103,
+            "p95": 10441
+          },
+          "meanInputTokens": 7431,
+          "costPer1kUsd": 19.0248,
+          "items": [
+            {
+              "id": "t001",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 3731,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t002",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 5840,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t003",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4178,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t004",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 6271,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t005",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 8922,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t006",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 3737,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t007",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4171,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t008",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 10628,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t009",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 6855,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t010",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 3799,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t011",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4528,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t012",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 6400,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t013",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4077,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t014",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 6352,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t015",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 3971,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t016",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 3187,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t017",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 4835,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t018",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 6743,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t019",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 3463,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t020",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 4346,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t021",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 4546,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t022",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 4483,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t023",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4524,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t024",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.97,
+              "ms": 3733,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t025",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 6310,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t026",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 6301,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t027",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4670,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t028",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 6118,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t029",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.92,
+              "ms": 4960,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t030",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 4454,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t031",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 4908,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t032",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 4720,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t033",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 7462,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t034",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 3373,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t035",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 4061,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t036",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 3440,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t037",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 5851,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t038",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 5161,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t039",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 6949,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t040",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 9432,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t041",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 5458,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t042",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 5287,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t043",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 4174,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t044",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 5980,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t045",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 6147,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t046",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 6405,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t047",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 5954,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t048",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.92,
+              "ms": 4850,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t049",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 5907,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t050",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 5734,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t051",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 6842,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t052",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.92,
+              "ms": 5103,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t053",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 9973,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t054",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 5600,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t055",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 5855,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t056",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 6389,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t057",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.03,
+              "ms": 14343,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t058",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 5533,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t059",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 5046,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t060",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 3878,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t061",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4502,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t062",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.92,
+              "ms": 4067,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t063",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 3779,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t064",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 3897,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t065",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 7404,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t066",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 6361,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t067",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 5082,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t068",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 8023,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t069",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 4306,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t070",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.97,
+              "ms": 3293,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t071",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4148,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t072",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4717,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t073",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 12642,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t074",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 5482,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t075",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 3883,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t076",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 8557,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t077",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 5933,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t078",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 7617,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t079",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 8140,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t080",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4646,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t081",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 10384,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t082",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4317,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t083",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 6809,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t084",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 4519,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t085",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 6019,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t086",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 4621,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t087",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 4916,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t088",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.92,
+              "ms": 4267,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t089",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 4185,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t090",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 5236,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t091",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4143,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t092",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4356,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t093",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4329,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t094",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4311,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t095",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 5495,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t096",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 10471,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t097",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 3649,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t098",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 4163,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t099",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 4508,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t100",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 7446,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t101",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 5772,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t102",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 10441,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t103",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 5253,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t104",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 12528,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t105",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 4331,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t106",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 6122,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t107",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 4922,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t108",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 5234,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t109",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 7087,
+              "cached": true,
+              "error": null
+            }
+          ]
+        },
+        {
+          "judge": "claude-sonnet-5@thinking-adaptive",
+          "transport": "single physical call, no SDK retries, temperature not sent (#120), tool_choice auto instead of the forced verdict tool, thinking adaptive",
+          "servedModels": [
+            "claude-sonnet-5"
+          ],
+          "cases": 109,
+          "errors": 0,
+          "abstained": 0,
+          "accuracy": {
+            "k": 69,
+            "n": 109,
+            "rate": 0.633,
+            "wilson95": [
+              0.539,
+              0.718
+            ]
+          },
+          "accuracyCountingAbstentionsAndErrorsWrong": {
+            "k": 69,
+            "n": 109,
+            "rate": 0.633,
+            "wilson95": [
+              0.539,
+              0.718
+            ]
+          },
+          "passRecall": {
+            "k": 50,
+            "n": 63,
+            "rate": 0.794,
+            "wilson95": [
+              0.678,
+              0.875
+            ]
+          },
+          "failRecall": {
+            "k": 19,
+            "n": 46,
+            "rate": 0.413,
+            "wilson95": [
+              0.283,
+              0.557
+            ]
+          },
+          "falsePass": 27,
+          "falseFail": 13,
+          "scoreContradictsLabel": 0,
+          "accuracyWhenReviewersAgree": {
+            "k": 38,
+            "n": 63,
+            "rate": 0.603,
+            "wilson95": [
+              0.48,
+              0.715
+            ]
+          },
+          "accuracyWhenReviewersSplit": {
+            "k": 31,
+            "n": 46,
+            "rate": 0.674,
+            "wilson95": [
+              0.53,
+              0.791
+            ]
+          },
+          "brier": 0.283,
+          "auc": 0.669,
+          "aucIfScoreIsOwnLabelConfidence": 0.619,
+          "ece": 0.246,
+          "softLabel": null,
+          "latencyMs": {
+            "calls": 109,
+            "p50": 25711,
+            "p95": 72140
+          },
+          "meanInputTokens": 7303,
+          "costPer1kUsd": 43.4062,
+          "items": [
+            {
+              "id": "t001",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 8745,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t002",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 11899,
+              "cached": true,
+              "error": null
+            },
+            {
+              "id": "t003",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 25505,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t004",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.25,
+              "ms": 30874,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t005",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 26790,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t006",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 24650,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t007",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 4830,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t008",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 64639,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t009",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 28819,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t010",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 8729,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t011",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 20263,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t012",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 30938,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t013",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 5527,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t014",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 47247,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t015",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.92,
+              "ms": 32454,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t016",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 5091,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t017",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 19545,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t018",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.78,
+              "ms": 79916,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t019",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.94,
+              "ms": 21362,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t020",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 6815,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t021",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 25517,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t022",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 6526,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t023",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 16589,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t024",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.97,
+              "ms": 5872,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t025",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 52432,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t026",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 22424,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t027",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.97,
+              "ms": 6048,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t028",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 19626,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t029",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 18128,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t030",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 9121,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t031",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.92,
+              "ms": 9226,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t032",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 19023,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t033",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 28560,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t034",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 7135,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t035",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.75,
+              "ms": 23659,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t036",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 6821,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t037",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 63011,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t038",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.05,
+              "ms": 28774,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t039",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 48565,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t040",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 38158,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t041",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 71094,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t042",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 14109,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t043",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.92,
+              "ms": 12872,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t044",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 10283,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t045",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.92,
+              "ms": 30692,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t046",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 36727,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t047",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 60687,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t048",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 25988,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t049",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 37978,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t050",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 65734,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t051",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 14171,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t052",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.83,
+              "ms": 36301,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t053",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.75,
+              "ms": 105409,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t054",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 16387,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t055",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 64260,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t056",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 62195,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t057",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 72140,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t058",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 39281,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t059",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 51269,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t060",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 6738,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t061",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.75,
+              "ms": 79107,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t062",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 14907,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t063",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 33209,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t064",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 10394,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t065",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 103146,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t066",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 57437,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t067",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 17769,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t068",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.1,
+              "ms": 26515,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t069",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.88,
+              "ms": 58291,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t070",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.97,
+              "ms": 3694,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t071",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 15256,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t072",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 6394,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t073",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 67201,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t074",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 21206,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t075",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 6496,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t076",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.82,
+              "ms": 52460,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t077",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 12565,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t078",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.94,
+              "ms": 23733,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t079",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.8,
+              "ms": 36358,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t080",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 11667,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t081",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 58826,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t082",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 6534,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t083",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.15,
+              "ms": 38051,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t084",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.92,
+              "ms": 21166,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t085",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.12,
+              "ms": 36347,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t086",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 37578,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t087",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 52687,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t088",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 26161,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t089",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 44009,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t090",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 38047,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t091",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 5725,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t092",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 7422,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t093",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 21540,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t094",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 45699,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t095",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 29400,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t096",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 58241,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t097",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.94,
+              "ms": 16081,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t098",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.93,
+              "ms": 5941,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t099",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 8726,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t100",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 49956,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t101",
+              "truth": "pass",
+              "label": "fail",
+              "p": 0.3,
+              "ms": 22083,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t102",
+              "truth": "fail",
+              "label": "fail",
+              "p": 0.2,
+              "ms": 86573,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t103",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 25711,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t104",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.88,
+              "ms": 45579,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t105",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.95,
+              "ms": 11709,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t106",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 32358,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t107",
+              "truth": "fail",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 66570,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t108",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.85,
+              "ms": 32646,
+              "cached": false,
+              "error": null
+            },
+            {
+              "id": "t109",
+              "truth": "pass",
+              "label": "pass",
+              "p": 0.9,
+              "ms": 22502,
+              "cached": false,
+              "error": null
+            }
+          ]
+        }
+      ],
+      "comparisons": [
+        {
+          "a": "claude-opus-5-5",
+          "b": "claude-opus-5-5@effort-low",
+          "decisionAgreement": {
+            "k": 105,
+            "n": 109,
+            "rate": 0.963,
+            "wilson95": [
+              0.909,
+              0.986
+            ]
+          },
+          "mcnemar": {
+            "b": 3,
+            "c": 1,
+            "p": 0.625
+          },
+          "accuracyDiff": {
+            "estimate": 0.018,
+            "ci95": [
+              -0.018,
+              0.055
+            ]
+          },
+          "aucDiff": {
+            "estimate": 0.034,
+            "ci95": [
+              0.006,
+              0.066
+            ]
+          }
+        },
+        {
+          "a": "claude-opus-5-5",
+          "b": "claude-sonnet-5",
+          "decisionAgreement": {
+            "k": 73,
+            "n": 109,
+            "rate": 0.67,
+            "wilson95": [
+              0.577,
+              0.751
+            ]
+          },
+          "mcnemar": {
+            "b": 26,
+            "c": 10,
+            "p": 0.0113
+          },
+          "accuracyDiff": {
+            "estimate": 0.147,
+            "ci95": [
+              0.046,
+              0.248
+            ]
+          },
+          "aucDiff": {
+            "estimate": 0.186,
+            "ci95": [
+              0.092,
+              0.286
+            ]
+          }
+        },
+        {
+          "a": "claude-opus-5-5",
+          "b": "claude-sonnet-5@thinking-adaptive",
+          "decisionAgreement": {
+            "k": 77,
+            "n": 109,
+            "rate": 0.706,
+            "wilson95": [
+              0.615,
+              0.784
+            ]
+          },
+          "mcnemar": {
+            "b": 22,
+            "c": 10,
+            "p": 0.0501
+          },
+          "accuracyDiff": {
+            "estimate": 0.11,
+            "ci95": [
+              0.018,
+              0.211
+            ]
+          },
+          "aucDiff": {
+            "estimate": 0.149,
+            "ci95": [
+              0.076,
+              0.227
+            ]
+          }
+        },
+        {
+          "a": "claude-opus-5-5@effort-low",
+          "b": "claude-sonnet-5",
+          "decisionAgreement": {
+            "k": 75,
+            "n": 109,
+            "rate": 0.688,
+            "wilson95": [
+              0.596,
+              0.767
+            ]
+          },
+          "mcnemar": {
+            "b": 24,
+            "c": 10,
+            "p": 0.0243
+          },
+          "accuracyDiff": {
+            "estimate": 0.128,
+            "ci95": [
+              0.028,
+              0.229
+            ]
+          },
+          "aucDiff": {
+            "estimate": 0.152,
+            "ci95": [
+              0.058,
+              0.253
+            ]
+          }
+        },
+        {
+          "a": "claude-opus-5-5@effort-low",
+          "b": "claude-sonnet-5@thinking-adaptive",
+          "decisionAgreement": {
+            "k": 75,
+            "n": 109,
+            "rate": 0.688,
+            "wilson95": [
+              0.596,
+              0.767
+            ]
+          },
+          "mcnemar": {
+            "b": 22,
+            "c": 12,
+            "p": 0.1214
+          },
+          "accuracyDiff": {
+            "estimate": 0.092,
+            "ci95": [
+              -0.009,
+              0.193
+            ]
+          },
+          "aucDiff": {
+            "estimate": 0.114,
+            "ci95": [
+              0.042,
+              0.193
+            ]
+          }
+        },
+        {
+          "a": "claude-sonnet-5",
+          "b": "claude-sonnet-5@thinking-adaptive",
+          "decisionAgreement": {
+            "k": 91,
+            "n": 109,
+            "rate": 0.835,
+            "wilson95": [
+              0.754,
+              0.893
+            ]
+          },
+          "mcnemar": {
+            "b": 7,
+            "c": 11,
+            "p": 0.4807
+          },
+          "accuracyDiff": {
+            "estimate": -0.037,
+            "ci95": [
+              -0.11,
+              0.037
+            ]
+          },
+          "aucDiff": {
+            "estimate": -0.037,
+            "ci95": [
+              -0.126,
+              0.045
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

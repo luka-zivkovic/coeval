@@ -23,6 +23,9 @@
 //   claude-…@thinking-adaptive send thinking {type: "adaptive"} with
 //                              tool_choice auto, since a forced tool can't
 //                              follow thinking
+//   claude-…@effort-low        send output_config {effort: "low"}; Opus 5.5
+//                              can't disable thinking, so this is its
+//                              least-reasoning setting
 //
 //   node --env-file=.env tools/typesafe-loop/compare.mjs \
 //     --judges jev-1.13.0,claude-haiku-4-5-20251001,claude-sonnet-4-6 [--limit 20]
@@ -113,7 +116,7 @@ function jevJudge(model, variant) {
 }
 
 function claudeJudge(model, variant) {
-  if (variant && !["thinking-disabled", "thinking-adaptive"].includes(variant)) throw new Error(`unknown Claude variant ${variant}`);
+  if (variant && !["thinking-disabled", "thinking-adaptive", "effort-low"].includes(variant)) throw new Error(`unknown Claude variant ${variant}`);
   const omitTemperature = noTemperature.has(model);
   const autoTool = autoToolChoice.has(model) || variant === "thinking-adaptive";
   const thinking = variant === "thinking-disabled" ? { type: "disabled" } : variant === "thinking-adaptive" ? { type: "adaptive" } : null;
@@ -123,7 +126,8 @@ function claudeJudge(model, variant) {
       ...rest,
       ...(omitTemperature ? {} : { temperature }),
       ...(autoTool ? { tool_choice: { type: "auto" } } : {}),
-      ...(thinking ? { thinking, max_tokens: Math.max(rest.max_tokens, 16_000) } : {})
+      ...(thinking ? { thinking, max_tokens: Math.max(rest.max_tokens, 16_000) } : {}),
+      ...(variant === "effort-low" ? { output_config: { effort: "low" } } : {})
     };
   };
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0 });
@@ -150,7 +154,8 @@ function claudeJudge(model, variant) {
       "single physical call, no SDK retries",
       omitTemperature ? "temperature not sent (#120)" : "temperature 0",
       ...(autoTool ? ["tool_choice auto instead of the forced verdict tool"] : []),
-      ...(thinking ? [`thinking ${thinking.type}`] : [])
+      ...(thinking ? [`thinking ${thinking.type}`] : []),
+      ...(variant === "effort-low" ? ["effort low"] : [])
     ].join(", "),
     /** The exact Messages request Rubrist's provider builds, captured without sending it. */
     async requestKey(criterion, testCase) {

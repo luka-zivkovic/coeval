@@ -15,6 +15,9 @@ import path from "node:path";
 import { chaosMnliCounts, fixturesRoot, huggingFaceRows, rawRoot, seededShuffle, writeFixture } from "./common.mjs";
 
 const SIZES = { chaosmnli: 200, mtbench: 150, taubench: 115 };
+// Held-out extensions for the cascade follow-up: the next cases in the same
+// seeded order, so they never overlap the sets above.
+const EXTRA = { chaosmnli: 500, mtbench: 500 };
 // The tau-bench commit the committed sample was drawn from.
 const TAU_BENCH_COMMIT = "59a200c6d575d595120f1cb70fea53cef0632f6b";
 const id = (prefix, i) => `${prefix}${String(i + 1).padStart(3, "0")}`;
@@ -28,9 +31,9 @@ async function chaosMnli() {
   const rows = await huggingFaceRows({ dataset: "tasksource/chaos-mnli-ambiguity", split: "train", rawDir: path.join(rawRoot, "chaosmnli") });
   const share = (r) => { const c = chaosMnliCounts(r); const total = (c.e ?? 0) + (c.n ?? 0) + (c.c ?? 0); return total ? (c.e ?? 0) / total : 0; };
   const eligible = rows.filter((r) => r.premise.length <= 600);
-  const chosen = seededShuffle(101)(eligible).slice(0, SIZES.chaosmnli);
-  const cases = chosen.map((r, i) => ({
-    id: id("n", i),
+  const shuffled = seededShuffle(101)(eligible);
+  const toCase = (r, i, prefix) => ({
+    id: id(prefix, i),
     input: { premise: r.premise },
     output: { hypothesis: r.hypothesis },
     steps: [],
@@ -38,9 +41,12 @@ async function chaosMnli() {
     reviewerDisagreement: share(r) > 0.3 && share(r) < 0.7,
     softLabel: share(r),
     note: `uid ${r.uid}; counts ${JSON.stringify(chaosMnliCounts(r))}`
-  }));
+  });
+  const cases = shuffled.slice(0, SIZES.chaosmnli).map((r, i) => toCase(r, i, "n"));
+  const extra = shuffled.slice(SIZES.chaosmnli, SIZES.chaosmnli + EXTRA.chaosmnli).map((r, i) => toCase(r, i, "nx"));
   const criterion = await criterionFor("chaosmnli", `seed 101 simple random sample of ${cases.length} of ${eligible.length} items with premises up to 600 characters.`);
-  return { name: "chaosmnli", criterion, cases, source: rows.length };
+  const extraCriterion = await criterionFor("chaosmnli", `the next ${extra.length} items in the same seed-101 order, disjoint from the 200-case set.`);
+  return { name: "chaosmnli", criterion, cases, source: rows.length, extra: { criterion: extraCriterion, cases: extra } };
 }
 
 async function mtBench() {
@@ -63,24 +69,28 @@ async function mtBench() {
     if (JSON.stringify(conv).length + JSON.stringify(convB).length > 9000) continue;
     eligible.push({ g, majority, tally, conv, convB });
   }
-  const chosen = seededShuffle(103)(eligible).slice(0, SIZES.mtbench);
+  const shuffled = seededShuffle(103)(eligible);
+  const chosen = shuffled.slice(0, SIZES.mtbench);
   const userTurns = (conv) => conv.filter((m) => m.role === "user").map((m) => m.content);
   const assistantTurns = (conv) => conv.filter((m) => m.role === "assistant").map((m) => m.content);
-  const cases = chosen.map((c, i) => ({
-    id: id("m", i),
+  const toCase = (c, i, prefix) => ({
+    id: id(prefix, i),
     input: { user_turns: userTurns(c.conv), judged_turn: c.g.turn },
     output: { response_a: assistantTurns(c.conv), response_b: assistantTurns(c.convB) },
     steps: [],
     humanLabel: c.majority === "model_a" ? "pass" : "fail",
     reviewerDisagreement: new Set(c.g.votes).size > 1,
     note: `q${c.g.question_id} turn ${c.g.turn} ${c.g.model_a} vs ${c.g.model_b}; votes a=${c.tally.model_a} b=${c.tally.model_b} tie=${c.tally.tie}`
-  }));
+  });
+  const cases = chosen.map((c, i) => toCase(c, i, "m"));
+  const extra = shuffled.slice(SIZES.mtbench, SIZES.mtbench + EXTRA.mtbench).map((c, i) => toCase(c, i, "mx"));
   const base = await criterionFor("mtbench", `seed 103 simple random sample of ${cases.length} of ${eligible.length} judged pairs with a strict majority and under 9,000 characters (of ${groups.size}).`);
   const criterion = {
     ...base,
     question: "Given the user's turns, is response A the better answer than response B at the judged turn (input.judged_turn; earlier turns are context)?"
   };
-  return { name: "mtbench", criterion, cases, source: groups.size };
+  const extraCriterion = { ...criterion, notes: `${base.notes.split(" Comparison sample:")[0]} Comparison sample: the next ${extra.length} pairs in the same seed-103 order, disjoint from the 150-pair set.` };
+  return { name: "mtbench", criterion, cases, source: groups.size, extra: { criterion: extraCriterion, cases: extra } };
 }
 
 async function tauBench() {
@@ -155,8 +165,10 @@ function swapped({ name, criterion, cases, source }) {
   };
 }
 
-const sets = [await chaosMnli(), await mtBench(), await tauBench()];
-sets.splice(2, 0, swapped(sets[1]));
+const [chaos, mt, tau] = [await chaosMnli(), await mtBench(), await tauBench()];
+const sets = [chaos, mt, swapped(mt), tau,
+  { name: "chaosmnli-extra", ...chaos.extra, source: chaos.source },
+  { name: "mtbench-extra", ...mt.extra, source: mt.source }];
 for (const { name, criterion, cases, source } of sets) {
   const dir = await writeFixture(path.join("compare", name), { criterion, cases, pairs: [] });
   const pass = cases.filter((c) => c.humanLabel === "pass").length;

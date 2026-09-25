@@ -1,0 +1,99 @@
+{
+  "report": "out/typesafe-loop/compare/extra/report.json",
+  "trainReport": "out/typesafe-loop/compare/post121/report.json",
+  "cheap": "jev-1.13.0",
+  "strong": "claude-opus-5-5",
+  "seed": null,
+  "results": [
+    {
+      "set": "chaosmnli-extra",
+      "trainedOn": "chaosmnli",
+      "cases": 500,
+      "bandsChosen": [
+        0.3
+      ],
+      "cheapOnly": {
+        "accuracy": {
+          "k": 382,
+          "n": 500,
+          "rate": 0.764,
+          "wilson95": [
+            0.725,
+            0.799
+          ]
+        },
+        "costPer1kUsd": 0.0167
+      },
+      "strongOnly": {
+        "accuracy": {
+          "k": 371,
+          "n": 500,
+          "rate": 0.742,
+          "wilson95": [
+            0.702,
+            0.778
+          ]
+        },
+        "costPer1kUsd": 13.5661
+      },
+      "cascadeHeldOut": {
+        "accuracy": {
+          "k": 374,
+          "n": 500,
+          "rate": 0.748,
+          "wilson95": [
+            0.708,
+            0.784
+          ]
+        },
+        "escalatedShare": 0.324,
+        "costPer1kUsd": 4.412
+      }
+    },
+    {
+      "set": "mtbench-extra",
+      "trainedOn": "mtbench",
+      "cases": 493,
+      "bandsChosen": [
+        0.05
+      ],
+      "cheapOnly": {
+        "accuracy": {
+          "k": 417,
+          "n": 493,
+          "rate": 0.846,
+          "wilson95": [
+            0.811,
+            0.875
+          ]
+        },
+        "costPer1kUsd": 0.045
+      },
+      "strongOnly": {
+        "accuracy": {
+          "k": 433,
+          "n": 493,
+          "rate": 0.878,
+          "wilson95": [
+            0.846,
+            0.904
+          ]
+        },
+        "costPer1kUsd": 20.6237
+      },
+      "cascadeHeldOut": {
+        "accuracy": {
+          "k": 420,
+          "n": 493,
+          "rate": 0.852,
+          "wilson95": [
+            0.818,
+            0.881
+          ]
+        },
+        "escalatedShare": 0.034,
+        "costPer1kUsd": 0.756
+      }
+    }
+  ]
+}
