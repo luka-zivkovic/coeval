@@ -219,8 +219,8 @@ version.
 
 `skillDigest` v2 covers the definition and the execution binding, never the
 resolution record. Two versions with identical definitions and bindings
-therefore have the same digest, whenever they were saved. In every v2 contract, an unset value is
-canonical JSON `null`; it is never omitted.
+therefore have the same digest, whenever they were saved. In every v2
+contract, an unset value is canonical JSON `null`; it is never omitted.
 
 ### 2. The binding states exactly what is sent
 
@@ -234,8 +234,9 @@ canonical JSON `null`; it is never omitted.
     `temperature` parameter itself when sent with the saved reasoning, or
     where the family takes no sampling settings (`typesafe`, `mock`). A
     rejected value, such as a model that accepts only temperature 1, still
-    requires an explicit value. Otherwise a provider could change its default under a
-    pinned model id, and "unset" evidence couldn't tell those runs apart.
+    requires an explicit value. Otherwise a provider could change its
+    default under a pinned model id, and "unset" evidence couldn't tell
+    those runs apart.
   - `topP` may stay unset at the gates. Some models reject `temperature`
     and `top_p` together.
   - Authoring may leave either unset.
@@ -304,8 +305,8 @@ canonical JSON `null`; it is never omitted.
     - an output token limit of 1,200.
 
     It is saved `unresolved`, because projects are seeded before any key
-    exists, and it resolves the first time a governed gate needs it
-    (section 4).
+    exists, and it resolves when a governed gate or run first needs it, or
+    on demand (section 4).
   - Observed reasoning is recorded as observed provenance, next to the
     observed model identity: whether thinking blocks came back, and the
     reasoning token count where the provider reports it.
@@ -408,15 +409,17 @@ credential exists, the model picker runs a capability check.
 mechanism (tool choice, response format) moves on to the next protocol. A
 rejection that names a parameter marks the parameter rejected outright; one
 that names only a value marks that value rejected. Neither moves the
-protocol down. A rejection Rubrist can't attribute counts as a value
-rejection, so it never lets a setting go unset.
+protocol down. On a temperature or reasoning probe, a rejection Rubrist
+can't attribute counts as a value rejection, so it never lets a setting go
+unset. A protocol probe sends no optional settings, so its unattributed
+rejection moves on to the next protocol.
 
 **Resolution (after save).** When the author saves, the check's outcomes
 become the binding's resolution record. Resolution then sends one confirming
 probe with the exact saved request. Where temperature is unset and no
-temperature probe was sent with the saved reasoning, it also sends one, so
-at most 2 calls. Resolution never changes the binding, and every identity
-field, including the protocol, is the author's saved value.
+temperature probe with the saved reasoning has a recorded outcome, it also
+sends one, so at most 2 calls. Resolution never changes the binding, and
+every identity field, including the protocol, is the author's saved value.
 
 **Unresolved bindings.** Where no check can run, the picker shows the
 provider family's fields, the table default, and the family's deterministic
@@ -427,9 +430,10 @@ protocol from section 3. Examples:
 
 The binding is saved `unresolved`, and resolution runs automatically the
 first time a governed gate or governed run needs it, or on demand. At that
-point it sends the confirming probe, plus a temperature probe with the saved
-reasoning where temperature is unset, and a reasoning probe (the documented
-default, or a middle value) where reasoning is unset, at most 3 calls. That
+point it sends the confirming probe. Where the family has the setting and
+the binding leaves it unset, it also sends a temperature probe with the
+saved reasoning and a reasoning probe (the documented default, or a middle
+value), so at most 3 calls. That
 gives the gate rules in section 2 a recorded answer.
 
 **Which outcomes fail a binding.** Only the confirming probe can set
@@ -438,23 +442,28 @@ gives the gate rules in section 2 a recorded answer.
 (`provider_protocol`). Authentication, rate-limit, timeout, transport,
 availability, and invalid-output errors leave the binding `unresolved`: the
 gate or run doesn't proceed, and resolution runs again the next time it's
-needed. The record keeps the latest resolution attempt's probes, so an
-attempt that ended `unresolved` is replaced by the next one.
+needed. The record keeps the latest resolution attempt's probes, which the
+status and gates read. An earlier attempt that ended `unresolved` is
+recorded, with its probes and cost, against the gate, run, or request that
+triggered it, as the re-check is.
 
 **Where resolution is required.** Drafts and authoring may use unresolved
 bindings. Candidate creation, activation, and sealed calibration require
 `resolved`. A binding that fails resolution is fixed only by a new evaluator
-version. The failure carries the provider's message and a suggestion, such
-as "leave temperature unset".
+version. The failure carries the provider's message and a suggestion that
+depends on what was rejected: "leave temperature unset" only where the
+parameter itself was rejected, and "choose another value" where only a value
+was.
 
 **The resolution record** holds the fields listed in section 1. It records
 the credential source because capabilities can differ per key.
 
 **Re-check before governed runs.** Before a sealed calibration is
 authorized, which happens before its exposure event, and before any
-governed run starts, Rubrist repeats the confirming probe. Where temperature
-is unset, it also repeats the temperature probe with the saved reasoning,
-and where reasoning is unset, the reasoning probe, so one to three calls. A
+governed run starts, Rubrist repeats the confirming probe. Where the family
+has the setting and the binding leaves it unset, it also repeats the
+temperature probe with the saved reasoning or the reasoning probe, so one to
+three calls. A
 provider that starts accepting an unset setting would otherwise apply its
 own default unseen. It uses the probe input and never sealed data. If the
 resolution no longer holds, the run doesn't start and no sealed item is
@@ -630,8 +639,13 @@ Dailies vendors the v2 contracts before any v2 evidence is published.
   calibration, and a clearly sourced score. #102's uncertainty selection
   can then use a real probability source.
 - Dailies must ship v2 support before Rubrist publishes v2 evidence.
-- Each capability check costs up to six probe calls, resolution up to
-  three, and each governed-run re-check one to three. All are recorded.
+- Each capability check costs up to six probe calls, each resolution
+  attempt up to three, and each governed-run re-check one to three. All
+  are recorded.
+- A provider that rejects the temperature or reasoning parameter with an
+  error Rubrist can't attribute can't be governed on that setting: unset is
+  refused at the gate, and every explicit value fails resolution. Better
+  attribution for that provider is the fix, never a looser gate.
 
 ## Founder decisions on the open questions (2026-09-25)
 
