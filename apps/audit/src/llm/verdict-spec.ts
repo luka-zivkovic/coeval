@@ -223,6 +223,18 @@ export function buildVerdictToolSchema(spec: VerdictSpec, stepCount = 0): JsonSc
   };
 }
 
+// A model-supplied value quoted in a note or an error: bounded, and safe for
+// values whose own toString or valueOf would throw.
+function describeModelValue(value: unknown): string {
+  let text: string;
+  try {
+    text = typeof value === "string" ? value : JSON.stringify(value) ?? String(value);
+  } catch {
+    text = Object.prototype.toString.call(value);
+  }
+  return text.length > 80 ? `${text.slice(0, 80)}…` : text;
+}
+
 // Validate + normalize a raw tool-call result into a StructuredVerdict. Throws
 // (loudly) on drift — the tool schema enforces shape server-side, this is
 // defense in depth and the seam where range/choiceScores get reattached.
@@ -237,10 +249,10 @@ export function parseStructuredVerdict(spec: VerdictSpec, raw: unknown, stepCoun
     const candidate = r.failingStep;
     if (candidate === undefined || candidate === null) return {};
     if (stepCount <= 0) {
-      return { note: `judge named failing step ${String(candidate)} but the case has no supplied steps — dropped` };
+      return { note: `judge named failing step ${describeModelValue(candidate)} but the case has no supplied steps — dropped` };
     }
     if (typeof candidate !== "number" || !Number.isInteger(candidate) || candidate < 0 || candidate >= stepCount) {
-      return { note: `judge named failing step ${String(candidate)}, outside the supplied 0..${stepCount - 1} step range — dropped` };
+      return { note: `judge named failing step ${describeModelValue(candidate)}, outside the supplied 0..${stepCount - 1} step range — dropped` };
     }
     if (label !== "fail") {
       const article = label === "ambiguous" ? "an" : "a";
@@ -268,8 +280,9 @@ export function parseStructuredVerdict(spec: VerdictSpec, raw: unknown, stepCoun
   }
   if (spec.verdictKind === "categorical") {
     const choiceScores = spec.categoricalChoiceScores ?? {};
-    if (typeof r.choice !== "string" || !(r.choice in choiceScores)) {
-      throw new Error(`Categorical verdict choice "${String(r.choice)}" is not one of: ${Object.keys(choiceScores).join(", ")}.`);
+    // Own keys only: a choice such as "constructor" must not match through the prototype.
+    if (typeof r.choice !== "string" || !Object.hasOwn(choiceScores, r.choice)) {
+      throw new Error(`Categorical verdict choice "${describeModelValue(r.choice)}" is not one of: ${Object.keys(choiceScores).join(", ")}.`);
     }
     const step = extractFailingStep("fail");
     return StructuredVerdictSchema.parse({
@@ -283,7 +296,7 @@ export function parseStructuredVerdict(spec: VerdictSpec, raw: unknown, stepCoun
   // Strict: don't infer classification from score or coerce an arbitrary
   // value. The provider-enforced enum and this defensive parse must agree.
   if (r.label !== "pass" && r.label !== "fail" && r.label !== "ambiguous") {
-    throw new Error(`Binary verdict "label" must be pass, fail, or ambiguous, got ${String(r.label)}.`);
+    throw new Error(`Binary verdict "label" must be pass, fail, or ambiguous, got ${describeModelValue(r.label)}.`);
   }
   const step = extractFailingStep(r.label);
   return StructuredVerdictSchema.parse({

@@ -34,7 +34,7 @@ export const demoSkill: Skill = {
     status: "production",
     rubricMarkdown: "# Support Answer Quality\n\nPass useful, correct, grounded answers. Fail incorrect, unsafe, or unhelpful answers. Mark missing context ambiguous.",
     prompt:
-      "Judge support answer quality against the review guide below. Submit exactly one verdict using the provided structured verdict tool.\n\n<review_guide>\n{{rubric_markdown}}\n</review_guide>",
+      "Judge support answer quality against the review guide below.\n\n<review_guide>\n{{rubric_markdown}}\n</review_guide>",
     modelBinding: {
       provider: "anthropic",
       modelId: "claude-sonnet-4-6",

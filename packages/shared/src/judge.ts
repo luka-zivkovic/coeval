@@ -209,7 +209,7 @@ export const JsonSchemaSchema = z.record(z.string(), z.unknown());
 export type JsonSchema = z.infer<typeof JsonSchemaSchema>;
 
 // The immutable output contract stored with a version must describe the
-// verdict tool that the runtime actually asks the provider to complete. The
+// verdict shape the runtime actually asks the provider for. The
 // legacy MinimumVerdictOutputSchema remains available for historical imports;
 // new guided Checks use this kind-aware contract instead of copying the
 // seeded binary schema into categorical or scalar versions.
@@ -264,7 +264,7 @@ export function verdictOutputSchema(input: {
 }
 
 // The one template variable a compiled prompt may reference. The trace itself
-// is injected separately by the judge message builder (<trace_to_judge>), so
+// is injected separately by the verdict protocol's user message, so
 // prompts must not carry their own trace placeholders.
 export const RUBRIC_TEMPLATE_VARIABLE = "{{rubric_markdown}}";
 
@@ -287,7 +287,7 @@ export function promptReferencesRubric(prompt: string): boolean {
 // Compile the stored prompt template into judge-facing instructions and report
 // anything the editor should surface. Unknown variables deliberately remain
 // literal: {{rubric_markdown}} is the only supported variable, while the trace
-// and verdict schema are injected separately by the judge message builder.
+// and verdict schema are injected separately by the verdict protocol.
 export function compileJudgePrompt(input: { rubricMarkdown: string; prompt: string }): CompiledJudgePrompt {
   const referencesRubric = promptReferencesRubric(input.prompt);
   const diagnostics: JudgePromptDiagnostic[] = [];
@@ -330,5 +330,5 @@ export const STARTER_RUBRIC_MARKER = "Define pass, fail, and ambiguous criteria 
 // agent-skill run" for agent bootstrap). Single-sourced so the seed and the
 // bootstrap default can't diverge.
 export function defaultJudgePromptTemplate(subject: string): string {
-  return `Judge the ${subject} against the review guide below. Submit exactly one verdict using the provided structured verdict tool.\n\n<review_guide>\n${RUBRIC_TEMPLATE_VARIABLE}\n</review_guide>`;
+  return `Judge the ${subject} against the review guide below.\n\n<review_guide>\n${RUBRIC_TEMPLATE_VARIABLE}\n</review_guide>`;
 }
