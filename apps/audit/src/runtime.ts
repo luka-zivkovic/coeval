@@ -32,3 +32,14 @@ export type {
   VerdictProtocolRequest,
   VerdictResponse
 } from "./protocols/verdict-protocols.js";
+export {
+  MANAGED_BASE_URLS,
+  assertPromptedBinding,
+  endpointBaseUrlDigest,
+  resolveEndpointBaseUrl
+} from "./execution/binding.js";
+export type { ExecutionBinding, PromptedExecutionBinding, ReasoningSettings } from "./execution/binding.js";
+export { EvaluatorCallError, failureKindForStatus } from "./execution/failure.js";
+export type { EvaluatorFailureKind, ObservedProvenance, ProviderErrorDetail } from "./execution/failure.js";
+export { buildVerdictHttpRequest, executeVerdict } from "./execution/execute.js";
+export type { ExecutionFetch, VerdictExecutionInput, VerdictExecutionResult, VerdictHttpRequest } from "./execution/execute.js";
