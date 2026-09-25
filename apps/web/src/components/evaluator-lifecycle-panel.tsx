@@ -15,6 +15,7 @@ import {
   retireEvaluator
 } from "@/lib/evaluator-lifecycle-api";
 import type { GovernedBatchSummary } from "@/lib/governed-review-api";
+import { executionBindingInputFromFields } from "../lib/execution-binding-draft.js";
 
 export function EvaluatorLifecyclePanel({
   criterionId,
@@ -75,7 +76,7 @@ export function EvaluatorLifecyclePanel({
         expectedTruthRevisionDigest:truth.revisionDigest,
         expectedTruthContentDigest:truth.contentDigest,
         skillName,skillDescription,rubricMarkdown:rubric,prompt,
-        modelBinding:{provider:"openai",modelId,modelVersion:"pinned-by-provider-catalog",temperature:0},
+        executionBinding:candidateBinding(modelId),
         outputSchema:MinimumVerdictOutputSchema,
         idempotencyKey:candidateKey
       });
@@ -192,4 +193,14 @@ export function EvaluatorLifecyclePanel({
 
 function message(cause:unknown):string {
   return cause instanceof Error ? cause.message : "Evaluator lifecycle request failed";
+}
+
+// A candidate's binding: OpenAI with the family defaults (ADR-0014 section 3).
+function candidateBinding(modelId: string) {
+  const binding = executionBindingInputFromFields(
+    { provider: "openai", modelId, modelVersion: "pinned-by-provider-catalog", baseUrl: "", temperature: "0" },
+    null
+  );
+  if (binding === null) throw new Error("Choose a model id for the candidate evaluator.");
+  return binding;
 }

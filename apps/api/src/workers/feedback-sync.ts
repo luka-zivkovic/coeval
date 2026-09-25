@@ -96,7 +96,7 @@ export async function processFeedbackSyncJob(
         skillVersionId: context.judgeRun.skillVersionId,
         criterionKey: context.criterionStableKey,
         sourceTraceVersion: context.sourceTraceVersion,
-        modelBinding: context.judgeRun.modelBinding,
+        executionBinding: context.judgeRun.executionBinding,
         judgeRunId: context.judgeRun.id,
         provider: "rubrist"
       }

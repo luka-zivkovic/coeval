@@ -1,9 +1,9 @@
 import { z } from "zod";
+import { ExecutionBindingSchema } from "./evaluator-execution.js";
 import {
   JsonSchemaSchema,
   RubricProvenanceSchema,
   SkillStatusSchema,
-  StoredModelBindingSchema,
   VerdictKindSchema
 } from "./judge.js";
 
@@ -16,7 +16,11 @@ export const SkillVersionSchema = z
     status: SkillStatusSchema,
     rubricMarkdown: z.string(),
     prompt: z.string(),
-    modelBinding: StoredModelBindingSchema,
+    // Identity (ADR-0014 section 1): exactly what every call sends.
+    executionBinding: ExecutionBindingSchema,
+    // A custom provider's configured base URL, which the binding names only by
+    // digest. Not identity; null for every other binding.
+    customEndpointUrl: z.string().nullable(),
     outputSchema: JsonSchemaSchema,
     goldenSetAgreement: z.number().min(0).max(1).nullable(),
     tooStrictCount: z.number().int().nonnegative(),
@@ -51,7 +55,10 @@ export const SkillVersionSchema = z
     { message: "categorical skill versions require a non-empty categoricalChoiceScores map" }
   )
   .refine((v) => v.verdictKind === "scalar" || v.scalarRange === null, { message: "scalarRange is only valid for scalar kinds" })
-  .refine((v) => v.verdictKind === "categorical" || v.categoricalChoiceScores === null, { message: "categoricalChoiceScores is only valid for categorical kinds" });
+  .refine((v) => v.verdictKind === "categorical" || v.categoricalChoiceScores === null, { message: "categoricalChoiceScores is only valid for categorical kinds" })
+  .refine((v) => (v.executionBinding.provider === "custom") === (v.customEndpointUrl !== null), {
+    message: "custom bindings keep their endpoint URL, and only they do"
+  });
 export type SkillVersion = z.infer<typeof SkillVersionSchema>;
 
 export const SkillSchema = z.object({

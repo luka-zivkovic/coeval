@@ -72,10 +72,10 @@ async function seedCurrentCriteriaSuite(client: PoolClient): Promise<void> {
     await client.query(`
       insert into skill_versions
         (id, skill_id, project_id, version, status, rubric_markdown, prompt,
-         output_schema, model_binding, verdict_kind, rubric_provenance, criterion_version_id, created_at)
+         output_schema, execution_binding, verdict_kind, rubric_provenance, criterion_version_id, created_at)
       values ($1, 'skill_legacy', 'proj_batch3', $2, 'approved', '# Correct', 'Judge.',
               '{"type":"object"}',
-              '{"provider":"mock","modelId":"mock","modelVersion":"1","temperature":0}',
+              '{"provider":"mock","endpoint":{"kind":"managed"},"modelId":"mock-heuristic-v1","modelVersion":"mock-heuristic-v1","sampling":{"temperature":null,"topP":null},"reasoning":null,"outputTokenLimit":null,"verdictProtocol":"mock/v1","routing":null}',
               'binary', 'human-authored', 'criterionv_legacy_skill_legacy', now())
     `, [id, version]);
   }
@@ -245,11 +245,11 @@ run("Batch 3 criteria and evaluator suite PostgreSQL invariants", () => {
       await pool.query(`
         insert into skill_versions
           (id, skill_id, project_id, version, status, rubric_markdown, prompt,
-           output_schema, model_binding, verdict_kind, rubric_provenance,
+           output_schema, execution_binding, verdict_kind, rubric_provenance,
            criterion_version_id, created_at)
         values ('skillv_tone_1', 'skill_tone', 'proj_batch3', '1.0.0', 'approved',
                 '# Tone', 'Judge.', '{"type":"object"}',
-                '{"provider":"mock","modelId":"mock","modelVersion":"1","temperature":0}',
+                '{"provider":"mock","endpoint":{"kind":"managed"},"modelId":"mock-heuristic-v1","modelVersion":"mock-heuristic-v1","sampling":{"temperature":null,"topP":null},"reasoning":null,"outputTokenLimit":null,"verdictProtocol":"mock/v1","routing":null}',
                 'binary', 'human-authored', 'criterionv_legacy_skill_tone', now())
       `);
       const tone = (await pool.query(`
@@ -429,11 +429,11 @@ run("Batch 3 criteria and evaluator suite PostgreSQL invariants", () => {
       await pool.query(`
         insert into skill_versions
           (id, skill_id, project_id, version, status, rubric_markdown, prompt,
-           output_schema, model_binding, verdict_kind, rubric_provenance,
+           output_schema, execution_binding, verdict_kind, rubric_provenance,
            regression_dataset_revision_id, criterion_version_id, created_at)
         values ('skillv_legacy_definition_2', 'skill_legacy', 'proj_batch3', '2.0.0',
                 'calibrating', '# Correctness v2', 'Judge.', '{"type":"object"}',
-                '{"provider":"mock","modelId":"mock","modelVersion":"1","temperature":0}',
+                '{"provider":"mock","endpoint":{"kind":"managed"},"modelId":"mock-heuristic-v1","modelVersion":"mock-heuristic-v1","sampling":{"temperature":null,"topP":null},"reasoning":null,"outputTokenLimit":null,"verdictProtocol":"mock/v1","routing":null}',
                 'binary', 'human-authored', 'dsr_legacy_v2', 'criterionv_legacy_skill_legacy_2', now())
       `);
       await pool.query(`

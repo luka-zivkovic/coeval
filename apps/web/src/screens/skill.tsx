@@ -11,7 +11,7 @@ import { useDashboard } from "@/lib/dashboard-context";
 import { skillEditConsequence, skillVersionStateLabel } from "../lib/skill-presentation.js";
 import { cn } from "@/lib/utils";
 import { verdictKindDescription } from "@/lib/verdict-kind";
-import { compileJudgePrompt, type Skill } from "@rubrist/shared";
+import { compileJudgePrompt, type Skill, describeExecutionBinding, describeReasoningSettings } from "@rubrist/shared";
 
 type Tab = "rubric" | "prompt" | "binding" | "schema";
 
@@ -115,9 +115,7 @@ export function SkillScreen() {
           <span className="ml-2 text-ink-4">requested model, immutable version, and status</span>
         </summary>
         <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-rule-soft px-3 py-2 break-all font-mono text-[10.5px] text-ink-3">
-          <span>{v.modelBinding.provider}/{v.modelBinding.modelId}@{v.modelBinding.modelVersion}</span>
-          <span>·</span>
-          <span>temperature {v.modelBinding.temperature}</span>
+          <span>{describeExecutionBinding(v.executionBinding)}</span>
           <span>·</span>
           <span>{skillVersionStateLabel(v)}</span>
         </div>
@@ -174,7 +172,8 @@ export function SkillScreen() {
           {tab === "prompt" ? <PromptView prompt={v.prompt} rubricMarkdown={v.rubricMarkdown} /> : null}
           {tab === "binding" ? (
             <BindingView
-              binding={v.modelBinding}
+              binding={v.executionBinding}
+              customEndpointUrl={v.customEndpointUrl}
               verdictKind={v.verdictKind}
               scalarRange={v.scalarRange}
               categoricalChoiceScores={v.categoricalChoiceScores}
@@ -240,11 +239,13 @@ function PromptView({ prompt, rubricMarkdown }: { prompt: string; rubricMarkdown
 
 function BindingView({
   binding,
+  customEndpointUrl,
   verdictKind,
   scalarRange,
   categoricalChoiceScores
 }: {
-  binding: Skill["currentVersion"]["modelBinding"];
+  binding: Skill["currentVersion"]["executionBinding"];
+  customEndpointUrl: string | null;
   verdictKind: Skill["currentVersion"]["verdictKind"];
   scalarRange: Skill["currentVersion"]["scalarRange"];
   categoricalChoiceScores: Skill["currentVersion"]["categoricalChoiceScores"];
@@ -252,23 +253,34 @@ function BindingView({
   return (
     <div>
       <Eyebrow>
-        Requested model · immutable settings for this version
+        Execution binding · immutable settings for this version
       </Eyebrow>
       <p className="mt-2 max-w-[80ch] text-[12.5px] leading-5 text-ink-2">
-        Selects the provider, model, and temperature requested for judge calls. Each run records
-        the model identity the provider reports when it is available, so requested and observed
-        identities can be compared later.
+        Exactly what every judge call sends: the provider, endpoint, model, sampling, reasoning,
+        output token limit, and verdict protocol. A setting that isn't sent is shown as not sent.
+        Each run records the model identity the provider reports when it is available, so requested
+        and observed identities can be compared later.
       </p>
       <Card className="mt-3 max-w-[600px]">
         <CardContent className="grid grid-cols-1 gap-y-1 py-3 text-[13px] sm:grid-cols-[160px_1fr] sm:gap-y-2">
           <div className="text-ink-3">Provider</div>
           <div>{binding.provider}</div>
+          <div className="text-ink-3">Endpoint</div>
+          <div className="font-mono break-all">{binding.endpoint.kind === "managed" ? "managed" : customEndpointUrl ?? "platform override"}</div>
           <div className="text-ink-3">Model id</div>
           <div className="font-mono">{binding.modelId}</div>
-          <div className="text-ink-3">Catalog identity</div>
+          <div className="text-ink-3">Model version</div>
           <div className="font-mono">{binding.modelVersion}</div>
           <div className="text-ink-3">Temperature</div>
-          <div className="font-mono">{binding.temperature}</div>
+          <div className="font-mono">{binding.sampling.temperature ?? "not sent"}</div>
+          <div className="text-ink-3">Top-p</div>
+          <div className="font-mono">{binding.sampling.topP ?? "not sent"}</div>
+          <div className="text-ink-3">Reasoning</div>
+          <div className="font-mono">{describeReasoningSettings(binding.reasoning)}</div>
+          <div className="text-ink-3">Output token limit</div>
+          <div className="font-mono">{binding.outputTokenLimit ?? "not sent"}</div>
+          <div className="text-ink-3">Verdict protocol</div>
+          <div className="font-mono">{binding.verdictProtocol}</div>
           <div className="text-ink-3">Result type</div>
           <div>
             <div className="font-mono">{verdictKind}</div>

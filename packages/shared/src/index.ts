@@ -2,15 +2,14 @@ import { z } from "zod";
 import {
   JsonSchemaSchema,
   HttpUrlSchema,
+  JudgeProviderCredentialSourceSchema,
   JudgeProviderIdSchema,
   MinimumVerdictOutputSchema,
-  ModelBindingInputSchema,
   ModelBindingSchema,
   RubricProvenanceSchema,
   RUBRIC_TEMPLATE_VARIABLE,
   SkillStatusSchema,
   STARTER_RUBRIC_MARKER,
-  StoredModelBindingSchema,
   VerdictKindSchema,
   VerdictLabelSchema,
   compileJudgePrompt,
@@ -27,12 +26,11 @@ import type {
   CompiledJudgePrompt,
   JsonSchema,
   JudgePromptDiagnostic,
+  JudgeProviderCredentialSource,
   JudgeProviderId,
   ModelBinding,
-  ModelBindingInput,
   RubricProvenance,
   SkillStatus,
-  StoredModelBinding,
   VerdictKind,
   VerdictLabel
 } from "./judge.js";
@@ -56,6 +54,7 @@ import type {
   RetentionPruneResult,
   UpdateProjectSettingsInput
 } from "./projects.js";
+import { ExecutionBindingInputSchema } from "./evaluator-execution.js";
 import { SkillSchema, SkillVersionSchema } from "./skills.js";
 import type { Skill, SkillVersion } from "./skills.js";
 import {
@@ -104,10 +103,10 @@ export {
   GOLDEN_GATE_ARMS_AT,
   GOLDEN_GATE_RECOMMENDED,
   JsonSchemaSchema,
+  JudgeProviderCredentialSourceSchema,
   JudgeProviderIdSchema,
   KAPPA_MIN_SHARED_CASES,
   MinimumVerdictOutputSchema,
-  ModelBindingInputSchema,
   ModelBindingSchema,
   PROJECT_NAME_MAX_LENGTH,
   ProjectModeSchema,
@@ -121,7 +120,6 @@ export {
   SkillSchema,
   SkillStatusSchema,
   SkillVersionSchema,
-  StoredModelBindingSchema,
   UpdateProjectSettingsInputSchema,
   VerdictDistributionSchema,
   VerdictKindSchema,
@@ -144,9 +142,9 @@ export type {
   DeleteProjectInput,
   JsonSchema,
   JudgePromptDiagnostic,
+  JudgeProviderCredentialSource,
   JudgeProviderId,
   ModelBinding,
-  ModelBindingInput,
   Project,
   ProjectMode,
   ProjectSettings,
@@ -155,7 +153,6 @@ export type {
   Skill,
   SkillStatus,
   SkillVersion,
-  StoredModelBinding,
   UpdateProjectSettingsInput,
   VerdictDistribution,
   VerdictKind,
@@ -740,7 +737,7 @@ export const CreateSkillVersionInputSchema = z
     criterionVersionId: z.string().min(1).optional(),
     rubricMarkdown: z.string().min(1),
     prompt: z.string().min(1),
-    modelBinding: ModelBindingInputSchema,
+    executionBinding: ExecutionBindingInputSchema,
     outputSchema: JsonSchemaSchema.default(MinimumVerdictOutputSchema),
     verdictKind: VerdictKindSchema.default("binary"),
     scalarRange: z.tuple([z.number(), z.number()]).optional(),

@@ -3,6 +3,7 @@ import { createJudgeProvider } from "../src/lib/judge-provider.js";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 import { isPermanentError, processJudgeRunJob } from "../src/workers/judge.js";
+import { MOCK_BINDING, runtimeVersion } from "./fixtures/execution-binding.js";
 
 const TRACE = { input: { question: "Refund within 30 days?" }, output: { answer: "Yes, within 30 days." } };
 
@@ -512,9 +513,9 @@ describe("POST /api/v1/judge/batch — fire-and-poll", () => {
     await repository.setJudgeProviderKey("proj_langsmith_support", "anthropic", "sk-project-key-belongs-to-team-1234");
 
     const captured: Array<string | undefined> = [];
-    const factory = (binding: Parameters<typeof createJudgeProvider>[0], opts?: { apiKey?: string }) => {
+    const factory = (_version: Parameters<typeof createJudgeProvider>[0], opts?: { apiKey?: string }) => {
       captured.push(opts?.apiKey);
-      return createJudgeProvider({ ...binding, provider: "mock" });
+      return createJudgeProvider(runtimeVersion(MOCK_BINDING));
     };
 
     const imported = await repository.importTrace("proj_langsmith_support", "manual", {

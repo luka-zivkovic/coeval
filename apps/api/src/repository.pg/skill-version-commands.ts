@@ -16,13 +16,13 @@ export async function insertSkillVersion(
   const recordedActorUserId = developerSubjectId ? actorUserId : null;
   await client.query(
     `insert into skill_versions
-       (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, model_binding,
+       (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, execution_binding, custom_endpoint_url,
         golden_set_agreement, too_strict_count, too_lenient_count, ambiguous_count, known_limitations,
         verdict_kind, scalar_range, categorical_choice_scores, rubric_provenance,
         regression_dataset_revision_id, created_at, approved_at, criterion_version_id,
         created_by_user_id, created_by_subject_id, developer_identity_status,
         onboarding_idempotency_key, onboarding_request_digest, onboarding_assurance)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)`,
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$29,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)`,
     [
       version.id,
       version.skillId,
@@ -32,7 +32,7 @@ export async function insertSkillVersion(
       version.rubricMarkdown,
       version.prompt,
       JSON.stringify(version.outputSchema),
-      JSON.stringify(version.modelBinding),
+      JSON.stringify(version.executionBinding),
       version.goldenSetAgreement,
       version.tooStrictCount,
       version.tooLenientCount,
@@ -51,7 +51,8 @@ export async function insertSkillVersion(
       developerSubjectId ? "recorded" : "unknown_legacy",
       onboardingRequest?.idempotencyKey ?? null,
       onboardingRequest?.requestDigest ?? null,
-      version.onboardingAssurance ?? null
+      version.onboardingAssurance ?? null,
+      version.customEndpointUrl
     ]
   );
 }

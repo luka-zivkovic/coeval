@@ -1,3 +1,4 @@
+import { endpointUrlFor } from "../lib/execution-binding.js";
 import type { Pool } from "pg";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
@@ -11,7 +12,6 @@ import {
   TraceTestFunnelEventInputSchema
 } from "@rubrist/shared";
 import {
-  openAIJudgeProviderBaseUrl,
   resolveJudgeProviderApiKey
 } from "../lib/judge-provider.js";
 import {
@@ -137,9 +137,9 @@ export function registerTraceTestAdministrationRoutes(
       if (!(error instanceof NoCurrentSkillError)) throw error;
       assistedVersion = null;
     }
-    const binding = assistedVersion?.modelBinding;
+    const binding = assistedVersion?.executionBinding;
     const provider = binding?.provider ?? null;
-    if (!binding || !provider || provider === "mock") {
+    if (!binding || !provider || provider === "mock" || provider === "typesafe") {
       return c.json({
         status: "unavailable",
         reason: "unsupported_provider",
@@ -190,11 +190,7 @@ export function registerTraceTestAdministrationRoutes(
           evidence
         }),
         signal: controller.signal,
-        ...(provider === "openai" && openAIJudgeProviderBaseUrl()
-          ? { baseUrl: openAIJudgeProviderBaseUrl() }
-          : provider === "custom" && binding.baseUrl
-            ? { baseUrl: binding.baseUrl }
-            : {})
+        ...baseUrlFor(assistedVersion!)
       });
       const content = parseAssistedTraceTestContent(raw);
       return c.json({
@@ -352,9 +348,9 @@ export function registerTraceTestAdministrationRoutes(
         if (!(error instanceof NoCurrentSkillError)) throw error;
         validationVersion = null;
       }
-      const binding = validationVersion?.modelBinding;
+      const binding = validationVersion?.executionBinding;
       const provider = binding?.provider ?? null;
-      if (!binding || !provider || provider === "mock") {
+      if (!binding || !provider || provider === "mock" || provider === "typesafe") {
         const validation = await recordUnavailable("An AI checker is not configured for this project. Review the examples manually instead.");
         return c.json({ validation }, 201);
       }
@@ -393,11 +389,7 @@ export function registerTraceTestAdministrationRoutes(
         timeoutMs: TRACE_TEST_VALIDATION_TIMEOUT_MS,
         maxAttempts: TRACE_TEST_VALIDATION_MAX_ATTEMPTS,
         ...(options.traceTestValidationRunner ? { runner: options.traceTestValidationRunner } : {}),
-        ...(provider === "openai" && openAIJudgeProviderBaseUrl()
-          ? { baseUrl: openAIJudgeProviderBaseUrl() }
-          : provider === "custom" && binding.baseUrl
-            ? { baseUrl: binding.baseUrl }
-            : {})
+        ...baseUrlFor(validationVersion!)
       });
       const validation = await repository.recordTraceTestValidation({
         projectId,
@@ -492,4 +484,10 @@ export function registerTraceTestAdministrationRoutes(
       throw error;
     }
   });
+}
+
+// Drafting and validation call the evaluator's own endpoint.
+function baseUrlFor(version: Parameters<typeof endpointUrlFor>[0]): { baseUrl?: string } {
+  const baseUrl = endpointUrlFor(version);
+  return baseUrl === null ? {} : { baseUrl };
 }

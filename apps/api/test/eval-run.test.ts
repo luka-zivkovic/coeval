@@ -12,6 +12,7 @@ import {
   registerEvalRunWorkers,
   runEvalRunInline
 } from "../src/workers/eval-run.js";
+import { MOCK_BINDING, runtimeVersion } from "./fixtures/execution-binding.js";
 
 const PROJECT = "proj_langsmith_support";
 const SKILL_VERSION = "skillv_1_2_0";
@@ -227,12 +228,7 @@ describe("eval runs — worker fan-out + counter lifecycle", () => {
       caseId,
       skillVersionId: SKILL_VERSION
     };
-    const base = createStrictJudgeProvider({
-      provider: "mock",
-      modelId: "mock",
-      modelVersion: "mock",
-      temperature: 0
-    });
+    const base = createStrictJudgeProvider(runtimeVersion(MOCK_BINDING));
     let providerCalls = 0;
     let enteredProvider!: () => void;
     let releaseProvider!: () => void;
@@ -287,12 +283,7 @@ describe("eval runs — worker fan-out + counter lifecycle", () => {
       items: [{ caseId: "case_vanished_before_provider" }]
     });
     const queue = new WorkerQueue();
-    const base = createStrictJudgeProvider({
-      provider: "mock",
-      modelId: "mock",
-      modelVersion: "mock",
-      temperature: 0
-    });
+    const base = createStrictJudgeProvider(runtimeVersion(MOCK_BINDING));
     let providerCalls = 0;
     const provider = {
       name: base.name,
@@ -351,12 +342,7 @@ describe("eval runs — worker fan-out + counter lifecycle", () => {
       items: [{ caseId }]
     });
     const queue = new WorkerQueue();
-    const base = createStrictJudgeProvider({
-      provider: "mock",
-      modelId: "mock",
-      modelVersion: "mock",
-      temperature: 0
-    });
+    const base = createStrictJudgeProvider(runtimeVersion(MOCK_BINDING));
     let providerCalls = 0;
     const provider = {
       name: base.name,

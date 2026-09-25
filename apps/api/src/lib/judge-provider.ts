@@ -1,26 +1,29 @@
 import {
-  AnthropicJudgeProvider,
+  EvaluatorCallError,
   MockJudgeProvider,
-  OpenAIJudgeProvider,
+  executeVerdict,
+  type JudgePrompt,
   type JudgeProvider,
   type JudgeVerdict,
+  type StructuredJudgeResult,
   type StructuredVerdict,
+  type Trace,
   type VerdictSpec
 } from "@rubrist/audit/runtime";
 import {
   verdictLabelFromPayload,
+  type ExecutionProviderId,
   type JudgeProviderAvailabilityItem,
   type JudgeProviderId,
-  type StoredModelBinding,
   type SkillVersion,
   type VerdictPayload
 } from "@rubrist/shared";
+import { endpointUrlFor } from "./execution-binding.js";
 
-// Factory keyed by a skill version's immutable requested `modelBinding`. This is what makes
-// the platform judge *real*: the worker (and the eval-as-a-service endpoint)
-// instantiate the provider the skill version actually pins, so self-consistency
-// / convergence / calibration describe the model as run — not a single injected
-// stand-in.
+// Factory keyed by an evaluator version's immutable execution binding
+// (ADR-0014 section 2). The worker and the eval-as-a-service endpoint build
+// the provider the version pins, so every call sends exactly what the binding
+// states, through the pinned verdict protocol, in one physical call.
 //
 // A project-scoped key is authoritative when present; otherwise first-class
 // providers can use their platform environment key. Missing credentials fall
@@ -29,7 +32,10 @@ import {
 export interface JudgeProviderOptions {
   apiKey?: string;
 }
-export type JudgeProviderFactory = (binding: StoredModelBinding, opts?: JudgeProviderOptions) => JudgeProvider;
+
+/** What the runtime needs from an evaluator version: its binding, its endpoint URL, and what the protocol renders. */
+export type EvaluatorRuntimeVersion = Pick<SkillVersion, "executionBinding" | "customEndpointUrl" | "rubricMarkdown" | "prompt">;
+export type JudgeProviderFactory = (version: EvaluatorRuntimeVersion, opts?: JudgeProviderOptions) => JudgeProvider;
 
 const warned = new Set<string>();
 function warnOnce(key: string, message: string): void {
@@ -60,20 +66,19 @@ const PROVIDER_LABELS: Record<JudgeProviderId, string> = {
   mock: "Mock (local testing)"
 };
 
-export function judgeProviderEnvironmentKey(provider: JudgeProviderId): string | undefined {
+export function judgeProviderEnvironmentKey(provider: ExecutionProviderId): string | undefined {
   if (provider === "anthropic") return process.env.ANTHROPIC_API_KEY;
   if (provider === "openai") return process.env.OPENAI_API_KEY;
   if (provider === "openrouter") return process.env.OPENROUTER_API_KEY;
   return undefined;
 }
 
-export function resolveJudgeProviderApiKey(provider: JudgeProviderId, projectApiKey?: string): string | undefined {
+export function resolveJudgeProviderApiKey(provider: ExecutionProviderId, projectApiKey?: string): string | undefined {
   return projectApiKey ?? judgeProviderEnvironmentKey(provider);
 }
 
-// Shared by runtime dispatch and model discovery so an OpenAI-compatible
-// deployment never executes against one base URL while sending its credential
-// to another provider's /models endpoint.
+// Model discovery and auxiliary drafting only. Evidence-producing calls never
+// read it: an OpenAI binding records the override as its endpoint instead.
 export function openAIJudgeProviderBaseUrl(): string | undefined {
   return process.env.OPENAI_BASE_URL?.trim() || undefined;
 }
@@ -107,77 +112,76 @@ export function judgeProviderAvailability(
   });
 }
 
+/**
+ * A provider backed by the v2 executor. It judges with the version's own
+ * rubric and prompt, which the pinned protocol renders; the JudgePrompt the
+ * worker builds is that same rendering (an API test holds them equal), kept
+ * for the recorded request.
+ */
+class ExecutionBindingJudgeProvider implements JudgeProvider {
+  readonly name: string;
+  readonly modelName: string;
+
+  constructor(private readonly version: EvaluatorRuntimeVersion, private readonly apiKey: string | null) {
+    this.name = version.executionBinding.provider;
+    this.modelName = version.executionBinding.modelId;
+  }
+
+  // The regression gate's pass/fail/ambiguous judgment: a binary structured
+  // verdict through the same protocol, in the legacy shape the gate reads.
+  async judge(input: { prompt: JudgePrompt; trace: Trace; outputSchema: object }): Promise<JudgeVerdict> {
+    const result = await this.judgeStructured({
+      prompt: input.prompt,
+      trace: input.trace,
+      spec: { verdictKind: "binary", scalarRange: null, categoricalChoiceScores: null }
+    });
+    return structuredVerdictToLegacy(result.verdict);
+  }
+
+  async judgeStructured(input: { prompt: JudgePrompt; trace: Trace; spec: VerdictSpec }): Promise<StructuredJudgeResult> {
+    const result = await executeVerdict({
+      binding: this.version.executionBinding,
+      apiKey: this.apiKey,
+      customBaseUrl: endpointUrlFor(this.version),
+      rubricMarkdown: this.version.rubricMarkdown,
+      prompt: this.version.prompt,
+      trace: input.trace,
+      spec: input.spec
+    });
+    return {
+      verdict: result.verdict,
+      ...(result.usage ? { usage: result.usage } : {}),
+      providerMetadata: {
+        model: result.observed.model,
+        requestId: result.observed.requestId,
+        responseId: result.observed.responseId,
+        systemFingerprint: result.observed.systemFingerprint
+      }
+    };
+  }
+}
+
 // Strict variant: same construction, but a binding that would degrade to the
 // mock throws instead. Used where recording a mock verdict would be a lie
 // (eval runs and the sync judge endpoint in PG mode); the permissive factory
 // below stays the default so demo mode and provider-injecting tests work.
-export function createStrictJudgeProvider(binding: StoredModelBinding, opts?: JudgeProviderOptions): JudgeProvider {
-  const provider = createJudgeProvider(binding, opts);
-  if (binding.provider !== "mock" && provider.name === "mock") {
-    throw new JudgeProviderUnavailableError(binding.provider);
+export function createStrictJudgeProvider(version: EvaluatorRuntimeVersion, opts?: JudgeProviderOptions): JudgeProvider {
+  const provider = createJudgeProvider(version, opts);
+  if (version.executionBinding.provider !== "mock" && provider.name === "mock") {
+    throw new JudgeProviderUnavailableError(version.executionBinding.provider);
   }
   return provider;
 }
 
-export function createJudgeProvider(binding: StoredModelBinding, opts?: JudgeProviderOptions): JudgeProvider {
-  const provider = binding.provider;
-
-  if (provider === "mock") return new MockJudgeProvider();
-
-  if (provider === "anthropic") {
-    const apiKey = resolveJudgeProviderApiKey(provider, opts?.apiKey);
-    if (!apiKey) {
-      warnOnce("anthropic", "ANTHROPIC_API_KEY is not set; judge falling back to MockJudgeProvider.");
-      return new MockJudgeProvider();
-    }
-    return new AnthropicJudgeProvider({
-      apiKey,
-      model: binding.modelId,
-      temperature: binding.temperature,
-      // Eval-item workers keep one durable physical-call ledger. SDK retries
-      // and the ordinary temperature-compatibility retry would make that
-      // ledger false, so runtime judging uses exactly one transport attempt.
-      requestPolicy: "single_physical_call"
-    });
+export function createJudgeProvider(version: EvaluatorRuntimeVersion, opts?: JudgeProviderOptions): JudgeProvider {
+  const provider = version.executionBinding.provider;
+  if (provider === "mock") return new ExecutionBindingJudgeProvider(version, null);
+  const apiKey = resolveJudgeProviderApiKey(provider, opts?.apiKey);
+  if (!apiKey) {
+    warnOnce(provider, `${provider} has no API key; judge falling back to MockJudgeProvider.`);
+    return new MockJudgeProvider();
   }
-
-  if (provider === "openai") {
-    const apiKey = resolveJudgeProviderApiKey(provider, opts?.apiKey);
-    if (!apiKey) {
-      warnOnce("openai", "OPENAI_API_KEY is not set; judge falling back to MockJudgeProvider.");
-      return new MockJudgeProvider();
-    }
-    const baseUrl = openAIJudgeProviderBaseUrl();
-    return new OpenAIJudgeProvider({
-      apiKey,
-      model: binding.modelId,
-      temperature: binding.temperature,
-      ...(baseUrl ? { baseUrl } : {})
-    });
-  }
-
-  if (provider === "openrouter" || provider === "custom") {
-    const apiKey = resolveJudgeProviderApiKey(provider, opts?.apiKey);
-    if (!apiKey) {
-      warnOnce(provider, `${PROVIDER_LABELS[provider]} API key is not set; judge falling back to MockJudgeProvider.`);
-      return new MockJudgeProvider();
-    }
-    const baseUrl = provider === "openrouter" ? "https://openrouter.ai/api/v1" : binding.baseUrl;
-    if (!baseUrl) {
-      warnOnce("custom:base-url", "Custom judge provider has no base URL; judge falling back to MockJudgeProvider.");
-      return new MockJudgeProvider();
-    }
-    return new OpenAIJudgeProvider({
-      apiKey,
-      baseUrl,
-      providerName: provider,
-      model: binding.modelId,
-      temperature: binding.temperature
-    });
-  }
-
-  warnOnce(`unknown:${binding.provider}`, `Unknown judge provider "${binding.provider}"; falling back to MockJudgeProvider.`);
-  return new MockJudgeProvider();
+  return new ExecutionBindingJudgeProvider(version, apiKey);
 }
 
 // is this error the provider rejecting the CREDENTIAL (as opposed to a
@@ -185,6 +189,7 @@ export function createJudgeProvider(binding: StoredModelBinding, opts?: JudgePro
 // but time, and with a BYO project key the honest behavior is to fail the
 // judge call loudly, never to fall back to the platform env key.
 export function isJudgeAuthError(error: unknown): boolean {
+  if (error instanceof EvaluatorCallError) return error.failureKind === "provider_authentication";
   if (typeof error !== "object" || error === null) return false;
   const status = (error as { status?: unknown }).status;
   if (status === 401 || status === 403) return true;

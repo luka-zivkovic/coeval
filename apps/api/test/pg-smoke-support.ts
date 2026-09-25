@@ -2,6 +2,7 @@ import type { Pool } from "pg";
 import type { Queue, QueueName } from "@rubrist/queue";
 import { MinimumVerdictOutputSchema } from "@rubrist/shared";
 import { describe } from "vitest";
+import { MOCK_BINDING } from "./fixtures/execution-binding.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 process.env.BETTER_AUTH_SECRET ??= "rubrist-postgres-test-secret-at-least-32-bytes";
@@ -39,7 +40,7 @@ export async function seedSkill(pool: Pool): Promise<void> {
   await pool.query(`insert into skills (id, project_id, name, description, status, criterion_id) values ('skill_test', 'proj_test', 'Test Skill', 'Smoke skill', 'draft', 'criterion_test')`);
   await pool.query(
     `insert into skill_versions
-     (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, model_binding,
+     (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, execution_binding,
       criterion_version_id)
      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
     [
@@ -51,7 +52,7 @@ export async function seedSkill(pool: Pool): Promise<void> {
       "Pass correct answers; fail incorrect answers.",
       "Judge the trace.",
       JSON.stringify(MinimumVerdictOutputSchema),
-      JSON.stringify({ provider: "mock", modelId: "mock", modelVersion: "test", temperature: 0 }),
+      JSON.stringify(MOCK_BINDING),
       "criterionv_test"
     ]
   );

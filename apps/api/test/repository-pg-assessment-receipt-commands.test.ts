@@ -16,6 +16,7 @@ import {
   rowToEvalRunItem,
   rowToSkillVersion
 } from "../src/repository.pg/mappers.js";
+import { MOCK_BINDING } from "./fixtures/execution-binding.js";
 
 const API_DIRECTORY = fileURLToPath(new URL("../", import.meta.url));
 const COMMAND_PATH = path.join(API_DIRECTORY, "src/repository.pg/assessment-receipt-commands.ts");
@@ -107,12 +108,7 @@ function skillVersionRow(): Record<string, unknown> {
     status: "draft",
     rubric_markdown: "Pass correct answers; fail incorrect answers.",
     prompt: "Judge the trace.",
-    model_binding: JSON.stringify({
-      provider: "mock",
-      modelId: "mock",
-      modelVersion: "receipt-command-test",
-      temperature: 0
-    }),
+    execution_binding: JSON.stringify(MOCK_BINDING),
     output_schema: JSON.stringify(MinimumVerdictOutputSchema),
     golden_set_agreement: null,
     too_strict_count: 0,

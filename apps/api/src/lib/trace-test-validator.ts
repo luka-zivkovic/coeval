@@ -1,6 +1,6 @@
 import { z } from "zod";
 import {
-  type StoredModelBinding,
+  type ExecutionBinding,
   type TraceTestDetail,
   type TraceTestRevision,
   type TraceTestValidationDiagnostic,
@@ -40,7 +40,7 @@ const RawVerdictSchema = z.object({
 });
 
 export interface TraceTestValidationRunnerInput {
-  binding: StoredModelBinding;
+  binding: Pick<ExecutionBinding, "provider" | "modelId">;
   apiKey: string;
   systemPrompt: string;
   userPrompt: string;
@@ -117,7 +117,7 @@ export interface TraceTestPairValidationResult {
 
 export async function validateTraceTestPair(input: {
   revision: TraceTestRevision;
-  binding: StoredModelBinding;
+  binding: Pick<ExecutionBinding, "provider" | "modelId">;
   apiKey: string;
   runner?: TraceTestValidationRunner | undefined;
   baseUrl?: string | undefined;
@@ -160,7 +160,7 @@ interface ExampleResult {
 
 async function evaluateExample(input: {
   revision: TraceTestRevision;
-  binding: StoredModelBinding;
+  binding: Pick<ExecutionBinding, "provider" | "modelId">;
   apiKey: string;
   runner: TraceTestValidationRunner;
   output: unknown;

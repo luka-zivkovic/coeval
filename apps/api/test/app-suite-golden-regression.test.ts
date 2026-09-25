@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { type SkillVersion } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository, runGoldenSetRegression } from "../src/repository.js";
+import { MOCK_BINDING } from "./fixtures/execution-binding.js";
 
 describe("Rubrist Hono API", () => {
   it("promotes a non-exception (judge-pass) case and surfaces the latest human label on detail", async () => {
@@ -296,12 +297,8 @@ describe("golden-set regression", () => {
         status: "calibrating",
         rubricMarkdown: "Neutral rubric with no special keywords.",
         prompt: "Before\n{{rubric_markdown}}\nAfter",
-        modelBinding: {
-          provider: "mock",
-          modelId: "mock",
-          modelVersion: "test",
-          temperature: 0
-        },
+        executionBinding: structuredClone(MOCK_BINDING),
+        customEndpointUrl: null,
         outputSchema: { type: "object" },
         goldenSetAgreement: null,
         tooStrictCount: 0,
@@ -379,7 +376,8 @@ describe("golden-set regression", () => {
       status: "calibrating",
       rubricMarkdown: "Neutral rubric.",
       prompt: "Return structured verdicts.",
-      modelBinding: { provider: "mock", modelId: "mock", modelVersion: "test", temperature: 0 },
+      executionBinding: structuredClone(MOCK_BINDING),
+      customEndpointUrl: null,
       outputSchema: { type: "object" },
       goldenSetAgreement: null,
       tooStrictCount: 0,
@@ -440,7 +438,8 @@ describe("golden-set regression", () => {
       status: "calibrating",
       rubricMarkdown: "Neutral rubric.",
       prompt: "Return structured verdicts.",
-      modelBinding: { provider: "mock", modelId: "mock", modelVersion: "test", temperature: 0 },
+      executionBinding: structuredClone(MOCK_BINDING),
+      customEndpointUrl: null,
       outputSchema: { type: "object" },
       goldenSetAgreement: null,
       tooStrictCount: 0,
@@ -496,7 +495,8 @@ describe("golden-set regression", () => {
       status: "calibrating",
       rubricMarkdown: "Neutral rubric.",
       prompt: "Return structured verdicts.",
-      modelBinding: { provider: "mock", modelId: "mock", modelVersion: "test", temperature: 0 },
+      executionBinding: structuredClone(MOCK_BINDING),
+      customEndpointUrl: null,
       outputSchema: { type: "object" },
       goldenSetAgreement: null,
       tooStrictCount: 0,
@@ -554,7 +554,8 @@ describe("golden-set regression", () => {
       status: "calibrating",
       rubricMarkdown: "Neutral rubric.",
       prompt: "Return structured verdicts.",
-      modelBinding: { provider: "mock", modelId: "mock", modelVersion: "test", temperature: 0 },
+      executionBinding: structuredClone(MOCK_BINDING),
+      customEndpointUrl: null,
       outputSchema: { type: "object" },
       goldenSetAgreement: null,
       tooStrictCount: 0,

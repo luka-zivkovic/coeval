@@ -7,6 +7,7 @@ import { DatasetRevisionConflictError, SealedValidationUnavailableError } from "
 import { PgRepository } from "../src/repository.pg.js";
 import { REDACTED_VALUE } from "../src/lib/redaction.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
+import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {
@@ -32,7 +33,7 @@ run("dataset revision PostgreSQL invariants", () => {
       await pool.query(`insert into skills (id, project_id, name, description, owner_user_id, status, criterion_id) values ('skill_test', 'proj_test', 'Judge', 'revision fixture', null, 'production', 'criterion_test')`);
       await pool.query(
         `insert into skill_versions
-         (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, model_binding,
+         (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, execution_binding,
           golden_set_agreement, too_strict_count, too_lenient_count, ambiguous_count, known_limitations,
           verdict_kind, scalar_range, categorical_choice_scores, rubric_provenance, criterion_version_id,
           created_at, approved_at)
@@ -40,7 +41,7 @@ run("dataset revision PostgreSQL invariants", () => {
                  null,0,0,0,'{}','binary',null,null,'human-authored','criterionv_test',now(),now())`,
         [
           JSON.stringify(MinimumVerdictOutputSchema),
-          JSON.stringify({ provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 })
+          JSON.stringify(MOCK_BINDING)
         ]
       );
 
@@ -268,7 +269,7 @@ run("dataset revision PostgreSQL invariants", () => {
         CreateSkillVersionInputSchema.parse({
           rubricMarkdown: "# Revised rubric",
           prompt: "Judge this answer.",
-          modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 }
+          executionBinding: bindingInput(MOCK_BINDING)
         }),
         { projectId: "proj_test" }
       );
@@ -304,7 +305,7 @@ run("dataset revision PostgreSQL invariants", () => {
       await pool.query(`insert into skills (id, project_id, name, description, owner_user_id, status, criterion_id) values ('skill_other', 'proj_other', 'Other Judge', 'fixture', null, 'draft', 'criterion_other')`);
       await expect(pool.query(
         `insert into skill_versions
-         (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, model_binding,
+         (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, execution_binding,
           golden_set_agreement, too_strict_count, too_lenient_count, ambiguous_count, known_limitations,
           verdict_kind, scalar_range, categorical_choice_scores, rubric_provenance, regression_dataset_revision_id,
           criterion_version_id, created_at)
@@ -312,7 +313,7 @@ run("dataset revision PostgreSQL invariants", () => {
                  null,0,0,0,'{}','binary',null,null,'human-authored',$3,'criterionv_other',now())`,
         [
           JSON.stringify(MinimumVerdictOutputSchema),
-          JSON.stringify({ provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 }),
+          JSON.stringify(MOCK_BINDING),
           pending.regressionDatasetRevisionId
         ]
       )).rejects.toMatchObject({ code: "23514" });

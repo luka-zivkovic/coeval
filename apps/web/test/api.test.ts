@@ -229,7 +229,8 @@ describe("web API helpers", () => {
       status: "calibrating",
       rubricMarkdown: "Pass when grounded.",
       prompt: "Judge against {{rubric_markdown}}.",
-      modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 },
+      executionBinding: { provider: "mock", endpoint: { kind: "managed" }, modelId: "mock", modelVersion: "mock", sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null, verdictProtocol: "mock/v1", routing: null },
+      customEndpointUrl: null,
       outputSchema: { type: "object" },
       goldenSetAgreement: null,
       tooStrictCount: 0,
@@ -250,7 +251,7 @@ describe("web API helpers", () => {
     await expect(createSkillVersion("skill_1", {
       rubricMarkdown: version.rubricMarkdown,
       prompt: version.prompt,
-      modelBinding: version.modelBinding,
+      executionBinding: { ...version.executionBinding, endpoint: { kind: "managed" } },
       outputSchema: version.outputSchema,
       verdictKind: "binary",
       timeScope: "new"
@@ -287,7 +288,8 @@ describe("web API helpers", () => {
       status: "approved",
       rubricMarkdown: "Pass when grounded.",
       prompt: "Judge against {{rubric_markdown}}.",
-      modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 },
+      executionBinding: { provider: "mock", endpoint: { kind: "managed" }, modelId: "mock", modelVersion: "mock", sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null, verdictProtocol: "mock/v1", routing: null },
+      customEndpointUrl: null,
       outputSchema: { type: "object" },
       goldenSetAgreement: 1,
       tooStrictCount: 0,

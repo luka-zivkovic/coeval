@@ -19,6 +19,7 @@ import {
 } from "../src/governed-review/index.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
+import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {
@@ -119,7 +120,7 @@ beforeAll(async () => {
   const evaluatorInput = CreateSkillVersionInputSchema.parse({
     rubricMarkdown: "# Sealed evaluator rubric",
     prompt: "Judge the immutable criterion.",
-    modelBinding: { provider: "mock", modelId: "mock", modelVersion: "1", temperature: 0 },
+    executionBinding: bindingInput(MOCK_BINDING),
     verdictKind: "binary",
     criterionVersionId: sealedCriterionVersionId
   });

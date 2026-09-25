@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import {
   defaultJudgePromptTemplate,
   MinimumVerdictOutputSchema,
+  SEEDED_DEFAULT_EXECUTION_BINDING,
   STARTER_RUBRIC_MARKER,
   type CreatedApiKey,
   type ProjectMode
@@ -472,7 +473,7 @@ async function insertProjectWithStarterSkill(
   await client.query(
     `insert into skill_versions
      (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema,
-      model_binding, criterion_version_id, created_at)
+      execution_binding, criterion_version_id, created_at)
      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now())`,
     [
       input.skillVersionId,
@@ -486,10 +487,10 @@ async function insertProjectWithStarterSkill(
       // NOT the mock: this path only runs with a real database, where the mock
       // is forbidden (app.ts refuses to save it and availability reports it
       // unavailable) — seeding it would silently judge production traces with
-      // the heuristic. Seed the first-class default instead; if no key is
-      // configured the strict worker fails the run loudly and the editor
-      // steers the user to a provider they have actually configured.
-      JSON.stringify({ provider: "anthropic", modelId: "claude-sonnet-4-6", modelVersion: "claude-sonnet-4-6", temperature: 0 }),
+      // the heuristic. Seed ADR-0014's default binding instead, unresolved; if
+      // no key is configured the strict worker fails the run loudly and the
+      // editor steers the user to a provider they have actually configured.
+      JSON.stringify(SEEDED_DEFAULT_EXECUTION_BINDING),
       criterionVersionId
     ]
   );

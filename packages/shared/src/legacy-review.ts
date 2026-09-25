@@ -4,10 +4,10 @@ import {
   ModelBindingSchema,
   RubricProvenanceSchema,
   SkillStatusSchema,
-  StoredModelBindingSchema,
   VerdictKindSchema,
   VerdictLabelSchema
 } from "./judge.js";
+import { ExecutionBindingSchema } from "./evaluator-execution.js";
 import type { VerdictLabel } from "./judge.js";
 import type { VerdictPayload } from "./verdicts.js";
 
@@ -513,7 +513,7 @@ export const JudgeCardSchema = z.object({
     createdAt: z.string(),
     approvedAt: z.string().nullable()
   }),
-  modelBinding: StoredModelBindingSchema,
+  executionBinding: ExecutionBindingSchema,
   goldenSet: z.object({
     size: z.number().int().nonnegative(),
     agreement: z.number().min(0).max(1).nullable(),

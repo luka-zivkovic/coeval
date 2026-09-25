@@ -10,6 +10,7 @@ import * as repositoryModule from "../src/repository.js";
 import { DemoRepository, GateRunBindingMismatchError, NoCurrentSkillError } from "../src/repository.js";
 import * as demoSkillRepositoryModule from "../src/repository/demo-skills.js";
 import { DemoSkillLifecycleRepository } from "../src/repository/demo-skills.js";
+import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 const EXPECTED_PUBLIC_METHODS = [
   "getCurrentSkill",
@@ -300,7 +301,7 @@ describe("Demo skill lifecycle repository slice", () => {
     const input = CreateSkillVersionInputSchema.parse({
       rubricMarkdown: "Judge support quality.",
       prompt: "Judge the answer.",
-      modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 }
+      executionBinding: bindingInput(MOCK_BINDING)
     });
     const onboardingCriterion = {
       name: "Support answer quality",
@@ -379,7 +380,7 @@ describe("Demo skill lifecycle repository slice", () => {
       evaluator: {
         rubricMarkdown: "# Signoff criterion",
         prompt: "Judge the response.",
-        modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 }
+        executionBinding: bindingInput(MOCK_BINDING)
       }
     }), { actorUserId: "owner_skill_slice" });
     const storedDraft = await slice.getSkillVersion(demoProject.id, created.evaluator.currentVersion.id);
@@ -397,7 +398,7 @@ describe("Demo skill lifecycle repository slice", () => {
       criterionVersionId: created.versions[0]!.id,
       rubricMarkdown: "Judge support quality.",
       prompt: "Judge the answer.",
-      modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 }
+      executionBinding: bindingInput(MOCK_BINDING)
     });
     await expect(slice.createSkillVersionPending(current.id, input, { projectId: demoProject.id }))
       .rejects.toThrow(/does not own criterion version/);
@@ -428,7 +429,7 @@ describe("Demo skill lifecycle repository slice", () => {
     await repository.createSkillVersion(current.id, CreateSkillVersionInputSchema.parse({
       rubricMarkdown: "Judge support quality.",
       prompt: "Judge the answer.",
-      modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 }
+      executionBinding: bindingInput(MOCK_BINDING)
     }), { projectId: demoProject.id });
     expect(repository.pendingCalls).toBe(1);
     expect(repository.gateCalls).toBe(1);
@@ -471,7 +472,7 @@ describe("Demo skill lifecycle repository slice", () => {
     const input = CreateSkillVersionInputSchema.parse({
       rubricMarkdown: "Judge support quality.",
       prompt: "Judge the answer.",
-      modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 }
+      executionBinding: bindingInput(MOCK_BINDING)
     });
     const pending = await slice.createSkillVersionPending(current.id, input, { projectId: demoProject.id });
     expect(pending).toMatchObject({

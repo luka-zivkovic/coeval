@@ -10,7 +10,8 @@ import {
   type CriterionVersion,
   type RegressionCaseDiff,
   type Skill,
-  type SkillVersion
+  type SkillVersion,
+  describeExecutionBinding
 } from "@rubrist/shared";
 
 // A regression isn't always "pass → fail": a fail anchor the new version now
@@ -382,8 +383,7 @@ export function RegressionResult({
           <div className="font-mono">{result.version.version}</div>
           <div className="text-ink-3">Model</div>
           <div className="font-mono">
-            {result.version.modelBinding.provider}/{result.version.modelBinding.modelId} · catalog identity{" "}
-            {result.version.modelBinding.modelVersion}
+            {describeExecutionBinding(result.version.executionBinding)}
           </div>
           <div className="text-ink-3">Known-failure agreement</div>
           <div>

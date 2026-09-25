@@ -13,6 +13,7 @@ import {
   evaluatorExecutionContextAllowsState,
   evaluatorLifecycleTransitionAllowed
 } from "../src/lib/evaluator-lifecycle.js";
+import { SEEDED_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 const digest = `sha256:${"a".repeat(64)}`;
 
@@ -79,12 +80,14 @@ describe("evaluator lifecycle authority", () => {
       skillDescription: "Exact governed candidate.",
       rubricMarkdown: "Return pass or fail.",
       prompt: "Judge the response.",
-      modelBinding: {
+      executionBinding: bindingInput(SEEDED_BINDING, {
         provider: "openai",
         modelId: "gpt-4o-mini",
         modelVersion: "2024-07-18",
-        temperature: 0
-      },
+        reasoning: null,
+        outputTokenLimit: null,
+        verdictProtocol: "openai.structured-output/v1"
+      }),
       outputSchema: MinimumVerdictOutputSchema,
       idempotencyKey: "first"
     });

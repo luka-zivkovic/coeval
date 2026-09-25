@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CreateSkillVersionInputSchema, type GoldenSetEntry } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
+import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 const PROJECT = "proj_langsmith_support";
 
@@ -290,7 +291,7 @@ describe("regression corpus pinning", () => {
       CreateSkillVersionInputSchema.parse({
         rubricMarkdown: "Judge support quality.",
         prompt: "Judge the answer.",
-        modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 }
+        executionBinding: bindingInput(MOCK_BINDING)
       }),
       { projectId: PROJECT }
     );

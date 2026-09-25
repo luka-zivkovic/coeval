@@ -1,3 +1,4 @@
+import { executionBindingFromInput } from "../lib/execution-binding.js";
 import { randomUUID } from "node:crypto";
 import type { JudgeProvider, Trace } from "@rubrist/audit/runtime";
 import { demoProject, demoSkill, demoSkillPrevVersion } from "@rubrist/db";
@@ -287,7 +288,7 @@ export class DemoSkillLifecycleRepository implements SkillLifecycleRepositoryPor
       status: "calibrating",
       rubricMarkdown: input.rubricMarkdown,
       prompt: input.prompt,
-      modelBinding: input.modelBinding,
+      ...executionBindingFromInput(input.executionBinding),
       outputSchema: input.outputSchema ?? MinimumVerdictOutputSchema,
       goldenSetAgreement: null,
       tooStrictCount: 0,

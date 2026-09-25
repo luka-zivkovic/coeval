@@ -94,6 +94,10 @@ export function normalizeJudgeProviderId(value: string): JudgeProviderId | null 
   return parsed.success ? parsed.data : null;
 }
 
+/** Where a judge credential comes from: built in (the mock), the project, or the platform environment. */
+export const JudgeProviderCredentialSourceSchema = z.enum(["built_in", "project", "environment"]);
+export type JudgeProviderCredentialSource = z.infer<typeof JudgeProviderCredentialSourceSchema>;
+
 // Internal shared schema. It remains absent from the package root exports.
 export const HttpUrlSchema = z
   .string()
@@ -119,55 +123,7 @@ export const ModelBindingSchema = z.object({
 });
 export type ModelBinding = z.infer<typeof ModelBindingSchema>;
 
-const StoredHttpUrlSchema = z
-  .string()
-  .url()
-  .refine((value) => /^https?:\/\//i.test(value), { message: "baseUrl must use http or https" });
 
-// Database-backed bindings are produced only by current, validated writers.
-// Keep this separate from ModelBindingSchema so frozen external contracts are
-// not reinterpreted when the runtime provider catalog changes.
-export const StoredModelBindingSchema = z
-  .object({
-    provider: JudgeProviderIdSchema,
-    modelId: z.string().min(1).max(240),
-    modelVersion: z.string().min(1).max(240),
-    temperature: z.number().min(0).max(2),
-    topP: z.number().min(0).max(1).optional(),
-    baseUrl: StoredHttpUrlSchema.optional()
-  })
-  .strict()
-  .superRefine((binding, ctx) => {
-    if (binding.provider === "custom" && !binding.baseUrl) {
-      ctx.addIssue({ code: "custom", path: ["baseUrl"], message: "custom providers require an OpenAI-compatible baseUrl" });
-    }
-    if (binding.provider !== "custom" && binding.baseUrl !== undefined) {
-      ctx.addIssue({ code: "custom", path: ["baseUrl"], message: "baseUrl is only valid for custom providers" });
-    }
-  });
-export type StoredModelBinding = z.infer<typeof StoredModelBindingSchema>;
-
-export const ModelBindingInputSchema = z
-  .object({
-    provider: z.preprocess(
-      (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
-      JudgeProviderIdSchema
-    ),
-    modelId: z.string().trim().min(1).max(240),
-    modelVersion: z.string().trim().min(1).max(240),
-    temperature: z.number().min(0).max(2),
-    topP: z.number().min(0).max(1).optional(),
-    baseUrl: HttpUrlSchema.optional()
-  })
-  .superRefine((binding, ctx) => {
-    if (binding.provider === "custom" && !binding.baseUrl) {
-      ctx.addIssue({ code: "custom", path: ["baseUrl"], message: "custom providers require an OpenAI-compatible baseUrl" });
-    }
-    if (binding.provider !== "custom" && binding.baseUrl !== undefined) {
-      ctx.addIssue({ code: "custom", path: ["baseUrl"], message: "baseUrl is only valid for custom providers" });
-    }
-  });
-export type ModelBindingInput = z.infer<typeof ModelBindingInputSchema>;
 
 // Calibration evidence only describes the exact model that produced it, so a
 // model id the provider can repoint underneath Rubrist cannot become a

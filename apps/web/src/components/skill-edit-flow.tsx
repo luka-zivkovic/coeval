@@ -2,9 +2,11 @@ import { useEffect, useRef } from "react";
 import { Check } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Chip, Eyebrow } from "@/components/rubrist";
-import { knownFailureGateSummary, sameModelBinding } from "../lib/skill-edit-flow.js";
+import { knownFailureGateSummary } from "../lib/skill-edit-flow.js";
+import { inputMatchesVersion } from "../lib/execution-binding-draft.js";
 import { cn } from "@/lib/utils";
 import {
+  type ExecutionBindingInput,
   type SkillVersion,
   type SkillVersionTimeScope,
   type VerdictKind
@@ -151,20 +153,20 @@ export function SkillChangeReview({
   base,
   rubricMarkdown,
   prompt,
-  modelBinding,
+  executionBinding,
   verdictKind,
   timeScope
 }: {
   base: SkillVersion;
   rubricMarkdown: string;
   prompt: string;
-  modelBinding: SkillVersion["modelBinding"];
+  executionBinding: ExecutionBindingInput;
   verdictKind: VerdictKind;
   timeScope: SkillVersionTimeScope;
 }) {
   const rubricChanged = rubricMarkdown !== base.rubricMarkdown;
   const promptChanged = prompt !== base.prompt;
-  const bindingChanged = !sameModelBinding(modelBinding, base.modelBinding);
+  const bindingChanged = !inputMatchesVersion(executionBinding, base);
   const verdictChanged = verdictKind !== base.verdictKind;
   const changedCount = [rubricChanged, promptChanged, bindingChanged, verdictChanged].filter(Boolean).length;
 
@@ -195,9 +197,9 @@ export function SkillChangeReview({
             <div className="text-[10.5px] text-ink-3">exact prompt source</div>
           </div>
           <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2">
-            <div className="text-ink-3">Requested model</div>
+            <div className="text-ink-3">Execution binding</div>
             <div className="mt-0.5 font-medium text-ink">{bindingChanged ? "Changed" : "No change"}</div>
-            <div className="truncate font-mono text-[10.5px] text-ink-3">{base.modelBinding.modelId} → {modelBinding.modelId}</div>
+            <div className="truncate font-mono text-[10.5px] text-ink-3">{base.executionBinding.modelId} → {executionBinding.modelId}</div>
           </div>
           <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2">
             <div className="text-ink-3">Result / apply scope</div>

@@ -99,7 +99,7 @@ describe("assisted trace-test drafting API", () => {
       sourceScope: { responsePath: ["output", "messages", 0, "content"], turnIndexes: [1, 2], stepIndexes: [0] },
       draftProvenance: {
         origin: "generated",
-        generator: { provider: "anthropic", model: "claude-sonnet-4-6", version: "2026-04-15" }
+        generator: { provider: "anthropic", model: "claude-sonnet-4-6", version: "claude-sonnet-4-6" }
       }
     });
     expect(generator).toHaveBeenCalledOnce();

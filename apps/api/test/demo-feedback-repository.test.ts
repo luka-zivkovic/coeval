@@ -394,7 +394,7 @@ describe("Demo judge-feedback repository slice", () => {
       sourceTraceVersion: null,
       criterionStableKey: "response-quality",
       integration: { id: integration.id, apiKey: "ls_private_feedback_key" },
-      judgeRun: { id: run.id, modelBinding: expect.any(Object) }
+      judgeRun: { id: run.id, executionBinding: expect.any(Object) }
     });
     expect(await repository.createFeedbackSyncJob({
       projectId: demoProject.id,

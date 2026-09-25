@@ -1,3 +1,4 @@
+import { executionBindingInputProblem, legacyModelBinding } from "../lib/execution-binding.js";
 import type { Pool } from "pg";
 import type { Hono } from "hono";
 import type { Queue } from "@rubrist/queue";
@@ -218,6 +219,11 @@ export function registerSkillAdministrationRoutes(
     }
     basis.push("This document is a mapping of recorded skill + golden-set data — no value is fabricated.");
 
+    // skill-format/v1 records a v1 binding; skill-format/v2 replaces it in Batch 8D.
+    const legacyBinding = legacyModelBinding(version);
+    if (legacyBinding === null) {
+      return c.json({ error: "skill-format/v1 can't state this version's execution binding (it needs an explicit temperature)." }, 409);
+    }
     const doc: SkillFormatV1 = {
       formatVersion: "skill-format/v1",
       name: skill.name,
@@ -225,7 +231,7 @@ export function registerSkillAdministrationRoutes(
       owner: skill.ownerName,
       version: version.version,
       status: version.status,
-      modelBinding: version.modelBinding,
+      modelBinding: legacyBinding,
       rubricMarkdown: version.rubricMarkdown,
       examples,
       outputSchema: (version.outputSchema ?? {}) as SkillFormatV1["outputSchema"],
@@ -295,9 +301,11 @@ export function registerSkillAdministrationRoutes(
     if (!parsed.success) {
       return c.json({ error: "Invalid onboarding Check input", details: z.treeifyError(parsed.error) }, 400);
     }
-    if (options.pool && parsed.data.evaluator.modelBinding.provider === "mock") {
+    if (options.pool && parsed.data.evaluator.executionBinding.provider === "mock") {
       return c.json({ error: "The mock judge is only available in local demo mode. Configure a real judge provider first." }, 400);
     }
+    const onboardingBindingProblem = executionBindingInputProblem(parsed.data.evaluator.executionBinding);
+    if (onboardingBindingProblem !== null) return c.json({ error: onboardingBindingProblem }, 400);
 
     const projectId = c.get("projectId");
     const requestDigest = sha256Digest({
@@ -389,9 +397,11 @@ export function registerSkillAdministrationRoutes(
     if (!parsed.success) {
       return c.json({ error: "Invalid skill version input", details: z.treeifyError(parsed.error) }, 400);
     }
-    if (options.pool && parsed.data.modelBinding.provider === "mock") {
+    if (options.pool && parsed.data.executionBinding.provider === "mock") {
       return c.json({ error: "The mock judge is only available in local demo mode. Configure a real judge provider first." }, 400);
     }
+    const versionBindingProblem = executionBindingInputProblem(parsed.data.executionBinding);
+    if (versionBindingProblem !== null) return c.json({ error: versionBindingProblem }, 400);
 
     const projectId = c.get("projectId");
 

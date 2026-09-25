@@ -482,7 +482,7 @@ export function SkillVersionEditor({
           base={v}
           rubricMarkdown={rubric}
           prompt={prompt}
-          modelBinding={changeInput.modelBinding}
+          executionBinding={changeInput.executionBinding}
           verdictKind={verdictKind}
           timeScope={timeScope}
         />

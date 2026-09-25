@@ -153,7 +153,7 @@ describe("MarkdownPreview", () => {
     expect(skill).toContain("<MarkdownPreview markdown={markdown}");
     expect(skill).toContain("Judge instructions · exact compiled text");
     expect(skill).toContain("Result format · exact JSON schema");
-    expect(skill).toContain("Requested model · immutable settings");
+    expect(skill).toContain("Execution binding · immutable settings");
     expect(skill).not.toContain("Model used");
     expect(skill).not.toContain("Rubrist flips this skill to");
     expect(versions).toContain("<MarkdownPreview markdown={v.rubricMarkdown}");

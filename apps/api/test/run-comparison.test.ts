@@ -4,6 +4,7 @@ import { CreateSkillVersionInputSchema, type EvalRunItem, type RunComparisonDeta
 import { createApp } from "../src/app.js";
 import { computeRunComparisonDiff, runComparisonStatus } from "../src/lib/run-comparison.js";
 import { DatasetRevisionConflictError, DemoRepository } from "../src/repository.js";
+import { bindingInput } from "./fixtures/execution-binding.js";
 
 const PROJECT = "proj_langsmith_support";
 // The demo's current version. resolveSkillVersionId validates requested ids
@@ -18,7 +19,7 @@ async function createSecondVersion(repository: DemoRepository): Promise<string> 
     CreateSkillVersionInputSchema.parse({
       rubricMarkdown: "Bisect variant rubric",
       prompt: "Judge the trace against the rubric.",
-      modelBinding: skill.currentVersion.modelBinding
+      executionBinding: bindingInput(skill.currentVersion.executionBinding)
     }),
     { projectId: PROJECT }
   );

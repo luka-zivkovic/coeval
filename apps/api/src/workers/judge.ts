@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DEFAULT_OUTPUT_SCHEMA, type JudgePrompt, type JudgeProvider } from "@rubrist/audit/runtime";
+import { DEFAULT_OUTPUT_SCHEMA, EvaluatorCallError, type JudgePrompt, type JudgeProvider } from "@rubrist/audit/runtime";
 import { JudgeRunJobSchema, renderJudgePromptContent, type JudgeRun, type JudgeRunJob, type VerdictPayload, type VerdictRecord } from "@rubrist/shared";
 import type { Queue } from "@rubrist/queue";
 import type { RubristRepository } from "../repository.js";
@@ -96,11 +96,11 @@ export async function judgeAndRecord(
   // to the factory; env keys apply only when no project key exists. An
   // invalid project key therefore fails at call time (classified permanent
   // below), never silently falling back to platform credentials.
-  const bindingProvider = skillVersion.modelBinding.provider;
-  const projectKey = bindingProvider !== "mock"
+  const bindingProvider = skillVersion.executionBinding.provider;
+  const projectKey = bindingProvider !== "mock" && bindingProvider !== "typesafe"
     ? await repository.getJudgeProviderCredential(context.projectId, bindingProvider)
     : null;
-  const provider = providerFactory(skillVersion.modelBinding, projectKey ? { apiKey: projectKey } : undefined);
+  const provider = providerFactory(skillVersion, projectKey ? { apiKey: projectKey } : undefined);
   const spec = specFromSkillVersion(skillVersion);
 
   const prompt: JudgePrompt = {
@@ -178,8 +178,14 @@ export async function judgeAndRecord(
   return { run, payload, verdict, latencyMs, ...(usage ? { usage } : {}), providerMetadata };
 }
 
+// Failures a same-request retry can't heal. The call is never retried with
+// changed parameters (ADR-0014 section 2); only transient transport-level
+// failures of a call that reached the provider are retried as sent.
+const RETRYABLE_CALL_FAILURES = new Set(["provider_rate_limit", "provider_timeout", "provider_unavailable", "provider_transport"]);
+
 export function isPermanentError(error: unknown): boolean {
   if (error instanceof z.ZodError) return true;
+  if (error instanceof EvaluatorCallError) return !error.physicalCall || !RETRYABLE_CALL_FAILURES.has(error.failureKind);
   // Missing provider credentials won't heal on retry within a job's backoff
   // budget — fail the item with the message instead of spinning.
   if (error instanceof JudgeProviderUnavailableError) return true;

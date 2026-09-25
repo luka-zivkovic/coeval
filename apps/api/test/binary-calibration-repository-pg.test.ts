@@ -13,6 +13,7 @@ import { PgBinaryCalibrationRepository } from "../src/binary-calibration/reposit
 import { PgGovernedReviewRepository, type GovernedReviewActor } from "../src/governed-review/index.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
+import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {
@@ -101,7 +102,7 @@ run("PgBinaryCalibrationRepository", () => {
       CreateSkillVersionInputSchema.parse({
         rubricMarkdown: "# Binary rubric",
         prompt: "Judge the exact protected item.",
-        modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock-v1", temperature: 0 },
+        executionBinding: bindingInput(MOCK_BINDING),
         verdictKind: "binary",
         criterionVersionId: "criterionv_cal_skill"
       }),
@@ -189,17 +190,17 @@ run("PgBinaryCalibrationRepository", () => {
     };
     // Sealed calibration refuses a mutable model alias; the stored binding is
     // swapped here because every current writer already refuses one.
-    const storedBinding = (await pool.query(`select model_binding from skill_versions where id=$1`, [skillVersionId])).rows[0]!.model_binding;
+    const storedBinding = (await pool.query(`select execution_binding from skill_versions where id=$1`, [skillVersionId])).rows[0]!.execution_binding;
     try {
       for (const alias of ["latest", "openrouter/auto", "chatgpt-4o-latest"]) {
-        await pool.query(`update skill_versions set model_binding = jsonb_set(model_binding, '{modelId}', to_jsonb($2::text)) where id=$1`, [skillVersionId, alias]);
+        await pool.query(`update skill_versions set execution_binding = jsonb_set(execution_binding, '{modelId}', to_jsonb($2::text)) where id=$1`, [skillVersionId, alias]);
         await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({
           code: "ineligible",
           message: expect.stringContaining("mutable alias")
         });
       }
     } finally {
-      await pool.query(`update skill_versions set model_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(storedBinding)]);
+      await pool.query(`update skill_versions set execution_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(storedBinding)]);
     }
     const created = await repository.createRun(OWNER, input);
     expect(created).toMatchObject({ state: "queued", plannedObservations: 2, accountedObservations: 0 });
@@ -329,7 +330,7 @@ run("PgBinaryCalibrationRepository", () => {
       CreateSkillVersionInputSchema.parse({
         rubricMarkdown: "# Post-test binary rubric",
         prompt: "A version developed after sealed results existed.",
-        modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock-v2", temperature: 0 },
+        executionBinding: bindingInput(MOCK_BINDING),
         verdictKind: "binary",
         criterionVersionId: "criterionv_cal_skill"
       }),

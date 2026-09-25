@@ -150,7 +150,7 @@ const EXPECTED_SHARDS = {
     "suites": [
       "feedback sync worker",
       "trust digest (M3 S4)",
-      "judge model binding validation",
+      "judge execution binding validation",
       "Ironside integration lifecycle"
     ],
     "suiteTestCounts": [2, 1, 1, 1],
@@ -158,7 +158,7 @@ const EXPECTED_SHARDS = {
       "enqueues and posts LangSmith feedback for judged LangSmith cases",
       "enqueues and posts Langfuse feedback for judged Langfuse cases",
       "GET /api/trust-digest returns the four signals with honest empty states on the demo project",
-      "validates model provider, custom endpoint, and temperature boundaries",
+      "validates the provider, a custom endpoint, and temperature boundaries",
       "verifies an Ironside project before saving and rejects cross-project credential rotation"
     ]
   },

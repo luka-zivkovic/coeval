@@ -9,6 +9,7 @@ import { processJudgeRunJob } from "../src/workers/judge.js";
 
 import { IronsideHttpError } from "../src/lib/ironside.js";
 import { BlockedIronsideFeedbackRepository, CapturingQueue } from "./app-test-support.js";
+import { MOCK_BINDING, SEEDED_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 describe("feedback sync worker", () => {
   it("enqueues and posts LangSmith feedback for judged LangSmith cases", async () => {
@@ -79,12 +80,7 @@ describe("feedback sync worker", () => {
       comment: "good support answer",
       sourceInfo: {
         skillVersionId: "skillv_1_2_0",
-        modelBinding: {
-          provider: "anthropic",
-          modelId: "claude-sonnet-4-6",
-          modelVersion: "2026-04-15",
-          temperature: 0
-        },
+        executionBinding: SEEDED_BINDING,
         judgeRunId: run.id,
         provider: "rubrist"
       }
@@ -204,35 +200,34 @@ describe("trust digest (M3 S4)", () => {
   });
 });
 
-describe("judge model binding validation", () => {
-  it("validates model provider, custom endpoint, and temperature boundaries", () => {
+describe("judge execution binding validation", () => {
+  it("validates the provider, a custom endpoint, and temperature boundaries", () => {
     const baseInput = {
       rubricMarkdown: "Test rubric.",
       prompt: "Test prompt.",
-      modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 }
+      executionBinding: bindingInput(MOCK_BINDING)
     };
     expect(() => CreateSkillVersionInputSchema.parse(baseInput)).not.toThrow();
     expect(() => CreateSkillVersionInputSchema.parse({
       ...baseInput,
-      modelBinding: { ...baseInput.modelBinding, provider: "typo-provider" }
+      executionBinding: { ...baseInput.executionBinding, provider: "typo-provider" }
     })).toThrow();
     expect(() => CreateSkillVersionInputSchema.parse({
       ...baseInput,
-      modelBinding: { provider: "custom", modelId: "judge", modelVersion: "judge", temperature: 0 }
+      executionBinding: bindingInput(SEEDED_BINDING, { provider: "custom", endpoint: { kind: "custom", baseUrl: "not a url" } })
     })).toThrow();
     expect(() => CreateSkillVersionInputSchema.parse({
       ...baseInput,
-      modelBinding: {
+      executionBinding: bindingInput(SEEDED_BINDING, {
         provider: "custom",
-        modelId: "judge",
-        modelVersion: "judge",
-        temperature: 0,
-        baseUrl: "https://models.example.test/v1"
-      }
+        endpoint: { kind: "custom", baseUrl: "https://models.example.test/v1" },
+        reasoning: null,
+        verdictProtocol: "openai.forced-function/v1"
+      })
     })).not.toThrow();
     expect(() => CreateSkillVersionInputSchema.parse({
       ...baseInput,
-      modelBinding: { ...baseInput.modelBinding, temperature: 2.1 }
+      executionBinding: bindingInput(SEEDED_BINDING, { sampling: { temperature: 2.1, topP: null } })
     })).toThrow();
   });
 });
