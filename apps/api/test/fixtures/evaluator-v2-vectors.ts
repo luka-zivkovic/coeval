@@ -1,7 +1,7 @@
 import type { EvaluatorDefinition, ExecutionBinding, TypedQuestion } from "@rubrist/shared";
 import { typedQuestionDigest } from "../../src/lib/evaluator-identity.js";
 
-// The evaluator definitions and bindings behind the calibration v2 vectors.
+// The evaluator definitions and bindings behind the v2 contract vectors.
 // Artifacts carry only each definition's digest; these let tests trace
 // definitionDigest, skillDigest, and outputContractDigest from the definition down.
 

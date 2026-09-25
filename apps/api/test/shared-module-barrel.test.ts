@@ -11,6 +11,8 @@ import * as evaluationRuns from "../../../packages/shared/dist/evaluation-runs.j
 import * as evaluatorExecution from "../../../packages/shared/dist/evaluator-execution.js";
 import * as assessmentReceiptV2 from "../../../packages/shared/dist/assessment-receipt-v2.js";
 import * as binaryCalibrationV2 from "../../../packages/shared/dist/binary-calibration-v2.js";
+import * as evaluatorSuiteManifestV2 from "../../../packages/shared/dist/evaluator-suite-manifest-v2.js";
+import * as skillFormatV2 from "../../../packages/shared/dist/skill-format-v2.js";
 import * as evaluatorLifecycle from "../../../packages/shared/dist/evaluator-lifecycle.js";
 import * as goldenSet from "../../../packages/shared/dist/golden-set.js";
 import * as governedReview from "../../../packages/shared/dist/governed-review.js";
@@ -63,11 +65,13 @@ describe("shared module barrel", () => {
     expectRootIdentity(evaluatorExecution);
     expectRootIdentity(assessmentReceiptV2);
     expectRootIdentity(binaryCalibrationV2);
+    expectRootIdentity(evaluatorSuiteManifestV2);
+    expectRootIdentity(skillFormatV2);
     expectRootIdentity(evaluatorLifecycle);
     expectRootIdentity(goldenSet);
     expectRootIdentity(governedReview);
     expectRootIdentity(integrations);
-    expectRootIdentity(judge, new Set(["HttpUrlSchema", "UnicodeScalarValueSchema"]));
+    expectRootIdentity(judge, new Set(["HttpUrlSchema", "UnicodeScalarValueSchema", "containsOwnProtoKey", "exceedsJsonDepth", "V2_EVIDENCE_MAX_JSON_DEPTH"]));
     expectRootIdentity(legacyReview);
     expectRootIdentity(machineReads);
     expectRootIdentity(productionCalibration);

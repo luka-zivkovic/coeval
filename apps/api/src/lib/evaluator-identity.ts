@@ -8,6 +8,7 @@ import {
   type SkillDigestInput,
   type TypedQuestion
 } from "@rubrist/shared";
+import { createHash } from "node:crypto";
 import { type ZodType } from "zod";
 import { canonicalJson, sha256Digest } from "./assessment-receipt.js";
 
@@ -82,6 +83,16 @@ export function evaluatorOutputContractDigestV2(definition: EvaluatorDefinition)
         polarity: parsed.polarity,
         rationale: parsed.rationale
       });
+}
+
+/**
+ * The digest a binding uses to name a custom endpoint (ADR-0014 section 2):
+ * SHA-256 over the UTF-8 bytes of a domain-separation prefix and the base URL
+ * exactly as configured, with no normalization. The URL itself stays out of
+ * identity and evidence.
+ */
+export function endpointBaseUrlDigest(baseUrl: string): string {
+  return `sha256:${createHash("sha256").update("rubrist/endpoint-base-url/v1\0", "utf8").update(baseUrl, "utf8").digest("hex")}`;
 }
 
 /** The question digest a typed-question definition holds in place of its text (ADR-0014 section 5). */

@@ -1,0 +1,502 @@
+{
+  "contract": "skill-format/v2",
+  "baseFixture": "skill-format-v2.prompted.json",
+  "cases": [
+    {
+      "name": "positive-control-prompted",
+      "structural": "accept",
+      "semantic": "accept",
+      "mutations": []
+    },
+    {
+      "name": "positive-control-typed-question",
+      "baseFixture": "skill-format-v2.typed-question.json",
+      "structural": "accept",
+      "semantic": "accept",
+      "mutations": []
+    },
+    {
+      "name": "no-examples-is-valid",
+      "structural": "accept",
+      "semantic": "accept",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/examples",
+          "value": []
+        }
+      ]
+    },
+    {
+      "name": "different-rubric-with-digests-recomputed",
+      "structural": "accept",
+      "semantic": "accept",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/identity/definition/rubricMarkdown",
+          "value": "# A different rubric"
+        },
+        {
+          "op": "recompute-digests"
+        }
+      ]
+    },
+    {
+      "name": "unknown-root-field",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/threshold",
+          "value": 0.5
+        }
+      ]
+    },
+    {
+      "name": "unknown-evaluator-field",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/evaluator/resolution",
+          "value": {
+            "status": "resolved"
+          }
+        }
+      ]
+    },
+    {
+      "name": "unknown-definition-field",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/evaluator/identity/definition/fewShot",
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "unknown-example-field",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/examples/0/score",
+          "value": 0.9
+        }
+      ]
+    },
+    {
+      "name": "v1-format-version",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/formatVersion",
+          "value": "skill-format/v1"
+        }
+      ]
+    },
+    {
+      "name": "legacy-model-binding",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/modelBinding",
+          "value": {
+            "provider": "anthropic",
+            "modelId": "claude-sonnet-4-6"
+          }
+        }
+      ]
+    },
+    {
+      "name": "invalid-status",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/status",
+          "value": "shipped"
+        }
+      ]
+    },
+    {
+      "name": "malformed-digest",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/digests/skillDigest",
+          "value": "sha256:not-a-digest"
+        }
+      ]
+    },
+    {
+      "name": "typed-question-without-question-text",
+      "baseFixture": "skill-format-v2.typed-question.json",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/question",
+          "value": null
+        }
+      ]
+    },
+    {
+      "name": "question-text-on-prompted",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/question",
+          "value": {
+            "type": "noul",
+            "instructions": "The reply stays within the stated refund policy.",
+            "criteria": {
+              "true": "Every refund offered is allowed.",
+              "false": "A refund is offered outside the policy."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "typed-question-on-a-prompted-protocol",
+      "baseFixture": "skill-format-v2.typed-question.json",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/identity/executionBinding",
+          "value": {
+            "provider": "anthropic",
+            "endpoint": {
+              "kind": "managed"
+            },
+            "modelId": "claude-sonnet-4-6",
+            "modelVersion": "claude-sonnet-4-6",
+            "sampling": {
+              "temperature": 0,
+              "topP": null
+            },
+            "reasoning": {
+              "family": "anthropic",
+              "thinking": {
+                "type": "disabled"
+              },
+              "effort": "high"
+            },
+            "outputTokenLimit": 1200,
+            "verdictProtocol": "anthropic.structured-output/v1",
+            "routing": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "prompted-on-typed-question-protocol",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/identity/executionBinding",
+          "value": {
+            "provider": "typesafe",
+            "endpoint": {
+              "kind": "managed"
+            },
+            "modelId": "jev-1.13.0",
+            "modelVersion": "jev-1.13.0",
+            "sampling": {
+              "temperature": null,
+              "topP": null
+            },
+            "reasoning": null,
+            "outputTokenLimit": null,
+            "verdictProtocol": "typed-question/v1",
+            "routing": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "threshold-zero",
+      "baseFixture": "skill-format-v2.typed-question.json",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/identity/definition/threshold",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "threshold-one",
+      "baseFixture": "skill-format-v2.typed-question.json",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/identity/definition/threshold",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "name": "scalar-without-range",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/identity/definition/verdictKind",
+          "value": "scalar"
+        }
+      ]
+    },
+    {
+      "name": "range-on-binary",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/identity/definition/scalarRange",
+          "value": [
+            1,
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "name": "categorical-without-scores",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/identity/definition/verdictKind",
+          "value": "categorical"
+        }
+      ]
+    },
+    {
+      "name": "choice-score-over-one",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/identity/definition/verdictKind",
+          "value": "categorical"
+        },
+        {
+          "op": "replace",
+          "path": "/evaluator/identity/definition/categoricalChoiceScores",
+          "value": {
+            "good": 1.5
+          }
+        }
+      ]
+    },
+    {
+      "name": "example-label-abstain",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/examples/0/label",
+          "value": "abstain"
+        }
+      ]
+    },
+    {
+      "name": "example-without-input",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "remove",
+          "path": "/examples/0/input"
+        }
+      ]
+    },
+    {
+      "name": "unset-binding-setting-omitted",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "remove",
+          "path": "/evaluator/identity/executionBinding/sampling/topP"
+        }
+      ]
+    },
+    {
+      "name": "proto-key-at-root",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/__proto__",
+          "value": {
+            "status": "production"
+          }
+        }
+      ]
+    },
+    {
+      "name": "proto-key-in-digests",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "add",
+          "path": "/digests/__proto__",
+          "value": {
+            "skillDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tampered-definition-digest",
+      "structural": "accept",
+      "semantic": "reject",
+      "errorIncludes": "definitionDigest does not match",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/digests/definitionDigest",
+          "value": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "name": "rubric-changed-without-digests",
+      "structural": "accept",
+      "semantic": "reject",
+      "errorIncludes": "definitionDigest does not match",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/identity/definition/rubricMarkdown",
+          "value": "# A different rubric"
+        }
+      ]
+    },
+    {
+      "name": "binding-changed-without-skill-digest",
+      "structural": "accept",
+      "semantic": "reject",
+      "errorIncludes": "skillDigest does not match",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/identity/executionBinding/sampling/temperature",
+          "value": 0.5
+        }
+      ]
+    },
+    {
+      "name": "tampered-output-contract-digest",
+      "structural": "accept",
+      "semantic": "reject",
+      "errorIncludes": "outputContractDigest does not match",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/digests/outputContractDigest",
+          "value": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "name": "question-text-changed",
+      "baseFixture": "skill-format-v2.typed-question.json",
+      "structural": "accept",
+      "semantic": "reject",
+      "errorIncludes": "question text does not match",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/question/instructions",
+          "value": "A different question."
+        }
+      ]
+    },
+    {
+      "name": "example-id-too-long",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/examples/0/id",
+          "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ]
+    },
+    {
+      "name": "typed-question-substituted-consistently",
+      "baseFixture": "skill-format-v2.typed-question.json",
+      "structural": "accept",
+      "semantic": "reject",
+      "errorIncludes": "does not match the expected skillDigest",
+      "expectedSkillDigest": "sha256:44a3d7d6f4bb07dcb57dafe33c50ce905bde19e4ab583eaf304ea96d9e662497",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/question/instructions",
+          "value": "A different question."
+        },
+        {
+          "op": "recompute-question-digest"
+        },
+        {
+          "op": "recompute-digests"
+        }
+      ]
+    },
+    {
+      "name": "self-consistent-but-unexpected-evaluator",
+      "structural": "accept",
+      "semantic": "reject",
+      "errorIncludes": "does not match the expected skillDigest",
+      "expectedSkillDigest": "sha256:b992cd37b577cc0164ddc39742e468fc9abc2a32a579d4702a16defa0a302502",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/identity/definition/rubricMarkdown",
+          "value": "# A different rubric"
+        },
+        {
+          "op": "recompute-digests"
+        }
+      ]
+    }
+  ]
+}

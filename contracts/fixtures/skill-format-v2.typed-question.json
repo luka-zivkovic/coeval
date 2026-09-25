@@ -1,0 +1,68 @@
+{
+  "formatVersion": "skill-format/v2",
+  "name": "Refund policy",
+  "description": "Every refund the agent offers is allowed by the policy.",
+  "owner": "Support ops",
+  "version": "1",
+  "status": "validated",
+  "evaluator": {
+    "identity": {
+      "basis": "rubrist/evaluator-identity/v2",
+      "definition": {
+        "kind": "typed-question",
+        "question": {
+          "type": "noul",
+          "digest": "sha256:34355112d37d9a305a6bbfe2e1bcc825bf638253d5225f801334d917c21e1fee"
+        },
+        "polarity": "true_is_pass",
+        "threshold": 0.62,
+        "rationale": "not_provided"
+      },
+      "executionBinding": {
+        "provider": "typesafe",
+        "endpoint": {
+          "kind": "managed"
+        },
+        "modelId": "jev-1.13.0",
+        "modelVersion": "jev-1.13.0",
+        "sampling": {
+          "temperature": null,
+          "topP": null
+        },
+        "reasoning": null,
+        "outputTokenLimit": null,
+        "verdictProtocol": "typed-question/v1",
+        "routing": null
+      }
+    },
+    "question": {
+      "type": "noul",
+      "instructions": "The reply stays within the stated refund policy.",
+      "criteria": {
+        "true": "Every refund offered is allowed.",
+        "false": "A refund is offered outside the policy."
+      }
+    }
+  },
+  "digests": {
+    "definitionDigest": "sha256:4ce367b4c6511c98e6a0ea6dd5d142dfa379b7523c7fb9b8aba0f76ebae4e3dc",
+    "skillDigest": "sha256:44a3d7d6f4bb07dcb57dafe33c50ce905bde19e4ab583eaf304ea96d9e662497",
+    "outputContractDigest": "sha256:04cfa73215b5173e0975d67d7fc5327cdcfd66587d828dae85036e4430101e06"
+  },
+  "examples": [
+    {
+      "id": "golden-7",
+      "label": "fail",
+      "input": {
+        "order": "A-1043",
+        "days": 45
+      },
+      "output": "Here is a full refund.",
+      "reason": "Outside the 30-day window.",
+      "metadata": null
+    }
+  ],
+  "notes": [
+    "This document is a mapping of recorded evaluator and golden-set data; no value is fabricated."
+  ]
+}

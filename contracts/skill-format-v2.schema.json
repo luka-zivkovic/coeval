@@ -1,0 +1,1247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rubrist.dev/contracts/skill-format-v2.schema.json",
+  "title": "Rubrist skill format v2",
+  "description": "The portable export of one Rubrist evaluator version (ADR-0014).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "formatVersion",
+    "name",
+    "description",
+    "owner",
+    "version",
+    "status",
+    "evaluator",
+    "digests",
+    "examples",
+    "notes"
+  ],
+  "properties": {
+    "formatVersion": {
+      "const": "skill-format/v2"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 20000
+    },
+    "owner": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "calibrating",
+        "validated",
+        "approved",
+        "production",
+        "regressing",
+        "failed",
+        "needs_review",
+        "deprecated"
+      ]
+    },
+    "evaluator": {
+      "$ref": "#/$defs/evaluator"
+    },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "definitionDigest",
+        "skillDigest",
+        "outputContractDigest"
+      ],
+      "properties": {
+        "definitionDigest": {
+          "$ref": "#/$defs/sha256Digest"
+        },
+        "skillDigest": {
+          "$ref": "#/$defs/sha256Digest"
+        },
+        "outputContractDigest": {
+          "$ref": "#/$defs/sha256Digest"
+        }
+      }
+    },
+    "examples": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "$ref": "#/$defs/example"
+      }
+    },
+    "notes": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+      }
+    }
+  },
+  "$defs": {
+    "sha256Digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "evaluator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "question"
+      ],
+      "properties": {
+        "identity": {
+          "$ref": "#/$defs/evaluatorIdentity"
+        },
+        "question": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/typedQuestion"
+            }
+          ]
+        }
+      },
+      "if": {
+        "type": "object",
+        "properties": {
+          "identity": {
+            "type": "object",
+            "properties": {
+              "definition": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "typed-question"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "object"
+          }
+        }
+      },
+      "else": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    "evaluatorIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "basis",
+        "definition",
+        "executionBinding"
+      ],
+      "properties": {
+        "basis": {
+          "const": "rubrist/evaluator-identity/v2"
+        },
+        "definition": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/promptedDefinition"
+            },
+            {
+              "$ref": "#/$defs/typedQuestionDefinition"
+            }
+          ]
+        },
+        "executionBinding": {
+          "$ref": "#/$defs/executionBinding"
+        }
+      },
+      "if": {
+        "type": "object",
+        "properties": {
+          "definition": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "typed-question"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "executionBinding": {
+            "type": "object",
+            "properties": {
+              "verdictProtocol": {
+                "const": "typed-question/v1"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "type": "object",
+        "properties": {
+          "executionBinding": {
+            "type": "object",
+            "properties": {
+              "verdictProtocol": {
+                "not": {
+                  "const": "typed-question/v1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "promptedDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "rubricMarkdown",
+        "prompt",
+        "verdictKind",
+        "outputSchema",
+        "scalarRange",
+        "categoricalChoiceScores"
+      ],
+      "properties": {
+        "kind": {
+          "const": "prompted"
+        },
+        "rubricMarkdown": {
+          "type": "string",
+          "maxLength": 100000
+        },
+        "prompt": {
+          "type": "string",
+          "maxLength": 100000
+        },
+        "verdictKind": {
+          "enum": [
+            "binary",
+            "scalar",
+            "categorical"
+          ]
+        },
+        "outputSchema": {
+          "type": "object"
+        },
+        "scalarRange": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "items": false,
+              "minItems": 2
+            }
+          ]
+        },
+        "categoricalChoiceScores": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "type": "object",
+            "properties": {
+              "verdictKind": {
+                "const": "scalar"
+              }
+            }
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "scalarRange": {
+                "type": "array"
+              }
+            }
+          },
+          "else": {
+            "type": "object",
+            "properties": {
+              "scalarRange": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": {
+              "verdictKind": {
+                "const": "categorical"
+              }
+            }
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "categoricalChoiceScores": {
+                "type": "object",
+                "minProperties": 1
+              }
+            }
+          },
+          "else": {
+            "type": "object",
+            "properties": {
+              "categoricalChoiceScores": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "typedQuestionDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "question",
+        "polarity",
+        "threshold",
+        "rationale"
+      ],
+      "properties": {
+        "kind": {
+          "const": "typed-question"
+        },
+        "question": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "digest"
+          ],
+          "properties": {
+            "type": {
+              "const": "noul"
+            },
+            "digest": {
+              "$ref": "#/$defs/sha256Digest"
+            }
+          }
+        },
+        "polarity": {
+          "const": "true_is_pass"
+        },
+        "threshold": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "rationale": {
+          "const": "not_provided"
+        }
+      }
+    },
+    "typedQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "instructions",
+        "criteria"
+      ],
+      "properties": {
+        "type": {
+          "const": "noul"
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        },
+        "criteria": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "true",
+            "false"
+          ],
+          "properties": {
+            "true": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 5000
+            },
+            "false": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 5000
+            }
+          }
+        }
+      }
+    },
+    "executionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "endpoint",
+        "modelId",
+        "modelVersion",
+        "sampling",
+        "reasoning",
+        "outputTokenLimit",
+        "verdictProtocol",
+        "routing"
+      ],
+      "properties": {
+        "provider": {
+          "enum": [
+            "mock",
+            "anthropic",
+            "openai",
+            "openrouter",
+            "custom",
+            "typesafe"
+          ]
+        },
+        "endpoint": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "managed"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "baseUrlDigest"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "custom"
+                },
+                "baseUrlDigest": {
+                  "$ref": "#/$defs/sha256Digest"
+                }
+              }
+            }
+          ]
+        },
+        "modelId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "modelVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "sampling": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "temperature",
+            "topP"
+          ],
+          "properties": {
+            "temperature": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2
+                }
+              ]
+            },
+            "topP": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              ]
+            }
+          }
+        },
+        "reasoning": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/reasoning"
+            }
+          ]
+        },
+        "outputTokenLimit": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            }
+          ]
+        },
+        "verdictProtocol": {
+          "enum": [
+            "anthropic.structured-output/v1",
+            "anthropic.forced-tool/v1",
+            "openai.structured-output/v1",
+            "openai.forced-function/v1",
+            "prompted-json/v1",
+            "typed-question/v1",
+            "mock/v1"
+          ]
+        },
+        "routing": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "requireParameters",
+                "allowFallbacks"
+              ],
+              "properties": {
+                "requireParameters": {
+                  "const": true
+                },
+                "allowFallbacks": {
+                  "const": false
+                }
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "anthropic"
+              }
+            },
+            "required": [
+              "provider"
+            ]
+          },
+          "then": {
+            "allOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "verdictProtocol": {
+                    "enum": [
+                      "anthropic.structured-output/v1",
+                      "anthropic.forced-tool/v1",
+                      "prompted-json/v1"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "endpoint": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "const": "managed"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "routing": {
+                    "type": "null"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "reasoning": {
+                    "oneOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "family": {
+                            "const": "anthropic"
+                          }
+                        },
+                        "required": [
+                          "family"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "outputTokenLimit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "openai"
+              }
+            },
+            "required": [
+              "provider"
+            ]
+          },
+          "then": {
+            "allOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "verdictProtocol": {
+                    "enum": [
+                      "openai.structured-output/v1",
+                      "openai.forced-function/v1",
+                      "prompted-json/v1"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "routing": {
+                    "type": "null"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "reasoning": {
+                    "oneOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "family": {
+                            "const": "openai"
+                          }
+                        },
+                        "required": [
+                          "family"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "openrouter"
+              }
+            },
+            "required": [
+              "provider"
+            ]
+          },
+          "then": {
+            "allOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "verdictProtocol": {
+                    "enum": [
+                      "openai.structured-output/v1",
+                      "openai.forced-function/v1",
+                      "prompted-json/v1"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "endpoint": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "const": "managed"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "reasoning": {
+                    "oneOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "family": {
+                            "const": "openrouter"
+                          }
+                        },
+                        "required": [
+                          "family"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "routing": {
+                    "type": "object"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "custom"
+              }
+            },
+            "required": [
+              "provider"
+            ]
+          },
+          "then": {
+            "allOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "verdictProtocol": {
+                    "enum": [
+                      "openai.structured-output/v1",
+                      "openai.forced-function/v1",
+                      "prompted-json/v1"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "routing": {
+                    "type": "null"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "reasoning": {
+                    "oneOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "family": {
+                            "const": "openai"
+                          }
+                        },
+                        "required": [
+                          "family"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "endpoint": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "const": "custom"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "typesafe"
+              }
+            },
+            "required": [
+              "provider"
+            ]
+          },
+          "then": {
+            "allOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "verdictProtocol": {
+                    "enum": [
+                      "typed-question/v1"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "endpoint": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "const": "managed"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "routing": {
+                    "type": "null"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "sampling": {
+                    "type": "object",
+                    "properties": {
+                      "temperature": {
+                        "type": "null"
+                      },
+                      "topP": {
+                        "type": "null"
+                      }
+                    }
+                  },
+                  "reasoning": {
+                    "type": "null"
+                  },
+                  "outputTokenLimit": {
+                    "type": "null"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "mock"
+              }
+            },
+            "required": [
+              "provider"
+            ]
+          },
+          "then": {
+            "allOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "verdictProtocol": {
+                    "enum": [
+                      "mock/v1"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "endpoint": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "const": "managed"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "routing": {
+                    "type": "null"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "sampling": {
+                    "type": "object",
+                    "properties": {
+                      "temperature": {
+                        "type": "null"
+                      },
+                      "topP": {
+                        "type": "null"
+                      }
+                    }
+                  },
+                  "reasoning": {
+                    "type": "null"
+                  },
+                  "outputTokenLimit": {
+                    "type": "null"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "reasoning": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "family",
+            "thinking",
+            "effort"
+          ],
+          "properties": {
+            "family": {
+              "const": "anthropic"
+            },
+            "thinking": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "disabled"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "budgetTokens"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "enabled"
+                    },
+                    "budgetTokens": {
+                      "type": "integer",
+                      "minimum": 1024,
+                      "maximum": 9007199254740991
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "adaptive"
+                    }
+                  }
+                }
+              ]
+            },
+            "effort": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high",
+                    "xhigh",
+                    "max"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "family",
+            "effort"
+          ],
+          "properties": {
+            "family": {
+              "const": "openai"
+            },
+            "effort": {
+              "enum": [
+                "none",
+                "minimal",
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "family",
+            "enabled",
+            "effort",
+            "maxTokens"
+          ],
+          "properties": {
+            "family": {
+              "const": "openrouter"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "effort": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ]
+                }
+              ]
+            },
+            "maxTokens": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                }
+              ]
+            }
+          },
+          "not": {
+            "type": "object",
+            "properties": {
+              "effort": {
+                "type": "string"
+              },
+              "maxTokens": {
+                "type": "integer"
+              }
+            }
+          },
+          "if": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "effort": {
+                "type": "null"
+              },
+              "maxTokens": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "example": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "input",
+        "output",
+        "reason",
+        "metadata"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "label": {
+          "enum": [
+            "pass",
+            "fail",
+            "ambiguous"
+          ]
+        },
+        "input": {},
+        "output": {},
+        "reason": {
+          "type": "string"
+        },
+        "metadata": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

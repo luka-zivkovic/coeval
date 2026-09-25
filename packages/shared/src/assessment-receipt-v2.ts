@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EvalRunStatusSchema } from "./evaluation-runs.js";
-import { containsLoneUtf16Surrogate } from "./judge.js";
+import { containsLoneUtf16Surrogate, containsOwnProtoKey, exceedsJsonDepth } from "./judge.js";
 import {
   EvaluatorItemStateSchema,
   EvaluatorScoreSchema,
@@ -75,21 +75,16 @@ const AssessmentReceiptV2ObjectSchema = z.object({
   evidenceDigest: Sha256DigestSchema
 }).strict();
 
-/** Whether any object in a raw JSON value has an own `__proto__` key. */
-function containsOwnProtoKey(value: unknown): boolean {
-  if (Array.isArray(value)) return value.some(containsOwnProtoKey);
-  if (value !== null && typeof value === "object") {
-    return Object.hasOwn(value, "__proto__") || Object.values(value).some(containsOwnProtoKey);
-  }
-  return false;
-}
-
 /**
  * The raw document is checked before the object parse: a strict object parse
  * silently drops an own `__proto__` key, and canonical identities operate on
  * Unicode scalar values, so both are refused wherever they appear.
  */
 export const AssessmentReceiptV2Schema = z.unknown().superRefine((raw, ctx) => {
+  if (exceedsJsonDepth(raw)) {
+    ctx.addIssue({ code: "custom", message: "assessment receipts must not nest deeper than 64 levels" });
+    return;
+  }
   if (containsOwnProtoKey(raw)) {
     ctx.addIssue({ code: "custom", message: "assessment receipts must not contain a __proto__ key" });
   }

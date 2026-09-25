@@ -202,6 +202,14 @@ describe("assessment receipt v2 contract (ADR-0014 section 7)", () => {
     }
   });
 
+  it("fails validation, rather than throwing, on hostile nesting", () => {
+    let payload: unknown = "leaf";
+    for (let depth = 0; depth < 5_000; depth += 1) payload = [payload];
+    const deep = { ...structuredClone(fixture("assessment-receipt-v2.complete.json").receipt as object), unexpected: payload };
+    expect(() => AssessmentReceiptV2Schema.safeParse(deep)).not.toThrow();
+    expect(AssessmentReceiptV2Schema.safeParse(deep).success).toBe(false);
+  });
+
   it("treats an abstention as an outcome: complete, with lower coverage", () => {
     const receipt = AssessmentReceiptV2Schema.parse(fixture("assessment-receipt-v2.complete.json").receipt);
     expect(receipt.status).toBe("complete");
