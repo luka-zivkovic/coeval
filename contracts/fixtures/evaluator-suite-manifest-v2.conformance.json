@@ -254,7 +254,7 @@
         {
           "op": "replace",
           "path": "/members/1/criterionVersionId",
-          "value": "criterionv_safety_substitute"
+          "value": "criterionv_refund_policy_substitute"
         },
         {
           "op": "recompute-criterion-digests"
@@ -292,7 +292,7 @@
         {
           "op": "replace",
           "path": "/members/1/criterionId",
-          "value": "criterion_factuality"
+          "value": "criterion_safety"
         },
         {
           "op": "recompute-criterion-digests"

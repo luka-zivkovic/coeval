@@ -7,7 +7,13 @@ import {
   type SkillStatus,
   type TypedQuestion
 } from "@rubrist/shared";
-import { evaluatorDefinitionDigest, evaluatorOutputContractDigestV2, skillDigestV2, typedQuestionDigest } from "./evaluator-identity.js";
+import {
+  endpointBaseUrlDigest,
+  evaluatorDefinitionDigest,
+  evaluatorOutputContractDigestV2,
+  skillDigestV2,
+  typedQuestionDigest
+} from "./evaluator-identity.js";
 
 // skill-format/v2 (contracts/skill-format-v2.md). The export route moves here
 // in 8D, when the skill-format/v1 export is removed.
@@ -47,7 +53,14 @@ export function buildSkillFormatV2(input: BuildSkillFormatV2Input): SkillFormatV
  * Parse a skill-format/v2 document and recompute every digest it states, so an
  * importer accepts exactly the evaluator identity the exporter had.
  */
-export function verifySkillFormatV2(raw: unknown, expected: { skillDigest?: string | undefined } = {}): SkillFormatV2 {
+export interface SkillFormatV2Expectations {
+  /** The evaluator identity the importer expected, such as a suite manifest member's. */
+  skillDigest?: string | undefined;
+  /** For a custom endpoint, the base URL the importer supplies; the export withholds it. */
+  endpointBaseUrl?: string | undefined;
+}
+
+export function verifySkillFormatV2(raw: unknown, expected: SkillFormatV2Expectations = {}): SkillFormatV2 {
   const doc = SkillFormatV2Schema.parse(raw);
   const { identity, question } = doc.evaluator;
   if (question !== null && identity.definition.kind === "typed-question" &&
@@ -65,6 +78,12 @@ export function verifySkillFormatV2(raw: unknown, expected: { skillDigest?: stri
   }
   if (expected.skillDigest !== undefined && doc.digests.skillDigest !== expected.skillDigest) {
     throw new Error(`skill-format evaluator does not match the expected skillDigest ${expected.skillDigest}`);
+  }
+  if (expected.endpointBaseUrl !== undefined) {
+    const endpoint = identity.executionBinding.endpoint;
+    if (endpoint.kind !== "custom" || endpointBaseUrlDigest(expected.endpointBaseUrl) !== endpoint.baseUrlDigest) {
+      throw new Error("skill-format endpoint base URL does not match the binding's baseUrlDigest");
+    }
   }
   return doc;
 }

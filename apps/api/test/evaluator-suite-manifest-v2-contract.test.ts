@@ -42,9 +42,9 @@ interface ConformanceCorpus {
 const contractRoot = new URL("../../../contracts/", import.meta.url);
 const pinnedFileDigests = {
   schema: "16a4f00c58bdb235b9a2baba00a1b381da6fa6675255c1ef3e02a30982fb8ad2",
-  specification: "efd4d88bb1dffc78e4afcd8950cbe2589a5175c3d2a9e23834fb1ca1d764b0b4",
-  fixture: "cf227db8c725c7e6c5a9e59c62857050d0b9ddf3958c5c20d02af9d1bb55d5db",
-  conformance: "b1283de2fccf6538786894b28ae7297afdab8bc6a7c5dc09081380c8c2b60e4b"
+  specification: "d1a3a1db9b0d1bd1a99f85e0becbee6bfb1a00972eb82706a42caadb23b7985d",
+  fixture: "0ad44a443c1430cd613c96c91b8a780e882ce5f0e36f2750c53a5adf6afe494e",
+  conformance: "148703d19c979a759486e076c5d455dde810d7d59149b9bc7be9aa23901027e3"
 } as const;
 
 const fileBytes = (relativePath: string) => readFileSync(new URL(relativePath, contractRoot));

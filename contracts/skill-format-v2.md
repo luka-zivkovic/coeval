@@ -43,6 +43,7 @@ care as the evaluator itself.
 - `examples`: at most 50 labelled golden cases, each with an `id`, a human
   `label` (`pass`, `fail`, or `ambiguous`), the redacted trace `input` and
   `output` as JSON values, a `reason`, and `metadata` (an object or `null`).
+  An `id` is at most 200 characters.
   Examples support calibration and testing; the runtime does not inject them
   as few-shot prompt content.
 - `notes`: at most 20 honest notes about anything the export could not
@@ -51,6 +52,14 @@ care as the evaluator itself.
 There is no resolution record: what one installation learned about a binding
 from its credentials is not part of the evaluator and is re-established by
 the importer.
+
+A custom endpoint's base URL is not exported either. It is often specific to
+one installation and can name internal infrastructure, so the binding names
+it only by `endpoint.baseUrlDigest`: SHA-256 over the UTF-8 bytes of
+`rubrist/endpoint-base-url/v1`, a NUL byte, and the base URL exactly as
+configured, with no normalization. An importer supplies the URL and checks it
+against that digest; a different URL is a different endpoint, and so a
+different evaluator identity.
 
 ## Digests
 
@@ -74,10 +83,13 @@ detects a substitution.
 ## Validity
 
 Every object is closed. No object has a `__proto__` key, and every string,
-keys included, is a sequence of Unicode scalar values. JSON Schema can't
-express three rules, which runtime validators check: lone surrogates,
-`__proto__` keys inside open objects (an output schema or an example's
-payload), and an ascending scalar range. String limits are UTF-16 code units
+keys included, is a sequence of Unicode scalar values, every number is finite,
+and no value nests deeper than 64 levels. JSON Schema can't express five
+rules, which runtime validators check: lone surrogates, `__proto__` keys
+inside open objects (an output schema, categorical choice scores, or an
+example's payload or metadata), an ascending scalar range, finite numbers in
+example payloads (JSON text such as `1e400` parses to infinity), and the depth
+limit, which a validator applies before parsing example payloads recursively. String limits are UTF-16 code units
 at runtime; JSON Schema's `maxLength` counts code points, so producers must
 stay within both.
 

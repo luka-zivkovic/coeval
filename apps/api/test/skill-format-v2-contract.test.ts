@@ -3,14 +3,21 @@ import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import { SkillFormatV2Schema, type SkillFormatV2 } from "@rubrist/shared";
-import { evaluatorDefinitionDigest, evaluatorOutputContractDigestV2, skillDigestV2, typedQuestionDigest } from "../src/lib/evaluator-identity.js";
-import { verifySkillFormatV2 } from "../src/lib/skill-format-v2.js";
+import {
+  endpointBaseUrlDigest,
+  evaluatorDefinitionDigest,
+  evaluatorOutputContractDigestV2,
+  skillDigestV2,
+  typedQuestionDigest
+} from "../src/lib/evaluator-identity.js";
+import { buildSkillFormatV2, verifySkillFormatV2 } from "../src/lib/skill-format-v2.js";
 import { BINDINGS, DEFINITIONS, QUESTION } from "./fixtures/evaluator-v2-vectors.js";
 
 type Mutation =
   | { op: "add"; path: string; value: unknown }
   | { op: "replace"; path: string; value: unknown }
   | { op: "remove"; path: string }
+  | { op: "recompute-question-digest" }
   | { op: "recompute-digests" };
 
 interface ConformanceCase {
@@ -31,11 +38,11 @@ interface ConformanceCorpus {
 
 const contractRoot = new URL("../../../contracts/", import.meta.url);
 const pinnedFileDigests = {
-  schema: "b2e0e8dfc26319b0504a4288b3db9a20e36661593229cd291c405a52a08f4f8f",
-  specification: "67e33cfb6c63744dc835f5809b0cd6dc937713c7bfdf6f7c640a002fce382b54",
+  schema: "93d12a75598b24031860a1d21b386260954daeb5110d766d2db6cd5d99875d06",
+  specification: "a0ae3b240c58f7ba69d04e0482fa813bb11b6602aa0a523260eaa09a8b689965",
   prompted: "d61bb237767fee31a6fecbecfafcb6dfd85df774ce84c2effed59594814c61c0",
   typedQuestion: "d07a435e85217f413c1bcf3aff19bd04e0d5119a19deef90dbe151a0054ec293",
-  conformance: "a8b2c6e112bf8c5de9bcd770b8a6fa3c7650700c8d13cf3e3a5a1f7d6486271e"
+  conformance: "e5c0f3f58f2cb9096f560d296c7738cf817bcf19d6a9770bd7727ebcaa9c9fbc"
 } as const;
 
 const fileBytes = (relativePath: string) => readFileSync(new URL(relativePath, contractRoot));
@@ -55,6 +62,10 @@ function pointerTarget(root: unknown, pointer: string): { parent: unknown; key: 
 }
 
 function applyMutation(doc: Record<string, any>, mutation: Mutation): void {
+  if (mutation.op === "recompute-question-digest") {
+    doc.evaluator.identity.definition.question.digest = typedQuestionDigest(doc.evaluator.question);
+    return;
+  }
   if (mutation.op === "recompute-digests") {
     const identity = doc.evaluator.identity;
     doc.digests = {
@@ -131,6 +142,52 @@ describe("skill-format v2 contract (ADR-0014 section 7)", () => {
     }
   });
 
+  it("rebuilds both vectors exactly from their evaluator and metadata", () => {
+    for (const name of ["skill-format-v2.prompted.json", "skill-format-v2.typed-question.json"]) {
+      const doc = fixture(name);
+      expect(buildSkillFormatV2({
+        name: doc.name, description: doc.description, owner: doc.owner, version: doc.version, status: doc.status,
+        identity: doc.evaluator.identity, question: doc.evaluator.question, examples: doc.examples, notes: doc.notes
+      }), name).toEqual(doc);
+    }
+  });
+
+  it("uses receipt v2's execution-binding rules, byte for byte", () => {
+    const skillFormat = loadJson("skill-format-v2.schema.json") as { $defs: Record<string, unknown> };
+    const receipt = loadJson("assessment-receipt-v2.schema.json") as { $defs: Record<string, unknown> };
+    expect(skillFormat.$defs.executionBinding).toEqual(receipt.$defs.executionBinding);
+    expect(skillFormat.$defs.reasoning).toEqual(receipt.$defs.reasoning);
+  });
+
+  it("withholds a custom endpoint's URL and lets the importer check the one it supplies", () => {
+    const baseUrl = "https://llm.internal.example/v1";
+    const custom = buildSkillFormatV2({
+      ...fixture("skill-format-v2.prompted.json"),
+      identity: {
+        ...fixture("skill-format-v2.prompted.json").evaluator.identity,
+        executionBinding: { ...BINDINGS.openaiOverride, endpoint: { kind: "custom", baseUrlDigest: endpointBaseUrlDigest(baseUrl) } }
+      },
+      question: null
+    });
+    expect(JSON.stringify(custom)).not.toContain(baseUrl);
+    expect(verifySkillFormatV2(custom, { endpointBaseUrl: baseUrl })).toEqual(custom);
+    expect(() => verifySkillFormatV2(custom, { endpointBaseUrl: `${baseUrl}/` })).toThrow("does not match the binding's baseUrlDigest");
+    expect(() => verifySkillFormatV2(fixture("skill-format-v2.prompted.json"), { endpointBaseUrl: baseUrl })).toThrow("baseUrlDigest");
+    expect(endpointBaseUrlDigest(baseUrl)).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+
+  it("fails validation, rather than throwing, on a payload nested past the depth limit", () => {
+    const deep = structuredClone(fixture("skill-format-v2.prompted.json")) as Record<string, any>;
+    let payload: unknown = "leaf";
+    for (let depth = 0; depth < 5_000; depth += 1) payload = [payload];
+    deep.examples[0].input = payload;
+    expect(() => SkillFormatV2Schema.safeParse(deep)).not.toThrow();
+    expect(SkillFormatV2Schema.safeParse(deep).success).toBe(false);
+    const infinite = structuredClone(fixture("skill-format-v2.prompted.json")) as Record<string, any>;
+    infinite.examples[0].input = JSON.parse('{"n": 1e400}');
+    expect(SkillFormatV2Schema.safeParse(infinite).success).toBe(false);
+  });
+
   it("checks what JSON Schema can't express: ascending ranges, lone surrogates, and nested __proto__ keys", () => {
     const base = structuredClone(fixture("skill-format-v2.prompted.json")) as Record<string, any>;
     const descending = structuredClone(base);
@@ -143,5 +200,9 @@ describe("skill-format v2 contract (ADR-0014 section 7)", () => {
     const nestedProto = structuredClone(base);
     nestedProto.examples[0].input = JSON.parse('{"question":"hi","__proto__":{"x":1}}');
     expect(SkillFormatV2Schema.safeParse(nestedProto).success).toBe(false);
+    const protoScore = structuredClone(base);
+    protoScore.evaluator.identity.definition.verdictKind = "categorical";
+    protoScore.evaluator.identity.definition.categoricalChoiceScores = JSON.parse('{"good":1,"__proto__":0.5}');
+    expect(SkillFormatV2Schema.safeParse(protoScore).success).toBe(false);
   });
 });

@@ -12,10 +12,25 @@ export const SKILL_FORMAT_V2 = "skill-format/v2" as const;
 export const SKILL_FORMAT_V2_EXAMPLES_CAP = 50;
 
 const Sha256DigestSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+// Example payloads are arbitrary JSON; bound their depth before the recursive
+// parse so an adversarial document fails validation instead of the stack.
+export const SKILL_FORMAT_V2_MAX_JSON_DEPTH = 64;
+
+/** Whether a raw JSON value nests deeper than `maxDepth`, checked without recursion. */
+function exceedsJsonDepth(value: unknown, maxDepth: number): boolean {
+  const stack: Array<{ entry: unknown; depth: number }> = [{ entry: value, depth: 0 }];
+  while (stack.length > 0) {
+    const { entry, depth } = stack.pop()!;
+    if (entry === null || typeof entry !== "object") continue;
+    if (depth > maxDepth) return true;
+    for (const child of Array.isArray(entry) ? entry : Object.values(entry)) stack.push({ entry: child, depth: depth + 1 });
+  }
+  return false;
+}
 
 /** A labelled golden case, with the same redaction as every trace surface. */
 export const SkillFormatV2ExampleSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).max(200),
   label: VerdictLabelSchema,
   input: z.json(),
   output: z.json(),
@@ -52,6 +67,10 @@ const SkillFormatV2ObjectSchema = z.object({
 
 /** The raw document is checked first: no `__proto__` key and no lone surrogate anywhere. */
 export const SkillFormatV2Schema = z.unknown().superRefine((raw, ctx) => {
+  if (exceedsJsonDepth(raw, SKILL_FORMAT_V2_MAX_JSON_DEPTH)) {
+    ctx.addIssue({ code: "custom", message: `skill-format documents must not nest deeper than ${SKILL_FORMAT_V2_MAX_JSON_DEPTH} levels` });
+    return;
+  }
   if (containsOwnProtoKey(raw)) {
     ctx.addIssue({ code: "custom", message: "skill-format documents must not contain a __proto__ key" });
   }

@@ -121,7 +121,8 @@ covers; receipt v2 and calibration v2 carry that identity and recompute it,
 so a consumer checks the receipt's recomputed `skillDigest` against the
 member's.
 
-Criterion or suite fields never enter `skillDigest`.
+Criterion or suite fields never enter `skillDigest` and never enter receipt
+v2.
 
 `manifestDigest` is SHA-256 over canonical JSON of the complete manifest with
 only `manifestDigest` removed. It therefore covers contract and schema
@@ -154,4 +155,6 @@ by another member.
 ## Compatibility
 
 Manifest v2 is closed. New applicability kinds, trial semantics, member
-fields, or policy concepts require a new contract version.
+fields, or policy concepts require a new contract version and, under
+ADR-0001, a compatibility window. ADR-0014 decision 6 lifted that window only
+for the pre-launch switch from v1 to v2.

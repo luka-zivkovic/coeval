@@ -1217,7 +1217,7 @@
         "id": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 100000
+          "maxLength": 200
         },
         "label": {
           "enum": [

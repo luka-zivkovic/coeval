@@ -449,6 +449,39 @@
       ]
     },
     {
+      "name": "example-id-too-long",
+      "structural": "reject",
+      "semantic": "not-run",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/examples/0/id",
+          "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ]
+    },
+    {
+      "name": "typed-question-substituted-consistently",
+      "baseFixture": "skill-format-v2.typed-question.json",
+      "structural": "accept",
+      "semantic": "reject",
+      "errorIncludes": "does not match the expected skillDigest",
+      "expectedSkillDigest": "sha256:44a3d7d6f4bb07dcb57dafe33c50ce905bde19e4ab583eaf304ea96d9e662497",
+      "mutations": [
+        {
+          "op": "replace",
+          "path": "/evaluator/question/instructions",
+          "value": "A different question."
+        },
+        {
+          "op": "recompute-question-digest"
+        },
+        {
+          "op": "recompute-digests"
+        }
+      ]
+    },
+    {
       "name": "self-consistent-but-unexpected-evaluator",
       "structural": "accept",
       "semantic": "reject",
