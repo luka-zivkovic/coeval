@@ -1,8 +1,8 @@
 # ADR-0014: Model-agnostic evaluator execution and evidence v2
 
-Status: **Proposed**
+Status: **Accepted**
 
-Date: 2026-09-24
+Date: 2026-09-24; accepted 2026-09-25
 
 Decision owner: Luka Živković (founder).
 
@@ -18,7 +18,9 @@ Decision owner: Luka Živković (founder).
   - the completeness rule;
   - the rules for moving between versions;
   - OpenRouter routing.
-- Nothing here is built until the founder accepts it.
+- The founder accepted it on 2026-09-25 and settled its four open
+  questions. The last section records the answers. Implementation follows
+  Batch 8 in `docs/implementation-batches.md`.
 
 ## Context
 
@@ -230,17 +232,30 @@ canonical JSON `null`; it is never omitted.
   - `topP` may stay unset at the gates. Some models reject `temperature`
     and `top_p` together.
   - Authoring may leave either unset.
-  - The seeded default binding keeps an explicit temperature of 0 and
-    reasoning `disabled` wherever the model accepts them.
+  - The seeded default binding keeps an explicit temperature of 0 where
+    the model accepts it.
+  - The model picker hides any sampling field the resolution shows the
+    model rejects. That field is recorded as not sent, and the author
+    never sees or sets it.
 - **Reasoning** has a closed, typed shape per provider family:
   - Anthropic: `thinking` of `disabled`, `enabled` with a token budget, or
     `adaptive`, plus an effort level where supported.
   - OpenAI: `reasoning_effort`.
   - OpenRouter: its `reasoning` object.
 
+  - A new binding defaults to the provider's default reasoning, stated
+    explicitly. Resolution derives the default from capability data and the
+    provider's documented default for that capability set. For Anthropic,
+    that is `adaptive` where the model supports it and `disabled` otherwise.
+    Resolution records the value as the binding's setting.
+  - Where the default can't be determined, the author chooses. The author
+    can always override the default, for example `disabled` for a cheaper,
+    more repeatable judge.
   - At the governed gates reasoning must be explicit. A model with a
     single mode, such as `claude-opus-5-5` with adaptive only, states that
     mode explicitly.
+  - The model picker offers only the reasoning modes the resolution shows
+    the model supports.
   - Observed reasoning is recorded as observed provenance, next to the
     observed model identity: whether thinking blocks came back, and the
     reasoning token count where the provider reports it.
@@ -268,7 +283,8 @@ canonical JSON `null`; it is never omitted.
 
 A verdict protocol is a named, versioned id: `anthropic.structured-output/v1`,
 `anthropic.forced-tool/v1`, `openai.structured-output/v1`,
-`openai.forced-function/v1`, `typed-question/v1`, and `mock/v1`.
+`openai.forced-function/v1`, `prompted-json/v1`, `typed-question/v1`, and
+`mock/v1`.
 
 Each version pins:
 
@@ -291,7 +307,7 @@ The protocol is fixed when the binding is saved:
 
 1. Where capability data exists, Rubrist takes the first supported
    protocol in this order: native structured output, then a forced tool or
-   function.
+   function, then `prompted-json/v1`.
 2. Where no capability data exists, probes choose the protocol in the same
    order.
 3. Where probes can't run, such as when no credential exists yet, the
@@ -303,9 +319,11 @@ The protocol is fixed when the binding is saved:
 
 The author can override the choice, for example to reproduce an earlier
 evaluator.
-Whether to add `prompted-json/v1` as a last resort is an open question. If
-it is added, its parse rule is strict: the whole response is exactly one
-JSON object, and a verdict is never extracted from prose.
+`prompted-json/v1` is offered as the last resort, for models with neither
+structured output nor tool calling. Its parse rule is strict: the whole
+response must be exactly one JSON object, and a verdict is never extracted
+from prose. Because the protocol id is part of the binding, the evidence
+names it, and consumers can see it.
 
 ### 4. Capabilities are resolved when a binding is saved and re-checked before governed runs
 
@@ -353,7 +371,8 @@ A typed-question evaluator's definition holds:
 - **the question**: its instructions and its true and false criteria, as a
   digest;
 - **polarity**: `true` means pass;
-- **a decision threshold** that maps the probability to pass or fail. The
+- **a decision threshold** that maps the probability to pass or fail. Every
+  typed-question evaluator must declare one; there is no default. The
   threshold is part of the evaluator's identity, not release policy
   (ADR-0004). It is chosen on nonsealed data;
 - **an output contract**: a probability and no rationale.
@@ -507,15 +526,14 @@ Dailies vendors the v2 contracts before any v2 evidence is published.
 - Each new binding costs up to four probe calls, and each governed run
   costs one re-check call. Both are recorded.
 
-## Open questions for the founder
+## Founder decisions on the open questions (2026-09-25)
 
-1. **Explicit settings at governed gates.** Should an explicit temperature
-   and reasoning setting be required wherever the model accepts them, as
-   proposed, or only recommended?
-2. **Default reasoning for new bindings.** Should it be `none`, which is
-   cheaper and more repeatable, or an explicit provider-default level that
-   is recorded as such?
-3. **`prompted-json/v1`.** Should it be offered for models with neither
-   structured output nor tools, or should those models be refused?
-4. **Typed-evaluator threshold.** Should it be required per evaluator, or
-   default to 0.5?
+1. **Explicit settings at governed gates: required.** Where the model
+   accepts a setting, a governed evaluator states its value. The model
+   picker hides a field the model doesn't support; section 2 covers this.
+2. **Default reasoning for new bindings: the provider's default, stated
+   explicitly.** Section 2 covers this.
+3. **`prompted-json/v1`: offered**, with the strict single-object parse
+   described in section 3.
+4. **Typed-evaluator threshold: required per evaluator**, with no default.
+   Section 5 covers this.
