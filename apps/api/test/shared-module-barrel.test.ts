@@ -10,6 +10,7 @@ import * as datasets from "../../../packages/shared/dist/datasets.js";
 import * as evaluationRuns from "../../../packages/shared/dist/evaluation-runs.js";
 import * as evaluatorExecution from "../../../packages/shared/dist/evaluator-execution.js";
 import * as assessmentReceiptV2 from "../../../packages/shared/dist/assessment-receipt-v2.js";
+import * as binaryCalibrationV2 from "../../../packages/shared/dist/binary-calibration-v2.js";
 import * as evaluatorLifecycle from "../../../packages/shared/dist/evaluator-lifecycle.js";
 import * as goldenSet from "../../../packages/shared/dist/golden-set.js";
 import * as governedReview from "../../../packages/shared/dist/governed-review.js";
@@ -61,6 +62,7 @@ describe("shared module barrel", () => {
     expectRootIdentity(evaluationRuns);
     expectRootIdentity(evaluatorExecution);
     expectRootIdentity(assessmentReceiptV2);
+    expectRootIdentity(binaryCalibrationV2);
     expectRootIdentity(evaluatorLifecycle);
     expectRootIdentity(goldenSet);
     expectRootIdentity(governedReview);

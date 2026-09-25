@@ -1,6 +1,20 @@
 # Rubrist evidence contracts
 
-## Binary calibration artifact v1
+## Binary calibration artifact v2
+
+`binary-calibration-v2.schema.json` replaces calibration v1 (Rubrist ADR-0014
+section 7, decision 6) and keeps every v1 rule except what ADR-0014 changes:
+the evaluator is the v2 evaluator identity with `skillDigest` and
+`requestedBindingDigest` recomputed from it, error codes are the shared
+failure taxonomy, never-attempted items are `notAttempted`, private-ledger v2
+records carry the shared item result, and provider groups record the
+OpenRouter upstream. Three exact-canonical positive fixtures cover a prompted,
+a typed-question, and an OpenRouter evaluator, and the adversarial corpus
+carries every v1 case forward with the binding cases rewritten for the v2
+execution binding. The normative rules are in
+[`binary-calibration-v2.md`](binary-calibration-v2.md).
+
+## Binary calibration artifact v1 (superseded)
 
 `binary-calibration-v1.schema.json` is the closed, policy-free,
 aggregate-only contract for one exact binary evaluator/criterion measured over

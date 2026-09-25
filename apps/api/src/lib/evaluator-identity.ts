@@ -60,6 +60,30 @@ export function skillDigestV2(identity: EvaluatorIdentity): string {
   return skillDigestV2FromInput(skillDigestInput(identity));
 }
 
+/**
+ * The output-contract digest calibration and suite manifests bind beside
+ * skillDigest. For a prompted definition it is v1's formula over the output
+ * schema, verdict kind, scalar range, and categorical scores; a typed-question
+ * definition's output contract is its question type, polarity, and the
+ * absence of a rationale (ADR-0014 section 5).
+ */
+export function evaluatorOutputContractDigestV2(definition: EvaluatorDefinition): string {
+  const parsed = parseExactly(EvaluatorDefinitionSchema, definition, "evaluator definition");
+  return parsed.kind === "prompted"
+    ? sha256Digest({
+        outputSchema: parsed.outputSchema,
+        verdictKind: parsed.verdictKind,
+        scalarRange: parsed.scalarRange,
+        categoricalChoiceScores: parsed.categoricalChoiceScores
+      })
+    : sha256Digest({
+        kind: "typed-question",
+        questionType: parsed.question.type,
+        polarity: parsed.polarity,
+        rationale: parsed.rationale
+      });
+}
+
 /** The question digest a typed-question definition holds in place of its text (ADR-0014 section 5). */
 export function typedQuestionDigest(question: TypedQuestion): string {
   return sha256Digest(parseExactly(TypedQuestionSchema, question, "typed question"));
