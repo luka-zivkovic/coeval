@@ -100,8 +100,8 @@ canonicalization, digest, mutation, and pinned-file rules are in
   [ADR-0001](../docs/decisions/0001-evidence-contract-ownership-and-versioning.md).
 - Receipt v1 is frozen, and receipt v2 replaces it (ADR-0014 decision 6):
   before launch, Rubrist and Dailies switch together and neither keeps code
-  that emits or verifies v1. The v1 documents and fixtures stay here
-  unchanged, as superseded history.
+  that emits or verifies v1. The v1 files here are deleted with that code,
+  and at the launch baseline every contract restarts at v1 (decision 7).
 - Every contract's parsers are intentionally strict at every object
   boundary, so adding, removing, or renaming a field is a breaking change.
 - A breaking change requires a new schema version, new fixtures, and a

@@ -25,6 +25,9 @@ Decision owner: Luka Živković (founder).
   more decisions, recorded as decisions 5 and 6:
   - receipts carry a digest of the definition, not its text;
   - v2 replaces v1 outright, because Rubrist has no production users.
+- Later that day the founder removed version history before launch
+  (decision 7): when Batch 8 is complete, every contract and format restarts
+  at v1.
 
 ## Context
 
@@ -604,9 +607,10 @@ export exists to move an evaluator. It replaces `skill-format/v1`.
   `rubrist_binary_calibration_v1` evidence kinds, and its historical-report
   inspection re-verifies embedded v1 receipts. Dailies records that change
   in its own decision, on the pre-launch basis of its ADR-0007.
-- The v1 contract documents and fixtures stay unchanged in `contracts/` as
-  superseded history. ADR-0011 keeps frozen schemas unchanged, and they
-  cost nothing to keep.
+- The v1 contract documents, fixtures, and code are deleted with the switch
+  (decision 7).
+- When Batch 8 is complete, the v2 contracts take the v1 names: version
+  names used during the batch are scaffolding (decision 7).
 - Under ADR-0011's clean-install policy, the baseline is edited in place
   and no stored binding is migrated.
 - This relies on ADR-0011's exit not being reached. If it is reached before
@@ -711,6 +715,20 @@ is removed from both (decision 6).
      `contracts/evaluator-suite-manifest-v1.md`. It applies only to the v1
      to v2 transition, and only while ADR-0011's exit is not reached.
    - Dailies' side rests on its own pre-launch decision (section 7).
-   - It doesn't change versioned contract ids, the frozen v1 documents,
-     receipt immutability, or protocol versioning. A change to injected
-     text is still a new protocol version.
+   - It doesn't change receipt immutability or protocol versioning. A change
+     to injected text is still a new protocol version.
+7. **A launch baseline with no version history.** None of Rubrist, Dailies,
+   or Casefile has users, so none keeps version history or backward
+   compatibility before launch. In the founder's words: "when we [are] done,
+   i will expect for everything to basically be v1".
+   - When Batch 8 is complete, every contract and format restarts at v1. The
+     v2 contracts and the identity basis take the v1 names, for example
+     `rubrist/assessment-receipt/v1` and `rubrist/evaluator-identity/v1`,
+     and the superseded documents, fixtures, and code are deleted. Dailies'
+     configuration and report formats restart at v1 as well.
+   - This supersedes, before launch only, ADR-0011's rule that frozen
+     schemas in `contracts/` remain unchanged, and the v1 documents kept as
+     history by decision 6.
+   - Integrity rules that aren't about compatibility stay: once evidence
+     exists, it is immutable, and a change to injected text is a new
+     protocol identity. ADR-0011's exit condition ends this decision.

@@ -21,7 +21,7 @@ Status meanings:
 - [0008 — Governed human truth and sealed collection](0008-governed-human-truth-and-sealed-collection.md) — Accepted; ADR-0011 narrowly supersedes its pre-launch unresolved historical-identity path
 - [0009 — Binary calibration artifact contract](0009-binary-calibration-artifact-contract.md) — Accepted; ADR-0014 narrowly supersedes the calibration v1 compatibility window for the pre-launch v1 to v2 transition
 - [0010 — Representative analysis and taxonomy lifecycle](0010-representative-analysis-and-taxonomy-lifecycle.md) — Accepted
-- [0011 — Pre-launch blank-slate database policy](0011-prelaunch-blank-slate-database-policy.md) — Accepted; clean-install policy remains active for founder-only disposable testing
+- [0011 — Pre-launch blank-slate database policy](0011-prelaunch-blank-slate-database-policy.md) — Accepted; clean-install policy remains active for founder-only disposable testing; ADR-0014 decision 7 narrowly supersedes its frozen-schema rule before launch
 - [0012 — Rename Coeval to Rubrist](0012-rename-coeval-to-rubrist.md) — Accepted
 - [0013 — Production outcome monitoring](0013-production-outcome-monitoring.md) — Accepted
 - [0014 — Model-agnostic evaluator execution and evidence v2](0014-model-agnostic-evaluator-execution.md) — Accepted
