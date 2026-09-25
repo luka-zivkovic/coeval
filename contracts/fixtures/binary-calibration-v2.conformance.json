@@ -68,10 +68,10 @@
       "drawDigest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
       "representativeOfPopulationId": "population-production-2026q3",
       "selectionMethod": "simple_random",
-      "exposureAuthorizationSnapshotDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "exposureAuthorizationEventId": "exposure-auth-1",
-      "exposureCompletionSnapshotDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      "exposureCompletionEventId": "exposure-complete-1",
+      "exposureAuthorizationSnapshotDigest": "sha256:2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a",
+      "exposureAuthorizationEventId": "exposure-auth-2",
+      "exposureCompletionSnapshotDigest": "sha256:2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+      "exposureCompletionEventId": "exposure-complete-2",
       "exposureCompletionState": "protected",
       "exposureCompletionEligibility": "eligible",
       "executionEnvironment": "external_provider",
@@ -109,10 +109,10 @@
       "drawDigest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
       "representativeOfPopulationId": "population-production-2026q3",
       "selectionMethod": "simple_random",
-      "exposureAuthorizationSnapshotDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "exposureAuthorizationEventId": "exposure-auth-1",
-      "exposureCompletionSnapshotDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      "exposureCompletionEventId": "exposure-complete-1",
+      "exposureAuthorizationSnapshotDigest": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+      "exposureAuthorizationEventId": "exposure-auth-5",
+      "exposureCompletionSnapshotDigest": "sha256:5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b",
+      "exposureCompletionEventId": "exposure-complete-5",
       "exposureCompletionState": "protected",
       "exposureCompletionEligibility": "eligible",
       "executionEnvironment": "external_provider",
@@ -1737,28 +1737,148 @@
       "mutations": [
         {
           "op": "replace",
-          "path": "/trials/0/outcomes/abstained",
-          "value": 1
-        },
-        {
-          "op": "replace",
-          "path": "/trials/0/outcomes/classified",
-          "value": 1
-        },
-        {
-          "op": "replace",
-          "path": "/trials/0/outcomes/byTruth/fail",
+          "path": "/trials/0",
           "value": {
-            "classified": 0,
-            "abstained": 1,
-            "errored": 0,
-            "notAttempted": 0
+            "trialIndex": 0,
+            "status": "complete",
+            "outcomes": {
+              "planned": 2,
+              "classified": 1,
+              "abstained": 1,
+              "errored": 0,
+              "notAttempted": 0,
+              "providerCalls": 2,
+              "byTruth": {
+                "pass": {
+                  "classified": 1,
+                  "abstained": 0,
+                  "errored": 0,
+                  "notAttempted": 0
+                },
+                "fail": {
+                  "classified": 0,
+                  "abstained": 1,
+                  "errored": 0,
+                  "notAttempted": 0
+                }
+              },
+              "errors": []
+            },
+            "confusionMatrix": {
+              "truthPassEvaluatorPass": 1,
+              "truthPassEvaluatorFail": 0,
+              "truthFailEvaluatorPass": 0,
+              "truthFailEvaluatorFail": 0
+            },
+            "errorDirections": {
+              "falsePass": 0,
+              "falseFail": 0
+            },
+            "metrics": {
+              "accuracy": {
+                "state": "defined",
+                "numerator": 1,
+                "denominator": 1,
+                "interval": {
+                  "method": "wilson-score/v1",
+                  "confidenceBasisPoints": 9500,
+                  "lowerBinary64": "3fca70353b21776f",
+                  "upperBinary64": "3ff0000000000000"
+                }
+              },
+              "truthPassRecall": {
+                "state": "defined",
+                "numerator": 1,
+                "denominator": 1,
+                "interval": {
+                  "method": "wilson-score/v1",
+                  "confidenceBasisPoints": 9500,
+                  "lowerBinary64": "3fca70353b21776f",
+                  "upperBinary64": "3ff0000000000000"
+                }
+              },
+              "truthFailRecall": {
+                "state": "undefined",
+                "numerator": 0,
+                "denominator": 0,
+                "undefinedReason": "zero_denominator",
+                "interval": null
+              },
+              "positiveClassPrecision": {
+                "state": "defined",
+                "numerator": 1,
+                "denominator": 1,
+                "interval": {
+                  "method": "wilson-score/v1",
+                  "confidenceBasisPoints": 9500,
+                  "lowerBinary64": "3fca70353b21776f",
+                  "upperBinary64": "3ff0000000000000"
+                }
+              },
+              "positiveClassRecall": {
+                "state": "defined",
+                "numerator": 1,
+                "denominator": 1,
+                "interval": {
+                  "method": "wilson-score/v1",
+                  "confidenceBasisPoints": 9500,
+                  "lowerBinary64": "3fca70353b21776f",
+                  "upperBinary64": "3ff0000000000000"
+                }
+              },
+              "positiveClassF1": {
+                "state": "defined",
+                "numerator": 2,
+                "denominator": 2
+              },
+              "classifiedCoverage": {
+                "overall": {
+                  "state": "defined",
+                  "numerator": 1,
+                  "denominator": 2,
+                  "interval": {
+                    "method": "wilson-score/v1",
+                    "confidenceBasisPoints": 9500,
+                    "lowerBinary64": "3fb83332751478d2",
+                    "upperBinary64": "3fecf999b15d70e6"
+                  }
+                },
+                "truthPass": {
+                  "state": "defined",
+                  "numerator": 1,
+                  "denominator": 1,
+                  "interval": {
+                    "method": "wilson-score/v1",
+                    "confidenceBasisPoints": 9500,
+                    "lowerBinary64": "3fca70353b21776f",
+                    "upperBinary64": "3ff0000000000000"
+                  }
+                },
+                "truthFail": {
+                  "state": "defined",
+                  "numerator": 0,
+                  "denominator": 1,
+                  "interval": {
+                    "method": "wilson-score/v1",
+                    "confidenceBasisPoints": 9500,
+                    "lowerBinary64": "0000000000000000",
+                    "upperBinary64": "3fe963f2b137a224"
+                  }
+                }
+              }
+            },
+            "providerIdentityGroups": [
+              {
+                "provider": "typesafe",
+                "observedModel": "jev-1.13.0",
+                "observedVersion": null,
+                "systemFingerprint": null,
+                "upstreamProvider": null,
+                "identityStrength": "observed_model",
+                "observationCount": 2
+              }
+            ]
           }
-        },
-        {
-          "op": "replace",
-          "path": "/trials/0/confusionMatrix/truthFailEvaluatorFail",
-          "value": 0
         },
         {
           "op": "recompute-evidence-digest"

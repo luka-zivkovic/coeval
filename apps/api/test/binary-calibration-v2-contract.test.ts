@@ -60,16 +60,16 @@ interface ConformanceCorpus {
 const contractRoot = new URL("../../../contracts/", import.meta.url);
 const pinnedFileDigests = {
   schema: "9aecd12e6acc87c639dcb7edf947d2ffdb6963190d818495c2e0a083226b3f69",
-  specification: "44cf578c30a93fa0e7772ed79dc4caaaca4b2433247bce9a7386427de024d113",
+  specification: "2f1434c551f113a338c6dd1fd1177427df542191e8d851b56a630dad815e2558",
   completeFixture: "32a29cd8debe0d20a67c23d23e4586ffad39a1f4df547d76843637c20cda3cd7",
-  repeatedFixture: "7bb9be18c5f84c378cdc6ee95af6c0e1486271a626b9efd2908c73dbe4bdeddb",
-  incompleteFixture: "4a87b734b79e20c72e0d2a3adcc8b96d366e33b850550b388e7fd0faaaa3c61c",
-  conformance: "a1c28573c65cbba9576637256a8ddfce03122b13ea0539cb693b76640f6b9f0d",
+  repeatedFixture: "7ab1f936e8b7bfe087c2aad4e9d2a4405e011de341204fdd3d4d0c15871a5a6a",
+  incompleteFixture: "16935ddbba3067ed3925bbcab2bb4f3a84dba20aa3b2e8af3eba75e9efd078d1",
+  conformance: "19556716d2af7c38cbbb229c9f6185ffacdb4829ca6517984c3ddf7880bf4d8b",
   wilsonReference: "948ac238d7b5780dd160dd29bbcad52259c3ae574287fc19fb63cdc41e02d8dd",
   privateLedgerSchema: "621b92ee557c705bbb073374a8b878a64475e124a40c69ecbba7713d8d4dcff4",
   privateLedgerFixture: "3d2758bd4f1d7ff2bf309d9fd301fa88b8bb0337c13c4d18d700bbf071f36b0a",
-  privateLedgerIncompleteFixture: "3dd7300fb063c5b59c01886c41e7977574d59f3544e27bd226744c5e8492ec16",
-  typedQuestionFixture: "5ac828cfa05059485decf1e6cfbd16860badcfc2b30c0206249cf3f85984421e"
+  privateLedgerIncompleteFixture: "cc8d8f32d507e54bac563d60452e42f7fc79675c88eb62a342a89116f136bbdc",
+  typedQuestionFixture: "e27f3c1e89bfd8a9471fa4b2f048edb07f09eec981d86162fd299871cbf61a2a"
 } as const;
 
 function fileBytes(relativePath: string): Buffer {

@@ -539,8 +539,9 @@ interoperability boundary.
 
 ## Compatibility
 
-The complete/repeated/incomplete artifact fixtures are exact canonical
-transport bytes with no trailing newline. The conformance corpus is
+The complete, repeated, incomplete, and typed-question artifact fixtures, and
+both private-ledger fixtures, are exact canonical transport bytes with no
+trailing newline. The conformance corpus is
 human-readable formatted JSON and is not itself an artifact transport vector.
 
 The four positive artifacts cover every evaluator kind, each with its own
