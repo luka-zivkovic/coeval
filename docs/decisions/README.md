@@ -19,7 +19,7 @@ Status meanings:
 - [0006 — Receipt artifact storage, historical freeze, and legacy gate removal](0006-receipt-artifact-storage-and-freeze.md) — Accepted
 - [0007 — Dataset-role compatibility and exposure](0007-dataset-role-compatibility-and-exposure.md) — Accepted; ADR-0011 narrowly supersedes its pre-launch rolling-deployment late-pinning path
 - [0008 — Governed human truth and sealed collection](0008-governed-human-truth-and-sealed-collection.md) — Accepted; ADR-0011 narrowly supersedes its pre-launch unresolved historical-identity path
-- [0009 — Binary calibration artifact contract](0009-binary-calibration-artifact-contract.md) — Accepted
+- [0009 — Binary calibration artifact contract](0009-binary-calibration-artifact-contract.md) — Accepted; ADR-0014 narrowly supersedes the calibration v1 compatibility window for the pre-launch v1 to v2 transition
 - [0010 — Representative analysis and taxonomy lifecycle](0010-representative-analysis-and-taxonomy-lifecycle.md) — Accepted
 - [0011 — Pre-launch blank-slate database policy](0011-prelaunch-blank-slate-database-policy.md) — Accepted; clean-install policy remains active for founder-only disposable testing
 - [0012 — Rename Coeval to Rubrist](0012-rename-coeval-to-rubrist.md) — Accepted

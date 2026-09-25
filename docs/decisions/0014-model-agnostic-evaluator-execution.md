@@ -16,7 +16,7 @@ Decision owner: Luka Živković (founder).
   - revalidation before sealed runs;
   - one failure taxonomy;
   - the completeness rule;
-  - the rules for moving between versions;
+  - the rules for moving between versions (replaced by decision 6);
   - OpenRouter routing.
 - The founder accepted it on 2026-09-25 and settled its four open
   questions. The last section records the answers. Implementation follows
@@ -99,7 +99,8 @@ Decision owner: Luka Živković (founder).
 - Dailies vendors the receipt, calibration, and suite-manifest contracts,
   and checks that `receipt.skillDigest` equals `member.skillDigest`.
 - ADR-0001 closes v1: changing a field needs a new contract version and a
-  coordinated compatibility window. ADR-0011 keeps that rule before launch.
+  coordinated compatibility window. ADR-0011 keeps that rule before launch
+  (narrowed by decision 6).
 
 **Providers publish some capability data.**
 
@@ -575,7 +576,10 @@ ADR-0003's questions as follows.
   replaced by the execution binding and the definition digest. A receipt
   never carries the rubric, prompt, or question text. A verifier recomputes
   `skillDigest` v2 from the receipt's binding and definition digest (section
-  1). It needs the definition itself only to check that digest.
+  1). It needs the definition itself only to check that digest. Rules that
+  need the definition, such as a typed-question definition running only on
+  `typed-question/v1`, are enforced where the full definition is present:
+  at save and at export.
 
 **`rubrist/binary-calibration/v2`** and its private-ledger v2:
 
@@ -586,22 +590,28 @@ ADR-0003's questions as follows.
 
 **`rubrist/evaluator-suite-manifest/v2`** references `skillDigest` v2.
 
-**`skill-format/v2`** carries the full definition and the v2 binding, since
-an export exists to move an evaluator. It replaces `skill-format/v1`.
+**`skill-format/v2`** carries the full definition, the v2 binding, and, for a
+typed-question evaluator, the question text its digest covers, since an
+export exists to move an evaluator. It replaces `skill-format/v1`.
 
 **Retiring v1:**
 
 - Rubrist and Dailies switch to v2 in the same window. After it, no code in
-  either emits or verifies receipt v1, calibration v1, suite-manifest v1, or
-  `skill-format/v1`.
+  either emits or verifies receipt v1, calibration v1 and its private ledger
+  v1, suite-manifest v1, or `skill-format/v1`.
+- On the Dailies side this changes Dailies-owned contracts: its report and
+  configuration versions name `rubrist_receipt_v1` and
+  `rubrist_binary_calibration_v1` evidence kinds, and its historical-report
+  inspection re-verifies embedded v1 receipts. Dailies records that change
+  in its own decision, on the pre-launch basis of its ADR-0007.
 - The v1 contract documents and fixtures stay unchanged in `contracts/` as
   superseded history. ADR-0011 keeps frozen schemas unchanged, and they
   cost nothing to keep.
 - Under ADR-0011's clean-install policy, the baseline is edited in place
   and no stored binding is migrated.
-- This relies on ADR-0011's exit not being reached. If a production user
-  or persistent deployment arrives before Batch 8 ships, decision 6 must be
-  revisited before any v1 support is removed.
+- This relies on ADR-0011's exit not being reached. If it is reached before
+  Batch 8 ships, decision 6 must be revisited before any v1 support is
+  removed.
 
 ### 8. Rollout
 
@@ -690,13 +700,17 @@ is removed from both (decision 6).
 5. **Receipt disclosure: a definition digest, not the definition.** The
    receipt carries the execution binding and the definition digest, and
    `skillDigest` v2 is computed from them (sections 1 and 7).
-   `skill-format/v2` still carries the full definition. Batch 8A-1's
-   `skillDigestV2` changes to match before anything uses it.
+   `skill-format/v2` still carries the full definition. The
+   `skillDigestV2` merged in #125 hashed the whole identity; #127 changes
+   it to this construction before anything uses it.
 6. **No v1/v2 coexistence.** Rubrist has no production users, so v2
    replaces v1 instead of running beside it (section 7).
-   - This narrowly supersedes ADR-0001's "coordinated compatibility window"
-     for the v1 to v2 transition, and only while ADR-0011's exit is not
-     reached.
+   - This narrowly supersedes the "coordinated compatibility window" of
+     ADR-0001, and the same clause in the frozen
+     `contracts/binary-calibration-v1.md` (made normative by ADR-0009) and
+     `contracts/evaluator-suite-manifest-v1.md`. It applies only to the v1
+     to v2 transition, and only while ADR-0011's exit is not reached.
+   - Dailies' side rests on its own pre-launch decision (section 7).
    - It doesn't change versioned contract ids, the frozen v1 documents,
      receipt immutability, or protocol versioning. A change to injected
      text is still a new protocol version.
