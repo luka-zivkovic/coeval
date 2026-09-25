@@ -666,6 +666,10 @@ function verifyTrial(
   if (trial.trialIndex !== index) {
     throw new Error(`binary calibration trials are not ordered by contiguous trialIndex at index ${index}`);
   }
+  // A typed-question threshold maps every probability to pass or fail (ADR-0014 section 5).
+  if (artifact.evaluator.identity.executionBinding.verdictProtocol === "typed-question/v1" && trial.outcomes.abstained !== 0) {
+    throw new Error(`trial ${index} records abstentions, but typed-question evaluators never abstain`);
+  }
   const outcomes = trial.outcomes;
   if (outcomes.planned !== artifact.truthSupport.total) {
     throw new Error(`trial ${index} planned count does not equal truth support`);

@@ -11,7 +11,14 @@ import {
   type BinaryCalibrationV2PrivateLedger
 } from "@rubrist/shared";
 import { canonicalJson, sha256Digest } from "../src/lib/assessment-receipt.js";
-import { skillDigestV2FromInput } from "../src/lib/evaluator-identity.js";
+import {
+  evaluatorDefinitionDigest,
+  evaluatorOutputContractDigestV2,
+  skillDigestV2FromInput,
+  typedQuestionDigest
+} from "../src/lib/evaluator-identity.js";
+import { evaluatorOutputContractDigest } from "../src/lib/evaluator-suite.js";
+import { BINDINGS, DEFINITIONS, QUESTION } from "./fixtures/binary-calibration-v2-evaluators.js";
 import {
   BINARY_CALIBRATION_V2_MAX_CANONICAL_BYTES,
   binaryCalibrationV2EvidenceDigest,
@@ -52,15 +59,17 @@ interface ConformanceCorpus {
 
 const contractRoot = new URL("../../../contracts/", import.meta.url);
 const pinnedFileDigests = {
-  schema: "b6a5ec76bd0e52d18273831560e0a9628f39b2e9562a6c51a4a7c823d9433f50",
-  specification: "fac6c9d07544cef9ecb4c70e5ec6bffada24baddaab66319d09a2cba7c2fa099",
+  schema: "9aecd12e6acc87c639dcb7edf947d2ffdb6963190d818495c2e0a083226b3f69",
+  specification: "44cf578c30a93fa0e7772ed79dc4caaaca4b2433247bce9a7386427de024d113",
   completeFixture: "32a29cd8debe0d20a67c23d23e4586ffad39a1f4df547d76843637c20cda3cd7",
-  repeatedFixture: "4cd6b336201d99da935e6adcb1767a968c1edaf8d81aa4af17b9e3db3b9cc683",
-  incompleteFixture: "3db20756cf211f34f19d7f2b97bc0d823d8b7676fd0fc818217da56e76bb7734",
-  conformance: "d89cdbd66b0eaebc9a238e5841c2cc9f5ee5eaf792a94151dd2295657dbf33e2",
+  repeatedFixture: "7bb9be18c5f84c378cdc6ee95af6c0e1486271a626b9efd2908c73dbe4bdeddb",
+  incompleteFixture: "4a87b734b79e20c72e0d2a3adcc8b96d366e33b850550b388e7fd0faaaa3c61c",
+  conformance: "a1c28573c65cbba9576637256a8ddfce03122b13ea0539cb693b76640f6b9f0d",
   wilsonReference: "948ac238d7b5780dd160dd29bbcad52259c3ae574287fc19fb63cdc41e02d8dd",
   privateLedgerSchema: "621b92ee557c705bbb073374a8b878a64475e124a40c69ecbba7713d8d4dcff4",
-  privateLedgerFixture: "3d2758bd4f1d7ff2bf309d9fd301fa88b8bb0337c13c4d18d700bbf071f36b0a"
+  privateLedgerFixture: "3d2758bd4f1d7ff2bf309d9fd301fa88b8bb0337c13c4d18d700bbf071f36b0a",
+  privateLedgerIncompleteFixture: "3dd7300fb063c5b59c01886c41e7977574d59f3544e27bd226744c5e8492ec16",
+  typedQuestionFixture: "5ac828cfa05059485decf1e6cfbd16860badcfc2b30c0206249cf3f85984421e"
 } as const;
 
 function fileBytes(relativePath: string): Buffer {
@@ -75,7 +84,7 @@ function loadJson(relativePath: string): unknown {
   return JSON.parse(fileBytes(relativePath).toString("utf8"));
 }
 
-function fixture(name: "complete" | "repeated" | "incomplete" = "complete"): BinaryCalibrationV2Artifact {
+function fixture(name: "complete" | "repeated" | "incomplete" | "typed-question" = "complete"): BinaryCalibrationV2Artifact {
   return loadJson(`fixtures/binary-calibration-v2.${name}.json`) as BinaryCalibrationV2Artifact;
 }
 
@@ -204,6 +213,8 @@ describe("binary calibration artifact v2 contract (ADR-0014 section 7)", () => {
     expect(fileDigest("fixtures/binary-calibration-v2.complete.json")).toBe(pinnedFileDigests.completeFixture);
     expect(fileDigest("fixtures/binary-calibration-v2.repeated.json")).toBe(pinnedFileDigests.repeatedFixture);
     expect(fileDigest("fixtures/binary-calibration-v2.incomplete.json")).toBe(pinnedFileDigests.incompleteFixture);
+    expect(fileDigest("fixtures/binary-calibration-v2.typed-question.json")).toBe(pinnedFileDigests.typedQuestionFixture);
+    expect(fileDigest("fixtures/binary-calibration-private-ledger-v2.incomplete.json")).toBe(pinnedFileDigests.privateLedgerIncompleteFixture);
     expect(fileDigest("fixtures/binary-calibration-v2.conformance.json")).toBe(pinnedFileDigests.conformance);
     expect(fileDigest("reference/binary-calibration-wilson-v1.py")).toBe(pinnedFileDigests.wilsonReference);
   });
@@ -317,15 +328,65 @@ describe("binary calibration artifact v2 contract (ADR-0014 section 7)", () => {
       .toEqual([["Anthropic", "observed_model", 1], [null, "requested_only", 2]]);
   });
 
-  it("binds the v2 evaluator identity: every evaluator kind, with digests recomputed from it", () => {
-    const protocols = (["complete", "repeated", "incomplete"] as const).map((name) => {
-      const artifact = verifyBinaryCalibrationV2Artifact(fixture(name));
-      expect(artifact.evaluator.skillDigest, name).toBe(skillDigestV2FromInput(artifact.evaluator.identity));
-      expect(artifact.evaluator.requestedBindingDigest, name).toBe(sha256Digest(artifact.evaluator.identity.executionBinding));
-      return artifact.evaluator.identity.executionBinding.verdictProtocol;
-    });
-    expect(protocols).toEqual(["anthropic.structured-output/v1", "typed-question/v1", "openai.structured-output/v1"]);
-    expect(JSON.stringify(fixture("complete"))).not.toContain("rubricMarkdown");
+  it("binds the v2 evaluator identity for every evaluator kind, traced from the definition down", () => {
+    const cases = [
+      ["complete", DEFINITIONS.prompted, BINDINGS.sonnet],
+      ["repeated", DEFINITIONS.prompted, BINDINGS.openaiOverride],
+      ["incomplete", DEFINITIONS.prompted, BINDINGS.openrouter],
+      ["typed-question", DEFINITIONS.typedQuestion, BINDINGS.jev]
+    ] as const;
+    for (const [name, definition, binding] of cases) {
+      const evaluator = verifyBinaryCalibrationV2Artifact(fixture(name)).evaluator;
+      expect(evaluator.identity.executionBinding, name).toEqual(binding);
+      expect(evaluator.identity.definitionDigest, name).toBe(evaluatorDefinitionDigest(definition));
+      expect(evaluator.skillDigest, name).toBe(skillDigestV2FromInput(evaluator.identity));
+      expect(evaluator.requestedBindingDigest, name).toBe(sha256Digest(binding));
+      expect(evaluator.outputContractDigest, name).toBe(evaluatorOutputContractDigestV2(definition));
+      expect(JSON.stringify(fixture(name)), name).not.toContain("rubricMarkdown");
+    }
+    expect(DEFINITIONS.typedQuestion.question.digest).toBe(typedQuestionDigest(QUESTION));
+    // Evaluator versions are immutable, so each identity has its own version id.
+    expect(new Set(cases.map(([name]) => fixture(name).evaluator.skillVersionId)).size).toBe(cases.length);
+  });
+
+  it("keeps v1's output-contract formula for prompted definitions and defines one for typed questions", () => {
+    const prompted = DEFINITIONS.prompted;
+    expect(evaluatorOutputContractDigestV2(prompted)).toBe(evaluatorOutputContractDigest(prompted));
+    expect(evaluatorOutputContractDigestV2(DEFINITIONS.typedQuestion)).toBe(sha256Digest({
+      kind: "typed-question", questionType: "noul", polarity: "true_is_pass", rationale: "not_provided"
+    }));
+    expect(evaluatorOutputContractDigestV2({ ...DEFINITIONS.typedQuestion, threshold: 0.9 }))
+      .toBe(evaluatorOutputContractDigestV2(DEFINITIONS.typedQuestion));
+  });
+
+  it("carries fractional sampling as ECMAScript numbers, the only floats in the artifact", () => {
+    const repeated = fixture("repeated");
+    expect(repeated.evaluator.identity.executionBinding.sampling).toEqual({ temperature: 0.7, topP: 0.95 });
+    expect(fileBytes("fixtures/binary-calibration-v2.repeated.json").toString("utf8")).toContain('"sampling":{"temperature":0.7,"topP":0.95}');
+  });
+
+  it("verifies a typed-question calibration, which never abstains", () => {
+    const typed = verifyBinaryCalibrationV2Artifact(fixture("typed-question"));
+    expect(typed.status).toBe("complete");
+    expect(typed.trials[0]?.outcomes.abstained).toBe(0);
+    const abstaining = structuredClone(fixture("complete"));
+    abstaining.evaluator = structuredClone(typed.evaluator);
+    abstaining.evidenceDigest = binaryCalibrationV2EvidenceDigest(abstaining);
+    expect(() => verifyBinaryCalibrationV2Artifact(abstaining)).toThrow("typed-question evaluators never abstain");
+  });
+
+  it("reconciles the OpenRouter ledger end to end, upstream included", () => {
+    const ledger = loadJson("fixtures/binary-calibration-private-ledger-v2.incomplete.json") as BinaryCalibrationV2PrivateLedger;
+    const artifact = fixture("incomplete");
+    expect(verifyBinaryCalibrationV2PrivateLedgerForArtifact(ledger, artifact)).toEqual({ ledger, artifact });
+    expect(ledger.records.map((record) => [record.result.state, record.attemptState, record.providerObservation.upstreamProvider]))
+      .toEqual([["outcome", "terminal", "Anthropic"], ["failure", "started", null], ["not_attempted", "not_started", null]]);
+    const otherUpstream = structuredClone(ledger);
+    otherUpstream.records[0]!.providerObservation.upstreamProvider = "Amazon Bedrock";
+    expect(() => verifyBinaryCalibrationV2PrivateLedgerForArtifact(otherUpstream, artifact)).toThrow();
+    const notAttemptedWithUpstream = structuredClone(ledger);
+    notAttemptedWithUpstream.records[2]!.providerObservation.upstreamProvider = "Anthropic";
+    expect(() => verifyBinaryCalibrationV2PrivateLedger(notAttemptedWithUpstream)).toThrow("observed identity requires a physical provider call");
   });
 
   it("treats an exposed or ineligible completion recheck as incomplete evidence", () => {

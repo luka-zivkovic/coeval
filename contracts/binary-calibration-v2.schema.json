@@ -1197,12 +1197,14 @@
         "modelId": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 240
+          "maxLength": 240,
+          "pattern": "^[^\\uD800-\\uDFFF]+$"
         },
         "modelVersion": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 240
+          "maxLength": 240,
+          "pattern": "^[^\\uD800-\\uDFFF]+$"
         },
         "sampling": {
           "type": "object",

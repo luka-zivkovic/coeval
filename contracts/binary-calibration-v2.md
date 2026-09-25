@@ -187,7 +187,9 @@ Negative zero is invalid everywhere. Every string and object key must
 contain Unicode scalar values; unpaired UTF-16 surrogates are invalid. NFC and
 NFD strings remain distinct. UTF-8 BOM-prefixed bytes are invalid.
 Public free-text/identity strings are capped at 4,096 Unicode code points,
-model ids and versions at 240 UTF-16 code units, arrays at their closed domain maximum (never
+model ids and versions at 240 UTF-16 code units (JSON Schema's `maxLength`
+counts code points, so producers must stay within both), arrays at their
+closed domain maximum (never
 above 5,000 in the public artifact), objects at 100 properties, JSON depth at
 32, and artifact input at 16 MiB before decoding.
 
@@ -240,7 +242,9 @@ distribution; v2 intentionally adds no pooled metric or unqualified mean.
 Each trial partitions every planned item into exactly one logical outcome:
 
 - `classified`: evaluator produced binary pass/fail;
-- `abstained`: evaluator explicitly abstained;
+- `abstained`: evaluator explicitly abstained. A `typed-question/v1`
+  evaluator's threshold maps every probability to pass or fail, so its
+  trials never record an abstention (ADR-0014 section 5);
 - `errored`: execution ended without a usable classification; or
 - `notAttempted`: no logical assessment was attempted.
 
@@ -539,12 +543,22 @@ The complete/repeated/incomplete artifact fixtures are exact canonical
 transport bytes with no trailing newline. The conformance corpus is
 human-readable formatted JSON and is not itself an artifact transport vector.
 
-The three positive artifacts cover every evaluator kind: a prompted evaluator
-on the seeded Sonnet 4.6 binding (complete, with an abstention), a Jev
-typed-question evaluator (two repeated trials), and an OpenRouter binding
-(incomplete, with an observed upstream, an `outcome_unknown` failure, and a
-not-attempted item). The private-ledger fixture belongs to the complete
-artifact.
+The four positive artifacts cover every evaluator kind, each with its own
+evaluator version:
+
+- `complete`: a prompted evaluator on the seeded Sonnet 4.6 binding, with an
+  abstention;
+- `repeated`: a prompted evaluator on an OpenAI binding with a platform
+  base-URL override and fractional sampling (`temperature` 0.7, `topP` 0.95),
+  over two trials;
+- `incomplete`: an OpenRouter binding on its own revision, with an observed
+  upstream on its classified item, an `outcome_unknown` failure, and a
+  not-attempted item;
+- `typed-question`: a Jev typed-question evaluator on its own revision,
+  complete and without abstentions.
+
+The two private-ledger fixtures belong to the `complete` and `incomplete`
+artifacts and reconcile with them exactly.
 
 Artifact v2 is closed. New metric fields, interval methods, provider
 observation surfaces, private-ledger reads, nonsealed evidence classes,
