@@ -18,7 +18,7 @@ type Tab = "rubric" | "prompt" | "binding" | "schema";
 const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
   { id: "rubric", label: "Review guide" },
   { id: "prompt", label: "Judge instructions" },
-  { id: "binding", label: "Requested model" },
+  { id: "binding", label: "Execution binding" },
   { id: "schema", label: "Result format" }
 ];
 

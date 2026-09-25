@@ -11876,9 +11876,11 @@ CREATE TABLE skill_versions (
     onboarding_request_digest text,
     onboarding_assurance text,
     CONSTRAINT skill_versions_developer_identity_status_check CHECK ((developer_identity_status = ANY (ARRAY['unknown_legacy'::text, 'recorded'::text]))),
-    -- The binding names a custom endpoint only by digest (ADR-0014 section 2);
-    -- a custom provider keeps its configured URL here, and only it does.
-    CONSTRAINT skill_versions_custom_endpoint_url_check CHECK ((((execution_binding ->> 'provider'::text) = 'custom'::text) = (custom_endpoint_url IS NOT NULL))),
+    -- The binding names a custom endpoint only by digest (ADR-0014 section 2):
+    -- SHA-256 of 'rubrist/endpoint-base-url/v1', a NUL byte, and the URL. A
+    -- custom provider keeps its configured URL here, and only it does, and the
+    -- URL is the one the digest names.
+    CONSTRAINT skill_versions_custom_endpoint_url_check CHECK (((execution_binding ? 'provider'::text) AND (((execution_binding ->> 'provider'::text) = 'custom'::text) = (custom_endpoint_url IS NOT NULL)) AND ((custom_endpoint_url IS NULL) OR ((custom_endpoint_url <> ''::text) AND ((execution_binding #>> '{endpoint,baseUrlDigest}'::text[]) = ('sha256:'::text || encode(sha256(((convert_to('rubrist/endpoint-base-url/v1'::text, 'UTF8'::name) || '\x00'::bytea) || convert_to(custom_endpoint_url, 'UTF8'::name))), 'hex'::text))))))),
     CONSTRAINT skill_versions_onboarding_assurance_check CHECK ((onboarding_assurance IS NULL OR onboarding_assurance = 'starter_unvalidated'::text)),
     CONSTRAINT skill_versions_onboarding_identity_check CHECK (((onboarding_idempotency_key IS NULL AND onboarding_request_digest IS NULL) OR (onboarding_idempotency_key IS NOT NULL AND onboarding_request_digest IS NOT NULL AND onboarding_idempotency_key = btrim(onboarding_idempotency_key) AND length(onboarding_idempotency_key) BETWEEN 1 AND 240 AND onboarding_request_digest ~ '^sha256:[a-f0-9]{64}$'::text))),
     -- Starter drafts and human sign-off can be approved without running a

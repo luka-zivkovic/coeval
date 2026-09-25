@@ -70,7 +70,8 @@ export const EVALUATOR_LIFECYCLE_ERROR_CODES = [
   "calibration_conflict",
   "prior_active_conflict",
   "execution_forbidden",
-  "mutable_model_alias"
+  "mutable_model_alias",
+  "invalid_execution_binding"
 ] as const;
 export type EvaluatorLifecycleErrorCode = (typeof EVALUATOR_LIFECYCLE_ERROR_CODES)[number];
 

@@ -1198,7 +1198,7 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
           modelVersion: "2024-07-18",
           reasoning: null,
           outputTokenLimit: null,
-          verdictProtocol: "openai.structured-output/v1"
+          verdictProtocol: "openai.forced-function/v1"
         }),
         outputSchema: MinimumVerdictOutputSchema,
         idempotencyKey: "promotion-repository-candidate"
@@ -1293,7 +1293,7 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
           modelVersion: "2024-07-18",
           reasoning: null,
           outputTokenLimit: null,
-          verdictProtocol: "openai.structured-output/v1"
+          verdictProtocol: "openai.forced-function/v1"
         }),
         outputSchema: MinimumVerdictOutputSchema,
         idempotencyKey: "promotion-repository-candidate"

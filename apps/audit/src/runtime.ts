@@ -35,6 +35,7 @@ export type {
 } from "./protocols/verdict-protocols.js";
 export {
   MANAGED_BASE_URLS,
+  assertCredential,
   assertPromptedBinding,
   endpointBaseUrlDigest,
   resolveEndpointBaseUrl

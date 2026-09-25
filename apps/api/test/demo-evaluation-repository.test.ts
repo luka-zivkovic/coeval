@@ -384,7 +384,7 @@ describe("Demo evaluation and assessment-receipt repository slice", () => {
         cached: true
       }]
     });
-    expect(repository.calls).toEqual(["createEvalRun", "getSkillVersion"]);
+    expect(repository.calls).toEqual(["createEvalRun", "getSkillVersion", "getSkillVersion"]);
 
     const store = repositoryStore(repository);
     store.assessmentReceiptArtifacts.splice(0);

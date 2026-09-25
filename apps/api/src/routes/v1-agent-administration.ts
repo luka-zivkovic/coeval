@@ -1,4 +1,3 @@
-import { executionBindingFromInput, executionBindingInputProblem } from "../lib/execution-binding.js";
 import type { Pool } from "pg";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
@@ -26,6 +25,7 @@ import {
   type V1GoldenResponse,
   type V1ProjectResponse
 } from "@rubrist/shared";
+import { executionBindingFromInput, executionBindingInputProblem } from "../lib/execution-binding.js";
 import type { RubristAuth } from "../lib/auth.js";
 import {
   bootstrapOwnerUserByEmail,
@@ -684,6 +684,8 @@ export function registerV1AgentAdministrationRoutes(
     if (!parsed.success) {
       return c.json({ error: "Invalid criterion input", details: z.treeifyError(parsed.error) }, 400);
     }
+    const criterionBindingProblem = executionBindingInputProblem(parsed.data.evaluator.executionBinding);
+    if (criterionBindingProblem !== null) return c.json({ error: criterionBindingProblem }, 400);
     try {
       const detail = await repository.createCriterion(c.get("projectId"), parsed.data, {
         actorUserId: c.get("user")?.id

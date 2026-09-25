@@ -106,6 +106,17 @@ describe("criterion and evaluator-suite API", () => {
     });
     expect(rejected.status).toBe(400);
 
+    const unsendable = await app.request("/api/v1/criteria", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        ...criterionInput,
+        evaluator: { ...criterionInput.evaluator, executionBinding: bindingInput(MOCK_BINDING, { verdictProtocol: "anthropic.forced-tool/v1" }) }
+      })
+    });
+    expect(unsendable.status).toBe(400);
+    await expect(unsendable.json()).resolves.toMatchObject({ error: expect.stringMatching(/^Invalid execution binding: /) });
+
     const createdResponse = await app.request("/api/v1/criteria", {
       method: "POST",
       headers,

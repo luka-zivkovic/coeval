@@ -1,4 +1,3 @@
-import { executionBindingInputProblem, legacyModelBinding } from "../lib/execution-binding.js";
 import type { Pool } from "pg";
 import type { Hono } from "hono";
 import type { Queue } from "@rubrist/queue";
@@ -11,6 +10,7 @@ import {
   type SkillFormatV1
 } from "@rubrist/shared";
 import { z } from "zod";
+import { executionBindingInputProblem, legacyModelBinding } from "../lib/execution-binding.js";
 import { sha256Digest } from "../lib/canonical-json.js";
 import { userProjectRole } from "../lib/auth.js";
 import { buildJudgeCard, renderJudgeCardMarkdown } from "../lib/judge-card.js";

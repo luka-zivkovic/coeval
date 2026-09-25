@@ -445,7 +445,7 @@ export function SkillVersionDetailScreen() {
 
           <Card>
             <CardContent className="py-4">
-              <Eyebrow>Requested model · immutable settings</Eyebrow>
+              <Eyebrow>Execution binding · immutable settings</Eyebrow>
               <p className="mt-2 text-[12px] leading-5 text-ink-2">
                 Exactly what every judge call of this immutable version sends. Individual runs retain
                 the provider-reported identity separately when available.

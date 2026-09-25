@@ -1,4 +1,3 @@
-import { endpointUrlFor } from "../lib/execution-binding.js";
 import type { Pool } from "pg";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
@@ -11,6 +10,7 @@ import {
   RunTraceTestValidationInputSchema,
   TraceTestFunnelEventInputSchema
 } from "@rubrist/shared";
+import { verifiedEndpointUrl } from "../lib/execution-binding.js";
 import {
   resolveJudgeProviderApiKey
 } from "../lib/judge-provider.js";
@@ -161,6 +161,14 @@ export function registerTraceTestAdministrationRoutes(
         code: "evaluator_not_authorized"
       }, 409);
     }
+    const draftEndpoint = verifiedEndpointUrl(assistedVersion!);
+    if (!draftEndpoint.ok) {
+      return c.json({
+        status: "unavailable",
+        reason: "unsupported_provider",
+        message: "The evaluator's endpoint isn't configured as its binding names. The manual draft is ready instead."
+      });
+    }
     const projectCredential = await repository.getJudgeProviderCredential(projectId, provider);
     const apiKey = resolveJudgeProviderApiKey(provider, projectCredential ?? undefined);
     if (!apiKey) {
@@ -190,7 +198,7 @@ export function registerTraceTestAdministrationRoutes(
           evidence
         }),
         signal: controller.signal,
-        ...baseUrlFor(assistedVersion!)
+        ...(draftEndpoint.baseUrl === null ? {} : { baseUrl: draftEndpoint.baseUrl })
       });
       const content = parseAssistedTraceTestContent(raw);
       return c.json({
@@ -369,6 +377,11 @@ export function registerTraceTestAdministrationRoutes(
           code: "evaluator_not_authorized"
         }, 409);
       }
+      const validationEndpoint = verifiedEndpointUrl(validationVersion!);
+      if (!validationEndpoint.ok) {
+        const validation = await recordUnavailable("The AI checker's endpoint isn't configured as its binding names. Review the examples manually instead.");
+        return c.json({ validation }, 201);
+      }
       const projectCredential = await repository.getJudgeProviderCredential(projectId, provider);
       const apiKey = resolveJudgeProviderApiKey(provider, projectCredential ?? undefined);
       if (!apiKey) {
@@ -389,7 +402,7 @@ export function registerTraceTestAdministrationRoutes(
         timeoutMs: TRACE_TEST_VALIDATION_TIMEOUT_MS,
         maxAttempts: TRACE_TEST_VALIDATION_MAX_ATTEMPTS,
         ...(options.traceTestValidationRunner ? { runner: options.traceTestValidationRunner } : {}),
-        ...baseUrlFor(validationVersion!)
+        ...(validationEndpoint.baseUrl === null ? {} : { baseUrl: validationEndpoint.baseUrl })
       });
       const validation = await repository.recordTraceTestValidation({
         projectId,
@@ -486,8 +499,3 @@ export function registerTraceTestAdministrationRoutes(
   });
 }
 
-// Drafting and validation call the evaluator's own endpoint.
-function baseUrlFor(version: Parameters<typeof endpointUrlFor>[0]): { baseUrl?: string } {
-  const baseUrl = endpointUrlFor(version);
-  return baseUrl === null ? {} : { baseUrl };
-}

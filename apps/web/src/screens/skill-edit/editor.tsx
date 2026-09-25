@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { Chip, Eyebrow, GateStrip, MarginNote, SectionHead } from "@/components/rubrist";
 import { SkillChangeReview, SkillEditFlow, type SkillEditPhase } from "@/components/skill-edit-flow";
-import { mutableModelAlias } from "@rubrist/shared";
+import { mutableModelAlias, describeExecutionBinding } from "@rubrist/shared";
 import type {
   CreateSkillVersionInput,
   JudgeModel,
@@ -283,11 +283,12 @@ export function SkillVersionEditor({
       <Card className="mb-5">
         <CardHeader>
           <div>
-            <CardTitle>Requested model</CardTitle>
+            <CardTitle>Execution binding</CardTitle>
             <CardDescription>
-              Chooses the provider, model, and temperature requested for judge calls. The exact API
-              model ID is stored on the immutable version; runs record the provider-reported model
-              identity separately when available. Verdict kind controls the allowed result labels.
+              Chooses the provider, model, and temperature every judge call sends. The whole binding,
+              including reasoning and the verdict protocol, is stored on the immutable version; runs
+              record the provider-reported model identity separately when available. Verdict kind
+              controls the allowed result labels.
             </CardDescription>
           </div>
           <div className="flex-1" />
@@ -399,16 +400,29 @@ export function SkillVersionEditor({
               min="0"
               max="2"
               step="0.1"
-              value={temperature}
+              value={provider === "mock" ? "" : temperature}
+              disabled={provider === "mock"}
+              placeholder="not sent"
               onChange={(event) => setTemperature(event.target.value)}
               className="h-9 rounded-sm border border-rule-soft bg-card-2 px-2 font-mono text-[12.5px] text-ink focus-visible:border-ink"
             />
-            {!temperatureValid ? (
-              <span className="text-[11px] text-signal">Enter a number from 0 to 2.</span>
+            {provider === "mock" ? (
+              <span className="text-[11px] text-ink-3">The mock takes no sampling settings.</span>
+            ) : !temperatureValid ? (
+              <span className="text-[11px] text-signal">Enter a number from 0 to 2, or leave it blank to not send one.</span>
             ) : (
-              <span className="text-[11px] text-ink-3">Use 0 for repeatable judge decisions; increase only for a deliberate variance test.</span>
+              <span className="text-[11px] text-ink-3">
+                Use 0 for repeatable judge decisions. Leave it blank only for a model that rejects temperature;
+                governed use needs an explicit value wherever the model accepts one.
+              </span>
             )}
           </Field>
+
+          {changeInput ? (
+            <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2 font-mono text-[11px] leading-5 text-ink-2 sm:col-span-2">
+              Sends · {describeExecutionBinding(changeInput.executionBinding)}
+            </div>
+          ) : null}
 
           <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2 text-[11.5px] leading-5 text-ink-2 sm:col-span-2">
             <span className="font-medium text-ink">Result format.</span> Rubrist generates the exact

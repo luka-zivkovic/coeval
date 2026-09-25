@@ -1,4 +1,3 @@
-import { ExecutionBindingInputError, executionBindingFromInput } from "../lib/execution-binding.js";
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import {
@@ -26,6 +25,7 @@ import {
   type EvaluatorLifecycleTransitionResult,
   type Skill
 } from "@rubrist/shared";
+import { ExecutionBindingInputError, executionBindingFromInput } from "../lib/execution-binding.js";
 import {
   evaluatorCandidateRequestDigest,
   evaluatorExecutionAuthorizationDigest,
@@ -76,7 +76,7 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
     try {
       stored = executionBindingFromInput(input.executionBinding);
     } catch (error) {
-      if (error instanceof ExecutionBindingInputError) throw repoError("unsupported", error.message);
+      if (error instanceof ExecutionBindingInputError) throw repoError("invalid_execution_binding", error.message);
       throw error;
     }
     const requestDigest = evaluatorCandidateRequestDigest(actor.projectId, input);

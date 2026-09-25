@@ -1,7 +1,10 @@
 import {
   EvaluatorCallError,
   MockJudgeProvider,
+  assertCredential,
+  assertPromptedBinding,
   executeVerdict,
+  resolveEndpointBaseUrl,
   type JudgePrompt,
   type JudgeProvider,
   type JudgeVerdict,
@@ -125,6 +128,15 @@ class ExecutionBindingJudgeProvider implements JudgeProvider {
   constructor(private readonly version: EvaluatorRuntimeVersion, private readonly apiKey: string | null) {
     this.name = version.executionBinding.provider;
     this.modelName = version.executionBinding.modelId;
+    // Whatever executeVerdict would refuse before sending is refused here, at
+    // construction, before any call-start marker, so the item is recorded as
+    // never attempted rather than as a call with an unknown outcome.
+    const binding = version.executionBinding;
+    assertPromptedBinding(binding);
+    if (binding.provider !== "mock") {
+      resolveEndpointBaseUrl(binding, endpointUrlFor(version));
+      assertCredential(binding.provider, apiKey);
+    }
   }
 
   // The regression gate's pass/fail/ambiguous judgment: a binary structured

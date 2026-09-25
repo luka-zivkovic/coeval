@@ -191,8 +191,11 @@ export function describeReasoningSettings(reasoning: ReasoningSettings | null): 
   }
 }
 
-/** One line stating everything a binding sends, and naming each unset setting as not sent. */
-export function describeExecutionBinding(binding: ExecutionBinding): string {
+/**
+ * One line stating everything a binding sends, and naming each unset setting
+ * as not sent. It reads a saved binding or a submitted one alike.
+ */
+export function describeExecutionBinding(binding: Omit<ExecutionBinding, "endpoint"> & { endpoint: { kind: "managed" | "custom" } }): string {
   return [
     `${binding.provider}/${binding.modelId}`,
     binding.modelVersion === binding.modelId ? null : `version ${binding.modelVersion}`,

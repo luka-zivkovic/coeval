@@ -486,10 +486,11 @@ export function SkillEditScreen() {
     };
   }, [provider, providerOptions, skill?.id]);
 
-  // A blank string coerces to 0 via Number(""), which would silently submit
-  // temperature 0 the user never typed. Require a non-blank, finite value.
+  // A blank temperature is not sent (ADR-0014 section 2); it is never read as
+  // 0, which Number("") would silently produce. The mock takes no sampling.
   const parsedTemperature = Number(temperature);
-  const temperatureValid = temperature.trim() !== "" && Number.isFinite(parsedTemperature) && parsedTemperature >= 0 && parsedTemperature <= 2;
+  const temperatureValid = provider === "mock" || temperature.trim() === "" ||
+    (Number.isFinite(parsedTemperature) && parsedTemperature >= 0 && parsedTemperature <= 2);
   const baseUrlValid = provider !== "custom" || /^https?:\/\/\S+$/i.test(baseUrl.trim());
   const providerAvailable = providerOptions.some((option) => option.provider === provider && option.available);
   // The pinned model is allowed to be absent from the fetched catalog (it may
@@ -510,9 +511,11 @@ export function SkillEditScreen() {
     (extra?: { overrideReason?: string }): CreateSkillVersionInput | null => {
       if (!skill) return null;
       const v = skill.currentVersion;
+      // Settings not in the editor carry over from the version being edited,
+      // the same base the change review compares against.
       const executionBinding = executionBindingInputFromFields(
         { provider, modelId, modelVersion, baseUrl, temperature },
-        v.executionBinding
+        (baseVersion ?? v).executionBinding
       );
       if (executionBinding === null) return null;
       const regenerateOutputSchema = shouldRegenerateVerdictOutputSchema({
@@ -543,7 +546,7 @@ export function SkillEditScreen() {
       };
       return input;
     },
-    [skill, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange, firstRun, starterSuppliedOutputContract]
+    [skill, baseVersion, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange, firstRun, starterSuppliedOutputContract]
   );
 
   const canSave =

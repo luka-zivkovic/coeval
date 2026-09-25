@@ -1,3 +1,5 @@
+import { EvaluatorCallError } from "@rubrist/audit/runtime";
+import { ExecutionBindingInputError, LegacyEvidenceUnsupportedError } from "./lib/execution-binding.js";
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { Pool } from "pg";
 import { Hono, type Context } from "hono";
@@ -974,6 +976,11 @@ export function createApp(repository: RubristRepository = new DemoRepository(), 
   app.notFound((c) => c.json({ error: "Not found" }, 404));
 
   app.onError((error, c) => {
+    if (error instanceof LegacyEvidenceUnsupportedError) return c.json({ error: error.message, code: error.code }, 409);
+    if (error instanceof ExecutionBindingInputError) return c.json({ error: `Invalid execution binding: ${error.message}` }, 400);
+    if (error instanceof EvaluatorCallError) {
+      return c.json({ error: `The judge provider call failed: ${error.message}`, failureKind: error.failureKind }, 502);
+    }
     console.error(error);
     return c.json({ error: "Internal server error" }, 500);
   });

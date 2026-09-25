@@ -131,20 +131,20 @@ export async function recoverStaleEvalRunItemExecutions(
   queue?: Queue | undefined
 ): Promise<number> {
   const stale = await repository.listStaleEvalRunItemExecutions();
-  for (const execution of stale) {
+  const recover = async (execution: (typeof stale)[number]): Promise<void> => {
     // No handler ever claimed this item. Reconcile the durable item outbox
     // using pg-boss state to distinguish a live/existing UUID from a terminal
     // one. Live/missing jobs never sit behind a recovery execution token: a
     // queue delivery racing this sweep must remain free to claim the item.
     if (execution.executionToken === null) {
-      if (!queue?.getJobState) continue;
+      if (!queue?.getJobState) return;
       await repository.markEvalRunRunning(execution.projectId, execution.evalRunId);
       const run = await repository.getEvalRun(execution.projectId, execution.evalRunId);
       const dispatches = run && (run.status === "pending" || run.status === "running")
         ? await repository.listPendingEvalRunItemDispatches(execution.projectId, execution.evalRunId)
         : [];
       const dispatch = dispatches.find(({ item }) => item.id === execution.evalRunItemId);
-      if (!run || !dispatch) continue;
+      if (!run || !dispatch) return;
 
       const queueState = await queue.getJobState("eval.item", dispatch.jobId);
       if (queueState === "created" || queueState === "retry" || queueState === "active") {
@@ -153,7 +153,7 @@ export async function recoverStaleEvalRunItemExecutions(
           execution.evalRunId,
           execution.evalRunItemId
         );
-        continue;
+        return;
       }
       if (queueState === null) {
         const rearmed = await repository.rearmEvalRunItemDeliveryDeadline(
@@ -161,7 +161,7 @@ export async function recoverStaleEvalRunItemExecutions(
           execution.evalRunId,
           execution.evalRunItemId
         );
-        if (!rearmed) continue;
+        if (!rearmed) return;
         await queue.send("eval.item", {
           projectId: execution.projectId,
           evalRunId: execution.evalRunId,
@@ -176,7 +176,7 @@ export async function recoverStaleEvalRunItemExecutions(
         });
         // A null insert only means another sender won the same UUID. Its state
         // is reconciled after the refreshed deadline if it never does work.
-        continue;
+        return;
       }
 
       // Terminal queue state is the only path that needs a recovery execution
@@ -189,7 +189,7 @@ export async function recoverStaleEvalRunItemExecutions(
         evalRunItemId: execution.evalRunItemId,
         executionToken: recoveryToken
       });
-      if (!recoveryClaimed) continue;
+      if (!recoveryClaimed) return;
       const confirmedState = await queue.getJobState("eval.item", dispatch.jobId);
       if (confirmedState !== "completed" && confirmedState !== "cancelled" && confirmedState !== "failed") {
         await repository.releaseEvalRunItemExecution({
@@ -198,7 +198,7 @@ export async function recoverStaleEvalRunItemExecutions(
           evalRunItemId: execution.evalRunItemId,
           executionToken: recoveryToken
         });
-        continue;
+        return;
       }
       await repository.failEvalRunItem({
         projectId: execution.projectId,
@@ -207,7 +207,7 @@ export async function recoverStaleEvalRunItemExecutions(
         executionToken: recoveryToken,
         error: `Queue delivery ended in ${confirmedState} before the evaluator started; the evaluation did not run.`
       });
-      continue;
+      return;
     }
     await repository.failEvalRunItem({
       projectId: execution.projectId,
@@ -220,6 +220,15 @@ export async function recoverStaleEvalRunItemExecutions(
           ? "Provider outcome unknown after worker interruption; the evaluator was not called again."
           : "Worker interrupted before provider dispatch; the evaluation did not run."
     });
+  };
+  // One item that can't be recovered must never stop recovery of the
+  // items after it, in any project.
+  for (const execution of stale) {
+    try {
+      await recover(execution);
+    } catch (error) {
+      console.error(`Recovery of stale eval item ${execution.evalRunItemId} failed; continuing with the rest:`, error);
+    }
   }
   return stale.length;
 }

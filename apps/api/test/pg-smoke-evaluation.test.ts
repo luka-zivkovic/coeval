@@ -441,7 +441,7 @@ runPgSmoke("PgRepository smoke", () => {
       await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
       await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
 
-      const versionInput = (_binding: { provider: "anthropic" }) => ({
+      const versionInput = () => ({
         rubricMarkdown: "Pass correct answers.",
         prompt: "Judge the trace.",
         executionBinding: bindingInput(SEEDED_BINDING, { modelId: "m", modelVersion: "v" }),
@@ -461,7 +461,7 @@ runPgSmoke("PgRepository smoke", () => {
       await pool.query(`delete from skills`);
       await seedSkill(pool);
       await expect(
-        mockFallbackRepo.createSkillVersion("skill_test", versionInput({ provider: "anthropic" }), context)
+        mockFallbackRepo.createSkillVersion("skill_test", versionInput(), context)
       ).rejects.toThrow(RegressionGateUnavailableError);
 
       // A provider that throws mid-gate surfaces as the typed judge error
@@ -489,7 +489,7 @@ runPgSmoke("PgRepository smoke", () => {
         [imported.caseId, imported.rawTraceId]
       );
       await expect(
-        failingRepo.createSkillVersion("skill_test", versionInput({ provider: "anthropic" }), context)
+        failingRepo.createSkillVersion("skill_test", versionInput(), context)
       ).rejects.toThrow(RegressionGateJudgeError);
     } finally {
       await cleanup();

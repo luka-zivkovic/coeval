@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { canonicalJson, sha256Digest } from "./canonical-json.js";
-import { legacyModelBinding } from "./execution-binding.js";
+import { LegacyEvidenceUnsupportedError, legacyModelBinding } from "./execution-binding.js";
 import {
   AssessmentReceiptSchema,
   type AssessmentReceipt,
@@ -18,11 +18,9 @@ const UNAVAILABLE_PROVIDER_METADATA: ProviderResponseMetadata = {
 };
 
 /** The v1 binding a v1 artifact records, refused when v1 can't state the version's binding. */
-export function requireLegacyModelBinding(version: SkillVersion): ModelBinding {
+export function requireLegacyModelBinding(version: SkillVersion, what = "v1 evidence"): ModelBinding {
   const binding = legacyModelBinding(version);
-  if (binding === null) {
-    throw new Error("v1 evidence requires an explicit temperature and a prompted provider; this version's binding needs v2 evidence (Batch 8D)");
-  }
+  if (binding === null) throw new LegacyEvidenceUnsupportedError(what);
   return binding;
 }
 

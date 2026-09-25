@@ -84,8 +84,11 @@ export function sameExecutionBinding(
 export function inputMatchesVersion(input: ExecutionBindingInput, version: Pick<SkillVersion, "executionBinding" | "customEndpointUrl">): boolean {
   const { endpoint, ...rest } = input;
   const { endpoint: savedEndpoint, ...saved } = version.executionBinding;
+  // An OpenAI binding saved on the platform override records it as a custom
+  // endpoint with no URL of its own; the same managed input saves the same.
+  const recordedOverride = rest.provider === "openai" && savedEndpoint.kind === "custom" && version.customEndpointUrl === null;
   const sameEndpoint = endpoint.kind === "custom"
     ? savedEndpoint.kind === "custom" && version.customEndpointUrl === endpoint.baseUrl
-    : savedEndpoint.kind === "managed";
+    : savedEndpoint.kind === "managed" || recordedOverride;
   return sameEndpoint && JSON.stringify(stable(rest)) === JSON.stringify(stable(saved));
 }
