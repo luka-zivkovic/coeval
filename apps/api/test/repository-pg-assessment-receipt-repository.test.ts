@@ -14,7 +14,11 @@ import {
   it,
   vi
 } from "vitest";
-import { canonicalReceiptBytes, evidenceDigestForReceipt, receiptArtifactDigest } from "../src/lib/assessment-receipt.js";
+import {
+  canonicalReceiptBytes,
+  evidenceDigestForReceipt,
+  receiptArtifactDigest
+} from "../src/lib/assessment-receipt.js";
 import type { AssessmentReceiptArtifact } from "../src/repository.js";
 
 const receiptCommandMocks = vi.hoisted(() => ({

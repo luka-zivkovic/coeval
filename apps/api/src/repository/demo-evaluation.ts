@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { AssessmentReceipt, EvalRun, EvalRunDetail, EvalRunItem, SkillVersion } from "@rubrist/shared";
-import { buildAssessmentReceipt, canonicalReceiptBytes, parseCanonicalReceiptBytes, receiptArtifactDigest, receiptSourceSnapshotDigest } from "../lib/assessment-receipt.js";
+import {
+  buildAssessmentReceipt,
+  canonicalReceiptBytes,
+  parseCanonicalReceiptBytes,
+  receiptArtifactDigest,
+  receiptSourceSnapshotDigest
+} from "../lib/assessment-receipt.js";
 import type {
   AssessmentReceiptArtifactSource,
   AssessmentReceiptArtifact,
