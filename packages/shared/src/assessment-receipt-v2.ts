@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EvalRunStatusSchema } from "./evaluation-runs.js";
-import { containsLoneUtf16Surrogate } from "./judge.js";
+import { containsLoneUtf16Surrogate, containsOwnProtoKey } from "./judge.js";
 import {
   EvaluatorItemStateSchema,
   EvaluatorScoreSchema,
@@ -74,15 +74,6 @@ const AssessmentReceiptV2ObjectSchema = z.object({
   items: z.array(AssessmentReceiptV2ItemSchema).min(1),
   evidenceDigest: Sha256DigestSchema
 }).strict();
-
-/** Whether any object in a raw JSON value has an own `__proto__` key. */
-function containsOwnProtoKey(value: unknown): boolean {
-  if (Array.isArray(value)) return value.some(containsOwnProtoKey);
-  if (value !== null && typeof value === "object") {
-    return Object.hasOwn(value, "__proto__") || Object.values(value).some(containsOwnProtoKey);
-  }
-  return false;
-}
 
 /**
  * The raw document is checked before the object parse: a strict object parse

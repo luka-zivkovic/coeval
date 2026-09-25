@@ -49,6 +49,18 @@ export function containsLoneUtf16Surrogate(value: unknown): boolean {
   return false;
 }
 
+// A strict object parse assigns an own `__proto__` key as the prototype
+// instead of reporting it, so a parsed evidence document would silently
+// differ from its raw bytes. v2 evidence contracts refuse the key anywhere.
+// Internal to sibling shared modules; omitted from the package root.
+export function containsOwnProtoKey(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(containsOwnProtoKey);
+  if (value !== null && typeof value === "object") {
+    return Object.hasOwn(value, "__proto__") || Object.values(value).some(containsOwnProtoKey);
+  }
+  return false;
+}
+
 // Internal shared schema. It is exported only for sibling shared modules and
 // is intentionally omitted from the package root's public export map.
 export const UnicodeScalarValueSchema = z.string().refine((value) => !containsLoneUtf16Surrogate(value), {

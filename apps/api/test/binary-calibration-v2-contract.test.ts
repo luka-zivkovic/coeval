@@ -18,7 +18,7 @@ import {
   typedQuestionDigest
 } from "../src/lib/evaluator-identity.js";
 import { evaluatorOutputContractDigest } from "../src/lib/evaluator-suite.js";
-import { BINDINGS, DEFINITIONS, QUESTION } from "./fixtures/binary-calibration-v2-evaluators.js";
+import { BINDINGS, DEFINITIONS, QUESTION } from "./fixtures/evaluator-v2-vectors.js";
 import {
   BINARY_CALIBRATION_V2_MAX_CANONICAL_BYTES,
   binaryCalibrationV2EvidenceDigest,

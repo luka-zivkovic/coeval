@@ -32,7 +32,26 @@ rules and private-ledger commitment basis are in
 The producer-internal private-ledger schema and dummy-salt golden fixture pin
 the public commitment algorithm; they do not create a private-ledger read API.
 
-## Evaluator suite manifest v1
+## Evaluator suite manifest v2
+
+`evaluator-suite-manifest-v2.schema.json` replaces manifest v1 (Rubrist
+ADR-0014 section 7, decision 6). Its shape and verification are v1's; members
+carry the v2 `skillDigest`, which receipt v2 and calibration v2 recompute from
+their evaluator identity, and the v2 output-contract digest. The positive
+fixture names a prompted and a typed-question evaluator, and the corpus
+carries every v1 case forward with the raw-input guards of receipt v2. The
+normative rules are in
+[`evaluator-suite-manifest-v2.md`](evaluator-suite-manifest-v2.md).
+
+## Skill format v2
+
+`skill-format-v2.schema.json` is the portable export of one evaluator version,
+replacing the informal `spec/skill-format-v1.md`. It carries the full
+definition, the execution binding, and a typed question's text, with the
+digests an importer recomputes and compares with the identity it expected.
+The normative rules are in [`skill-format-v2.md`](skill-format-v2.md).
+
+## Evaluator suite manifest v1 (superseded)
 
 `evaluator-suite-manifest-v1.schema.json` is the closed, policy-free contract
 for an immutable ordered suite. It binds each criterion definition to one exact

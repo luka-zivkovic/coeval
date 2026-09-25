@@ -399,6 +399,8 @@ export * from "./evaluator-lifecycle.js";
 export * from "./evaluator-execution.js";
 export * from "./assessment-receipt-v2.js";
 export * from "./binary-calibration-v2.js";
+export * from "./evaluator-suite-manifest-v2.js";
+export * from "./skill-format-v2.js";
 
 
 export * from "./criterion-governance.js";

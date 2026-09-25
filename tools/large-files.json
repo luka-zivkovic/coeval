@@ -75,6 +75,11 @@
       "classification": "structural_exception",
       "reason": "One exact canonical artifact pipeline keeps constants and binary64 primitives, private-ledger verification, artifact construction/parsing/verification, and ordered metric, lineage, and bound checks reviewable in execution order.",
       "revisit": "Revisit if a second contract version or independent artifact family enters the file; do not split canonical v1 stages unless exact byte, operation-order, behavior, and root-binding invariants remain reviewable. The v1 module is removed in Batch 8D, when runtime emission moves to v2."
+    },
+    "contracts/skill-format-v2.schema.json": {
+      "classification": "structural_exception",
+      "reason": "This is an exact-byte, digest-pinned interoperability contract file.",
+      "revisit": "Change only through the versioned contract process; never split for source-file size."
     }
   }
 }
