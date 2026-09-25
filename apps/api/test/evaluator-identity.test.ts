@@ -224,6 +224,16 @@ describe("skillDigest v2 (ADR-0014 section 1 and decision 5)", () => {
     expect(() => skillDigestV2FromInput({ ...input, definitionDigest: "sha256:short" })).toThrow();
   });
 
+  it("refuses to digest a definition that isn't exactly a valid definition", () => {
+    expect(() => evaluatorDefinitionDigest({ ...PROMPTED_DEFINITION, extra: 1 } as never)).toThrow();
+    const withProto = { ...PROMPTED_DEFINITION, ...JSON.parse(`{"outputSchema":{"type":"object","__proto__":{"x":1}}}`) };
+    expect(() => evaluatorDefinitionDigest(withProto)).toThrow();
+    const inherited = Object.create({ scalarRange: null });
+    Object.assign(inherited, { ...PROMPTED_DEFINITION });
+    delete inherited.scalarRange;
+    expect(() => evaluatorDefinitionDigest(inherited)).toThrow();
+  });
+
   it("still applies whole-identity rules before producing a digest input", () => {
     expect(() => skillDigestInput({ ...JEV, executionBinding: SONNET_46 })).toThrow();
   });

@@ -8,14 +8,14 @@ import {
   type SkillDigestInput,
   type TypedQuestion
 } from "@rubrist/shared";
-import type { z } from "zod";
+import { type ZodType } from "zod";
 import { canonicalJson, sha256Digest } from "./assessment-receipt.js";
 
 /**
  * Parses a document and refuses it if parsing would change its canonical
  * form, so a digest always covers exactly the document it was given.
  */
-function parseExactly<T>(schema: z.ZodType<T>, value: unknown, what: string): T {
+function parseExactly<T>(schema: ZodType<T>, value: unknown, what: string): T {
   const parsed = schema.parse(value);
   if (canonicalJson(parsed) !== canonicalJson(value)) {
     throw new Error(`${what} changes when parsed, so its digest would not cover the stored document`);
