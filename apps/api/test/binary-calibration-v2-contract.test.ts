@@ -10,7 +10,7 @@ import {
   type BinaryCalibrationV2Artifact,
   type BinaryCalibrationV2PrivateLedger
 } from "@rubrist/shared";
-import { canonicalJson, sha256Digest } from "../src/lib/assessment-receipt.js";
+import { canonicalJson, sha256Digest } from "../src/lib/canonical-json.js";
 import {
   evaluatorDefinitionDigest,
   evaluatorOutputContractDigestV2,

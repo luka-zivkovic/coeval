@@ -14,7 +14,7 @@ import {
   type GovernedReviewTask,
   type GovernedReviewTaskEvent
 } from "@rubrist/shared";
-import { sha256Digest } from "./assessment-receipt.js";
+import { sha256Digest } from "./canonical-json.js";
 import { governedContentV1Digest } from "./governed-content-digest.js";
 import {
   MAX_COLLECTION_PROVENANCE_BYTES,

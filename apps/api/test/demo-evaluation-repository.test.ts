@@ -5,7 +5,7 @@ import { demoProject, demoSkill } from "@rubrist/db";
 import { AssessmentReceiptSchema } from "@rubrist/shared";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { contentDigest } from "../src/lib/assessment-receipt.js";
+import { contentDigest } from "../src/lib/canonical-json.js";
 import * as repositoryModule from "../src/repository.js";
 import { DemoRepository } from "../src/repository.js";
 import * as demoEvaluationModule from "../src/repository/demo-evaluation.js";

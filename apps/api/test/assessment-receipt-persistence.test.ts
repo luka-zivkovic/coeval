@@ -1,13 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { AssessmentReceiptSchema, type AssessmentReceipt } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
-import {
-  canonicalJson,
-  contentDigest,
-  evidenceDigestForReceipt,
-  parseCanonicalReceiptBytes,
-  receiptArtifactDigest
-} from "../src/lib/assessment-receipt.js";
+import { canonicalJson, contentDigest } from "../src/lib/canonical-json.js";
+import { evidenceDigestForReceipt, parseCanonicalReceiptBytes, receiptArtifactDigest } from "../src/lib/assessment-receipt.js";
 import {
   AssessmentReceiptIntegrityError,
   AssessmentReceiptUnavailableError,

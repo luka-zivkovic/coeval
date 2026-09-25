@@ -1,11 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { AssessmentReceipt } from "@rubrist/shared";
 import type { Pool } from "pg";
-import {
-  canonicalReceiptBytes,
-  parseCanonicalReceiptBytes,
-  receiptArtifactDigest
-} from "../lib/assessment-receipt.js";
+import { canonicalReceiptBytes, parseCanonicalReceiptBytes, receiptArtifactDigest } from "../lib/assessment-receipt.js";
 import type {
   AssessmentReceiptArtifact,
   AssessmentReceiptComparison,

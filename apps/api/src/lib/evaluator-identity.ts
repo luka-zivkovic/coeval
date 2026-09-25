@@ -10,7 +10,7 @@ import {
 } from "@rubrist/shared";
 import { createHash } from "node:crypto";
 import { type ZodType } from "zod";
-import { canonicalJson, sha256Digest } from "./assessment-receipt.js";
+import { canonicalJson, sha256Digest } from "./canonical-json.js";
 
 /**
  * Parses a document and refuses it if parsing would change its canonical

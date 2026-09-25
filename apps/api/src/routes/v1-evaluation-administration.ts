@@ -6,7 +6,7 @@ import {
   JudgeServiceRequestSchema,
   verdictLabelFromPayload
 } from "@rubrist/shared";
-import { contentDigest, sha256Digest } from "../lib/assessment-receipt.js";
+import { contentDigest, sha256Digest } from "../lib/canonical-json.js";
 import {
   createStrictJudgeProvider,
   isJudgeAuthError,

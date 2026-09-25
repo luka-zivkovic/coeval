@@ -16,8 +16,8 @@ import {
   type GovernedReviewTaskEvent,
   type ImportedHumanTruth
 } from "@rubrist/shared";
-import { sha256Digest } from "../src/lib/assessment-receipt.js";
-import { evaluatorSuiteCriterionDigest } from "../src/lib/evaluator-suite.js";
+import { sha256Digest } from "../src/lib/canonical-json.js";
+import { criterionVersionDigest } from "../src/lib/criterion-digest.js";
 import {
   assertGovernedReviewTaskEventAllowed,
   buildGovernedBlindTaskView,
@@ -80,7 +80,7 @@ function criterion(overrides: Partial<CriterionVersion> = {}): CriterionVersion 
   };
   return {
     ...base,
-    criterionDigest: overrides.criterionDigest ?? evaluatorSuiteCriterionDigest({
+    criterionDigest: overrides.criterionDigest ?? criterionVersionDigest({
       criterionId: base.criterionId,
       criterionVersionId: base.id,
       criterionName: base.name,

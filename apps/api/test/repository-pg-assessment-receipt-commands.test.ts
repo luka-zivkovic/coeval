@@ -5,10 +5,7 @@ import { AssessmentReceiptSchema, MinimumVerdictOutputSchema } from "@rubrist/sh
 import type { PoolClient } from "pg";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import {
-  parseCanonicalReceiptBytes,
-  receiptSourceSnapshotDigest
-} from "../src/lib/assessment-receipt.js";
+import { parseCanonicalReceiptBytes, receiptSourceSnapshotDigest } from "../src/lib/assessment-receipt.js";
 import { AssessmentReceiptUnavailableError, computeEvalRunSpend } from "../src/repository.js";
 import * as commands from "../src/repository.pg/assessment-receipt-commands.js";
 import {

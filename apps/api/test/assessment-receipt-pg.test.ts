@@ -4,12 +4,8 @@ import { runMigrations } from "@rubrist/db";
 import { AssessmentReceiptSchema, MinimumVerdictOutputSchema, type AssessmentReceipt } from "@rubrist/shared";
 import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
-import {
-  canonicalJson,
-  contentDigest,
-  evidenceDigestForReceipt,
-  receiptArtifactDigest
-} from "../src/lib/assessment-receipt.js";
+import { canonicalJson, contentDigest } from "../src/lib/canonical-json.js";
+import { evidenceDigestForReceipt, receiptArtifactDigest } from "../src/lib/assessment-receipt.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {

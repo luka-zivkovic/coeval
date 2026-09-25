@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg";
-import { canonicalJson } from "../lib/assessment-receipt.js";
+import { canonicalJson } from "../lib/canonical-json.js";
 
 import { governedReviewRequestDigest } from "../lib/governed-review.js";
 import type { CreateGovernedReviewBatchInput } from "./contracts.js";

@@ -298,21 +298,21 @@ describe("evidence library boundaries", () => {
     expectRuntimeIdentity(governedEvidence, governedRoot);
     for (const name of Object.keys(governedCommon)) expect(governedRoot).not.toHaveProperty(name);
 
-    expect(relativeModuleEdges(paths.common)).toEqual(["./assessment-receipt.js"]);
+    expect(relativeModuleEdges(paths.common)).toEqual(["./canonical-json.js"]);
     expect(relativeModuleEdges(paths.artifacts)).toEqual([
-      "./assessment-receipt.js",
+      "./canonical-json.js",
       "./governed-content-digest.js",
       "./governed-review-common.js"
     ]);
     expect(relativeModuleEdges(paths.evidence)).toEqual([
-      "./assessment-receipt.js",
-      "./evaluator-suite.js",
+      "./canonical-json.js",
+      "./criterion-digest.js",
       "./governed-content-digest.js",
       "./governed-review-common.js",
       "./governed-review-artifacts.js"
     ]);
     expect(relativeModuleEdges(paths.state)).toEqual([
-      "./assessment-receipt.js",
+      "./canonical-json.js",
       "./governed-content-digest.js",
       "./governed-review-common.js",
       "./governed-review-artifacts.js",
@@ -332,7 +332,7 @@ describe("evidence library boundaries", () => {
     expect(Object.keys(binaryCalibration).sort()).toEqual(
       sorted(BINARY_EXPORTS.filter((name) => !BINARY_TYPE_EXPORT_SET.has(name)))
     );
-    expect(relativeModuleEdges(paths.binary)).toEqual(["./assessment-receipt.js"]);
+    expect(relativeModuleEdges(paths.binary)).toEqual(["./canonical-json.js"]);
 
     const text = fs.readFileSync(paths.binary, "utf8");
     expect(text.split("\n").length - 1).toBeGreaterThan(1_000);

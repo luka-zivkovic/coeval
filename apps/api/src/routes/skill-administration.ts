@@ -10,7 +10,7 @@ import {
   type SkillFormatV1
 } from "@rubrist/shared";
 import { z } from "zod";
-import { sha256Digest } from "../lib/assessment-receipt.js";
+import { sha256Digest } from "../lib/canonical-json.js";
 import { userProjectRole } from "../lib/auth.js";
 import { buildJudgeCard, renderJudgeCardMarkdown } from "../lib/judge-card.js";
 import {

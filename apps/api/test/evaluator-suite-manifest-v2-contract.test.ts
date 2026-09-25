@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import { EvaluatorSuiteManifestV2Schema, type EvaluatorSuiteManifestV2 } from "@rubrist/shared";
-import { canonicalJson } from "../src/lib/assessment-receipt.js";
+import { canonicalJson } from "../src/lib/canonical-json.js";
 import { evaluatorOutputContractDigestV2, skillDigestV2 } from "../src/lib/evaluator-identity.js";
 import {
   buildEvaluatorSuiteManifestV2,

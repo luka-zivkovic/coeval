@@ -8,7 +8,7 @@ import {
   type ProductionDecisionRecord,
   type ProductionOutcomeRecord
 } from "@rubrist/shared";
-import { canonicalJson } from "../src/lib/assessment-receipt.js";
+import { canonicalJson } from "../src/lib/canonical-json.js";
 import { ProductionRecordRepositoryError, type ProductionRecordSubmitter } from "../src/production-calibration/repository.js";
 import { PgProductionDecisionRecordRepository } from "../src/production-calibration/repository.pg.js";
 import {

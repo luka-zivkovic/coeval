@@ -32,7 +32,7 @@ import {
   releaseAgentSetupPairing,
   setupRequired
 } from "../lib/auth.js";
-import { sha256Digest } from "../lib/assessment-receipt.js";
+import { sha256Digest } from "../lib/canonical-json.js";
 import { canonicalEvaluatorSuiteManifestBytes } from "../lib/evaluator-suite.js";
 import { buildFindings, latestDiscreteVerdictByCase } from "../lib/findings.js";
 import {

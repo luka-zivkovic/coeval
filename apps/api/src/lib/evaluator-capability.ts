@@ -11,7 +11,7 @@ import {
   type ReasoningSettings,
   type VerdictProtocolId
 } from "@rubrist/shared";
-import { sha256Digest } from "./assessment-receipt.js";
+import { sha256Digest } from "./canonical-json.js";
 
 // Published capability data and probe-outcome attribution for the capability
 // check (Rubrist ADR-0014 section 4). Published data narrows which verdict

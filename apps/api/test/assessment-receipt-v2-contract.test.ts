@@ -8,7 +8,7 @@ import {
   type EvaluatorDefinition,
   type TypedQuestion
 } from "@rubrist/shared";
-import { canonicalJson, contentDigest, sha256Digest } from "../src/lib/assessment-receipt.js";
+import { canonicalJson, contentDigest, sha256Digest } from "../src/lib/canonical-json.js";
 import {
   canonicalReceiptV2Bytes,
   datasetDigestForReceiptV2Items,

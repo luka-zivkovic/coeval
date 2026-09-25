@@ -2,7 +2,7 @@ import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runMigrations } from "@rubrist/db";
 import { CreateSkillVersionInputSchema } from "@rubrist/shared";
-import { canonicalJson } from "../src/lib/assessment-receipt.js";
+import { canonicalJson } from "../src/lib/canonical-json.js";
 import { datasetInputIdentity } from "../src/lib/dataset-revision.js";
 import { governedReviewServePositions } from "../src/lib/governed-review-artifacts.js";
 import { createApp } from "../src/app.js";

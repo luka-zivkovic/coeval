@@ -15,7 +15,7 @@ import {
   type BinaryCalibrationTrial,
   type BinaryCalibrationWilsonRate
 } from "@rubrist/shared";
-import { canonicalJson } from "./assessment-receipt.js";
+import { canonicalJson } from "./canonical-json.js";
 
 // Public v1 contract constants and artifact-construction inputs.
 export const BINARY_CALIBRATION_CONTRACT = "rubrist/binary-calibration/v1" as const;

@@ -514,6 +514,7 @@
     "RunComparisonSchema",
     "RunTraceTestValidationInputSchema",
     "RuntimeIngestionPurposeSchema",
+    "SEEDED_DEFAULT_EXECUTION_BINDING",
     "SKILL_FORMAT_EXAMPLES_CAP",
     "SKILL_FORMAT_V2",
     "SKILL_FORMAT_V2_EXAMPLES_CAP",

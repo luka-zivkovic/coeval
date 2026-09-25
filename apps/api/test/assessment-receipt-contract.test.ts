@@ -6,11 +6,8 @@ import {
   AssessmentReceiptSchema,
   type AssessmentReceipt
 } from "@rubrist/shared";
-import {
-  contentDigest,
-  evidenceDigestForReceipt,
-  sha256Digest
-} from "../src/lib/assessment-receipt.js";
+import { contentDigest, sha256Digest } from "../src/lib/canonical-json.js";
+import { evidenceDigestForReceipt } from "../src/lib/assessment-receipt.js";
 
 interface ContractFixture {
   contract: "rubrist/assessment-receipt/v1";

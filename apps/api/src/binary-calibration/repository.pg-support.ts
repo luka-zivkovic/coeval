@@ -10,7 +10,7 @@ import {
   type SkillVersion
 } from "@rubrist/shared";
 import { evaluatorExecutionAuthorizationDigest } from "../lib/evaluator-lifecycle.js";
-import { canonicalJson, sha256Digest } from "../lib/assessment-receipt.js";
+import { canonicalJson, sha256Digest } from "../lib/canonical-json.js";
 
 import type {
   BinaryCalibrationActor,

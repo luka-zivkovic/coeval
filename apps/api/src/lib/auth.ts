@@ -9,7 +9,7 @@ import {
 } from "@rubrist/shared";
 import { betterAuth } from "better-auth";
 import { generateApiKey } from "./api-keys.js";
-import { evaluatorSuiteCriterionDigest } from "./evaluator-suite.js";
+import { criterionVersionDigest } from "./criterion-digest.js";
 
 // Origins allowed to talk to the API: CORS (app.ts) and better-auth's own
 // origin check both read this. They MUST stay one list — when they disagree,
@@ -446,7 +446,7 @@ async function insertProjectWithStarterSkill(
       criterionId,
       criterionName,
       criterionDefinition,
-      evaluatorSuiteCriterionDigest({
+      criterionVersionDigest({
         criterionId,
         criterionVersionId,
         criterionName,

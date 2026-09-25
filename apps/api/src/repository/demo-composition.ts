@@ -9,7 +9,7 @@ import {
 } from "@rubrist/db";
 import type { GoldenSetEntry } from "@rubrist/shared";
 import { datasetInputIdentity } from "../lib/dataset-revision.js";
-import { evaluatorSuiteCriterionDigest } from "../lib/evaluator-suite.js";
+import { criterionVersionDigest } from "../lib/criterion-digest.js";
 import type {
   ApiKeyRepositoryPort,
   AssessmentReceiptRepositoryPort,
@@ -148,7 +148,7 @@ function seedDemoRepositoryStore(
     revision: 1,
     name: demoSkill.name,
     definition: demoSkill.description,
-    criterionDigest: evaluatorSuiteCriterionDigest({
+    criterionDigest: criterionVersionDigest({
       criterionId,
       criterionVersionId,
       criterionName: demoSkill.name,

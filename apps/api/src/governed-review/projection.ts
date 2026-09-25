@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { GovernedBlindTaskViewSchema, GovernedReviewPayloadSnapshotSchema } from "@rubrist/shared";
-import { canonicalJson } from "../lib/assessment-receipt.js";
+import { canonicalJson } from "../lib/canonical-json.js";
 import { GovernedReviewIntegrityError } from "./errors.js";
 import type { GovernedBlindTaskViewArtifact } from "./repository.js";
 

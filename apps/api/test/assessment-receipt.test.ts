@@ -1,13 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { AssessmentReceiptSchema, type AssessmentReceipt } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
-import {
-  buildAssessmentReceipt,
-  canonicalJson,
-  contentDigest,
-  evidenceDigestForReceipt,
-  sha256Digest
-} from "../src/lib/assessment-receipt.js";
+import { canonicalJson, contentDigest, sha256Digest } from "../src/lib/canonical-json.js";
+import { buildAssessmentReceipt, evidenceDigestForReceipt } from "../src/lib/assessment-receipt.js";
 import { CaseNotFoundError, DemoRepository } from "../src/repository.js";
 
 const PROJECT = "proj_langsmith_support";

@@ -2,7 +2,7 @@
 // This module is deliberately absent from the compatibility barrel.
 import { createHash } from "node:crypto";
 import type { GovernedReviewBatch } from "@rubrist/shared";
-import { canonicalJson } from "./assessment-receipt.js";
+import { canonicalJson } from "./canonical-json.js";
 
 export const MAX_GOVERNED_REVIEW_PAYLOAD_BYTES = 2 * 1024 * 1024;
 export const MAX_COLLECTION_PROVENANCE_BYTES = 256 * 1024;

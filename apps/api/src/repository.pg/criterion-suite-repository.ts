@@ -17,9 +17,9 @@ import {
   canonicalEvaluatorSuiteManifestBytes,
   evaluatorSuiteArtifactDigest,
   evaluatorSuiteCreateRequestDigest,
-  evaluatorSuiteCriterionDigest,
   parseCanonicalEvaluatorSuiteManifestBytes
 } from "../lib/evaluator-suite.js";
+import { criterionVersionDigest } from "../lib/criterion-digest.js";
 import {
   CriterionStableKeyConflictError,
   EvaluatorSuiteBindingError,
@@ -76,7 +76,7 @@ export class PgCriterionSuiteRepository implements CriterionSuiteRepositoryPort 
     const criterionVersionId = `criterionv_${randomUUID()}`;
     const skillId = `skill_${randomUUID()}`;
     const skillVersionId = `skillv_${randomUUID()}`;
-    const criterionDigest = evaluatorSuiteCriterionDigest({
+    const criterionDigest = criterionVersionDigest({
       criterionId,
       criterionVersionId,
       criterionName: input.name,
@@ -194,7 +194,7 @@ export class PgCriterionSuiteRepository implements CriterionSuiteRepositoryPort 
       )).rows[0];
       const revision = Number(revisionRow?.revision ?? 1);
       const id = `criterionv_${randomUUID()}`;
-      const criterionDigest = evaluatorSuiteCriterionDigest({
+      const criterionDigest = criterionVersionDigest({
         criterionId,
         criterionVersionId: id,
         criterionName: input.name,

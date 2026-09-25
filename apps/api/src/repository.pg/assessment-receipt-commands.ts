@@ -1,11 +1,6 @@
 import type { EvalRunDetail } from "@rubrist/shared";
 import type { PoolClient } from "pg";
-import {
-  buildAssessmentReceipt,
-  canonicalReceiptBytes,
-  receiptArtifactDigest,
-  receiptSourceSnapshotDigest
-} from "../lib/assessment-receipt.js";
+import { buildAssessmentReceipt, canonicalReceiptBytes, receiptArtifactDigest, receiptSourceSnapshotDigest } from "../lib/assessment-receipt.js";
 import type {
   AssessmentReceiptArtifact,
   AssessmentReceiptArtifactSource

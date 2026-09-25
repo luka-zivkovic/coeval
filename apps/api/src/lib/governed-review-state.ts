@@ -19,7 +19,7 @@ import {
   type RepresentativeClaimEligibility,
   type RepresentativeClaimReason
 } from "@rubrist/shared";
-import { canonicalJson } from "./assessment-receipt.js";
+import { canonicalJson } from "./canonical-json.js";
 import { governedContentV1Digest } from "./governed-content-digest.js";
 import {
   assertExactSet,

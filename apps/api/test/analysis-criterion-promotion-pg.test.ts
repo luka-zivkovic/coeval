@@ -28,7 +28,7 @@ import {
   analysisCriterionPromotionSupportSetDigest
 } from "../src/lib/analysis-promotion.js";
 import { datasetInputIdentity } from "../src/lib/dataset-revision.js";
-import { evaluatorSuiteCriterionDigest } from "../src/lib/evaluator-suite.js";
+import { criterionVersionDigest } from "../src/lib/criterion-digest.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 
@@ -332,7 +332,7 @@ async function insertPromotionBundle(
   const criterionName = "Incorrect answer criterion";
   const criterionDefinition = "The response must provide a substantively correct final answer.";
   const rationale = "The exact closed study observation supports a narrow reusable criterion.";
-  const criterionDigest = evaluatorSuiteCriterionDigest({
+  const criterionDigest = criterionVersionDigest({
     criterionId,
     criterionVersionId,
     criterionName,
