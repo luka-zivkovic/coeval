@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { EvaluatorIdentitySchema, TypedQuestionSchema } from "./evaluator-execution.js";
-import { containsLoneUtf16Surrogate, containsOwnProtoKey, SkillStatusSchema, VerdictLabelSchema } from "./judge.js";
+import {
+  containsLoneUtf16Surrogate,
+  containsOwnProtoKey,
+  exceedsJsonDepth,
+  SkillStatusSchema,
+  V2_EVIDENCE_MAX_JSON_DEPTH,
+  VerdictLabelSchema
+} from "./judge.js";
 
 // skill-format/v2 (Rubrist ADR-0014 section 7, decision 5): the portable export
 // of one evaluator version. Unlike evidence, it carries the full definition,
@@ -12,21 +19,9 @@ export const SKILL_FORMAT_V2 = "skill-format/v2" as const;
 export const SKILL_FORMAT_V2_EXAMPLES_CAP = 50;
 
 const Sha256DigestSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
-// Example payloads are arbitrary JSON; bound their depth before the recursive
-// parse so an adversarial document fails validation instead of the stack.
-export const SKILL_FORMAT_V2_MAX_JSON_DEPTH = 64;
-
-/** Whether a raw JSON value nests deeper than `maxDepth`, checked without recursion. */
-function exceedsJsonDepth(value: unknown, maxDepth: number): boolean {
-  const stack: Array<{ entry: unknown; depth: number }> = [{ entry: value, depth: 0 }];
-  while (stack.length > 0) {
-    const { entry, depth } = stack.pop()!;
-    if (entry === null || typeof entry !== "object") continue;
-    if (depth > maxDepth) return true;
-    for (const child of Array.isArray(entry) ? entry : Object.values(entry)) stack.push({ entry: child, depth: depth + 1 });
-  }
-  return false;
-}
+// Example payloads are arbitrary JSON; their depth is bounded before the
+// recursive parse, so an adversarial document fails validation instead of the stack.
+export const SKILL_FORMAT_V2_MAX_JSON_DEPTH = V2_EVIDENCE_MAX_JSON_DEPTH;
 
 /** A labelled golden case, with the same redaction as every trace surface. */
 export const SkillFormatV2ExampleSchema = z.object({

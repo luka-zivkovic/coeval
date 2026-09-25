@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EvaluatorSuiteApplicabilitySchema, EvaluatorSuiteTrialPlanSchema } from "./criterion-governance.js";
-import { containsLoneUtf16Surrogate, containsOwnProtoKey } from "./judge.js";
+import { containsLoneUtf16Surrogate, containsOwnProtoKey, exceedsJsonDepth } from "./judge.js";
 
 // Evaluator suite manifest v2 (Rubrist ADR-0014 section 7). The shape is v1's;
 // what changes is what the evaluator digests mean: `skillDigest` is v2 (over
@@ -41,6 +41,10 @@ const EvaluatorSuiteManifestV2ObjectSchema = z.object({
 
 /** The raw document is checked first: no `__proto__` key and no lone surrogate anywhere. */
 export const EvaluatorSuiteManifestV2Schema = z.unknown().superRefine((raw, ctx) => {
+  if (exceedsJsonDepth(raw)) {
+    ctx.addIssue({ code: "custom", message: "suite manifests must not nest deeper than 64 levels" });
+    return;
+  }
   if (containsOwnProtoKey(raw)) {
     ctx.addIssue({ code: "custom", message: "suite manifests must not contain a __proto__ key" });
   }

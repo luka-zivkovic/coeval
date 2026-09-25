@@ -201,6 +201,14 @@ describe("evaluator suite manifest v2 contract (ADR-0014 section 7)", () => {
     expect(() => parseCanonicalEvaluatorSuiteManifestV2Bytes(Uint8Array.from([0xff]))).toThrow("not valid UTF-8");
   });
 
+  it("fails validation, rather than throwing, on hostile nesting", () => {
+    let payload: unknown = "leaf";
+    for (let depth = 0; depth < 5_000; depth += 1) payload = [payload];
+    const deep = { ...structuredClone(fixture()), unexpected: payload };
+    expect(() => EvaluatorSuiteManifestV2Schema.safeParse(deep)).not.toThrow();
+    expect(EvaluatorSuiteManifestV2Schema.safeParse(deep).success).toBe(false);
+  });
+
   it("refuses lone surrogates anywhere, which JSON Schema can't express", () => {
     const candidate = structuredClone(fixture());
     candidate.members[0]!.criterionName = "Factual\ud800";

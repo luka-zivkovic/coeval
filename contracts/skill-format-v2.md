@@ -84,7 +84,8 @@ detects a substitution.
 
 Every object is closed. No object has a `__proto__` key, and every string,
 keys included, is a sequence of Unicode scalar values, every number is finite,
-and no value nests deeper than 64 levels. JSON Schema can't express five
+and nesting is bounded: the document root is depth 0, and an array or object
+at a depth greater than 64 is invalid. JSON Schema can't express five
 rules, which runtime validators check: lone surrogates, `__proto__` keys
 inside open objects (an output schema, categorical choice scores, or an
 example's payload or metadata), an ascending scalar range, finite numbers in
@@ -106,8 +107,10 @@ and every digest is computed over the canonical JSON of the part it covers.
   starts from its `baseFixture`, or the corpus's, and applies its mutations in
   order. `add`, `replace`, and `remove` target an RFC 6901 JSON Pointer, and
   `add` and `replace` create an own member even for a `__proto__` key, as
-  `JSON.parse` does; `recompute-digests` recomputes all three `digests` from
-  the current document. `structural` states the required result from both
+  `JSON.parse` does; `recompute-question-digest` sets
+  `evaluator.identity.definition.question.digest` to the digest of the
+  current `evaluator.question`; and `recompute-digests` recomputes all three
+  `digests` from the current document. `structural` states the required result from both
   JSON Schema and runtime schema validation, and `semantic` the result after
   structural acceptance, using the case's optional `expectedSkillDigest`.
 

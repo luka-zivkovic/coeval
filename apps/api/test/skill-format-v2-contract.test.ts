@@ -39,7 +39,7 @@ interface ConformanceCorpus {
 const contractRoot = new URL("../../../contracts/", import.meta.url);
 const pinnedFileDigests = {
   schema: "93d12a75598b24031860a1d21b386260954daeb5110d766d2db6cd5d99875d06",
-  specification: "a0ae3b240c58f7ba69d04e0482fa813bb11b6602aa0a523260eaa09a8b689965",
+  specification: "addc7d0e03a3c77eeab4a5874e2c54a0c2964e7de7429cbae7d035dcbce2b66d",
   prompted: "d61bb237767fee31a6fecbecfafcb6dfd85df774ce84c2effed59594814c61c0",
   typedQuestion: "d07a435e85217f413c1bcf3aff19bd04e0d5119a19deef90dbe151a0054ec293",
   conformance: "e5c0f3f58f2cb9096f560d296c7738cf817bcf19d6a9770bd7727ebcaa9c9fbc"
@@ -174,6 +174,19 @@ describe("skill-format v2 contract (ADR-0014 section 7)", () => {
     expect(() => verifySkillFormatV2(custom, { endpointBaseUrl: `${baseUrl}/` })).toThrow("does not match the binding's baseUrlDigest");
     expect(() => verifySkillFormatV2(fixture("skill-format-v2.prompted.json"), { endpointBaseUrl: baseUrl })).toThrow("baseUrlDigest");
     expect(endpointBaseUrlDigest(baseUrl)).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+
+  it("accepts nesting to depth 64 and refuses depth 65, counting the root as 0", () => {
+    // The example payload sits at depth 3 (root → examples → example → input).
+    const nestedTo = (depth: number) => {
+      const doc = structuredClone(fixture("skill-format-v2.prompted.json")) as Record<string, any>;
+      let payload: unknown = [];
+      for (let level = 3; level < depth; level += 1) payload = [payload];
+      doc.examples[0].input = payload;
+      return doc;
+    };
+    expect(SkillFormatV2Schema.safeParse(nestedTo(64)).success).toBe(true);
+    expect(SkillFormatV2Schema.safeParse(nestedTo(65)).success).toBe(false);
   });
 
   it("fails validation, rather than throwing, on a payload nested past the depth limit", () => {

@@ -71,7 +71,7 @@ describe("shared module barrel", () => {
     expectRootIdentity(goldenSet);
     expectRootIdentity(governedReview);
     expectRootIdentity(integrations);
-    expectRootIdentity(judge, new Set(["HttpUrlSchema", "UnicodeScalarValueSchema", "containsOwnProtoKey"]));
+    expectRootIdentity(judge, new Set(["HttpUrlSchema", "UnicodeScalarValueSchema", "containsOwnProtoKey", "exceedsJsonDepth", "V2_EVIDENCE_MAX_JSON_DEPTH"]));
     expectRootIdentity(legacyReview);
     expectRootIdentity(machineReads);
     expectRootIdentity(productionCalibration);

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EvalRunStatusSchema } from "./evaluation-runs.js";
-import { containsLoneUtf16Surrogate, containsOwnProtoKey } from "./judge.js";
+import { containsLoneUtf16Surrogate, containsOwnProtoKey, exceedsJsonDepth } from "./judge.js";
 import {
   EvaluatorItemStateSchema,
   EvaluatorScoreSchema,
@@ -81,6 +81,10 @@ const AssessmentReceiptV2ObjectSchema = z.object({
  * Unicode scalar values, so both are refused wherever they appear.
  */
 export const AssessmentReceiptV2Schema = z.unknown().superRefine((raw, ctx) => {
+  if (exceedsJsonDepth(raw)) {
+    ctx.addIssue({ code: "custom", message: "assessment receipts must not nest deeper than 64 levels" });
+    return;
+  }
   if (containsOwnProtoKey(raw)) {
     ctx.addIssue({ code: "custom", message: "assessment receipts must not contain a __proto__ key" });
   }

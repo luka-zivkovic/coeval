@@ -52,11 +52,30 @@ export function containsLoneUtf16Surrogate(value: unknown): boolean {
 // A strict object parse assigns an own `__proto__` key as the prototype
 // instead of reporting it, so a parsed evidence document would silently
 // differ from its raw bytes. v2 evidence contracts refuse the key anywhere.
-// Internal to sibling shared modules; omitted from the package root.
+// Internal to sibling shared modules; omitted from the package root. Both
+// helpers are iterative, so hostile nesting fails validation instead of the stack.
 export function containsOwnProtoKey(value: unknown): boolean {
-  if (Array.isArray(value)) return value.some(containsOwnProtoKey);
-  if (value !== null && typeof value === "object") {
-    return Object.hasOwn(value, "__proto__") || Object.values(value).some(containsOwnProtoKey);
+  const stack: unknown[] = [value];
+  while (stack.length > 0) {
+    const entry = stack.pop();
+    if (entry === null || typeof entry !== "object") continue;
+    if (!Array.isArray(entry) && Object.hasOwn(entry, "__proto__")) return true;
+    stack.push(...(Array.isArray(entry) ? entry : Object.values(entry)));
+  }
+  return false;
+}
+
+/** v2 evidence documents nest no deeper than this; the root is depth 0. */
+export const V2_EVIDENCE_MAX_JSON_DEPTH = 64;
+
+/** Whether any array or object sits at a depth greater than `maxDepth`, counting the root as 0. */
+export function exceedsJsonDepth(value: unknown, maxDepth: number = V2_EVIDENCE_MAX_JSON_DEPTH): boolean {
+  const stack: Array<{ entry: unknown; depth: number }> = [{ entry: value, depth: 0 }];
+  while (stack.length > 0) {
+    const { entry, depth } = stack.pop()!;
+    if (entry === null || typeof entry !== "object") continue;
+    if (depth > maxDepth) return true;
+    for (const child of Array.isArray(entry) ? entry : Object.values(entry)) stack.push({ entry: child, depth: depth + 1 });
   }
   return false;
 }
