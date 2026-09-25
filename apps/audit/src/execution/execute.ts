@@ -11,6 +11,7 @@ import {
 } from "../protocols/verdict-protocols.js";
 import { ANTHROPIC_VERSION, anthropicMessagesBody, readAnthropicMessagesResponse } from "./anthropic-messages.js";
 import {
+  assertCredential,
   assertPromptedBinding,
   resolveEndpointBaseUrl,
   type ExecutionBinding,
@@ -21,7 +22,8 @@ import {
   UNOBSERVED,
   failureKindForStatus,
   providerErrorDetail,
-  type ObservedProvenance
+  type ObservedProvenance,
+  type TokenUsage
 } from "./failure.js";
 import { openAIChatBody, readOpenAIChatResponse } from "./openai-chat.js";
 
@@ -29,6 +31,8 @@ export type ExecutionFetch = (url: string, init: {
   method: "POST";
   headers: Record<string, string>;
   body: string;
+  /** Never follow a redirect: the call goes exactly where the binding says. */
+  redirect: "manual";
   signal: AbortSignal;
 }) => Promise<Response>;
 
@@ -50,7 +54,7 @@ export interface VerdictExecutionInput {
 export interface VerdictExecutionResult {
   verdict: StructuredVerdict;
   observed: ObservedProvenance;
-  usage: { inputTokens: number; outputTokens: number } | null;
+  usage: TokenUsage | null;
 }
 
 /** The exact HTTP request one judgment sends, credential excluded. */
@@ -61,6 +65,7 @@ export interface VerdictHttpRequest {
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
+const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 const MOCK_OBSERVED: ObservedProvenance = { ...UNOBSERVED, model: "mock-heuristic-v1" };
 
 /**
@@ -92,19 +97,38 @@ function authorization(binding: PromptedExecutionBinding, apiKey: string): Recor
   return binding.provider === "anthropic" ? { "x-api-key": apiKey } : { authorization: `Bearer ${apiKey}` };
 }
 
-async function readBody(response: Response): Promise<{ json: unknown; text: string }> {
-  const text = await response.text();
-  try {
-    return { json: JSON.parse(text), text };
-  } catch {
-    return { json: undefined, text };
+/** Reads at most MAX_RESPONSE_BYTES of the body; `null` when it's longer. */
+async function readBoundedText(response: Response): Promise<string | null> {
+  if (response.body === null) return "";
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_RESPONSE_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
   }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+// A transport failure's own error can quote request headers, so only its
+// code or name is kept, never the error itself.
+function transportReason(error: unknown): string {
+  const cause = error instanceof Error ? (error as Error & { cause?: { code?: unknown } }).cause : undefined;
+  const code = cause !== null && typeof cause === "object" && typeof cause.code === "string" ? cause.code : null;
+  return code ?? (error instanceof Error ? error.name : "unknown");
 }
 
 /**
  * Judges one trace with a v2 execution binding in exactly one physical call.
- * Nothing is retried, dropped, or rewritten after a rejection: a failed call
- * is an EvaluatorCallError with its failure kind (ADR-0014 sections 2 and 6).
+ * Nothing is retried, dropped, or rewritten after a rejection, and no
+ * redirect is followed: a failed call is an EvaluatorCallError with its
+ * failure kind (ADR-0014 sections 2 and 6).
  */
 export async function executeVerdict(input: VerdictExecutionInput): Promise<VerdictExecutionResult> {
   const binding = input.binding;
@@ -126,67 +150,83 @@ export async function executeVerdict(input: VerdictExecutionInput): Promise<Verd
   }
 
   const http = buildVerdictHttpRequest(binding, request, input.customBaseUrl);
-  if (input.apiKey === null || input.apiKey.length === 0) {
-    throw new EvaluatorCallError("provider_unavailable", `no ${binding.provider} credential is available`, { physicalCall: false });
-  }
+  const apiKey = input.apiKey;
+  assertCredential(binding.provider, apiKey);
   const send = input.fetch ?? ((url, init) => fetch(url, init));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), input.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-  let response: Response;
-  let body: { json: unknown; text: string };
-  try {
-    response = await send(http.url, {
-      method: "POST",
-      headers: { ...http.headers, ...authorization(binding, input.apiKey) },
-      body: JSON.stringify(http.body),
-      signal: controller.signal
-    });
-    body = await readBody(response);
-  } catch (error) {
+  const failedInTransit = (error: unknown, observed: ObservedProvenance): EvaluatorCallError => {
     const timedOut = controller.signal.aborted;
-    throw new EvaluatorCallError(
+    return new EvaluatorCallError(
       timedOut ? "provider_timeout" : "provider_transport",
-      timedOut ? "the provider did not answer before the timeout" : "the request failed in transport",
-      { physicalCall: true, observed: UNOBSERVED, cause: error }
+      timedOut ? "the provider did not answer before the timeout" : `the request failed in transport (${transportReason(error)})`,
+      { physicalCall: true, observed }
     );
+  };
+
+  let response: Response;
+  let text: string | null;
+  let requestId: string | null = null;
+  try {
+    try {
+      response = await send(http.url, {
+        method: "POST",
+        headers: { ...http.headers, ...authorization(binding, apiKey) },
+        body: JSON.stringify(http.body),
+        redirect: "manual",
+        signal: controller.signal
+      });
+    } catch (error) {
+      throw failedInTransit(error, UNOBSERVED);
+    }
+    requestId = response.headers.get(binding.provider === "anthropic" ? "request-id" : "x-request-id");
+    try {
+      text = await readBoundedText(response);
+    } catch (error) {
+      throw failedInTransit(error, { ...UNOBSERVED, requestId });
+    }
   } finally {
     clearTimeout(timer);
   }
 
-  const requestId = response.headers.get(binding.provider === "anthropic" ? "request-id" : "x-request-id");
+  const status = response.status;
+  const headerOnly = { ...UNOBSERVED, requestId };
+  if (text === null) {
+    throw new EvaluatorCallError("provider_protocol", "the provider's response exceeds the size limit", { physicalCall: true, status, observed: headerOnly });
+  }
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    json = undefined;
+  }
   if (!response.ok) {
-    const providerError = providerErrorDetail(body.json, body.text);
+    const providerError = providerErrorDetail(json, text, apiKey);
     throw new EvaluatorCallError(
-      failureKindForStatus(response.status),
-      `the provider answered ${response.status}${providerError.message ? `: ${providerError.message}` : ""}`,
-      { physicalCall: true, status: response.status, providerError, observed: { ...UNOBSERVED, requestId } }
+      failureKindForStatus(status),
+      `the provider answered ${status}${providerError.message ? `: ${providerError.message}` : ""}`,
+      { physicalCall: true, status, providerError, observed: headerOnly }
     );
   }
-  if (body.json === undefined) {
-    throw new EvaluatorCallError("provider_protocol", "the provider's response is not JSON", {
-      physicalCall: true,
-      status: response.status,
-      observed: { ...UNOBSERVED, requestId }
-    });
+  if (json === undefined) {
+    throw new EvaluatorCallError("provider_protocol", "the provider's response is not JSON", { physicalCall: true, status, observed: headerOnly });
   }
 
-  const read = binding.provider === "anthropic"
-    ? readAnthropicMessagesResponse(body.json, requestId)
-    : readOpenAIChatResponse(binding, body.json, requestId);
-  return { verdict: parseVerdict(binding, input, read.response, read.observed), observed: read.observed, usage: read.usage };
-}
-
-function parseVerdict(
-  binding: PromptedExecutionBinding,
-  input: VerdictExecutionInput,
-  response: VerdictResponse,
-  observed: ObservedProvenance
-): StructuredVerdict {
+  let read: { response: VerdictResponse; observed: ObservedProvenance; usage: TokenUsage | null };
   try {
-    return parseVerdictProtocolResponse(binding.verdictProtocol, { spec: input.spec, trace: input.trace, response });
+    read = binding.provider === "anthropic"
+      ? readAnthropicMessagesResponse(json, { status, requestId })
+      : readOpenAIChatResponse(binding, json, { status, requestId, secret: apiKey });
+  } catch (error) {
+    if (error instanceof EvaluatorCallError) throw error;
+    throw new EvaluatorCallError("provider_protocol", "the provider's response has an unexpected shape", { physicalCall: true, status, observed: headerOnly });
+  }
+  try {
+    const verdict = parseVerdictProtocolResponse(binding.verdictProtocol, { spec: input.spec, trace: input.trace, response: read.response });
+    return { verdict, observed: read.observed, usage: read.usage };
   } catch (error) {
     if (error instanceof VerdictProtocolError) {
-      throw new EvaluatorCallError(error.failureKind, error.message, { physicalCall: true, status: 200, observed, cause: error });
+      throw new EvaluatorCallError(error.failureKind, error.message, { physicalCall: true, status, observed: read.observed, usage: read.usage, cause: error });
     }
     throw error;
   }

@@ -4,7 +4,15 @@ import {
   type VerdictResponse
 } from "../protocols/verdict-protocols.js";
 import type { PromptedExecutionBinding } from "./binding.js";
-import { EvaluatorCallError, failureKindForStatus, providerErrorDetail, type ObservedProvenance } from "./failure.js";
+import {
+  EvaluatorCallError,
+  failureKindForStatus,
+  observedText,
+  providerErrorDetail,
+  statusFromCode,
+  type ObservedProvenance,
+  type TokenUsage
+} from "./failure.js";
 
 /**
  * The chat-completions body for OpenAI, OpenRouter, and OpenAI-compatible
@@ -37,7 +45,9 @@ export function openAIChatBody(binding: PromptedExecutionBinding, request: Verdi
   }
   const output = request.output;
   if (output.mechanism === "structured_output") {
-    if (output.name === null) throw new Error(`${request.protocol} names no format, which Chat Completions requires`);
+    if (output.name === null) {
+      throw new EvaluatorCallError("internal", `${request.protocol} names no format, which Chat Completions requires`, { physicalCall: false });
+    }
     body.response_format = { type: "json_schema", json_schema: { name: output.name, strict: output.strict, schema: output.schema } };
   }
   if (output.mechanism === "forced_tool") {
@@ -50,79 +60,72 @@ export function openAIChatBody(binding: PromptedExecutionBinding, request: Verdi
   return body;
 }
 
-interface ChatMessage {
-  content?: unknown;
-  refusal?: unknown;
-  reasoning?: unknown;
-  reasoning_content?: unknown;
-  reasoning_details?: unknown;
-  tool_calls?: unknown;
-}
-
-const stringOrNull = (value: unknown): string | null => typeof value === "string" && value.length > 0 ? value : null;
+const isObject = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 const nonEmptyText = (value: unknown): boolean => typeof value === "string" && value.length > 0;
+
+/** Message text as a string, or joined from the text parts some compatible servers return. */
+function messageText(content: unknown): string | null {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return null;
+  const parts = content.filter((part): part is Record<string, unknown> => isObject(part) && part.type === "text" && typeof part.text === "string");
+  return parts.length > 0 ? parts.map((part) => part.text as string).join("") : null;
+}
 
 /**
  * Reads a successful chat completion into observed provenance, usage, and
  * the normalized response the protocol's parse rule reads. OpenRouter can
- * report an upstream error inside a 200; that is classified like the status
- * it names.
+ * report an upstream error inside a 200: it is classified by the status code
+ * it names, and as the provider being unavailable when it names none.
+ * ASSUMPTION: OpenRouter names the serving upstream in a top-level
+ * `provider` field, which its response reference doesn't document.
  */
 export function readOpenAIChatResponse(
   binding: PromptedExecutionBinding,
   body: unknown,
-  requestId: string | null
-): { response: VerdictResponse; observed: ObservedProvenance; usage: { inputTokens: number; outputTokens: number } | null } {
-  const completion = (body ?? {}) as {
-    id?: unknown;
-    model?: unknown;
-    provider?: unknown;
-    system_fingerprint?: unknown;
-    error?: unknown;
-    choices?: Array<{ message?: ChatMessage; finish_reason?: unknown; error?: unknown }>;
-    usage?: { prompt_tokens?: unknown; completion_tokens?: unknown; completion_tokens_details?: { reasoning_tokens?: unknown } };
-  };
-  const choice = Array.isArray(completion.choices) ? completion.choices[0] : undefined;
-  const message = choice?.message;
-  const reasoningTokens = completion.usage?.completion_tokens_details?.reasoning_tokens;
+  meta: { status: number; requestId: string | null; secret: string | null }
+): { response: VerdictResponse; observed: ObservedProvenance; usage: TokenUsage | null } {
+  const completion = isObject(body) ? body : {};
+  const usageField = isObject(completion.usage) ? completion.usage : {};
+  const usage = typeof usageField.prompt_tokens === "number" && typeof usageField.completion_tokens === "number"
+    ? { inputTokens: usageField.prompt_tokens, outputTokens: usageField.completion_tokens }
+    : null;
+  const choice = Array.isArray(completion.choices) && isObject(completion.choices[0]) ? completion.choices[0] : undefined;
+  const message = choice !== undefined && isObject(choice.message) ? choice.message : undefined;
+  const reasoningTokens = isObject(usageField.completion_tokens_details) ? usageField.completion_tokens_details.reasoning_tokens : undefined;
   const observed: ObservedProvenance = {
-    model: stringOrNull(completion.model),
-    requestId,
-    responseId: stringOrNull(completion.id),
-    systemFingerprint: stringOrNull(completion.system_fingerprint),
-    upstreamProvider: binding.provider === "openrouter" ? stringOrNull(completion.provider) : null,
+    model: observedText(completion.model),
+    requestId: meta.requestId,
+    responseId: observedText(completion.id),
+    systemFingerprint: observedText(completion.system_fingerprint),
+    upstreamProvider: binding.provider === "openrouter" ? observedText(completion.provider) : null,
     thinkingReturned: message === undefined
       ? null
       : nonEmptyText(message.reasoning) || nonEmptyText(message.reasoning_content) ||
         (Array.isArray(message.reasoning_details) && message.reasoning_details.length > 0),
     reasoningTokens: Number.isSafeInteger(reasoningTokens) && (reasoningTokens as number) >= 0 ? reasoningTokens as number : null
   };
+  const detail = { physicalCall: true, status: meta.status, observed, usage };
 
   const embeddedError = completion.error ?? choice?.error;
-  if (embeddedError !== undefined && embeddedError !== null) {
-    const providerError = providerErrorDetail({ error: embeddedError }, "");
-    const status = Number(providerError.code);
+  if ((embeddedError !== undefined && embeddedError !== null) || choice?.finish_reason === "error") {
+    const providerError = providerErrorDetail({ error: embeddedError ?? null }, "", meta.secret);
+    const status = statusFromCode(providerError.code);
     throw new EvaluatorCallError(
-      Number.isInteger(status) ? failureKindForStatus(status) : "provider_unavailable",
+      status === null ? "provider_unavailable" : failureKindForStatus(status),
       `the provider reported an error in a successful response${providerError.message ? `: ${providerError.message}` : ""}`,
-      { physicalCall: true, status: 200, providerError, observed }
+      { ...detail, providerError }
     );
   }
-  if (message === undefined || message === null || typeof message !== "object") {
-    throw new EvaluatorCallError("provider_protocol", "the completion has no message", { physicalCall: true, status: 200, observed });
-  }
+  if (message === undefined) throw new EvaluatorCallError("provider_protocol", "the completion has no message", detail);
   const finishReason = choice?.finish_reason;
-  const calls = Array.isArray(message.tool_calls) ? message.tool_calls as Array<{ function?: { name?: unknown; arguments?: unknown } }> : [];
+  const calls = Array.isArray(message.tool_calls) ? message.tool_calls.filter(isObject) : [];
   const response: VerdictResponse = {
     stop: nonEmptyText(message.refusal) || finishReason === "content_filter" ? "refusal" : finishReason === "length" ? "max_tokens" : "normal",
-    text: typeof message.content === "string" ? message.content : null,
-    toolCalls: calls.map((call) => ({
-      name: typeof call.function?.name === "string" ? call.function.name : null,
-      arguments: call.function?.arguments
-    }))
+    text: messageText(message.content),
+    toolCalls: calls.map((call) => {
+      const fn = isObject(call.function) ? call.function : {};
+      return { name: typeof fn.name === "string" ? fn.name : null, arguments: fn.arguments };
+    })
   };
-  const usage = typeof completion.usage?.prompt_tokens === "number" && typeof completion.usage?.completion_tokens === "number"
-    ? { inputTokens: completion.usage.prompt_tokens, outputTokens: completion.usage.completion_tokens }
-    : null;
   return { response, observed, usage };
 }

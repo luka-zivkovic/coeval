@@ -4,7 +4,7 @@ import {
   type VerdictResponse
 } from "../protocols/verdict-protocols.js";
 import type { PromptedExecutionBinding } from "./binding.js";
-import { EvaluatorCallError, type ObservedProvenance } from "./failure.js";
+import { EvaluatorCallError, observedText, type ObservedProvenance, type TokenUsage } from "./failure.js";
 
 export const ANTHROPIC_VERSION = "2023-06-01";
 
@@ -41,48 +41,44 @@ export function anthropicMessagesBody(binding: PromptedExecutionBinding, request
   return body;
 }
 
-interface AnthropicBlock {
-  type?: unknown;
-  name?: unknown;
-  input?: unknown;
-  text?: unknown;
-}
-
-const stringOrNull = (value: unknown): string | null => typeof value === "string" && value.length > 0 ? value : null;
+const isObject = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 
 /**
  * Reads a successful Messages response into observed provenance, usage, and
- * the normalized response the protocol's parse rule reads.
+ * the normalized response the protocol's parse rule reads. Stopping at the
+ * token limit or the context window both mean the answer was cut off.
  */
 export function readAnthropicMessagesResponse(
   body: unknown,
-  requestId: string | null
-): { response: VerdictResponse; observed: ObservedProvenance; usage: { inputTokens: number; outputTokens: number } | null } {
-  const message = (body ?? {}) as { id?: unknown; model?: unknown; content?: unknown; stop_reason?: unknown; usage?: { input_tokens?: unknown; output_tokens?: unknown } };
-  const content: AnthropicBlock[] = Array.isArray(message.content) ? message.content as AnthropicBlock[] : [];
+  meta: { status: number; requestId: string | null }
+): { response: VerdictResponse; observed: ObservedProvenance; usage: TokenUsage | null } {
+  const message = isObject(body) ? body : {};
+  const usageField = isObject(message.usage) ? message.usage : {};
+  const usage = typeof usageField.input_tokens === "number" && typeof usageField.output_tokens === "number"
+    ? { inputTokens: usageField.input_tokens, outputTokens: usageField.output_tokens }
+    : null;
+  const content = Array.isArray(message.content) ? message.content.filter(isObject) : null;
   const observed: ObservedProvenance = {
-    model: stringOrNull(message.model),
-    requestId,
-    responseId: stringOrNull(message.id),
+    model: observedText(message.model),
+    requestId: meta.requestId,
+    responseId: observedText(message.id),
     systemFingerprint: null,
     upstreamProvider: null,
-    thinkingReturned: content.some((block) => block.type === "thinking" || block.type === "redacted_thinking"),
+    thinkingReturned: content === null ? null : content.some((block) => block.type === "thinking" || block.type === "redacted_thinking"),
     // The Messages API folds thinking into output tokens; it reports no separate count.
     reasoningTokens: null
   };
-  if (!Array.isArray(message.content)) {
-    throw new EvaluatorCallError("provider_protocol", "the Messages response has no content array", { physicalCall: true, status: 200, observed });
+  if (content === null) {
+    throw new EvaluatorCallError("provider_protocol", "the Messages response has no content array", { physicalCall: true, status: meta.status, observed, usage });
   }
   const texts = content.filter((block) => block.type === "text" && typeof block.text === "string").map((block) => block.text as string);
+  const stop = message.stop_reason;
   const response: VerdictResponse = {
-    stop: message.stop_reason === "refusal" ? "refusal" : message.stop_reason === "max_tokens" ? "max_tokens" : "normal",
+    stop: stop === "refusal" ? "refusal" : stop === "max_tokens" || stop === "model_context_window_exceeded" ? "max_tokens" : "normal",
     text: texts.length > 0 ? texts.join("") : null,
     toolCalls: content
       .filter((block) => block.type === "tool_use")
       .map((block) => ({ name: typeof block.name === "string" ? block.name : null, arguments: block.input }))
   };
-  const usage = typeof message.usage?.input_tokens === "number" && typeof message.usage?.output_tokens === "number"
-    ? { inputTokens: message.usage.input_tokens, outputTokens: message.usage.output_tokens }
-    : null;
   return { response, observed, usage };
 }

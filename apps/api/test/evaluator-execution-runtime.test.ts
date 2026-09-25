@@ -1,16 +1,20 @@
 import {
   EvaluatorFailureKindSchema,
+  ExecutionBindingSchema,
   verdictProtocolsFor,
   type EvaluatorFailureKind,
-  type ExecutionBinding
+  type ExecutionBinding,
+  type ReceiptObservedCall
 } from "@rubrist/shared";
 import {
   PROMPTED_VERDICT_PROTOCOLS,
+  assertPromptedBinding,
   endpointBaseUrlDigest as runtimeEndpointBaseUrlDigest,
   failureKindForStatus,
   verdictProtocolRunsOn,
   type EvaluatorFailureKind as RuntimeFailureKind,
   type ExecutionBinding as RuntimeExecutionBinding,
+  type ObservedProvenance,
   type PromptedProviderId
 } from "@rubrist/audit/runtime";
 import { describe, expect, expectTypeOf, it } from "vitest";
@@ -23,6 +27,44 @@ describe("judge runtime and shared execution contract", () => {
   it("types the execution binding and failure kinds identically", () => {
     expectTypeOf<RuntimeExecutionBinding>().toEqualTypeOf<ExecutionBinding>();
     expectTypeOf<RuntimeFailureKind>().toEqualTypeOf<EvaluatorFailureKind>();
+    expectTypeOf<ObservedProvenance>().toEqualTypeOf<ReceiptObservedCall>();
+  });
+
+  it("accepts exactly the prompted bindings the shared schema accepts, across providers, endpoints, reasoning, and routing", () => {
+    const reasonings: ExecutionBinding["reasoning"][] = [
+      null,
+      { family: "anthropic", thinking: { type: "disabled" }, effort: null },
+      { family: "openai", effort: "low" },
+      { family: "openrouter", enabled: true, effort: null, maxTokens: null }
+    ];
+    const endpoints: ExecutionBinding["endpoint"][] = [{ kind: "managed" }, { kind: "custom", baseUrlDigest: runtimeEndpointBaseUrlDigest("https://llm.example/v1") }];
+    const providers: PromptedProviderId[] = ["mock", "anthropic", "openai", "openrouter", "custom"];
+    let compared = 0;
+    for (const provider of providers) {
+      for (const verdictProtocol of verdictProtocolsFor(provider)) {
+        for (const endpoint of endpoints) {
+          for (const reasoning of reasonings) {
+            for (const routing of [null, { requireParameters: true as const, allowFallbacks: false as const }]) {
+              const sampling = provider === "mock" ? { temperature: null, topP: null } : { temperature: 0, topP: null };
+              const binding: ExecutionBinding = {
+                provider, endpoint, modelId: "m", modelVersion: "m", sampling, reasoning,
+                outputTokenLimit: provider === "mock" ? null : 1000, verdictProtocol, routing
+              };
+              const shared = ExecutionBindingSchema.safeParse(binding).success;
+              let runtime = true;
+              try {
+                assertPromptedBinding(binding);
+              } catch {
+                runtime = false;
+              }
+              expect(runtime, JSON.stringify(binding)).toBe(shared);
+              compared += 1;
+            }
+          }
+        }
+      }
+    }
+    expect(compared).toBeGreaterThan(100);
   });
 
   it("pairs providers and prompted protocols as the shared binding does", () => {

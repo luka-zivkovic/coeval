@@ -62,6 +62,7 @@ interface Sent {
   url: string;
   headers: Record<string, string>;
   body: Record<string, unknown>;
+  redirect: string;
 }
 
 function stub(respond: (sent: Sent) => Response | Promise<Response>): { fetch: ExecutionFetch; sent: Sent[] } {
@@ -69,7 +70,7 @@ function stub(respond: (sent: Sent) => Response | Promise<Response>): { fetch: E
   return {
     sent,
     fetch: async (url, init) => {
-      const entry = { url, headers: init.headers, body: JSON.parse(init.body) as Record<string, unknown> };
+      const entry = { url, headers: init.headers, body: JSON.parse(init.body) as Record<string, unknown>, redirect: init.redirect };
       sent.push(entry);
       return respond(entry);
     }
@@ -182,6 +183,65 @@ describe("complete request bodies", () => {
     });
   });
 
+  it("pins the Messages body for an Anthropic forced-tool binding", async () => {
+    const binding: ExecutionBinding = { ...ANTHROPIC, verdictProtocol: "anthropic.forced-tool/v1", reasoning: null };
+    const http = stub(() => json(anthropicText("", { content: [{ type: "tool_use", name: "submit_verdict", input: VERDICT }] })));
+    await run(binding, http);
+    const request = protocolRequest(binding);
+    if (request.output.mechanism !== "forced_tool") throw new Error("expected a forced tool");
+    expect(http.sent[0]!.body).toEqual({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1200,
+      system: request.system,
+      messages: [{ role: "user", content: request.user }],
+      temperature: 0,
+      tools: [{ name: "submit_verdict", description: request.output.description, input_schema: request.output.schema }],
+      tool_choice: { type: "tool", name: "submit_verdict" }
+    });
+  });
+
+  it("pins the Messages body for an Anthropic prompted-json binding", async () => {
+    const binding: ExecutionBinding = { ...ANTHROPIC, verdictProtocol: "prompted-json/v1", sampling: { temperature: 0.3, topP: 0.9 } };
+    const http = stub(() => json(anthropicText(JSON.stringify(VERDICT))));
+    await run(binding, http);
+    const request = protocolRequest(binding);
+    expect(http.sent[0]!.body).toEqual({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1200,
+      system: request.system,
+      messages: [{ role: "user", content: request.user }],
+      temperature: 0.3,
+      top_p: 0.9,
+      thinking: { type: "disabled" },
+      output_config: { effort: "high" }
+    });
+  });
+
+  it("pins the Chat Completions body for a custom forced-function binding with a token limit", async () => {
+    const binding: ExecutionBinding = { ...CUSTOM, verdictProtocol: "openai.forced-function/v1", outputTokenLimit: 800, reasoning: { family: "openai", effort: "none" } };
+    const http = stub(() => json(chatToolCall(JSON.stringify(VERDICT))));
+    await run(binding, http);
+    const request = protocolRequest(binding);
+    if (request.output.mechanism !== "forced_tool") throw new Error("expected a forced function");
+    expect(http.sent[0]!.body).toEqual({
+      model: "qwen3-32b",
+      messages: [{ role: "system", content: request.system }, { role: "user", content: request.user }],
+      temperature: 0,
+      max_tokens: 800,
+      reasoning_effort: "none",
+      tools: [{ type: "function", function: { name: "submit_verdict", description: request.output.description, parameters: request.output.schema } }],
+      tool_choice: { type: "function", function: { name: "submit_verdict" } }
+    });
+  });
+
+  it("sends OpenRouter's disabled reasoning and effort exactly", async () => {
+    const http = stub(() => json(chatToolCall(JSON.stringify(VERDICT))));
+    await run({ ...OPENROUTER, reasoning: { family: "openrouter", enabled: false, effort: null, maxTokens: null } }, http);
+    await run({ ...OPENROUTER, reasoning: { family: "openrouter", enabled: true, effort: "high", maxTokens: null } }, http);
+    expect(http.sent[0]!.body.reasoning).toEqual({ enabled: false });
+    expect(http.sent[1]!.body.reasoning).toEqual({ enabled: true, effort: "high" });
+  });
+
   it("pins the Chat Completions body for a custom prompted-json binding", async () => {
     const http = stub(() => json(chatText(JSON.stringify(VERDICT))));
     await run(CUSTOM, http);
@@ -291,7 +351,7 @@ describe("OpenAI-compatible requests send exactly the binding", () => {
     expect(http.sent[0]!.url).toBe("https://api.openai.com/v1/chat/completions");
   });
 
-  it("sends OpenRouter its reasoning object, routing requirements, and max_tokens, and records the upstream", async () => {
+  it("sends OpenRouter its reasoning object, routing requirements, and max_completion_tokens, and records the upstream", async () => {
     const http = stub(() => json(chatToolCall(JSON.stringify(VERDICT), { provider: "Anthropic" })));
     const result = await run(OPENROUTER, http);
     const body = http.sent[0]!.body;
@@ -340,6 +400,7 @@ describe("failures are classified once and never retried", () => {
   it.each([
     [400, "provider_rejected_request"],
     [401, "provider_authentication"],
+    [402, "provider_authentication"],
     [403, "provider_authentication"],
     [404, "provider_rejected_request"],
     [408, "provider_timeout"],
@@ -352,7 +413,9 @@ describe("failures are classified once and never retried", () => {
     const http = stub(() => json({ error: { type: "invalid_request_error", message: "temperature is deprecated for this model", param: "temperature" } }, status));
     const error = await failure(run(ANTHROPIC, http));
     expect(error).toMatchObject({ failureKind: kind, physicalCall: true, status });
-    expect(error.providerError).toEqual({ type: "invalid_request_error", code: null, param: "temperature", message: "temperature is deprecated for this model" });
+    expect(error.providerError).toEqual({
+      type: "invalid_request_error", code: null, param: "temperature", message: "temperature is deprecated for this model", raw: null, upstreamProvider: null
+    });
     expect(http.sent).toHaveLength(1);
   });
 
@@ -433,3 +496,115 @@ describe("calls that never leave Rubrist", () => {
     expect(http.sent).toHaveLength(0);
   });
 });
+
+describe("review hardening", () => {
+  it("never follows a redirect, and treats one as a protocol failure", async () => {
+    const http = stub(() => new Response(null, { status: 307, headers: { location: "https://elsewhere.example/v1/chat/completions" } }));
+    const error = await failure(run(CUSTOM, http));
+    expect(http.sent[0]!.redirect).toBe("manual");
+    expect(error).toMatchObject({ failureKind: "provider_protocol", physicalCall: true, status: 307 });
+    expect(http.sent).toHaveLength(1);
+  });
+
+  it("classifies malformed successful bodies instead of throwing raw errors", async () => {
+    const nullBlock = stub(() => json({ id: "m", content: [null, { type: "text", text: JSON.stringify(VERDICT) }], stop_reason: "end_turn" }));
+    expect((await run(ANTHROPIC, nullBlock)).verdict).toMatchObject({ label: "pass" });
+    const nullCall = stub(() => json(chatText(null, { choices: [{ message: { content: null, tool_calls: [null] }, finish_reason: "tool_calls" }] })));
+    expect(await failure(run(OPENROUTER, nullCall))).toMatchObject({ failureKind: "provider_protocol", physicalCall: true });
+    const noContent = stub(() => json({ id: "m", model: "claude-sonnet-4-6" }));
+    const error = await failure(run(ANTHROPIC, noContent));
+    expect(error).toMatchObject({ failureKind: "provider_protocol" });
+    expect(error.observed).toMatchObject({ thinkingReturned: null, responseId: "m" });
+  });
+
+  it("reads a response cut off at the context window as a cut-off answer", async () => {
+    const http = stub(() => json(anthropicText("{\"label\":", { stop_reason: "model_context_window_exceeded" })));
+    expect(await failure(run(ANTHROPIC, http))).toMatchObject({ failureKind: "invalid_evaluator_output" });
+  });
+
+  it("reads an in-body error without a status code, or an error finish, as the provider being unavailable", async () => {
+    for (const body of [
+      { error: { message: "upstream blew up" } },
+      { error: "upstream blew up" },
+      { id: "gen", choices: [{ message: { content: "" }, finish_reason: "error" }] },
+      { id: "gen", choices: [{ message: { content: "" }, finish_reason: "error", error: { code: "", message: "x" } }] }
+    ]) {
+      expect(await failure(run(OPENROUTER, stub(() => json(body)))), JSON.stringify(body)).toMatchObject({ failureKind: "provider_unavailable" });
+    }
+  });
+
+  it("keeps OpenRouter's upstream error detail for attribution", async () => {
+    const http = stub(() => json({ error: { code: 400, message: "Provider returned error", metadata: { raw: "{\"error\":\"temperature is not supported\"}", provider_name: "Anthropic" } } }, 400));
+    const error = await failure(run(OPENROUTER, http));
+    expect(error.providerError).toMatchObject({ message: "Provider returned error", raw: "{\"error\":\"temperature is not supported\"}", upstreamProvider: "Anthropic" });
+  });
+
+  it("never lets the credential reach an error, even when a server echoes it", async () => {
+    const key = "SECRET-KEY-123";
+    const echo = stub(() => json({ error: { message: `Invalid API key: ${key}`, metadata: { raw: `bad ${key}` } } }, 401));
+    const echoed = await failure(run(CUSTOM, echo, { apiKey: key }));
+    expect(JSON.stringify({ message: echoed.message, detail: echoed.providerError, observed: echoed.observed })).not.toContain(key);
+    expect(echoed.providerError?.message).toBe("Invalid API key: [redacted]");
+
+    const broken = stub(() => { throw new TypeError("fetch failed", { cause: { code: "ECONNREFUSED" } }); });
+    const transport = await failure(run(CUSTOM, broken, { apiKey: key }));
+    expect(transport.message).toBe("the request failed in transport (ECONNREFUSED)");
+    expect(transport.cause).toBeUndefined();
+
+    const newline = await failure(run(CUSTOM, echo, { apiKey: `${key}\nX-Other: 1` }));
+    expect(newline).toMatchObject({ failureKind: "provider_unavailable", physicalCall: false });
+    expect(newline.message).not.toContain(key);
+    expect(echo.sent).toHaveLength(1);
+  });
+
+  it("keeps usage when a billed response fails", async () => {
+    const http = stub(() => json(anthropicText("not json")));
+    const error = await failure(run({ ...ANTHROPIC, verdictProtocol: "prompted-json/v1" }, http));
+    expect(error).toMatchObject({ failureKind: "invalid_evaluator_output", usage: { inputTokens: 120, outputTokens: 30 } });
+  });
+
+  it("refuses a custom endpoint on a provider that only has a managed one", async () => {
+    const http = stub(() => json(anthropicText(JSON.stringify(VERDICT))));
+    const binding: ExecutionBinding = { ...ANTHROPIC, endpoint: { kind: "custom", baseUrlDigest: endpointBaseUrlDigest("https://collector.example/v1") } };
+    expect(await failure(run(binding, http, { customBaseUrl: "https://collector.example/v1" }))).toMatchObject({ failureKind: "internal", physicalCall: false });
+    expect(http.sent).toHaveLength(0);
+  });
+
+  it("refuses a custom base URL that isn't a plain http(s) base", async () => {
+    for (const url of ["not a url", "https://user:pass@llm.example/v1", "https://llm.example/v1?api-version=1", "ftp://llm.example/v1", "https://llm.example/v1#x"]) {
+      const http = stub(() => json(chatText(JSON.stringify(VERDICT))));
+      const binding: ExecutionBinding = { ...CUSTOM, endpoint: { kind: "custom", baseUrlDigest: endpointBaseUrlDigest(url) } };
+      expect(await failure(run(binding, http, { customBaseUrl: url })), url).toMatchObject({ failureKind: "internal", physicalCall: false });
+      expect(http.sent).toHaveLength(0);
+    }
+  });
+
+  it("joins text parts from compatible servers", async () => {
+    const http = stub(() => json(chatText([{ type: "text", text: JSON.stringify(VERDICT).slice(0, 10) }, { type: "text", text: JSON.stringify(VERDICT).slice(10) }])));
+    expect((await run(CUSTOM, http)).verdict).toMatchObject({ label: "pass" });
+    const empty = stub(() => json(chatText([])));
+    expect(await failure(run(CUSTOM, empty))).toMatchObject({ failureKind: "provider_protocol" });
+  });
+
+  it("records observed identifiers only when evidence can carry them", async () => {
+    const http = stub(() => json(chatText(JSON.stringify({ ...VERDICT, failingStep: null }), { model: "gpt-5\ud800", id: "x".repeat(5_000) })));
+    const result = await run(OPENAI, http);
+    expect(result.observed).toMatchObject({ model: null, responseId: null, systemFingerprint: "fp_1" });
+  });
+
+  it("refuses a response over the size limit, and keeps the request id when the body times out", async () => {
+    const huge = stub(() => new Response("x".repeat(9 * 1024 * 1024), { status: 200, headers: { "x-request-id": "req_big" } }));
+    expect(await failure(run(OPENAI, huge))).toMatchObject({ failureKind: "provider_protocol", observed: { requestId: "req_big" } });
+
+    const stalled: ExecutionFetch = async (_url, init) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          init.signal.addEventListener("abort", () => controller.error(new DOMException("aborted", "AbortError")));
+        }
+      });
+      return new Response(body, { status: 200, headers: { "x-request-id": "req_slow" } });
+    };
+    expect(await failure(run(OPENAI, { fetch: stalled }, { timeoutMs: 5 }))).toMatchObject({ failureKind: "provider_timeout", observed: { requestId: "req_slow" } });
+  });
+});
+

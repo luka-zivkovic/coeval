@@ -83,6 +83,12 @@ export function assertPromptedBinding(binding: ExecutionBinding): asserts bindin
   if (!(PROMPTED_VERDICT_PROTOCOLS as readonly string[]).includes(protocol) || !verdictProtocolRunsOn(protocol, binding.provider)) {
     refuse(`${protocol} is not a ${binding.provider} protocol`);
   }
+  // A custom provider always names its endpoint; OpenAI names one only for a
+  // platform base-URL override. Every other provider calls its managed one.
+  const endpointFits = binding.provider === "custom"
+    ? binding.endpoint.kind === "custom"
+    : binding.provider === "openai" || binding.endpoint.kind === "managed";
+  if (!endpointFits) refuse(`${binding.provider} bindings can't name a ${binding.endpoint.kind} endpoint`);
   if (binding.reasoning !== null && binding.reasoning.family !== REASONING_FAMILY[binding.provider]) {
     refuse(`${binding.provider} has no ${binding.reasoning.family} reasoning shape`);
   }
@@ -111,5 +117,28 @@ export function resolveEndpointBaseUrl(binding: PromptedExecutionBinding, custom
   if (endpointBaseUrlDigest(customBaseUrl) !== binding.endpoint.baseUrlDigest) {
     refuse("the configured base URL does not match the endpoint digest the binding names");
   }
+  let url: URL;
+  try {
+    url = new URL(customBaseUrl);
+  } catch {
+    refuse("the configured base URL is not a URL");
+  }
+  // Paths are appended to it, and credentials never ride in it.
+  if ((url.protocol !== "https:" && url.protocol !== "http:") || url.username !== "" || url.password !== "" || url.search !== "" || url.hash !== "") {
+    refuse("the configured base URL must be http(s), with no credentials, query, or fragment");
+  }
   return customBaseUrl.replace(/\/+$/, "");
+}
+
+/**
+ * Refuses, before sending, a credential that isn't valid header text, so it
+ * can't surface in a transport error. The message never quotes it.
+ */
+export function assertCredential(provider: PromptedExecutionBinding["provider"], apiKey: string | null): asserts apiKey is string {
+  if (apiKey === null || apiKey.length === 0) {
+    throw new EvaluatorCallError("provider_unavailable", `no ${provider} credential is available`, { physicalCall: false });
+  }
+  if (!/^[\x21-\x7e]+$/.test(apiKey)) {
+    throw new EvaluatorCallError("provider_unavailable", `the ${provider} credential is not valid header text`, { physicalCall: false });
+  }
 }

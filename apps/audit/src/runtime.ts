@@ -40,6 +40,6 @@ export {
 } from "./execution/binding.js";
 export type { ExecutionBinding, PromptedExecutionBinding, ReasoningSettings } from "./execution/binding.js";
 export { EvaluatorCallError, failureKindForStatus } from "./execution/failure.js";
-export type { EvaluatorFailureKind, ObservedProvenance, ProviderErrorDetail } from "./execution/failure.js";
+export type { EvaluatorFailureKind, ObservedProvenance, ProviderErrorDetail, TokenUsage } from "./execution/failure.js";
 export { buildVerdictHttpRequest, executeVerdict } from "./execution/execute.js";
 export type { ExecutionFetch, VerdictExecutionInput, VerdictExecutionResult, VerdictHttpRequest } from "./execution/execute.js";
