@@ -100,6 +100,16 @@ const REASONING_FAMILY_BY_PROVIDER: Partial<Record<ExecutionProviderId, Reasonin
   custom: "openai"
 };
 
+/** The provider family's reasoning shape, or `null` for families with none (typesafe, mock). */
+export function reasoningFamilyFor(provider: ExecutionProviderId): ReasoningSettings["family"] | null {
+  return REASONING_FAMILY_BY_PROVIDER[provider] ?? null;
+}
+
+/** Whether the provider family takes sampling settings and an output token limit; typesafe and mock take none. */
+export function takesSamplingSettings(provider: ExecutionProviderId): boolean {
+  return provider !== "typesafe" && provider !== "mock";
+}
+
 export const ExecutionEndpointSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("managed") }).strict(),
   // The binding names a custom endpoint by digest only; the URL itself stays private.
@@ -139,14 +149,14 @@ export const ExecutionBindingSchema = z.object({
   if ((binding.provider === "openrouter") !== (binding.routing !== null)) {
     ctx.addIssue({ code: "custom", path: ["routing"], message: "OpenRouter bindings state their routing requirements; others have none" });
   }
-  const family = REASONING_FAMILY_BY_PROVIDER[binding.provider];
+  const family = reasoningFamilyFor(binding.provider);
   if (binding.reasoning !== null && binding.reasoning.family !== family) {
     ctx.addIssue({ code: "custom", path: ["reasoning"], message: `${binding.provider} has no ${binding.reasoning.family} reasoning shape` });
   }
   if (binding.provider === "anthropic" && binding.outputTokenLimit === null) {
     ctx.addIssue({ code: "custom", path: ["outputTokenLimit"], message: "Anthropic requires an output token limit" });
   }
-  if (binding.provider === "typesafe" || binding.provider === "mock") {
+  if (!takesSamplingSettings(binding.provider)) {
     if (binding.sampling.temperature !== null || binding.sampling.topP !== null) {
       ctx.addIssue({ code: "custom", path: ["sampling"], message: `${binding.provider} takes no sampling settings` });
     }
@@ -313,6 +323,12 @@ export const CapabilityProbeSchema = z.object({
   rejectedParameter: z.enum(["temperature", "topP", "reasoning", "outputTokenLimit"]).nullable(),
   failureKind: EvaluatorFailureKindSchema.nullable(),
   providerMessage: z.string().max(2_000).nullable(),
+  // Token usage the provider reported for the call, so a probe's cost is
+  // known even before prices are; `null` when it reported none.
+  usage: z.object({
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative()
+  }).strict().nullable(),
   costMicroUsd: z.number().int().nonnegative().nullable()
 }).strict().superRefine((probe, ctx) => {
   const rejected = probe.outcome === "rejected";

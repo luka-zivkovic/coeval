@@ -287,14 +287,14 @@ describe("resolution record (ADR-0014 section 4)", () => {
   const NOTHING_SENT = { temperature: null, topP: null, reasoning: null, outputTokenLimit: 1200 };
   const probe = (patch: Partial<CapabilityProbe>): CapabilityProbe => ({
     stage: "capability_check", purpose: "protocol", verdictProtocol: "anthropic.structured-output/v1", sent: NOTHING_SENT,
-    outcome: "accepted", rejection: null, rejectedParameter: null, failureKind: null, providerMessage: null, costMicroUsd: 9, ...patch
+    outcome: "accepted", rejection: null, rejectedParameter: null, failureKind: null, providerMessage: null, usage: null, costMicroUsd: 9, ...patch
   });
   const rejectedBy = (rejection: CapabilityProbe["rejection"], rejectedParameter: CapabilityProbe["rejectedParameter"]) =>
     ({ outcome: "rejected", rejection, rejectedParameter, failureKind: "provider_rejected_request" } as const);
   const protocolProbe = probe({});
   const temperatureProbe = probe({
     purpose: "temperature", sent: { ...NOTHING_SENT, temperature: 0, reasoning: OPUS_55.reasoning }, ...rejectedBy("parameter", "temperature"),
-    providerMessage: "`temperature` is deprecated for this model.", costMicroUsd: 12
+    providerMessage: "`temperature` is deprecated for this model.", usage: { inputTokens: 40, outputTokens: 0 }, costMicroUsd: 12
   });
   const reasoningProbe = probe({ purpose: "reasoning", sent: { ...NOTHING_SENT, reasoning: OPUS_55.reasoning } });
   const confirmProbe = probe({ stage: "resolution", purpose: "confirm", sent: { ...NOTHING_SENT, reasoning: OPUS_55.reasoning } });

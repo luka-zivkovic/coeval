@@ -110,6 +110,11 @@ const PROVIDERS_BY_PROTOCOL: Record<PromptedVerdictProtocolId, readonly Prompted
   "mock/v1": ["mock"]
 };
 
+/** How a protocol obtains its verdict: structured output, a forced tool, prompted JSON, or locally (the mock). */
+export function verdictProtocolMechanism(protocol: PromptedVerdictProtocolId): Mechanism {
+  return MECHANISM_BY_PROTOCOL[protocol];
+}
+
 /** Whether `protocol` runs on `provider`, per the binding's provider/protocol pairing. */
 export function verdictProtocolRunsOn(protocol: PromptedVerdictProtocolId, provider: PromptedProviderId): boolean {
   return PROVIDERS_BY_PROTOCOL[protocol].includes(provider);
