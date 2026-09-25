@@ -14,3 +14,19 @@ export {
   parseStructuredVerdict
 } from "./llm/verdict-spec.js";
 export type { StructuredVerdict, VerdictSpec } from "./llm/verdict-spec.js";
+export {
+  PROMPTED_VERDICT_PROTOCOLS,
+  VerdictProtocolError,
+  buildVerdictProtocolRequest,
+  parsePromptedJsonObject,
+  parseVerdictProtocolOutput,
+  verdictProtocolRunsOn,
+  verdictProtocolTokenLimitParameter
+} from "./protocols/verdict-protocols.js";
+export type {
+  PromptedProviderId,
+  PromptedVerdictProtocolId,
+  VerdictCarrier,
+  VerdictProtocolOutput,
+  VerdictProtocolRequest
+} from "./protocols/verdict-protocols.js";

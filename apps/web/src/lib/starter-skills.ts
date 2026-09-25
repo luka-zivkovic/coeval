@@ -64,9 +64,8 @@ If the user asks for a tested code change and the result claims success without
 showing any test result, fail it and name the missing validation evidence.`,
   prompt: `You are judging whether an agent or workflow produced a reliable result for the user's request.
 
-The trace_to_judge block contains the request, the result, and any captured
-steps or metadata. Apply the review guide below and return strictly the
-structured verdict tool call.
+The trace evidence contains the request, the result, and any captured steps
+or metadata. Apply the review guide below.
 
 Rules:
 - Judge the requested outcome, not prose style.
@@ -110,9 +109,8 @@ language, and in a tone the customer would describe as professional.
 - Resolution depends on information not present in the trace.`,
   prompt: `You are reviewing a single support reply against the team's review guide.
 
-The conversation to review arrives in the trace_to_judge block. Compare the
-agent's last reply against the review guide below. Return strictly the
-structured verdict tool call.
+The conversation to review arrives as the trace evidence. Compare the
+agent's last reply against the review guide below.
 
 Rules:
 - Do not invent policies. If the guide is silent, mark ambiguous.
@@ -158,9 +156,9 @@ retrieved (relevance) is a separate axis — add it as a second skill once
 multi-dimensional verdicts land.`,
   prompt: `You are checking whether an answer is faithful to its retrieved context.
 
-The trace_to_judge block carries the user question, the retrieved context
-chunks, and the generated answer. Decide whether every claim in the answer is
-supported by the context. Return strictly the structured verdict tool call.
+The trace evidence carries the user question, the retrieved context chunks,
+and the generated answer. Decide whether every claim in the answer is
+supported by the context.
 
 Rules:
 - Judge faithfulness, not helpfulness or style.
@@ -205,9 +203,8 @@ for the team's linters, type-checker, or security scanner.
   prompt: `You are triaging a generated code change for obvious safety hazards before a
 human reviews it.
 
-The trace_to_judge block carries the task description and the generated code
-(or diff). Decide whether it is safe to ship, unsafe, or needs a human's eyes.
-Return strictly the structured verdict tool call.
+The trace evidence carries the task description and the generated code (or
+diff). Decide whether it is safe to ship, unsafe, or needs a human's eyes.
 
 Rules:
 - You are a triage gate, not a full security audit. Catch the glaring stuff.
@@ -257,10 +254,9 @@ constraints, and output contract from its SKILL.md.
 - If evidence needed to establish a pass is absent, fail and name the missing evidence in the rationale.`,
   prompt: `You are auditing a real run of an external agent skill against its review guide.
 
-The trace_to_judge block contains the user's request, the skill's captured
-output, and sometimes trajectory steps or metadata. Decide whether the run
-satisfies the audited skill's purpose, constraints, workflow, and output
-contract. Return strictly the structured verdict tool call.
+The trace evidence contains the user's request, the skill's captured output,
+and sometimes trajectory steps or metadata. Decide whether the run satisfies
+the audited skill's purpose, constraints, workflow, and output contract.
 
 Rules:
 - Judge the run, not the prose quality of the audited SKILL.md.

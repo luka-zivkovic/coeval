@@ -264,7 +264,7 @@ export function verdictOutputSchema(input: {
 }
 
 // The one template variable a compiled prompt may reference. The trace itself
-// is injected separately by the judge message builder (<trace_to_judge>), so
+// is injected separately by the verdict protocol's user message, so
 // prompts must not carry their own trace placeholders.
 export const RUBRIC_TEMPLATE_VARIABLE = "{{rubric_markdown}}";
 
@@ -330,5 +330,5 @@ export const STARTER_RUBRIC_MARKER = "Define pass, fail, and ambiguous criteria 
 // agent-skill run" for agent bootstrap). Single-sourced so the seed and the
 // bootstrap default can't diverge.
 export function defaultJudgePromptTemplate(subject: string): string {
-  return `Judge the ${subject} against the review guide below. Submit exactly one verdict using the provided structured verdict tool.\n\n<review_guide>\n${RUBRIC_TEMPLATE_VARIABLE}\n</review_guide>`;
+  return `Judge the ${subject} against the review guide below.\n\n<review_guide>\n${RUBRIC_TEMPLATE_VARIABLE}\n</review_guide>`;
 }
