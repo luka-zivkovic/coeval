@@ -112,9 +112,11 @@ Decision owner: Luka Živković (founder).
 
 ### ASSUMPTION: the #101 spike
 
-The spike is on branch `spike/jev-evaluator-comparison`, commit `29a8039`,
-under `tools/typesafe-loop/results/2026-09-24-compare`. Its data is public
-and not governed truth.
+The spike is at tag `jev-comparison-2026-09-24`, under
+`tools/typesafe-loop/results/2026-09-24-compare`. Its data is public and not
+governed truth. The first Anthropic key ran out of credit, and the refused
+calls were resumed with identical requests. Every judge answered every set,
+except one Sonnet 5 MT-Bench verdict that still has no rationale.
 
 - **Judges and deviations.**
   - `jev-1.13.0`: one `noul` question per case.
@@ -122,30 +124,42 @@ and not governed truth.
     Rubrist's seeded default; Sonnet 5; and Opus 5.5.
   - Deviations, each recorded per judge: Sonnet 5 and Opus 5.5 ran without
     temperature, and Opus 5.5 with `tool_choice: auto`.
-  - Every Claude run predates #121.
+  - Every Claude run used the pre-#121 verdict instructions.
 - **Short-context results.** On ChaosMNLI (200 cases) and MT-Bench (150
-  cases in its original order), no paired test found an accuracy difference
-  between Jev and Sonnet 4.6, Sonnet 5, or Opus 5.5 (McNemar p > 0.1). That
-  is "no difference detected", not equivalence.
-- **Cost and latency.** Jev cost 0.8–1.4% of Haiku 4.5 per trace, and its
-  median latency was 8–12% of Haiku's.
+  cases, both response orders), McNemar found no accuracy difference between
+  Jev and Sonnet 4.6, Sonnet 5, or Opus 5.5 (p ≥ 0.065). That is "no
+  difference detected", not equivalence. The paired bootstrap does separate
+  Jev from Sonnet 5 on original-order MT-Bench, with Jev ahead (0.048
+  [0.007, 0.088]). Against Opus 5.5 the AUCs agree within 0.01.
+- **Cost and latency.** On the short-context sets, Jev cost 0.8–1.4% of
+  Haiku 4.5 per trace and 0.1–0.2% of Opus 5.5, and its median latency was
+  8–12% of Haiku's.
 - **Order consistency on MT-Bench** (the same pick with the responses
   swapped):
 
   | Judge | Same pick in both orders |
   | --- | --- |
+  | Opus 5.5 | 148 of 150 |
   | Jev | 143 of 150 |
   | Sonnet 4.6 | 130 of 148 |
-  | Sonnet 5 | 127 of 145 |
+  | Sonnet 5 | 128 of 147 |
   | Haiku 4.5 | 81 of 150 |
-  | Opus 5.5 | 43 of 44 (partial run) |
 
-- **Long agent trajectories are unresolved.** On tau-bench, Jev's accuracy
-  was 0.505, against 0.578 for always answering pass, and its AUC was
-  0.547. The Anthropic account
-  ran out of credit before the Claude judges finished that set. In the
-  earlier run, Haiku was at chance and Sonnet 5 only weakly above it (AUC
-  0.64). Trace length was not established as the cause.
+- **Long agent trajectories: only Opus 5.5 held up.**
+  - On tau-bench (109 runs), always answering pass scores 0.578. Opus 5.5
+    reached accuracy 0.743 (AUC 0.824).
+  - Jev (0.505, AUC 0.547), Haiku 4.5, and Sonnet 4.6 were at chance, and
+    Sonnet 5 was only slightly above.
+  - Opus beat Jev by 0.24 [0.14, 0.34] in paired accuracy (McNemar
+    p < 0.001).
+  - Opus 5.5 reasoned first by default: its responses carried thinking
+    blocks in our checks.
+  - The other judges answered without thinking. Haiku 4.5 and Sonnet 4.6
+    don't reason unless asked, and a spot check of Sonnet 5 under the forced
+    verdict call returned no thinking.
+  - The run didn't isolate whether reasoning, model capability, or the kind
+    of task explains the gap, and it can't separate trace length from task
+    type.
 - **Score orientation.** Before #121, Rubrist's verdict instructions didn't
   say which way the binary `score` points. On ChaosMNLI, judges' scores
   contradicted their own labels (Haiku 4.5 in 81 of 191 verdicts).
@@ -350,10 +364,17 @@ verdict record states `rationale: not_provided`; it is never an empty
 string or an invented summary. Receipts carry no rationale for any
 evaluator, in v1 or v2.
 
-Guidance for criterion authors says what the spike did and didn't show.
-Short-context criteria looked promising. Long agent trajectories are
-unresolved. Injection wasn't tested. There is no trace-length gate until an
-effect is measured.
+Guidance for criterion authors says what the spike did and didn't show:
+
+- On short, self-contained criteria, no accuracy gap showed up against
+  frontier LLM judges.
+- On whole-agent-run criteria, the typed-question model was at chance where
+  Opus 5.5 was not.
+- Injection wasn't tested.
+
+A typed-question evaluator for a whole-run criterion therefore needs its
+own calibration evidence before anyone relies on it. There is no automatic
+trace-length gate until an effect is measured.
 
 ### 6. One failure taxonomy and one outcome model
 
