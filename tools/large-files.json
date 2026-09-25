@@ -50,6 +50,16 @@
       "classification": "generated",
       "reason": "pnpm shared-contracts -- --write owns this sorted @rubrist/shared public export fixture; CI checks it and never updates it.",
       "revisit": "Never hand-split; regenerate with the shared-contracts tool after an authorized export change."
+    },
+    "contracts/assessment-receipt-v2.schema.json": {
+      "classification": "structural_exception",
+      "reason": "This is an exact-byte, digest-pinned interoperability contract file.",
+      "revisit": "Change only through the versioned contract process; never split for source-file size."
+    },
+    "contracts/fixtures/assessment-receipt-v2.conformance.json": {
+      "classification": "structural_exception",
+      "reason": "This is an exact-byte, digest-pinned interoperability corpus.",
+      "revisit": "Change only through the versioned contract process; never split for source-file size."
     }
   }
 }

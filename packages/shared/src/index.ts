@@ -397,6 +397,7 @@ export * from "./evaluator-lifecycle.js";
 
 
 export * from "./evaluator-execution.js";
+export * from "./assessment-receipt-v2.js";
 
 
 export * from "./criterion-governance.js";

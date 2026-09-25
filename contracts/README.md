@@ -34,7 +34,23 @@ substituted, duplicated, or unknown criteria. The normative rules are in
 This manifest groups separately verifiable criterion assessments; it does not
 replace or alter assessment receipt v1.
 
-## Assessment receipt v1
+## Assessment receipt v2
+
+`assessment-receipt-v2.schema.json` is the closed, policy-free wire contract
+that replaces receipt v1 (Rubrist ADR-0014 sections 6 and 7, decisions 5 and
+6). It carries the execution binding and a digest of the evaluator
+definition, never rubric, prompt, or question text, and `skillDigest` v2 is
+recomputed from them. Each item has exactly one outcome, failure, or
+`not_attempted` result, a score whose kind the verdict protocol fixes, and
+observed provider provenance. An abstention leaves a receipt complete.
+
+Two positive vectors cover a complete prompted receipt with an abstention and
+an incomplete typed-question receipt, and the conformance corpus covers
+schema/runtime parity, every digest, the binding's rules, and each semantic
+rule. The normative rules and pinned file digests are in
+[`assessment-receipt-v2.md`](assessment-receipt-v2.md).
+
+## Assessment receipt v1 (superseded)
 
 `assessment-receipt-v1.schema.json` is the closed, policy-free wire contract
 for a `release_evidence` assessment receipt. The positive fixture and
@@ -49,10 +65,15 @@ canonicalization, digest, mutation, and pinned-file rules are in
 - Rubrist owns the canonical contract; consumers vendor a reviewed copy and
   independently verify it. See
   [ADR-0001](../docs/decisions/0001-evidence-contract-ownership-and-versioning.md).
-- Receipt v1 is frozen. Its parsers are intentionally strict at every object
+- Receipt v1 is frozen, and receipt v2 replaces it (ADR-0014 decision 6):
+  before launch, Rubrist and Dailies switch together and neither keeps code
+  that emits or verifies v1. The v1 documents and fixtures stay here
+  unchanged, as superseded history.
+- Every contract's parsers are intentionally strict at every object
   boundary, so adding, removing, or renaming a field is a breaking change.
 - A breaking change requires a new schema version, new fixtures, and a
-  coordinated consumer release. Do not add optional fields to v1.
+  coordinated consumer release. Do not add optional fields to a published
+  version.
 - Rubrist emits governed assessment evidence only. Thresholds and release
   decisions are forbidden from the receipt.
 - Calibration does not extend receipt v1. ADR-0009 accepts the separate
