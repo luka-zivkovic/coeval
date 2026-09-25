@@ -25,4 +25,13 @@ describe("starter skills", () => {
     expect(starter?.prompt).toContain("external agent skill");
     expect(STARTER_SKILLS.at(-1)?.id).toBe("agent-skill-audit");
   });
+
+  // The verdict protocol names the output mechanism and the evidence block
+  // (ADR-0014 section 3); a template that does too would contradict it.
+  it("never names a verdict mechanism or an evidence block", () => {
+    for (const starter of STARTER_SKILLS) {
+      // A judged agent's own tool calls are evidence and may be named.
+      expect(starter.prompt, starter.id).not.toMatch(/submit_verdict|verdict tool|structured verdict|trace_to_judge|\breturn (?:only |strictly )?(?:the )?json\b/i);
+    }
+  });
 });

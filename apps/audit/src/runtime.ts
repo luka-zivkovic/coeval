@@ -18,15 +18,17 @@ export {
   PROMPTED_VERDICT_PROTOCOLS,
   VerdictProtocolError,
   buildVerdictProtocolRequest,
-  parsePromptedJsonObject,
-  parseVerdictProtocolOutput,
+  parseSingleJsonObject,
+  parseVerdictProtocolResponse,
+  renderEvaluatorPrompt,
   verdictProtocolRunsOn,
+  verdictProtocolSurface,
   verdictProtocolTokenLimitParameter
 } from "./protocols/verdict-protocols.js";
 export type {
   PromptedProviderId,
   PromptedVerdictProtocolId,
-  VerdictCarrier,
   VerdictProtocolOutput,
-  VerdictProtocolRequest
+  VerdictProtocolRequest,
+  VerdictResponse
 } from "./protocols/verdict-protocols.js";

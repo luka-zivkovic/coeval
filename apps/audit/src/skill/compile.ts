@@ -1,5 +1,4 @@
 import { JudgePrompt, JudgePromptSchema } from "../schema.js";
-import { DEFAULT_OUTPUT_SCHEMA } from "./default-output-schema.js";
 import { DEFAULT_RUBRIC_TEMPLATE } from "./default-rubric-template.js";
 
 export async function compileUnifiedSkill(prompts: JudgePrompt[]): Promise<JudgePrompt> {
@@ -20,14 +19,6 @@ export async function compileUnifiedSkill(prompts: JudgePrompt[]): Promise<Judge
     "# Customer/team submitted judging prompts to merge",
     "",
     submittedCriteria,
-    "",
-    "# Output contract",
-    "",
-    "Return only JSON matching this schema:",
-    "",
-    "```json",
-    JSON.stringify(DEFAULT_OUTPUT_SCHEMA, null, 2),
-    "```",
     "",
     "When submitted prompts conflict, prefer the stricter interpretation only if the trace contains concrete evidence of customer-facing risk. Otherwise mark `ambiguous` and explain the conflict."
   ].join("\n");

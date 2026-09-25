@@ -65,7 +65,7 @@ export const CategoricalVerdictPayloadSchema = z
     rationale: z.string(),
     failingStep: FailingStepSchema.optional()
   })
-  .refine((v) => v.choice in v.choiceScores, { message: "chosen category must appear in choiceScores" });
+  .refine((v) => Object.hasOwn(v.choiceScores, v.choice), { message: "chosen category must appear in choiceScores" });
 
 export const VerdictPayloadSchema = z.union([
   BinaryVerdictPayloadSchema,

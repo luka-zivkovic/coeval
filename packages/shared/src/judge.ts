@@ -209,7 +209,7 @@ export const JsonSchemaSchema = z.record(z.string(), z.unknown());
 export type JsonSchema = z.infer<typeof JsonSchemaSchema>;
 
 // The immutable output contract stored with a version must describe the
-// verdict tool that the runtime actually asks the provider to complete. The
+// verdict shape the runtime actually asks the provider for. The
 // legacy MinimumVerdictOutputSchema remains available for historical imports;
 // new guided Checks use this kind-aware contract instead of copying the
 // seeded binary schema into categorical or scalar versions.
@@ -287,7 +287,7 @@ export function promptReferencesRubric(prompt: string): boolean {
 // Compile the stored prompt template into judge-facing instructions and report
 // anything the editor should surface. Unknown variables deliberately remain
 // literal: {{rubric_markdown}} is the only supported variable, while the trace
-// and verdict schema are injected separately by the judge message builder.
+// and verdict schema are injected separately by the verdict protocol.
 export function compileJudgePrompt(input: { rubricMarkdown: string; prompt: string }): CompiledJudgePrompt {
   const referencesRubric = promptReferencesRubric(input.prompt);
   const diagnostics: JudgePromptDiagnostic[] = [];

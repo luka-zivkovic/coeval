@@ -80,6 +80,11 @@
       "classification": "structural_exception",
       "reason": "This is an exact-byte, digest-pinned interoperability contract file.",
       "revisit": "Change only through the versioned contract process; never split for source-file size."
+    },
+    "apps/audit/test/fixtures/verdict-protocols-v1.json": {
+      "classification": "generated",
+      "reason": "apps/audit/scripts/write-verdict-protocol-fixture.ts records every prompted verdict protocol's pinned material, one entry per protocol and sample; released entries never change (ADR-0014 section 3).",
+      "revisit": "Never hand-edit or split; a new protocol version or sample only adds entries through the writer."
     }
   }
 }

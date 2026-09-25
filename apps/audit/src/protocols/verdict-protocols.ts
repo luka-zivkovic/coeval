@@ -8,12 +8,14 @@ import {
 } from "../llm/verdict-spec.js";
 
 // Versioned verdict protocols (Rubrist ADR-0014 section 3). A protocol version
-// pins everything the model is shown around the governed judging skill: the
-// preamble, the protocol and verdict-instruction text, the user-message
-// wrapper, the evidence serialization, the output schema with its
-// descriptions and provider-side transform, the token-limit parameter, and the
-// parse rule. Changing any of it means a new protocol version, and so a new
-// evaluator identity; test/fixtures/verdict-protocols-v1.json pins the result.
+// pins everything the model is shown and how its answer is read: the
+// rendering of the evaluator's prompt, the preamble, the protocol and
+// verdict-instruction text, the user-message wrapper, the evidence
+// serialization, the output schema with its descriptions and provider-side
+// transform, whether the provider enforces it strictly, the API surface and
+// token-limit parameter, and the parse rule. A released version never
+// changes; test/fixtures/verdict-protocols-v1.json records every one, and a
+// change means a new protocol version and so a new evaluator identity.
 //
 // `typed-question/v1` is not here: it asks a typed-question model a question,
 // not a judge a rubric, and arrives with the typesafe provider (Batch 8E).
@@ -37,11 +39,17 @@ export const VERDICT_TOOL_NAME = "submit_verdict";
 export const VERDICT_TOOL_DESCRIPTION = "Submit the structured verdict for the trace under review.";
 export const VERDICT_FORMAT_NAME = "verdict";
 export const EVIDENCE_ENCODING = "canonical-json-html-safe-v1";
+const RUBRIC_TEMPLATE_VARIABLE = "{{rubric_markdown}}";
 
-/** How the protocol obtains the verdict object, and what it hands the provider for that. */
+/**
+ * How the protocol obtains the verdict object. Structured output is enforced
+ * strictly by the provider; a forced tool only forces the call, and its
+ * arguments are checked by the parse rule. `name` is sent only where the
+ * surface takes one (OpenAI's `json_schema.name`).
+ */
 export type VerdictProtocolOutput =
-  | { mechanism: "structured_output"; name: typeof VERDICT_FORMAT_NAME; schema: JsonSchema }
-  | { mechanism: "forced_tool"; name: typeof VERDICT_TOOL_NAME; description: typeof VERDICT_TOOL_DESCRIPTION; schema: JsonSchema }
+  | { mechanism: "structured_output"; strict: true; name: typeof VERDICT_FORMAT_NAME | null; schema: JsonSchema }
+  | { mechanism: "forced_tool"; strict: false; name: typeof VERDICT_TOOL_NAME; description: typeof VERDICT_TOOL_DESCRIPTION; schema: JsonSchema }
   | { mechanism: "prompted_json" }
   | { mechanism: "mock" };
 
@@ -53,18 +61,23 @@ export interface VerdictProtocolRequest {
 }
 
 /**
- * Where the provider response carried the verdict: a forced tool call's
- * arguments, or the response text. A carrier the protocol doesn't use is a
- * protocol failure.
+ * A provider response, normalized by the adapter and read by the protocol's
+ * parse rule. `stop` says whether the model finished, was cut off at the
+ * token limit, or refused; `text` joins the response's text, or is `null`
+ * when it carried none; `toolCalls` lists every tool or function call, with
+ * its arguments exactly as the provider sent them (an object or a string).
  */
-export type VerdictCarrier =
-  | { kind: "tool_input"; input: unknown }
-  | { kind: "text"; text: string };
+export interface VerdictResponse {
+  stop: "normal" | "max_tokens" | "refusal";
+  text: string | null;
+  toolCalls: ReadonlyArray<{ name: string | null; arguments: unknown }>;
+}
 
 /**
  * A response the protocol can't turn into a verdict. `provider_protocol`: the
- * response lacks the protocol's carrier. `invalid_evaluator_output`: the
- * carrier is there, but the model's output isn't a valid verdict.
+ * response isn't the shape the protocol asked for, or the provider broke an
+ * output format it enforces. `invalid_evaluator_output`: the model finished
+ * within the protocol, but its answer isn't a verdict.
  */
 export class VerdictProtocolError extends Error {
   constructor(
@@ -97,20 +110,50 @@ const PROVIDERS_BY_PROTOCOL: Record<PromptedVerdictProtocolId, readonly Prompted
   "mock/v1": ["mock"]
 };
 
+/** Whether `protocol` runs on `provider`, per the binding's provider/protocol pairing. */
+export function verdictProtocolRunsOn(protocol: PromptedVerdictProtocolId, provider: PromptedProviderId): boolean {
+  return PROVIDERS_BY_PROTOCOL[protocol].includes(provider);
+}
+
+function assertRunsOn(protocol: PromptedVerdictProtocolId, provider: PromptedProviderId): void {
+  if (!verdictProtocolRunsOn(protocol, provider)) throw new Error(`${protocol} is not a ${provider} protocol`);
+}
+
+/** The API a protocol is sent through: Anthropic's Messages API, Chat Completions, or nowhere (the mock). */
+export function verdictProtocolSurface(
+  protocol: PromptedVerdictProtocolId,
+  provider: PromptedProviderId
+): "anthropic-messages" | "openai-chat-completions" | "local" {
+  assertRunsOn(protocol, provider);
+  return provider === "mock" ? "local" : provider === "anthropic" ? "anthropic-messages" : "openai-chat-completions";
+}
+
 /**
- * The request parameter the binding's output token limit is sent as. OpenAI's
- * own API takes `max_completion_tokens`; OpenRouter and OpenAI-compatible
- * custom endpoints take `max_tokens`. The mock takes no limit.
+ * The request parameter the binding's output token limit is sent as. OpenAI
+ * and OpenRouter take `max_completion_tokens` (OpenRouter deprecates
+ * `max_tokens`). ASSUMPTION: OpenAI-compatible custom servers take
+ * `max_tokens`; one serving OpenAI reasoning models, such as Azure OpenAI,
+ * rejects it, so a binding there leaves the limit unset.
  */
 export function verdictProtocolTokenLimitParameter(
   protocol: PromptedVerdictProtocolId,
   provider: PromptedProviderId
 ): "max_tokens" | "max_completion_tokens" | null {
-  if (!PROVIDERS_BY_PROTOCOL[protocol].includes(provider)) {
-    throw new Error(`${protocol} is not a ${provider} protocol`);
-  }
+  assertRunsOn(protocol, provider);
   if (provider === "mock") return null;
-  return provider === "openai" ? "max_completion_tokens" : "max_tokens";
+  return provider === "openai" || provider === "openrouter" ? "max_completion_tokens" : "max_tokens";
+}
+
+/**
+ * The evaluator's prompt as the model sees it: `{{rubric_markdown}}` replaced
+ * by the rubric, or, for a prompt that doesn't reference it, the rubric
+ * before the prompt. Mirrors renderJudgePromptContent in @rubrist/shared,
+ * which an API test holds equal.
+ */
+export function renderEvaluatorPrompt(input: { rubricMarkdown: string; prompt: string }): string {
+  return input.prompt.includes(RUBRIC_TEMPLATE_VARIABLE)
+    ? input.prompt.split(RUBRIC_TEMPLATE_VARIABLE).join(input.rubricMarkdown)
+    : `${input.rubricMarkdown}\n\n${input.prompt}`;
 }
 
 const PREAMBLE = "You are an LLM judge.";
@@ -225,12 +268,12 @@ function structuredOutputSchema(schema: JsonSchema, optionalFields: "optional" |
 function outputFor(protocol: PromptedVerdictProtocolId, schema: JsonSchema): VerdictProtocolOutput {
   switch (protocol) {
     case "anthropic.structured-output/v1":
-      return { mechanism: "structured_output", name: VERDICT_FORMAT_NAME, schema: structuredOutputSchema(schema, "optional") };
+      return { mechanism: "structured_output", strict: true, name: null, schema: structuredOutputSchema(schema, "optional") };
     case "openai.structured-output/v1":
-      return { mechanism: "structured_output", name: VERDICT_FORMAT_NAME, schema: structuredOutputSchema(schema, "nullable") };
+      return { mechanism: "structured_output", strict: true, name: VERDICT_FORMAT_NAME, schema: structuredOutputSchema(schema, "nullable") };
     case "anthropic.forced-tool/v1":
     case "openai.forced-function/v1":
-      return { mechanism: "forced_tool", name: VERDICT_TOOL_NAME, description: VERDICT_TOOL_DESCRIPTION, schema };
+      return { mechanism: "forced_tool", strict: false, name: VERDICT_TOOL_NAME, description: VERDICT_TOOL_DESCRIPTION, schema };
     case "prompted-json/v1":
       return { mechanism: "prompted_json" };
     case "mock/v1":
@@ -241,7 +284,7 @@ function outputFor(protocol: PromptedVerdictProtocolId, schema: JsonSchema): Ver
 /** Everything the protocol shows the model for one judgment, and how it asks for the verdict. */
 export function buildVerdictProtocolRequest(
   protocol: PromptedVerdictProtocolId,
-  input: { promptContent: string; trace: unknown; spec: VerdictSpec }
+  input: { rubricMarkdown: string; prompt: string; trace: unknown; spec: VerdictSpec }
 ): VerdictProtocolRequest {
   const mechanism = MECHANISM_BY_PROTOCOL[protocol];
   const stepCount = traceStepCount(input.trace);
@@ -253,7 +296,7 @@ export function buildVerdictProtocolRequest(
     trustedProtocol(mechanism),
     "",
     "<judging_skill>",
-    input.promptContent,
+    renderEvaluatorPrompt(input),
     "</judging_skill>",
     "",
     "<verdict_instructions>",
@@ -267,60 +310,122 @@ export function buildVerdictProtocolRequest(
   return { protocol, system, user: evidenceUserMessage(input.trace), output: outputFor(protocol, schema) };
 }
 
+// Whether valid JSON text repeats a key within one object. JSON.parse keeps
+// the last value silently, which would make "exactly one object" ambiguous.
+// Iterative, so deep nesting can't exhaust the stack.
+function hasDuplicateKey(text: string): boolean {
+  const stack: Array<Set<string> | null> = [];
+  let index = 0;
+  while (index < text.length) {
+    const character = text[index];
+    if (character === "\"") {
+      let end = index + 1;
+      while (text[end] !== "\"") end += text[end] === "\\" ? 2 : 1;
+      const token = text.slice(index, end + 1);
+      index = end + 1;
+      const keys = stack[stack.length - 1];
+      if (keys) {
+        let next = index;
+        while (text[next] === " " || text[next] === "\t" || text[next] === "\n" || text[next] === "\r") next += 1;
+        if (text[next] === ":") {
+          const key = JSON.parse(token) as string;
+          if (keys.has(key)) return true;
+          keys.add(key);
+        }
+      }
+      continue;
+    }
+    if (character === "{") stack.push(new Set());
+    else if (character === "[") stack.push(null);
+    else if (character === "}" || character === "]") stack.pop();
+    index += 1;
+  }
+  return false;
+}
+
 /**
- * prompted-json/v1's parse rule: the whole response is exactly one JSON
- * object. JSON's own surrounding whitespace is allowed; prose, markdown, code
- * fences, a second value, or any non-object value is refused, and a verdict is
- * never extracted from within text.
+ * The single-object rule: the whole text is exactly one JSON object, with
+ * JSON's own surrounding whitespace allowed and no key repeated. Prose,
+ * markdown, code fences, a second value, or a non-object value is refused;
+ * a verdict is never extracted from within text. Returns `null` on refusal.
  */
-export function parsePromptedJsonObject(text: string): Record<string, unknown> {
+export function parseSingleJsonObject(text: string): Record<string, unknown> | null {
   let value: unknown;
   try {
     value = JSON.parse(text);
-  } catch (error) {
-    throw new VerdictProtocolError("invalid_evaluator_output", "the response is not exactly one JSON object", { cause: error });
+  } catch {
+    return null;
   }
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    throw new VerdictProtocolError("invalid_evaluator_output", "the response is not exactly one JSON object");
-  }
+  if (value === null || typeof value !== "object" || Array.isArray(value) || hasDuplicateKey(text)) return null;
   return value as Record<string, unknown>;
 }
 
+// Anthropic documents that structured output may not keep an enum member's
+// casing. For structured output only, a label or choice that matches exactly
+// one member case-insensitively is read as that member.
+function normalizeEnumCasing(spec: VerdictSpec, fields: Record<string, unknown>): Record<string, unknown> {
+  const key = spec.verdictKind === "binary" ? "label" : spec.verdictKind === "categorical" ? "choice" : null;
+  const value = key === null ? undefined : fields[key];
+  if (key === null || typeof value !== "string") return fields;
+  const members = spec.verdictKind === "binary" ? ["pass", "fail", "ambiguous"] : Object.keys(spec.categoricalChoiceScores ?? {});
+  if (members.includes(value)) return fields;
+  const matches = members.filter((member) => member.toLowerCase() === value.toLowerCase());
+  return matches.length === 1 ? { ...fields, [key]: matches[0] } : fields;
+}
+
 /**
- * The protocol's parse rule: take the verdict object from the carrier the
- * protocol uses, then validate it against the pinned verdict kind. Structured
- * output arrives as text holding one JSON object; OpenAI's nullable optional
- * fields read `null` as absent.
+ * The protocol's parse rule. A refusal or a response cut off at the token
+ * limit is invalid evaluator output under every protocol. Then:
+ *
+ * - forced tool: exactly one call, to submit_verdict, or it's a protocol
+ *   failure; arguments that aren't exactly one JSON object are invalid output;
+ * - structured output: text and no tool call, or it's a protocol failure;
+ *   text that isn't exactly one JSON object breaks the provider's
+ *   enforcement, which is also a protocol failure;
+ * - prompted JSON: text and no tool call, or it's a protocol failure; text
+ *   that isn't exactly one JSON object is invalid output.
+ *
+ * The object must then be a valid verdict of the pinned kind, or it is
+ * invalid output. Absent and `null` optional fields read the same.
  */
-export function parseVerdictProtocolOutput(
+export function parseVerdictProtocolResponse(
   protocol: PromptedVerdictProtocolId,
-  input: { spec: VerdictSpec; trace: unknown; carrier: VerdictCarrier }
+  input: { spec: VerdictSpec; trace: unknown; response: VerdictResponse }
 ): StructuredVerdict {
   const mechanism = MECHANISM_BY_PROTOCOL[protocol];
-  if (mechanism === "mock") throw new Error("mock/v1 produces its verdict locally and has no provider output to parse");
-  const expected = mechanism === "forced_tool" ? "tool_input" : "text";
-  if (input.carrier.kind !== expected) {
-    throw new VerdictProtocolError("provider_protocol", `${protocol} expects the verdict as ${expected === "tool_input" ? "a forced tool call" : "response text"}`);
-  }
-  let verdictObject: unknown;
-  if (input.carrier.kind === "tool_input") {
-    verdictObject = input.carrier.input;
+  if (mechanism === "mock") throw new Error("mock/v1 produces its verdict locally and has no provider response to parse");
+  const { response } = input;
+  const invalid = (message: string) => new VerdictProtocolError("invalid_evaluator_output", message);
+  const broken = (message: string) => new VerdictProtocolError("provider_protocol", message);
+  if (response.stop === "refusal") throw invalid("the model refused to give a verdict");
+  if (response.stop === "max_tokens") throw invalid("the response was cut off at the output token limit");
+
+  let fields: Record<string, unknown> | null;
+  if (mechanism === "forced_tool") {
+    const calls = response.toolCalls;
+    if (calls.length !== 1 || calls[0]!.name !== VERDICT_TOOL_NAME) {
+      throw broken(`expected exactly one ${VERDICT_TOOL_NAME} call, got ${calls.length} call(s)${calls.length === 1 ? " to another tool" : ""}`);
+    }
+    const args = calls[0]!.arguments;
+    fields = typeof args === "string"
+      ? parseSingleJsonObject(args)
+      : args !== null && typeof args === "object" && !Array.isArray(args) ? { ...(args as Record<string, unknown>) } : null;
+    if (fields === null) throw invalid(`the ${VERDICT_TOOL_NAME} arguments are not exactly one JSON object`);
   } else {
-    verdictObject = parsePromptedJsonObject(input.carrier.text);
+    if (response.toolCalls.length > 0) throw broken("the response made a tool call the protocol never offered");
+    if (response.text === null) throw broken("the response carried no text");
+    fields = parseSingleJsonObject(response.text);
+    if (fields === null) {
+      throw mechanism === "structured_output"
+        ? broken("the provider-enforced output is not exactly one JSON object")
+        : invalid("the response is not exactly one JSON object");
+    }
+    if (mechanism === "structured_output") fields = normalizeEnumCasing(input.spec, fields);
   }
-  if (verdictObject === null || typeof verdictObject !== "object" || Array.isArray(verdictObject)) {
-    throw new VerdictProtocolError("invalid_evaluator_output", "the verdict is not an object");
-  }
-  const fields = { ...(verdictObject as Record<string, unknown>) };
-  if (protocol === "openai.structured-output/v1" && fields.failingStep === null) delete fields.failingStep;
   try {
     return parseStructuredVerdict(input.spec, fields, traceStepCount(input.trace));
   } catch (error) {
-    throw new VerdictProtocolError("invalid_evaluator_output", `the verdict is invalid: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new VerdictProtocolError("invalid_evaluator_output", `the verdict is invalid: ${reason.slice(0, 500)}`, { cause: error });
   }
-}
-
-/** Whether `protocol` runs on `provider`, per the binding's provider/protocol pairing. */
-export function verdictProtocolRunsOn(protocol: PromptedVerdictProtocolId, provider: PromptedProviderId): boolean {
-  return PROVIDERS_BY_PROTOCOL[protocol].includes(provider);
 }
