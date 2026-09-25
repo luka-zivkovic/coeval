@@ -11,7 +11,7 @@ Status meanings:
 
 ## Index
 
-- [0001 — Evidence contract ownership and versioning](0001-evidence-contract-ownership-and-versioning.md) — Accepted
+- [0001 — Evidence contract ownership and versioning](0001-evidence-contract-ownership-and-versioning.md) — Accepted; ADR-0014 narrowly supersedes its compatibility window for the pre-launch v1 to v2 transition
 - [0002 — Human truth and dataset revisions](0002-human-truth-and-dataset-revisions.md) — Accepted
 - [0003 — Receipt evolution and immutability](0003-receipt-evolution-and-immutability.md) — Accepted
 - [0004 — Calibration semantics](0004-calibration-semantics.md) — Accepted
