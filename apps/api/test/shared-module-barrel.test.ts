@@ -8,6 +8,7 @@ import * as binaryCalibration from "../../../packages/shared/dist/binary-calibra
 import * as criterionGovernance from "../../../packages/shared/dist/criterion-governance.js";
 import * as datasets from "../../../packages/shared/dist/datasets.js";
 import * as evaluationRuns from "../../../packages/shared/dist/evaluation-runs.js";
+import * as evaluatorExecution from "../../../packages/shared/dist/evaluator-execution.js";
 import * as evaluatorLifecycle from "../../../packages/shared/dist/evaluator-lifecycle.js";
 import * as goldenSet from "../../../packages/shared/dist/golden-set.js";
 import * as governedReview from "../../../packages/shared/dist/governed-review.js";
@@ -57,6 +58,7 @@ describe("shared module barrel", () => {
     expectRootIdentity(criterionGovernance);
     expectRootIdentity(datasets);
     expectRootIdentity(evaluationRuns);
+    expectRootIdentity(evaluatorExecution);
     expectRootIdentity(evaluatorLifecycle);
     expectRootIdentity(goldenSet);
     expectRootIdentity(governedReview);
