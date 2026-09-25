@@ -1,7 +1,7 @@
 import {
   AssistedTraceTestContentSchema,
   type AssistedTraceTestContent,
-  type StoredModelBinding,
+  type ExecutionBinding,
   type TracePayload,
   type TraceTestDraftJob,
   type TraceTestSourceScope
@@ -63,7 +63,7 @@ interface RawAssistedDraft {
 }
 
 export interface TraceTestDraftGeneratorInput {
-  binding: StoredModelBinding;
+  binding: Pick<ExecutionBinding, "provider" | "modelId">;
   apiKey: string;
   systemPrompt: string;
   userPrompt: string;

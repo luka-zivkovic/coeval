@@ -11,7 +11,7 @@ import { Eyebrow, SectionHead, Chip, GateChip, gateStateForVersion, LabelChip, M
 import { fetchCurrentSkill, fetchJudgeCard, fetchJudgeCardMarkdown, fetchSkillFormat, fetchSkillVersionHistory, fetchSkillVersions, fetchSkillVersionRegression, fetchSkillVersionConvergence, fetchSkillVersionSelfConsistency } from "@/lib/api";
 import { useCriterion } from "@/lib/criterion-context";
 import { verdictKindDescription } from "@/lib/verdict-kind";
-import { compileJudgePrompt, KAPPA_MIN_SHARED_CASES, type ConvergenceAudit, type JudgeCard, type RegressionRunResult, type SelfConsistencyReport, type Skill, type SkillStatus, type SkillVersion } from "@rubrist/shared";
+import { compileJudgePrompt, KAPPA_MIN_SHARED_CASES, type ConvergenceAudit, type JudgeCard, type RegressionRunResult, type SelfConsistencyReport, type Skill, type SkillStatus, type SkillVersion, describeExecutionBinding } from "@rubrist/shared";
 
 // Explicit mapping for every SkillStatus value. Reviewer scanning a versions
 // ledger needs to distinguish approved (on-deck) from deprecated (end of life)
@@ -201,7 +201,7 @@ export function SkillVersionsScreen() {
                       {changes.join(" · ")}
                     </div>
                     <div className="mt-0.5 font-mono text-[10.5px] tracking-[0.04em] text-ink-3">
-                      {v.modelBinding.provider}/{v.modelBinding.modelId}@{v.modelBinding.modelVersion}
+                      {v.executionBinding.provider}/{v.executionBinding.modelId}@{v.executionBinding.modelVersion}
                     </div>
                     {v.knownLimitations.length > 0 ? (
                       <div className="mt-0.5 text-[10.5px] text-signal">
@@ -372,14 +372,14 @@ export function SkillVersionDetailScreen() {
           <span>v{v.version}</span>
           <span>·</span>
           <span>
-            {v.modelBinding.provider}/{v.modelBinding.modelId}@{v.modelBinding.modelVersion}
+            {v.executionBinding.provider}/{v.executionBinding.modelId}@{v.executionBinding.modelVersion}
           </span>
         </div>
       </div>
 
       <SectionHead
         eyebrow={`Judge card · v${v.version}`}
-        title={`${v.modelBinding.provider}/${v.modelBinding.modelId}`}
+        title={`${v.executionBinding.provider}/${v.executionBinding.modelId}`}
         sub={v.onboardingAssurance === "starter_unvalidated"
           ? `Starter · unvalidated · runnable does not mean calibrated · ${v.knownLimitations.length} known limitation${v.knownLimitations.length === 1 ? "" : "s"}`
           : `Approved ${v.approvedAt ? new Date(v.approvedAt).toLocaleString() : "—"} · ${v.knownLimitations.length} known limitation${v.knownLimitations.length === 1 ? "" : "s"}`}
@@ -445,20 +445,20 @@ export function SkillVersionDetailScreen() {
 
           <Card>
             <CardContent className="py-4">
-              <Eyebrow>Requested model · immutable settings</Eyebrow>
+              <Eyebrow>Execution binding · immutable settings</Eyebrow>
               <p className="mt-2 text-[12px] leading-5 text-ink-2">
-                Provider, model, and temperature requested for this immutable version. Individual
-                runs retain the provider-reported identity separately when available.
+                Exactly what every judge call of this immutable version sends. Individual runs retain
+                the provider-reported identity separately when available.
               </p>
               <div className="mt-2 grid grid-cols-1 gap-y-1 text-[13px] sm:grid-cols-[140px_1fr] sm:gap-y-2">
                 <div className="text-ink-3">Provider</div>
-                <div>{v.modelBinding.provider}</div>
+                <div>{v.executionBinding.provider}</div>
                 <div className="text-ink-3">Model id</div>
-                <div className="font-mono">{v.modelBinding.modelId}</div>
-                <div className="text-ink-3">Catalog identity</div>
-                <div className="font-mono">{v.modelBinding.modelVersion}</div>
-                <div className="text-ink-3">Temperature</div>
-                <div className="font-mono">{v.modelBinding.temperature}</div>
+                <div className="font-mono">{v.executionBinding.modelId}</div>
+                <div className="text-ink-3">Model version</div>
+                <div className="font-mono">{v.executionBinding.modelVersion}</div>
+                <div className="text-ink-3">Binding</div>
+                <div className="font-mono">{describeExecutionBinding(v.executionBinding)}</div>
                 <div className="text-ink-3">Result type</div>
                 <div>
                   <div className="font-mono">{v.verdictKind}</div>
@@ -636,8 +636,8 @@ function JudgeCardPanel({ card, skillId, versionId }: { card: JudgeCard; skillId
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-[12.5px]">
-          <div className="text-ink-3">Requested model</div>
-          <div className="font-mono">{card.modelBinding.provider}/{card.modelBinding.modelId} · {card.modelBinding.modelVersion}</div>
+          <div className="text-ink-3">Execution binding</div>
+          <div className="font-mono">{describeExecutionBinding(card.executionBinding)}</div>
           <div className="text-ink-3">Rubric provenance</div>
           <div className="font-mono">{card.version.rubricProvenance}</div>
           <div className="text-ink-3">Known-failure agreement</div>

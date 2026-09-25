@@ -13,6 +13,7 @@ import { REDACTED_VALUE } from "../src/lib/redaction.js";
 
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 import { CapturingQueue, runPgSmoke, seedSkill } from "./pg-smoke-support.js";
+import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 runPgSmoke("PgRepository smoke", () => {
   it("prunes expired non-golden traces while preserving active golden cases", async () => {
@@ -107,7 +108,7 @@ runPgSmoke("PgRepository smoke", () => {
       await repo.createSkillVersion("skill_test", CreateSkillVersionInputSchema.parse({
         rubricMarkdown: "Pass correct answers; fail incorrect answers.",
         prompt: "Judge the trace.",
-        modelBinding: { provider: "mock", modelId: "mock", modelVersion: "test", temperature: 0 }
+        executionBinding: bindingInput(MOCK_BINDING)
       }), { projectId: "proj_test", actorUserId: "user_owner" });
       await repo.updateProjectSettings("proj_test", { traceRetentionDays: 30 }, { actorUserId: "user_owner" });
       const integration = await repo.createLangSmithIntegration("proj_test", { apiKey: "ls_test_key", projectName: "Delete Test" });

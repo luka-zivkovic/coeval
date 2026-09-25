@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import {
+  ExecutionBindingSchema,
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   mutableModelAlias,
-  type BinaryCalibrationCompletionEligibilityReason,
-  type ModelBinding
+  type BinaryCalibrationCompletionEligibilityReason
 } from "@rubrist/shared";
 
+import { legacyCalibrationBinding } from "../lib/execution-binding.js";
 import { canonicalJson, sha256Digest } from "../lib/canonical-json.js";
 import { skillDigest } from "../lib/assessment-receipt.js";
 
@@ -86,16 +87,23 @@ export async function deriveRunIdentity(
   if (skillVersion.verdictKind !== "binary") {
     throw repoError("unsupported", "binary calibration requires a binary evaluator version");
   }
-  if (skillVersion.modelBinding.topP !== undefined) {
-    throw repoError("unsupported", "sealed calibration v1 does not execute a top-p binding until every provider preserves it exactly");
-  }
-  if (mutableModelAlias(skillVersion.modelBinding.modelId) !== null) {
+  const modelBinding = legacyCalibrationBinding(skillVersion);
+  if (modelBinding === null) {
     throw repoError(
-      "ineligible",
-      `sealed calibration requires a pinned model id; "${skillVersion.modelBinding.modelId}" is a mutable alias under ${MUTABLE_MODEL_ALIAS_RULE_VERSION}`
+      "unsupported",
+      "sealed calibration v1 runs only a binding the v1 providers send exactly (a forced tool or function, no reasoning or top-p, no routing, Anthropic's 1,200 output tokens); calibration v2 runs every binding (Batch 8D)"
     );
   }
-  const requestedBinding = requestedBindingFor(skillVersion.modelBinding);
+  if (modelBinding.topP !== undefined) {
+    throw repoError("unsupported", "sealed calibration v1 does not execute a top-p binding until every provider preserves it exactly");
+  }
+  if (mutableModelAlias(modelBinding.modelId) !== null) {
+    throw repoError(
+      "ineligible",
+      `sealed calibration requires a pinned model id; "${modelBinding.modelId}" is a mutable alias under ${MUTABLE_MODEL_ALIAS_RULE_VERSION}`
+    );
+  }
+  const requestedBinding = requestedBindingFor(modelBinding);
   const providerPolicy = providerPolicyFor(requestedBinding);
   const providerPolicyBytes = Buffer.from(canonicalJson({
     contract: "rubrist/provider-data-handling-policy/v1",
@@ -613,7 +621,7 @@ export async function loadAuthorizedRun(
   knownRun?: RunRow
 ): Promise<BinaryCalibrationAuthorizedRun> {
   const result = await db.query(
-    `select run.*,version.rubric_markdown,version.prompt,version.output_schema,version.model_binding,
+    `select run.*,version.rubric_markdown,version.prompt,version.output_schema,version.execution_binding,version.custom_endpoint_url,
             auth_check.snapshot_digest,auth_check.recorded_at
      from binary_calibration_runs run
      join skill_versions version on version.id=run.skill_version_id
@@ -626,7 +634,11 @@ export async function loadAuthorizedRun(
   );
   const row = result.rows[0] ?? knownRun;
   if (!result.rows[0] || !row) throw repoError("state_conflict", "binary calibration authorization claim is stale");
-  const binding = parseJson(row.model_binding) as ModelBinding;
+  const binding = legacyCalibrationBinding({
+    executionBinding: ExecutionBindingSchema.parse(parseJson(row.execution_binding)),
+    customEndpointUrl: row.custom_endpoint_url == null ? null : String(row.custom_endpoint_url)
+  });
+  if (binding === null) throw repoError("unsupported", "sealed calibration v1 runs only a binding the v1 providers send exactly");
   return {
     claim: {
       runId: claim.runId,

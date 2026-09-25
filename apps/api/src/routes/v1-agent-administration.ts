@@ -11,6 +11,9 @@ import {
   CreateEvaluatorSuiteManifestInputSchema,
   CreateSkillVersionInputSchema,
   defaultJudgePromptTemplate,
+  defaultVerdictProtocol,
+  documentedReasoningDefault,
+  type ExecutionBindingInput,
   FINDINGS_CASE_SCAN_LIMIT,
   FINDINGS_VERDICT_SCAN_LIMIT,
   MinimumVerdictOutputSchema,
@@ -22,6 +25,7 @@ import {
   type V1GoldenResponse,
   type V1ProjectResponse
 } from "@rubrist/shared";
+import { executionBindingFromInput, executionBindingInputProblem } from "../lib/execution-binding.js";
 import type { RubristAuth } from "../lib/auth.js";
 import {
   bootstrapOwnerUserByEmail,
@@ -171,26 +175,18 @@ export function registerV1AgentAdministrationRoutes(
       }, 422);
     }
 
-    let modelBinding: AgentBootstrapResponse["modelBinding"];
+    let modelId: string;
+    let modelVersion: string;
     if (provider === "mock") {
       // 'mock' matches the id the mock catalog exposes; the runtime dispatches
       // on provider, not modelId.
-      modelBinding = {
-        provider,
-        modelId: input.skill.model.modelId ?? "mock",
-        modelVersion: input.skill.model.modelId ?? "mock",
-        temperature: input.skill.model.temperature
-      };
+      modelId = input.skill.model.modelId ?? "mock";
+      modelVersion = modelId;
     } else if (provider === "custom") {
-      modelBinding = {
-        provider,
-        modelId: input.skill.model.modelId!,
-        // No snapshot id exists for a custom gateway; modelVersion honestly
-        // repeats the requested id (see ModelBindingSchema).
-        modelVersion: input.skill.model.modelId!,
-        temperature: input.skill.model.temperature,
-        baseUrl: input.skill.model.baseUrl!
-      };
+      // No snapshot id exists for a custom gateway; modelVersion honestly
+      // repeats the requested id.
+      modelId = input.skill.model.modelId!;
+      modelVersion = modelId;
     } else {
       let catalog;
       try {
@@ -230,16 +226,29 @@ export function registerV1AgentAdministrationRoutes(
           }))
         }, 422);
       }
-      modelBinding = {
-        provider,
-        modelId: selected.id,
-        // Catalog `version` equals the model id (providers expose no separate
-        // snapshot id) — the pin records the requested model, not a dated
-        // snapshot. See ModelBindingSchema / spec/skill-format-v1.md.
-        modelVersion: selected.version,
-        temperature: input.skill.model.temperature
-      };
+      // Catalog `version` equals the model id (providers expose no separate
+      // snapshot id): the pin records the requested model, not a dated snapshot.
+      modelId = selected.id;
+      modelVersion = selected.version;
     }
+    // A headless bootstrap can't run the capability check, so it states the
+    // family's deterministic protocol and the documented default reasoning,
+    // and the binding resolves when a governed gate first needs it
+    // (ADR-0014 sections 2 to 4).
+    const executionBindingInput: ExecutionBindingInput = {
+      provider,
+      endpoint: provider === "custom" ? { kind: "custom", baseUrl: input.skill.model.baseUrl! } : { kind: "managed" },
+      modelId,
+      modelVersion,
+      sampling: { temperature: provider === "mock" ? null : input.skill.model.temperature, topP: null },
+      reasoning: documentedReasoningDefault(provider, modelId)?.reasoning ?? null,
+      outputTokenLimit: provider === "anthropic" ? 1_200 : null,
+      verdictProtocol: defaultVerdictProtocol(provider),
+      routing: provider === "openrouter" ? { requireParameters: true, allowFallbacks: false } : null
+    };
+    const bindingProblem = executionBindingInputProblem(executionBindingInput);
+    if (bindingProblem !== null) return c.json({ error: bindingProblem, code: "invalid_execution_binding", provider }, 422);
+    const { executionBinding } = executionBindingFromInput(executionBindingInput);
 
     if (!pairing && needsInitialOwner) {
       const result = await options.auth.api.signUpEmail({
@@ -332,7 +341,7 @@ export function registerV1AgentAdministrationRoutes(
       const versionInput = CreateSkillVersionInputSchema.parse({
         rubricMarkdown: input.skill.rubricMarkdown,
         prompt,
-        modelBinding,
+        executionBinding: executionBindingInput,
         outputSchema: MinimumVerdictOutputSchema,
         verdictKind: "binary",
         timeScope: "new"
@@ -397,7 +406,7 @@ export function registerV1AgentAdministrationRoutes(
         },
         mode: project.mode,
         rubricProvenance: "agent-drafted",
-        modelBinding,
+        executionBinding,
         apiKey,
         // The one-time key already travels in apiKey.key, so pre-filling the
         // wiring snippets adds no exposure and lets headless setups end wired.
@@ -675,6 +684,8 @@ export function registerV1AgentAdministrationRoutes(
     if (!parsed.success) {
       return c.json({ error: "Invalid criterion input", details: z.treeifyError(parsed.error) }, 400);
     }
+    const criterionBindingProblem = executionBindingInputProblem(parsed.data.evaluator.executionBinding);
+    if (criterionBindingProblem !== null) return c.json({ error: criterionBindingProblem }, 400);
     try {
       const detail = await repository.createCriterion(c.get("projectId"), parsed.data, {
         actorUserId: c.get("user")?.id

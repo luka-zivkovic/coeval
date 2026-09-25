@@ -20,7 +20,7 @@ run("clean-install database baseline", () => {
       expect(applied.rows).toEqual([
         {
           id: "0001_baseline",
-          checksum: "aee4aa37600dae179bb9488d0e0e10922631b9721a6a376d6af7d17268c8c6c6",
+          checksum: "41ca41f349fe75dd892c0bd32212f43fc68dcb6bfb9c59c606a2a91603bc3c47",
         }
       ]);
     } finally {
@@ -79,8 +79,8 @@ run("clean-install database baseline", () => {
       );
       await expect(pool.query(
         `insert into skill_versions
-           (id,skill_id,project_id,version,status,rubric_markdown,prompt,output_schema,model_binding,criterion_version_id)
-         values ('skillv_unpinned','skill_pins','project_pins','1.0.0','calibrating','rubric','prompt','{}','{}','criterionv_pins')`
+           (id,skill_id,project_id,version,status,rubric_markdown,prompt,output_schema,execution_binding,criterion_version_id)
+         values ('skillv_unpinned','skill_pins','project_pins','1.0.0','calibrating','rubric','prompt','{}','{"provider":"mock"}','criterionv_pins')`
       )).rejects.toMatchObject({ constraint: "skill_versions_regression_pin_by_status" });
     } finally {
       await cleanup();

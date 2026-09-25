@@ -13,6 +13,7 @@ import type { Queue, QueueJob, QueueName, QueueSendOptions } from "@rubrist/queu
 import { enqueueDueLangSmithImports } from "../src/workers/langsmith-poller.js";
 import { enqueueDueLangfuseImports } from "../src/workers/langfuse-poller.js";
 import { enqueueDueIronsideImports } from "../src/workers/ironside-poller.js";
+import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 const PROJECT_ID = "proj_langsmith_support";
 const TRACE = {
@@ -45,12 +46,7 @@ const criterionInput = {
   evaluator: {
     rubricMarkdown: "# Groundedness\n\nPass only when every material claim is supported.",
     prompt: "Judge groundedness using the rubric.\n{{rubric_markdown}}",
-    modelBinding: {
-      provider: "mock",
-      modelId: "mock",
-      modelVersion: "test",
-      temperature: 0
-    }
+    executionBinding: bindingInput(MOCK_BINDING)
   }
 };
 
@@ -110,6 +106,17 @@ describe("criterion and evaluator-suite API", () => {
     });
     expect(rejected.status).toBe(400);
 
+    const unsendable = await app.request("/api/v1/criteria", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        ...criterionInput,
+        evaluator: { ...criterionInput.evaluator, executionBinding: bindingInput(MOCK_BINDING, { verdictProtocol: "anthropic.forced-tool/v1" }) }
+      })
+    });
+    expect(unsendable.status).toBe(400);
+    await expect(unsendable.json()).resolves.toMatchObject({ error: expect.stringMatching(/^Invalid execution binding: /) });
+
     const createdResponse = await app.request("/api/v1/criteria", {
       method: "POST",
       headers,
@@ -152,7 +159,7 @@ describe("criterion and evaluator-suite API", () => {
       CreateSkillVersionInputSchema.parse({
         rubricMarkdown: criterionInput.evaluator.rubricMarkdown,
         prompt: criterionInput.evaluator.prompt,
-        modelBinding: criterionInput.evaluator.modelBinding
+        executionBinding: criterionInput.evaluator.executionBinding
       }),
       { projectId: PROJECT_ID }
     )).rejects.toBeInstanceOf(DatasetRevisionConflictError);
@@ -395,7 +402,7 @@ describe("criterion and evaluator-suite API", () => {
         criterionVersionId: revisedCriterion.version.id,
         rubricMarkdown: criterionInput.evaluator.rubricMarkdown,
         prompt: criterionInput.evaluator.prompt,
-        modelBinding: criterionInput.evaluator.modelBinding
+        executionBinding: criterionInput.evaluator.executionBinding
       }),
       { projectId: PROJECT_ID }
     );

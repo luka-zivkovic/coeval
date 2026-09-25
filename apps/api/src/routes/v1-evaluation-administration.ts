@@ -6,6 +6,7 @@ import {
   JudgeServiceRequestSchema,
   verdictLabelFromPayload
 } from "@rubrist/shared";
+import { LegacyEvidenceUnsupportedError, legacyModelBinding } from "../lib/execution-binding.js";
 import { contentDigest, sha256Digest } from "../lib/canonical-json.js";
 import {
   createStrictJudgeProvider,
@@ -190,6 +191,14 @@ export function registerV1EvaluationAdministrationRoutes(
     });
     if ("invalid" in resolvedVersion) return c.json({ error: resolvedVersion.invalid }, 400);
     const skillVersionId = resolvedVersion.id;
+    if (parsed.data.purpose === "release_evidence") {
+      const version = await repository.getSkillVersion(projectId, skillVersionId);
+      if (version && legacyModelBinding(version) === null) {
+        // Refused before any trace is imported or provider called (Batch 8D).
+        const refusal = new LegacyEvidenceUnsupportedError("An assessment receipt v1");
+        return c.json({ error: refusal.message, code: refusal.code }, 409);
+      }
+    }
 
     if (parsed.data.datasetId) {
       const dataset = await repository.getDatasetDetail(projectId, parsed.data.datasetId);

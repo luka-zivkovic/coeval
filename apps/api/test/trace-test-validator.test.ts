@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { StoredModelBinding, TraceTestRevision } from "@rubrist/shared";
+import type { ExecutionBinding, TraceTestRevision } from "@rubrist/shared";
 import {
   buildTraceTestValidationPrompt,
   hasUsableTraceTestExample,
@@ -7,11 +7,9 @@ import {
   type TraceTestValidationRunner
 } from "../src/lib/trace-test-validator.js";
 
-const binding: StoredModelBinding = {
+const binding: Pick<ExecutionBinding, "provider" | "modelId"> = {
   provider: "anthropic",
-  modelId: "claude-sonnet-test",
-  modelVersion: "2026-08-20",
-  temperature: 0
+  modelId: "claude-sonnet-test"
 };
 
 const revision: TraceTestRevision = {

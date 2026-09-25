@@ -4,6 +4,7 @@ import type { Pool } from "pg";
 import { AgentBootstrapRequestSchema, CreateSkillVersionInputSchema, SkillVersionSchema, VerdictPayloadSchema, effectiveHumanLabel, verdictComparableScore, verdictLabelFromPayload } from "@rubrist/shared";
 import { bootstrapRateLimitIdentity, createApp } from "../src/app.js";
 import { DemoRepository, buildGoldenSetHealthSummary } from "../src/repository.js";
+import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 describe("Rubrist Hono API", () => {
   const app = createApp();
@@ -66,6 +67,10 @@ describe("Rubrist Hono API", () => {
       project: { apiKeyName: "Agent bootstrap" },
       skill: { model: { temperature: 0 } }
     });
+    expect(AgentBootstrapRequestSchema.parse({
+      ...base,
+      skill: { ...base.skill, model: { provider: "anthropic", modelId: "claude-opus-5-5", temperature: null } }
+    }).skill.model.temperature).toBeNull();
     expect(() => AgentBootstrapRequestSchema.parse({
       ...base,
       skill: { ...base.skill, model: { provider: "custom", baseUrl: "https://judge.example/v1" } }
@@ -261,7 +266,7 @@ describe("Rubrist Hono API", () => {
     const baseInput = {
       rubricMarkdown: "Test rubric.",
       prompt: "Test prompt.",
-      modelBinding: { provider: "mock", modelId: "mock", modelVersion: "test", temperature: 0 }
+      executionBinding: bindingInput(MOCK_BINDING)
     };
     expect(() => CreateSkillVersionInputSchema.parse({ ...baseInput, verdictKind: "scalar" })).toThrow();
     expect(() => CreateSkillVersionInputSchema.parse({ ...baseInput, verdictKind: "scalar", scalarRange: [1, 1] })).toThrow();
@@ -285,7 +290,8 @@ describe("Rubrist Hono API", () => {
       status: "calibrating",
       rubricMarkdown: "x",
       prompt: "x",
-      modelBinding: { provider: "mock", modelId: "mock", modelVersion: "test", temperature: 0 },
+      executionBinding: structuredClone(MOCK_BINDING),
+      customEndpointUrl: null,
       outputSchema: { type: "object" },
       goldenSetAgreement: null,
       tooStrictCount: 0,

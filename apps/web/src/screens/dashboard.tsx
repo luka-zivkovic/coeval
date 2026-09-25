@@ -19,6 +19,7 @@ import { useMode } from "@/hooks/use-mode";
 import { isBench, journeyStage, takeSetupReceipt, clearSetupReceipt } from "@/lib/journey";
 import { skillVersionStateLabel } from "../lib/skill-presentation.js";
 import type { CapabilityGap } from "@rubrist/shared";
+import { describeExecutionBinding } from "@rubrist/shared";
 
 const QUEUE_VOLUME: Record<CapabilityGap["severity"], string> = {
   high:   "High unresolved volume",
@@ -410,10 +411,10 @@ export function DashboardScreen() {
             <Separator />
             <div className="flex flex-col gap-1.5 font-mono text-[11px] text-ink-3">
               <div>
-                Model · <span className="text-ink">{skill.currentVersion.modelBinding.provider}/{skill.currentVersion.modelBinding.modelId}</span>
+                Model · <span className="text-ink">{skill.currentVersion.executionBinding.provider}/{skill.currentVersion.executionBinding.modelId}</span>
               </div>
               <div>
-                Requested · <span className="text-ink">{skill.currentVersion.modelBinding.modelId}</span> · catalog identity {skill.currentVersion.modelBinding.modelVersion} · temp {skill.currentVersion.modelBinding.temperature}
+                Binding · <span className="text-ink">{describeExecutionBinding(skill.currentVersion.executionBinding)}</span>
               </div>
               <div>
                 Owner · <span className="text-ink">{skill.ownerName}</span>

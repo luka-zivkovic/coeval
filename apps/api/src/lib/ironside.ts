@@ -144,7 +144,7 @@ export class IronsideClient implements IronsideTraceSource, LangSmithFeedbackWri
         metadata: {
           judgeRunId: input.sourceInfo?.judgeRunId,
           sourceTraceVersion: input.sourceInfo?.sourceTraceVersion,
-          modelBinding: input.sourceInfo?.modelBinding,
+          executionBinding: input.sourceInfo?.executionBinding,
           protocolVersion: IRONSIDE_EVALUATOR_PROTOCOL_VERSION
         }
       })

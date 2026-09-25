@@ -63,7 +63,7 @@ describe("trace-test check API", () => {
       status: "passed",
       method: "automated",
       diagnostic: null,
-      evaluator: { provider: "anthropic", model: "claude-sonnet-4-6", version: "2026-04-15" },
+      evaluator: { provider: "anthropic", model: "claude-sonnet-4-6", version: "claude-sonnet-4-6" },
       badEvidence: { output: { messages: [{ role: "assistant", content: "Your refund is guaranteed." }] }, result: "fail", attempts: 1, usage: { inputTokens: 30, outputTokens: 5 } },
       goodEvidence: { output: { text: "I will check eligibility first." }, result: "pass", attempts: 1, usage: null }
     });

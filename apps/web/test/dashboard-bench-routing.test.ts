@@ -87,12 +87,18 @@ function productionBench(input: { judged: number; golden: number }): DashboardSu
         goldenSetAgreement: null,
         tooStrictCount: 0,
         tooLenientCount: 0,
-        modelBinding: {
+        executionBinding: {
           provider: "openai",
+          endpoint: { kind: "managed" },
           modelId: "gpt-5",
           modelVersion: "gpt-5",
-          temperature: 0
-        }
+          sampling: { temperature: 0, topP: null },
+          reasoning: null,
+          outputTokenLimit: null,
+          verdictProtocol: "openai.structured-output/v1",
+          routing: null
+        },
+        customEndpointUrl: null
       }
     },
     currentVersionResultCount: input.judged,

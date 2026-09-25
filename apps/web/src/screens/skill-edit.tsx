@@ -23,6 +23,7 @@ import {
 import { useDashboard } from "@/lib/dashboard-context";
 import { useCriterion } from "@/lib/criterion-context";
 import { skillCriterionVersionId } from "@/lib/criterion-scope";
+import { executionBindingFields, executionBindingInputFromFields } from "@/lib/execution-binding-draft";
 import { resolveJudgeProviderSelection } from "@/lib/judge-provider-selection";
 import { firstResultPath, isBench, markSetupReceipt } from "@/lib/journey";
 import {
@@ -156,6 +157,27 @@ export function SkillEditScreen() {
   const [result, setResult] = useState<CompletedSkillVersionResult | null>(null);
   const [overrideReason, setOverrideReason] = useState("");
 
+  // Load a version's binding into the editor fields. A provider the project
+  // can't use now (no key, or not yet editable here) falls back to an
+  // available one with empty model fields.
+  const applyBindingFields = useCallback((
+    version: Pick<SkillVersion, "executionBinding" | "customEndpointUrl">,
+    options: ReadonlyArray<JudgeProviderAvailabilityItem>
+  ) => {
+    const stored = version.executionBinding.provider;
+    const { provider: selectedProvider, preservesBinding } = resolveJudgeProviderSelection(
+      stored === "typesafe" ? "mock" : stored,
+      options
+    );
+    const fields = executionBindingFields(version);
+    const keeps = preservesBinding && stored !== "typesafe";
+    setProvider(selectedProvider);
+    setModelId(keeps ? fields.modelId : "");
+    setModelVersion(keeps ? fields.modelVersion : "");
+    setBaseUrl(keeps && selectedProvider === "custom" ? fields.baseUrl : "");
+    setTemperature(keeps ? fields.temperature : selectedProvider === "mock" ? "" : "0");
+  }, []);
+
   // Apply a starter template's content over the form. Model binding stays as
   // whatever's loaded (the team's existing pinned model) — starters
   // deliberately don't include a binding, to avoid pinning a version that drifts.
@@ -187,14 +209,8 @@ export function SkillEditScreen() {
   const resetToCurrent = useCallback(() => {
     if (!skill) return;
     applyCurrentVersion(skill);
-    const binding = skill.currentVersion.modelBinding;
-    const { provider: resetProvider, preservesBinding } = resolveJudgeProviderSelection(binding.provider, providerOptions);
-    setProvider(resetProvider);
-    setModelId(preservesBinding ? binding.modelId : "");
-    setModelVersion(preservesBinding ? binding.modelVersion : "");
-    setBaseUrl(preservesBinding && resetProvider === "custom" ? binding.baseUrl ?? "" : "");
-    setTemperature(String(binding.temperature));
-  }, [skill, providerOptions, applyCurrentVersion]);
+    applyBindingFields(skill.currentVersion, providerOptions);
+  }, [skill, providerOptions, applyCurrentVersion, applyBindingFields]);
 
   const editFromVersion = useCallback((version: SkillVersion) => {
     setRubric(version.rubricMarkdown);
@@ -204,17 +220,8 @@ export function SkillEditScreen() {
     setScalarRange(version.scalarRange);
     setAppliedStarter(null);
     setStarterSuppliedOutputContract(false);
-    const binding = version.modelBinding;
-    const { provider: selectedProvider, preservesBinding } = resolveJudgeProviderSelection(
-      binding.provider,
-      providerOptions
-    );
-    setProvider(selectedProvider);
-    setModelId(preservesBinding ? binding.modelId : "");
-    setModelVersion(preservesBinding ? binding.modelVersion : "");
-    setBaseUrl(preservesBinding && selectedProvider === "custom" ? binding.baseUrl ?? "" : "");
-    setTemperature(String(binding.temperature));
-  }, [providerOptions]);
+    applyBindingFields(version, providerOptions);
+  }, [providerOptions, applyBindingFields]);
 
   // Initial load: fetch the skill, seed model binding, then apply either the
   // requested starter (deep-link) or the latest version's content. Latest —
@@ -252,15 +259,7 @@ export function SkillEditScreen() {
       const v = s.currentVersion;
       setBaseVersion(v);
       setProviderOptions(availability.providers);
-      const { provider: selectedProvider, preservesBinding } = resolveJudgeProviderSelection(
-        v.modelBinding.provider,
-        availability.providers
-      );
-      setProvider(selectedProvider);
-      setModelId(preservesBinding ? v.modelBinding.modelId : "");
-      setModelVersion(preservesBinding ? v.modelBinding.modelVersion : "");
-      setBaseUrl(preservesBinding && selectedProvider === "custom" ? v.modelBinding.baseUrl ?? "" : "");
-      setTemperature(String(v.modelBinding.temperature));
+      applyBindingFields(v, availability.providers);
 
       if (firstRun) {
         const savedDraft = loadOnboardingCheckDraft(s.projectId, s.id);
@@ -321,7 +320,7 @@ export function SkillEditScreen() {
     } finally {
       if (generation === loadGeneration.current) setLoading(false);
     }
-  }, [starterParam, firstRun, applyStarter, applyCurrentVersion, selectedCriterionId, resumeVersionId, setSearchParams]);
+  }, [starterParam, firstRun, applyStarter, applyCurrentVersion, applyBindingFields, selectedCriterionId, resumeVersionId, setSearchParams]);
 
   const chooseOnboardingStarter = useCallback((starter: StarterSkill, source: OnboardingCheckDraft["decisionSource"]) => {
     if (!skill) return;
@@ -487,10 +486,11 @@ export function SkillEditScreen() {
     };
   }, [provider, providerOptions, skill?.id]);
 
-  // A blank string coerces to 0 via Number(""), which would silently submit
-  // temperature 0 the user never typed. Require a non-blank, finite value.
+  // A blank temperature is not sent (ADR-0014 section 2); it is never read as
+  // 0, which Number("") would silently produce. The mock takes no sampling.
   const parsedTemperature = Number(temperature);
-  const temperatureValid = temperature.trim() !== "" && Number.isFinite(parsedTemperature) && parsedTemperature >= 0 && parsedTemperature <= 2;
+  const temperatureValid = provider === "mock" || temperature.trim() === "" ||
+    (Number.isFinite(parsedTemperature) && parsedTemperature >= 0 && parsedTemperature <= 2);
   const baseUrlValid = provider !== "custom" || /^https?:\/\/\S+$/i.test(baseUrl.trim());
   const providerAvailable = providerOptions.some((option) => option.provider === provider && option.available);
   // The pinned model is allowed to be absent from the fetched catalog (it may
@@ -511,9 +511,13 @@ export function SkillEditScreen() {
     (extra?: { overrideReason?: string }): CreateSkillVersionInput | null => {
       if (!skill) return null;
       const v = skill.currentVersion;
-      if (temperature.trim() === "") return null;
-      const temp = Number(temperature);
-      if (!Number.isFinite(temp) || temp < 0 || temp > 2) return null;
+      // Settings not in the editor carry over from the version being edited,
+      // the same base the change review compares against.
+      const executionBinding = executionBindingInputFromFields(
+        { provider, modelId, modelVersion, baseUrl, temperature },
+        (baseVersion ?? v).executionBinding
+      );
+      if (executionBinding === null) return null;
       const regenerateOutputSchema = shouldRegenerateVerdictOutputSchema({
         firstRun,
         starterSuppliedContract: starterSuppliedOutputContract,
@@ -528,15 +532,7 @@ export function SkillEditScreen() {
         ...(skillCriterionVersionId(skill) ? { criterionVersionId: skillCriterionVersionId(skill)! } : {}),
         rubricMarkdown: rubric,
         prompt,
-        modelBinding: {
-          provider,
-          modelId: modelId.trim(),
-          modelVersion: modelVersion.trim(),
-          temperature: temp,
-          // topP has no UI field — it rides along from the current version.
-          ...(v.modelBinding.topP !== undefined ? { topP: v.modelBinding.topP } : {}),
-          ...(provider === "custom" ? { baseUrl: baseUrl.trim() } : {})
-        },
+        executionBinding,
         outputSchema: regenerateOutputSchema
           ? verdictOutputSchema({ verdictKind, scalarRange, categoricalChoiceScores: choiceScores })
           : v.outputSchema,
@@ -550,7 +546,7 @@ export function SkillEditScreen() {
       };
       return input;
     },
-    [skill, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange, firstRun, starterSuppliedOutputContract]
+    [skill, baseVersion, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange, firstRun, starterSuppliedOutputContract]
   );
 
   const canSave =

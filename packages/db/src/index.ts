@@ -1,4 +1,4 @@
-import { MinimumVerdictOutputSchema } from "@rubrist/shared";
+import { MinimumVerdictOutputSchema, SEEDED_DEFAULT_EXECUTION_BINDING } from "@rubrist/shared";
 import type { CapabilityGap, DashboardSummary, ExceptionCase, GoldenSetEntry, Project, Skill, VerdictRecord } from "@rubrist/shared";
 
 export { runMigrations } from "./migrate.js";
@@ -35,12 +35,8 @@ export const demoSkill: Skill = {
     rubricMarkdown: "# Support Answer Quality\n\nPass useful, correct, grounded answers. Fail incorrect, unsafe, or unhelpful answers. Mark missing context ambiguous.",
     prompt:
       "Judge support answer quality against the review guide below.\n\n<review_guide>\n{{rubric_markdown}}\n</review_guide>",
-    modelBinding: {
-      provider: "anthropic",
-      modelId: "claude-sonnet-4-6",
-      modelVersion: "2026-04-15",
-      temperature: 0
-    },
+    executionBinding: structuredClone(SEEDED_DEFAULT_EXECUTION_BINDING),
+    customEndpointUrl: null,
     outputSchema: MinimumVerdictOutputSchema,
     goldenSetAgreement: 0.86,
     tooStrictCount: 5,

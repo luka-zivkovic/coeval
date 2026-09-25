@@ -103,7 +103,7 @@ export class DemoJudgeFeedbackRepository implements JudgeFeedbackRepositoryPort 
       id,
       projectId: input.projectId,
       provider: input.provider,
-      judgeRun: { ...run, modelBinding: demoSkill.currentVersion.modelBinding },
+      judgeRun: { ...run, executionBinding: demoSkill.currentVersion.executionBinding },
       sourceTraceId: traceSource.sourceTraceId,
       sourceTraceVersion: traceSource.sourceTraceVersion ?? null,
       criterionStableKey: "response-quality",

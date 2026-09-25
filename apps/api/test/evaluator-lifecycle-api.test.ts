@@ -6,6 +6,7 @@ import {
 import { EvaluatorLifecycleRepositoryError, type EvaluatorLifecycleRepository } from "../src/evaluator-lifecycle/repository.js";
 import { createEvaluatorLifecycleRouter } from "../src/evaluator-lifecycle/routes.js";
 import { evaluatorCandidateRequestDigest } from "../src/lib/evaluator-lifecycle.js";
+import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 function repository(): EvaluatorLifecycleRepository {
   return {
@@ -25,18 +26,16 @@ const CANDIDATE_INPUT = {
   truthDatasetRevisionId: "truth", expectedTruthRevisionDigest: DIGEST,
   expectedTruthContentDigest: DIGEST, skillName: "Evaluator",
   skillDescription: "Exact evaluator", rubricMarkdown: "Exact rubric",
-  prompt: "Judge the response.", modelBinding: {
-    provider: "mock" as const, modelId: "mock", modelVersion: "v1", temperature: 0
-  }, outputSchema: MinimumVerdictOutputSchema, idempotencyKey: "candidate-key"
+  prompt: "Judge the response.", executionBinding: bindingInput(MOCK_BINDING),
+  outputSchema: MinimumVerdictOutputSchema, idempotencyKey: "candidate-key"
 };
 
 function candidateResult(replayed: boolean): EvaluatorCandidateCreateResult {
   const version = {
     id: "skill-version", skillId: "skill", criterionVersionId: "criterion-version",
     version: "1.0.0", status: "calibrating" as const, rubricMarkdown: "Exact rubric",
-    prompt: "Judge the response.", modelBinding: {
-      provider: "mock" as const, modelId: "mock", modelVersion: "v1", temperature: 0
-    }, outputSchema: MinimumVerdictOutputSchema, goldenSetAgreement: null,
+    prompt: "Judge the response.", executionBinding: structuredClone(MOCK_BINDING), customEndpointUrl: null,
+    outputSchema: MinimumVerdictOutputSchema, goldenSetAgreement: null,
     tooStrictCount: 0, tooLenientCount: 0, ambiguousCount: 0, knownLimitations: [],
     verdictKind: "binary" as const, scalarRange: null, categoricalChoiceScores: null,
     rubricProvenance: "human-authored" as const, regressionDatasetRevisionId: "regression",
@@ -151,14 +150,14 @@ describe("evaluator lifecycle API boundary", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         ...CANDIDATE_INPUT,
-        modelBinding: { ...CANDIDATE_INPUT.modelBinding, provider: "Anthropic", temperature: 3 }
+        executionBinding: { ...CANDIDATE_INPUT.executionBinding, provider: "anthropic", sampling: { temperature: 3, topP: null } }
       })
     });
     expect(response.status).toBe(400);
     expect(repo.createCandidate).not.toHaveBeenCalled();
   });
 
-  it("normalizes candidate provider identifiers before repository writes", async () => {
+  it("takes only canonical provider identifiers, which are evaluator identity", async () => {
     const repo = repository();
     vi.mocked(repo.createCandidate).mockResolvedValue(candidateResult(false));
     const owner = createEvaluatorLifecycleRouter({
@@ -172,14 +171,11 @@ describe("evaluator lifecycle API boundary", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         ...CANDIDATE_INPUT,
-        modelBinding: { ...CANDIDATE_INPUT.modelBinding, provider: " Mock " }
+        executionBinding: { ...CANDIDATE_INPUT.executionBinding, provider: " Mock " }
       })
     });
-    expect(response.status).toBe(201);
-    expect(repo.createCandidate).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ modelBinding: expect.objectContaining({ provider: "mock" }) })
-    );
+    expect(response.status).toBe(400);
+    expect(repo.createCandidate).not.toHaveBeenCalled();
   });
 
   it("answers a mutable model alias with 422 and the matched rule", async () => {
@@ -198,7 +194,7 @@ describe("evaluator lifecycle API boundary", () => {
     const response = await owner.request("/candidates", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...CANDIDATE_INPUT, modelBinding: { ...CANDIDATE_INPUT.modelBinding, modelId: "auto" } })
+      body: JSON.stringify({ ...CANDIDATE_INPUT, executionBinding: { ...CANDIDATE_INPUT.executionBinding, modelId: "auto" } })
     });
     expect(response.status).toBe(422);
     expect(await response.json()).toMatchObject({

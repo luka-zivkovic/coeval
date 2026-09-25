@@ -5,6 +5,7 @@ import { CreateSkillVersionInputSchema, type EvalItemJob, type GateRunJob } from
 import { DemoRepository, GateRunBindingMismatchError } from "../src/repository.js";
 import { registerEvalRunWorkers } from "../src/workers/eval-run.js";
 import { registerGateRunWorker } from "../src/workers/gate.js";
+import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 const PROJECT = "proj_langsmith_support";
 
@@ -139,7 +140,7 @@ describe("queue retry exhaustion terminalizes domain state", () => {
       CreateSkillVersionInputSchema.parse({
         rubricMarkdown: "Judge support quality.",
         prompt: "Judge the answer.",
-        modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 }
+        executionBinding: bindingInput(MOCK_BINDING)
       }),
       { projectId: PROJECT }
     );

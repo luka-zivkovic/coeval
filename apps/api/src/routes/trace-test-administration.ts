@@ -10,8 +10,8 @@ import {
   RunTraceTestValidationInputSchema,
   TraceTestFunnelEventInputSchema
 } from "@rubrist/shared";
+import { verifiedEndpointUrl } from "../lib/execution-binding.js";
 import {
-  openAIJudgeProviderBaseUrl,
   resolveJudgeProviderApiKey
 } from "../lib/judge-provider.js";
 import {
@@ -137,9 +137,9 @@ export function registerTraceTestAdministrationRoutes(
       if (!(error instanceof NoCurrentSkillError)) throw error;
       assistedVersion = null;
     }
-    const binding = assistedVersion?.modelBinding;
+    const binding = assistedVersion?.executionBinding;
     const provider = binding?.provider ?? null;
-    if (!binding || !provider || provider === "mock") {
+    if (!binding || !provider || provider === "mock" || provider === "typesafe") {
       return c.json({
         status: "unavailable",
         reason: "unsupported_provider",
@@ -160,6 +160,14 @@ export function registerTraceTestAdministrationRoutes(
         error: error instanceof Error ? error.message : "Evaluator is not authorized for trace-test drafting.",
         code: "evaluator_not_authorized"
       }, 409);
+    }
+    const draftEndpoint = verifiedEndpointUrl(assistedVersion!);
+    if (!draftEndpoint.ok) {
+      return c.json({
+        status: "unavailable",
+        reason: "unsupported_provider",
+        message: "The evaluator's endpoint isn't configured as its binding names. The manual draft is ready instead."
+      });
     }
     const projectCredential = await repository.getJudgeProviderCredential(projectId, provider);
     const apiKey = resolveJudgeProviderApiKey(provider, projectCredential ?? undefined);
@@ -190,11 +198,7 @@ export function registerTraceTestAdministrationRoutes(
           evidence
         }),
         signal: controller.signal,
-        ...(provider === "openai" && openAIJudgeProviderBaseUrl()
-          ? { baseUrl: openAIJudgeProviderBaseUrl() }
-          : provider === "custom" && binding.baseUrl
-            ? { baseUrl: binding.baseUrl }
-            : {})
+        ...(draftEndpoint.baseUrl === null ? {} : { baseUrl: draftEndpoint.baseUrl })
       });
       const content = parseAssistedTraceTestContent(raw);
       return c.json({
@@ -352,9 +356,9 @@ export function registerTraceTestAdministrationRoutes(
         if (!(error instanceof NoCurrentSkillError)) throw error;
         validationVersion = null;
       }
-      const binding = validationVersion?.modelBinding;
+      const binding = validationVersion?.executionBinding;
       const provider = binding?.provider ?? null;
-      if (!binding || !provider || provider === "mock") {
+      if (!binding || !provider || provider === "mock" || provider === "typesafe") {
         const validation = await recordUnavailable("An AI checker is not configured for this project. Review the examples manually instead.");
         return c.json({ validation }, 201);
       }
@@ -372,6 +376,11 @@ export function registerTraceTestAdministrationRoutes(
           error: error instanceof Error ? error.message : "Evaluator is not authorized for trace-test validation.",
           code: "evaluator_not_authorized"
         }, 409);
+      }
+      const validationEndpoint = verifiedEndpointUrl(validationVersion!);
+      if (!validationEndpoint.ok) {
+        const validation = await recordUnavailable("The AI checker's endpoint isn't configured as its binding names. Review the examples manually instead.");
+        return c.json({ validation }, 201);
       }
       const projectCredential = await repository.getJudgeProviderCredential(projectId, provider);
       const apiKey = resolveJudgeProviderApiKey(provider, projectCredential ?? undefined);
@@ -393,11 +402,7 @@ export function registerTraceTestAdministrationRoutes(
         timeoutMs: TRACE_TEST_VALIDATION_TIMEOUT_MS,
         maxAttempts: TRACE_TEST_VALIDATION_MAX_ATTEMPTS,
         ...(options.traceTestValidationRunner ? { runner: options.traceTestValidationRunner } : {}),
-        ...(provider === "openai" && openAIJudgeProviderBaseUrl()
-          ? { baseUrl: openAIJudgeProviderBaseUrl() }
-          : provider === "custom" && binding.baseUrl
-            ? { baseUrl: binding.baseUrl }
-            : {})
+        ...(validationEndpoint.baseUrl === null ? {} : { baseUrl: validationEndpoint.baseUrl })
       });
       const validation = await repository.recordTraceTestValidation({
         projectId,
@@ -493,3 +498,4 @@ export function registerTraceTestAdministrationRoutes(
     }
   });
 }
+

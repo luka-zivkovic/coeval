@@ -4,6 +4,7 @@ import {
   type RegressionRunResult,
   type SkillVersion
 } from "@rubrist/shared";
+import { sameExecutionBinding } from "./execution-binding-draft.js";
 
 export function knownFailureGateSummary(goldenSize: number): string {
   if (goldenSize < GOLDEN_GATE_ARMS_AT) {
@@ -13,15 +14,6 @@ export function knownFailureGateSummary(goldenSize: number): string {
     return `Known-failure check enabled with ${goldenSize} active reference case${goldenSize === 1 ? "" : "s"}. ${goldenSize}/${GOLDEN_GATE_RECOMMENDED} toward the recommended starting set.`;
   }
   return `Known-failure check enabled with ${goldenSize} active reference cases. The recommended starting set of ${GOLDEN_GATE_RECOMMENDED} has been reached.`;
-}
-
-export function sameModelBinding(left: SkillVersion["modelBinding"], right: SkillVersion["modelBinding"]): boolean {
-  return left.provider === right.provider &&
-    left.modelId === right.modelId &&
-    left.modelVersion === right.modelVersion &&
-    left.temperature === right.temperature &&
-    left.topP === right.topP &&
-    left.baseUrl === right.baseUrl;
 }
 
 export function verdictOutputContractChanged(
@@ -47,7 +39,7 @@ export function skillVersionChangeLabels(current: SkillVersion, previous?: Skill
   const labels: string[] = [];
   if (current.rubricMarkdown !== previous.rubricMarkdown) labels.push("review guide");
   if (current.prompt !== previous.prompt) labels.push("judge instructions");
-  if (!sameModelBinding(current.modelBinding, previous.modelBinding)) labels.push("requested model");
+  if (!sameExecutionBinding(current, previous)) labels.push("execution binding");
   if (
     current.verdictKind !== previous.verdictKind ||
     JSON.stringify(current.outputSchema) !== JSON.stringify(previous.outputSchema) ||

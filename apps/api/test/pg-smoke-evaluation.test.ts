@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 
 import { runMigrations } from "@rubrist/db";
 
-import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema, type JudgeProviderId } from "@rubrist/shared";
+import { CreateSkillVersionInputSchema, MinimumVerdictOutputSchema } from "@rubrist/shared";
 import { RegressionGateJudgeError, RegressionGateUnavailableError } from "../src/repository.js";
 import { PgRepository } from "../src/repository.pg.js";
 
@@ -13,6 +13,7 @@ import { EXCLUDED_VALUE, REDACTED_VALUE } from "../src/lib/redaction.js";
 
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 import { runPgSmoke, seedCriterion, seedSkill } from "./pg-smoke-support.js";
+import { MOCK_BINDING, SEEDED_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 runPgSmoke("PgRepository smoke", () => {
   it("async regression gate: pending insert -> gate.run worker -> recorded run + status flip (M0 C5a)", async () => {
@@ -29,7 +30,7 @@ runPgSmoke("PgRepository smoke", () => {
       const pending = await repo.createSkillVersionPending("skill_test", CreateSkillVersionInputSchema.parse({
         rubricMarkdown: "# Gate smoke rubric",
         prompt: "Judge with pass/fail/ambiguous.",
-        modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 },
+        executionBinding: bindingInput(MOCK_BINDING),
         verdictKind: "binary"
       }), { projectId: "proj_test" });
       const stored = await pool.query(`select status from skill_versions where id = $1`, [pending.id]);
@@ -56,7 +57,7 @@ runPgSmoke("PgRepository smoke", () => {
       const doomed = await repo.createSkillVersionPending("skill_test", CreateSkillVersionInputSchema.parse({
         rubricMarkdown: "# Gate failure rubric",
         prompt: "Judge with pass/fail/ambiguous.",
-        modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 },
+        executionBinding: bindingInput(MOCK_BINDING),
         verdictKind: "binary"
       }), { projectId: "proj_test" });
       const doomedJob = {
@@ -265,7 +266,7 @@ runPgSmoke("PgRepository smoke", () => {
       const insertVersion = (id: string, version: string, status: string, createdAt: string, regressionRevisionId: string | null = null) =>
         pool.query(
           `insert into skill_versions
-           (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, model_binding,
+           (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, execution_binding,
             regression_dataset_revision_id, criterion_version_id, created_at)
            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'criterionv_test',$11)`,
           [
@@ -277,7 +278,7 @@ runPgSmoke("PgRepository smoke", () => {
             "Pass correct answers.",
             "Judge the trace.",
             JSON.stringify(MinimumVerdictOutputSchema),
-            JSON.stringify({ provider: "mock", modelId: "mock", modelVersion: "test", temperature: 0 }),
+            JSON.stringify(MOCK_BINDING),
             regressionRevisionId,
             createdAt
           ]
@@ -343,7 +344,7 @@ runPgSmoke("PgRepository smoke", () => {
         {
           rubricMarkdown: "Pass correct answers.",
           prompt: "Judge the trace.",
-          modelBinding: { provider: "mock", modelId: "mock", modelVersion: "test", temperature: 0 },
+          executionBinding: bindingInput(MOCK_BINDING),
           outputSchema: MinimumVerdictOutputSchema,
           verdictKind: "binary",
           timeScope: "new"
@@ -373,7 +374,8 @@ runPgSmoke("PgRepository smoke", () => {
     try {
       await runMigrations(pool);
       const factoryCalls: string[] = [];
-      const recordingFactory = (binding: { provider: string; modelId: string }) => {
+      const recordingFactory = (version: { executionBinding: { provider: string; modelId: string } }) => {
+        const binding = version.executionBinding;
         factoryCalls.push(`${binding.provider}/${binding.modelId}`);
         return {
           name: "recording",
@@ -409,7 +411,7 @@ runPgSmoke("PgRepository smoke", () => {
         {
           rubricMarkdown: "Pass correct answers.",
           prompt: "Judge the trace.",
-          modelBinding: { provider: "anthropic", modelId: "claude-sonnet-4-6", modelVersion: "20251015", temperature: 0 },
+          executionBinding: bindingInput(SEEDED_BINDING),
           outputSchema: MinimumVerdictOutputSchema,
           verdictKind: "binary",
           timeScope: "new"
@@ -439,10 +441,10 @@ runPgSmoke("PgRepository smoke", () => {
       await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
       await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
 
-      const versionInput = (binding: { provider: JudgeProviderId }) => ({
+      const versionInput = () => ({
         rubricMarkdown: "Pass correct answers.",
         prompt: "Judge the trace.",
-        modelBinding: { provider: binding.provider, modelId: "m", modelVersion: "v", temperature: 0 },
+        executionBinding: bindingInput(SEEDED_BINDING, { modelId: "m", modelVersion: "v" }),
         outputSchema: MinimumVerdictOutputSchema,
         verdictKind: "binary" as const,
         timeScope: "new" as const
@@ -459,7 +461,7 @@ runPgSmoke("PgRepository smoke", () => {
       await pool.query(`delete from skills`);
       await seedSkill(pool);
       await expect(
-        mockFallbackRepo.createSkillVersion("skill_test", versionInput({ provider: "anthropic" }), context)
+        mockFallbackRepo.createSkillVersion("skill_test", versionInput(), context)
       ).rejects.toThrow(RegressionGateUnavailableError);
 
       // A provider that throws mid-gate surfaces as the typed judge error
@@ -487,7 +489,7 @@ runPgSmoke("PgRepository smoke", () => {
         [imported.caseId, imported.rawTraceId]
       );
       await expect(
-        failingRepo.createSkillVersion("skill_test", versionInput({ provider: "anthropic" }), context)
+        failingRepo.createSkillVersion("skill_test", versionInput(), context)
       ).rejects.toThrow(RegressionGateJudgeError);
     } finally {
       await cleanup();

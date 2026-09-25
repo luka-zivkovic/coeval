@@ -1,3 +1,4 @@
+import { executionBindingFromInput } from "../lib/execution-binding.js";
 import { randomUUID } from "node:crypto";
 import type { Trace } from "@rubrist/audit/runtime";
 import {
@@ -172,7 +173,8 @@ export class PgSkillLifecycleRepository implements SkillLifecycleRepositoryPort 
               end as version_status,
               sv.rubric_markdown,
               sv.prompt,
-              sv.model_binding,
+              sv.execution_binding,
+              sv.custom_endpoint_url,
               sv.output_schema,
               sv.golden_set_agreement,
               sv.too_strict_count,
@@ -309,16 +311,20 @@ export class PgSkillLifecycleRepository implements SkillLifecycleRepositoryPort 
   // Inserts the version in `calibrating` with no regression run. The strict
   // provider refusal runs HERE so a 503 never leaves a pending row behind.
   async createSkillVersionPending(skillId: string, input: CreateSkillVersionInput, context: CreateSkillVersionContext): Promise<SkillVersion> {
-    const submitProvider = input.modelBinding.provider;
+    const stored = executionBindingFromInput(input.executionBinding);
+    const submitProvider = stored.executionBinding.provider;
     const suppliedCredential = context.agentSetup?.providerCredential;
     const submitKey = suppliedCredential && suppliedCredential.provider === submitProvider
       ? suppliedCredential.apiKey
-      : submitProvider && submitProvider !== "mock"
+      : submitProvider !== "mock" && submitProvider !== "typesafe"
         ? await this.dependencies.getJudgeProviderCredential(context.projectId, submitProvider)
         : null;
-    const judgeProvider = this.judgeProviderFactory(input.modelBinding, submitKey ? { apiKey: submitKey } : undefined);
+    const judgeProvider = this.judgeProviderFactory(
+      { ...stored, rubricMarkdown: input.rubricMarkdown, prompt: input.prompt },
+      submitKey ? { apiKey: submitKey } : undefined
+    );
     if (submitProvider !== "mock" && judgeProvider.name === "mock") {
-      throw new RegressionGateUnavailableError(input.modelBinding.provider);
+      throw new RegressionGateUnavailableError(submitProvider);
     }
     const client = await this.pool.connect();
     try {
@@ -486,7 +492,8 @@ export class PgSkillLifecycleRepository implements SkillLifecycleRepositoryPort 
         status: "calibrating",
         rubricMarkdown: input.rubricMarkdown,
         prompt: input.prompt,
-        modelBinding: input.modelBinding,
+        executionBinding: stored.executionBinding,
+        customEndpointUrl: stored.customEndpointUrl,
         outputSchema: input.outputSchema ?? MinimumVerdictOutputSchema,
         goldenSetAgreement: null,
         tooStrictCount: 0,
@@ -682,13 +689,13 @@ export class PgSkillLifecycleRepository implements SkillLifecycleRepositoryPort 
     // The gate must re-judge with the provider the version actually pins —
     // never the mock fallback (see createSkillVersionPending, which refuses at
     // submit time; this re-check covers env changes between enqueue and run).
-    const gateProvider = version.modelBinding.provider;
-    const gateKey = gateProvider !== "mock"
+    const gateProvider = version.executionBinding.provider;
+    const gateKey = gateProvider !== "mock" && gateProvider !== "typesafe"
       ? await this.dependencies.getJudgeProviderCredential(job.projectId, gateProvider)
       : null;
-    const judgeProvider = this.judgeProviderFactory(version.modelBinding, gateKey ? { apiKey: gateKey } : undefined);
+    const judgeProvider = this.judgeProviderFactory(version, gateKey ? { apiKey: gateKey } : undefined);
     if (gateProvider !== "mock" && judgeProvider.name === "mock") {
-      throw new RegressionGateUnavailableError(version.modelBinding.provider);
+      throw new RegressionGateUnavailableError(gateProvider);
     }
     const computedRegressionRun = await runGoldenSetRegression({
       skillVersion: version,

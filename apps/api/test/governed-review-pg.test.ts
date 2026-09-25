@@ -187,11 +187,11 @@ async function createFixture(client: Pool): Promise<Fixture> {
   await client.query(`
     insert into skill_versions
       (id, skill_id, project_id, version, status, rubric_markdown, prompt,
-       output_schema, model_binding, verdict_kind, rubric_provenance,
+       output_schema, execution_binding, verdict_kind, rubric_provenance,
        criterion_version_id, created_by_user_id, created_by_subject_id, developer_identity_status, created_at)
     values
       ('skillv_gov','skill_gov','proj_gov','1.0.0','approved','# Rubric','Judge.',
-       '{"type":"object"}','{"provider":"mock","modelId":"mock","modelVersion":"1","temperature":0}',
+       '{"type":"object"}','{"provider":"mock","endpoint":{"kind":"managed"},"modelId":"mock-heuristic-v1","modelVersion":"mock-heuristic-v1","sampling":{"temperature":null,"topP":null},"reasoning":null,"outputTokenLimit":null,"verdictProtocol":"mock/v1","routing":null}',
        'binary','human-authored','criterionv_skill_gov','user_dev','subject_dev','recorded',now())
   `);
   expect((await client.query(
@@ -639,7 +639,7 @@ run("Batch 4 governed human truth PostgreSQL invariants", () => {
       await pool.query(`
         insert into skill_versions
           (id,skill_id,project_id,version,status,rubric_markdown,prompt,output_schema,
-           model_binding,verdict_kind,rubric_provenance,created_by_user_id,
+           execution_binding,verdict_kind,rubric_provenance,created_by_user_id,
            created_by_subject_id,developer_identity_status,criterion_version_id)
         values ('skillv_other_criterion','skill_other_criterion',$1,'1.0.0','approved','# Other',
                 'Judge other.','{"type":"object"}','{"provider":"mock"}','binary',

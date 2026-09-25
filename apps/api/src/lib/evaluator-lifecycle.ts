@@ -10,6 +10,7 @@ import {
   type EvaluatorLifecycleState,
   type EvaluatorExecutionContext
 } from "@rubrist/shared";
+import { executionBindingFromInput } from "./execution-binding.js";
 import { governedContentV1Digest } from "./governed-content-digest.js";
 
 export const EVALUATOR_CANDIDATE_REQUEST_DIGEST_BASIS = "evaluator-candidate-request/v1" as const;
@@ -27,16 +28,24 @@ export function evaluatorLifecycleDigest(value: unknown): string {
   return governedContentV1Digest(basis, content);
 }
 
+/**
+ * The candidate request as stored: its binding in saved form (a custom
+ * endpoint named by digest, with its URL beside it), which is what the
+ * database's evaluator_lifecycle_request_digest_v1 reads back.
+ */
 export function evaluatorCandidateRequestDigest(
   projectId: string,
   input: EvaluatorCandidateCreateInput
 ): string {
   const parsed = EvaluatorCandidateCreateInputSchema.parse(input);
-  const { idempotencyKey: _idempotencyKey, ...request } = parsed;
+  const { idempotencyKey: _idempotencyKey, executionBinding, ...request } = parsed;
+  const stored = executionBindingFromInput(executionBinding);
   return evaluatorLifecycleDigest({
     basis: EVALUATOR_CANDIDATE_REQUEST_DIGEST_BASIS,
     projectId: nonBlank(projectId, "projectId"),
-    ...request
+    ...request,
+    executionBinding: stored.executionBinding,
+    customEndpointUrl: stored.customEndpointUrl
   });
 }
 

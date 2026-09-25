@@ -39,7 +39,8 @@ const base: SkillVersion = {
   status: "approved",
   rubricMarkdown: "# Guide\n\nPass when grounded.",
   prompt: "Judge against {{rubric_markdown}}.",
-  modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 },
+  executionBinding: { provider: "mock", endpoint: { kind: "managed" }, modelId: "mock", modelVersion: "mock", sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null, verdictProtocol: "mock/v1", routing: null },
+  customEndpointUrl: null,
   outputSchema: { type: "object" },
   goldenSetAgreement: 1,
   tooStrictCount: 0,
@@ -85,7 +86,7 @@ describe("guided evaluator editing", () => {
       base,
       rubricMarkdown: "# Guide\n\nPass only with a cited source.",
       prompt: base.prompt,
-      modelBinding: { ...base.modelBinding, modelId: "mock-v2", modelVersion: "mock-v2" },
+      executionBinding: { ...base.executionBinding, endpoint: { kind: "managed" }, modelId: "mock-v2", modelVersion: "mock-v2" },
       verdictKind: "binary",
       timeScope: "both"
     }));
@@ -105,8 +106,8 @@ describe("guided evaluator editing", () => {
       id: "skillv_next",
       version: "1.2.0",
       rubricMarkdown: "A stricter guide.",
-      modelBinding: { ...base.modelBinding, modelId: "mock-v2", modelVersion: "mock-v2" }
-    }, base)).toEqual(["review guide", "requested model"]);
+      executionBinding: { ...base.executionBinding, modelId: "mock-v2", modelVersion: "mock-v2" }
+    }, base)).toEqual(["review guide", "execution binding"]);
     expect(skillVersionChangeLabels(base)).toEqual(["initial version"]);
   });
 

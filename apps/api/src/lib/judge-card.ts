@@ -1,4 +1,5 @@
 import {
+  describeExecutionBinding,
   KAPPA_MIN_SHARED_CASES,
   type JudgeCard,
   type JudgeCardAuditEntry,
@@ -95,7 +96,7 @@ export function buildJudgeCard(input: {
       createdAt: input.version.createdAt,
       approvedAt: input.version.approvedAt
     },
-    modelBinding: input.version.modelBinding,
+    executionBinding: input.version.executionBinding,
     goldenSet: {
       size: input.goldenSetSize,
       agreement: input.version.goldenSetAgreement,
@@ -147,7 +148,7 @@ export function renderJudgeCardMarkdown(card: JudgeCard): string {
   lines.push(`- **Version**: ${card.version.version} (\`${card.version.id}\`) · status **${card.version.status}** · verdict kind ${card.version.verdictKind}`);
   lines.push(`- **Approved**: ${card.version.approvedAt ?? "not approved"}`);
   lines.push(`- **Rubric provenance**: ${card.version.rubricProvenance}`);
-  lines.push(`- **Requested model**: ${esc(card.modelBinding.provider)}/${esc(card.modelBinding.modelId)} · catalog identity ${esc(card.modelBinding.modelVersion)} · temp ${card.modelBinding.temperature}`);
+  lines.push(`- **Execution binding**: ${esc(describeExecutionBinding(card.executionBinding))}`);
   const agreement = card.goldenSet.agreement === null
     ? "no comparable golden cases"
     : card.regression

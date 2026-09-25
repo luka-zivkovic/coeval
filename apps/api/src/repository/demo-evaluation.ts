@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { AssessmentReceipt, EvalRun, EvalRunDetail, EvalRunItem, SkillVersion } from "@rubrist/shared";
+import { LegacyEvidenceUnsupportedError, legacyModelBinding } from "../lib/execution-binding.js";
 import {
   buildAssessmentReceipt,
   canonicalReceiptBytes,
@@ -135,6 +136,12 @@ export class DemoEvaluationRepository implements
   }
 
   async createEvalRun(input: CreateEvalRunInputDb): Promise<EvalRunDetail> {
+    if (input.trigger === "release_evidence") {
+      // A release-evidence run ends in a v1 receipt, so refuse before any item
+      // runs when v1 can't state the binding (Batch 8D).
+      const version = await this.dependencies.getSkillVersion(input.projectId, input.skillVersionId);
+      if (version && legacyModelBinding(version) === null) throw new LegacyEvidenceUnsupportedError("An assessment receipt v1");
+    }
     if (input.trigger === "backfill") {
       const existing = this.store.evalRuns.find((candidate) =>
         candidate.projectId === input.projectId &&

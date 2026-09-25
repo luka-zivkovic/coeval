@@ -263,6 +263,7 @@
       "boundaryEvents": [
         "root :: connect",
         "try :: begin",
+        "try>if.then>if.condition :: repository_call:apps/api/src/repository.pg/mappers.ts#parseJson",
         "try>if.then :: client_command:apps/api/src/repository.pg/assessment-receipt-commands.ts#mintAssessmentReceiptWithClient",
         "try :: commit",
         "catch :: rollback",

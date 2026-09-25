@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { JudgeProviderCredentialSourceSchema } from "./agent-access.js";
-import { containsLoneUtf16Surrogate, UnicodeScalarValueSchema } from "./judge.js";
+import { containsLoneUtf16Surrogate, JudgeProviderCredentialSourceSchema, UnicodeScalarValueSchema } from "./judge.js";
 
 // Model-agnostic evaluator identity (Rubrist ADR-0014). An evaluator version is
 // its definition plus its execution binding; together they are identity and
@@ -173,6 +172,99 @@ function deepFreeze<T>(value: T): T {
     Object.freeze(value);
   }
   return value;
+}
+
+/** A reasoning setting in words, or "reasoning not sent". */
+export function describeReasoningSettings(reasoning: ReasoningSettings | null): string {
+  if (reasoning === null) return "reasoning not sent";
+  switch (reasoning.family) {
+    case "anthropic": {
+      const thinking = reasoning.thinking.type === "enabled" ? `thinking enabled (${reasoning.thinking.budgetTokens} tokens)` : `thinking ${reasoning.thinking.type}`;
+      return reasoning.effort === null ? thinking : `${thinking} at effort ${reasoning.effort}`;
+    }
+    case "openai":
+      return `reasoning effort ${reasoning.effort}`;
+    case "openrouter":
+      if (!reasoning.enabled) return "reasoning off";
+      return ["reasoning on", reasoning.effort === null ? null : `at effort ${reasoning.effort}`, reasoning.maxTokens === null ? null : `(${reasoning.maxTokens} tokens)`]
+        .filter((part): part is string => part !== null).join(" ");
+  }
+}
+
+/**
+ * One line stating everything a binding sends, and naming each unset setting
+ * as not sent. It reads a saved binding or a submitted one alike.
+ */
+export function describeExecutionBinding(binding: Omit<ExecutionBinding, "endpoint"> & { endpoint: { kind: "managed" | "custom" } }): string {
+  return [
+    `${binding.provider}/${binding.modelId}`,
+    binding.modelVersion === binding.modelId ? null : `version ${binding.modelVersion}`,
+    binding.endpoint.kind === "custom" ? "custom endpoint" : null,
+    binding.sampling.temperature === null ? "temperature not sent" : `temperature ${binding.sampling.temperature}`,
+    binding.sampling.topP === null ? null : `top_p ${binding.sampling.topP}`,
+    describeReasoningSettings(binding.reasoning),
+    binding.outputTokenLimit === null ? "no output token limit" : `${binding.outputTokenLimit} output tokens`,
+    binding.verdictProtocol
+  ].filter((part): part is string => part !== null).join(" · ");
+}
+
+/**
+ * A custom endpoint's base URL as an author gives it. Paths are appended to
+ * it, so it is plain http(s) with no credentials, query, or fragment.
+ */
+export const EndpointBaseUrlSchema = z.string().trim().min(1).max(2_000).superRefine((value, ctx) => {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    ctx.addIssue({ code: "custom", message: "the endpoint base URL must be a URL" });
+    return;
+  }
+  if ((url.protocol !== "https:" && url.protocol !== "http:") || url.username !== "" || url.password !== "" || url.search !== "" || url.hash !== "") {
+    ctx.addIssue({ code: "custom", message: "the endpoint base URL must be http(s), with no credentials, query, or fragment" });
+  }
+});
+
+/**
+ * An execution binding as submitted. It differs from the stored binding only
+ * in naming a custom endpoint by its URL; the server names it by digest and
+ * validates the result with ExecutionBindingSchema.
+ */
+export const ExecutionBindingInputSchema = z.object({
+  provider: ExecutionProviderIdSchema,
+  endpoint: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("managed") }).strict(),
+    z.object({ kind: z.literal("custom"), baseUrl: EndpointBaseUrlSchema }).strict()
+  ]),
+  modelId: NonEmptyTextSchema(240),
+  modelVersion: NonEmptyTextSchema(240),
+  sampling: SamplingSettingsSchema,
+  reasoning: ReasoningSettingsSchema.nullable(),
+  outputTokenLimit: z.number().int().positive().max(1_000_000).nullable(),
+  verdictProtocol: VerdictProtocolIdSchema,
+  routing: OpenRouterRoutingSchema.nullable()
+}).strict();
+export type ExecutionBindingInput = z.infer<typeof ExecutionBindingInputSchema>;
+
+/**
+ * The provider family's protocol where no capability data or probe can
+ * choose one (ADR-0014 section 3): structured output for Anthropic, OpenAI,
+ * and OpenRouter, a forced function for custom endpoints.
+ */
+export function defaultVerdictProtocol(provider: ExecutionProviderId): VerdictProtocolId {
+  switch (provider) {
+    case "anthropic":
+      return "anthropic.structured-output/v1";
+    case "openai":
+    case "openrouter":
+      return "openai.structured-output/v1";
+    case "custom":
+      return "openai.forced-function/v1";
+    case "mock":
+      return "mock/v1";
+    case "typesafe":
+      return "typed-question/v1";
+  }
 }
 
 /**

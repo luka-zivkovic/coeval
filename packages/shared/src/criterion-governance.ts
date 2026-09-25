@@ -20,11 +20,11 @@ import { DatasetEvidenceDigestSchema } from "./datasets.js";
 import {
   JsonSchemaSchema,
   MinimumVerdictOutputSchema,
-  ModelBindingInputSchema,
   UnicodeScalarValueSchema,
   VerdictKindSchema,
   containsLoneUtf16Surrogate
 } from "./judge.js";
+import { ExecutionBindingInputSchema } from "./evaluator-execution.js";
 import { SkillSchema } from "./skills.js";
 
 // Evaluator suite manifest v1 is a separate, policy-free artifact. It binds
@@ -427,7 +427,7 @@ export type CriterionDetail = z.infer<typeof CriterionDetailSchema>;
 export const CriterionEvaluatorDraftInputSchema = z.object({
   rubricMarkdown: z.string().trim().min(1).max(100_000),
   prompt: z.string().trim().min(1).max(100_000),
-  modelBinding: ModelBindingInputSchema,
+  executionBinding: ExecutionBindingInputSchema,
   outputSchema: JsonSchemaSchema.default(MinimumVerdictOutputSchema),
   verdictKind: VerdictKindSchema.default("binary"),
   scalarRange: z.tuple([z.number(), z.number()]).optional(),

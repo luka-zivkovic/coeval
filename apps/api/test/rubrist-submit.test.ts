@@ -81,12 +81,16 @@ describe("rubrist-audit setup client", () => {
           },
           mode: "bench",
           rubricProvenance: "agent-drafted",
-          modelBinding: {
+          executionBinding: {
             provider: "custom",
+            endpoint: { kind: "custom", baseUrlDigest: `sha256:${"b".repeat(64)}` },
             modelId: "judge-model",
             modelVersion: "judge-model",
-            temperature: 0,
-            baseUrl: "https://judge.example/v1"
+            sampling: { temperature: 0, topP: null },
+            reasoning: null,
+            outputTokenLimit: null,
+            verdictProtocol: "openai.forced-function/v1",
+            routing: null
           },
           apiKey: {
             id: "apikey_bootstrap",

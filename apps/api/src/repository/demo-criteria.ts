@@ -1,3 +1,4 @@
+import { executionBindingFromInput } from "../lib/execution-binding.js";
 import { randomUUID } from "node:crypto";
 import { demoSkill, demoSkillPrevVersion } from "@rubrist/db";
 import type {
@@ -99,7 +100,7 @@ export class DemoCriterionSuiteRepository implements CriterionSuiteRepositoryPor
       status: "draft",
       rubricMarkdown: input.evaluator.rubricMarkdown,
       prompt: input.evaluator.prompt,
-      modelBinding: input.evaluator.modelBinding,
+      ...executionBindingFromInput(input.evaluator.executionBinding),
       outputSchema: input.evaluator.outputSchema,
       goldenSetAgreement: null,
       tooStrictCount: 0,

@@ -31,6 +31,7 @@ import { datasetInputIdentity } from "../src/lib/dataset-revision.js";
 import { criterionVersionDigest } from "../src/lib/criterion-digest.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
+import { MOCK_BINDING, SEEDED_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {
@@ -1191,18 +1192,20 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
         skillDescription: "Candidate evaluator derived from exact governed nonsealed truth.",
         rubricMarkdown: "Fail when the answer is substantively incorrect.",
         prompt: "Judge only the supplied response against the exact promoted criterion.",
-        modelBinding: {
+        executionBinding: bindingInput(SEEDED_BINDING, {
           provider: "openai",
           modelId: "gpt-4o-mini",
           modelVersion: "2024-07-18",
-          temperature: 0
-        },
+          reasoning: null,
+          outputTokenLimit: null,
+          verdictProtocol: "openai.forced-function/v1"
+        }),
         outputSchema: MinimumVerdictOutputSchema,
         idempotencyKey: "promotion-repository-candidate"
       };
       await expect(lifecycle.createCandidate(actor, {
         ...candidateInput,
-        modelBinding: { ...candidateInput.modelBinding, modelId: "gpt-4o-latest" },
+        executionBinding: { ...candidateInput.executionBinding, modelId: "gpt-4o-latest" },
         idempotencyKey: "promotion-repository-alias-candidate"
       })).rejects.toMatchObject({
         code: "mutable_model_alias",
@@ -1231,7 +1234,7 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
       await expect(platform.createSkillVersionPending(candidate.skill.id,
         CreateSkillVersionInputSchema.parse({
           rubricMarkdown:"# Generic bypass",prompt:"This version must not commit.",
-          modelBinding:{provider:"mock",modelId:"mock",modelVersion:"v1",temperature:0},
+          executionBinding:bindingInput(MOCK_BINDING),
           verdictKind:"binary",criterionVersionId:created.criterionVersion.id
         }),
         {projectId:evidence.projectId,actorUserId:evidence.ownerUserId}
@@ -1284,12 +1287,14 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
         skillDescription: "Candidate evaluator derived from exact governed nonsealed truth.",
         rubricMarkdown: "Fail when the answer is substantively incorrect.",
         prompt: "Judge only the supplied response against the exact promoted criterion.",
-        modelBinding: {
+        executionBinding: bindingInput(SEEDED_BINDING, {
           provider: "openai",
           modelId: "gpt-4o-mini",
           modelVersion: "2024-07-18",
-          temperature: 0
-        },
+          reasoning: null,
+          outputTokenLimit: null,
+          verdictProtocol: "openai.forced-function/v1"
+        }),
         outputSchema: MinimumVerdictOutputSchema,
         idempotencyKey: "promotion-repository-candidate"
       })).toMatchObject({ replayed: true });
@@ -1459,11 +1464,11 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
       );
       // Activation re-checks the stored binding, not only the candidate request.
       const storedBinding = (await pool.query(
-        `select model_binding from skill_versions where id=$1`,[candidate.skill.currentVersion.id]
-      )).rows[0]!.model_binding;
+        `select execution_binding from skill_versions where id=$1`,[candidate.skill.currentVersion.id]
+      )).rows[0]!.execution_binding;
       try {
         await pool.query(
-          `update skill_versions set model_binding=jsonb_set(model_binding,'{modelId}','"default"') where id=$1`,
+          `update skill_versions set execution_binding=jsonb_set(execution_binding,'{modelId}','"default"') where id=$1`,
           [candidate.skill.currentVersion.id]
         );
         await expect(lifecycle.activate(actor,candidate.skill.currentVersion.id,{
@@ -1471,7 +1476,7 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
           idempotencyKey:"promotion-repository-alias-activate"
         })).rejects.toMatchObject({code:"mutable_model_alias",details:{modelId:"default",alias:"default"}});
       } finally {
-        await pool.query(`update skill_versions set model_binding=$2::jsonb where id=$1`,
+        await pool.query(`update skill_versions set execution_binding=$2::jsonb where id=$1`,
           [candidate.skill.currentVersion.id,JSON.stringify(storedBinding)]);
       }
       const activated = await lifecycle.activate(actor,candidate.skill.currentVersion.id,{

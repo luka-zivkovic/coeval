@@ -8,6 +8,7 @@ import { createStrictJudgeProvider } from "../src/lib/judge-provider.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { processEvalItemJob, processEvalRunJob, recoverStaleEvalRunItemExecutions } from "../src/workers/eval-run.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
+import { MOCK_BINDING, runtimeVersion } from "./fixtures/execution-binding.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {
@@ -35,11 +36,11 @@ run("PostgreSQL convergence audit", () => {
       const versionFixture = [
         "Judge the trace against the criterion.",
         JSON.stringify(MinimumVerdictOutputSchema),
-        JSON.stringify({ provider: "mock", modelId: "mock", modelVersion: "convergence-test", temperature: 0 })
+        JSON.stringify(MOCK_BINDING)
       ];
       await pool.query(
         `insert into skill_versions
-          (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, model_binding,
+          (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, execution_binding,
            criterion_version_id, created_at)
          values
           ('skillv_convergence_1','skill_convergence','proj_convergence','1.0.0','draft','Pass correct answers.',$1,$2,$3,'criterionv_convergence','2026-01-01T00:00:00Z'),
@@ -231,9 +232,9 @@ run("PostgreSQL convergence audit", () => {
       await pool.query(
         `insert into skill_versions
           (id, skill_id, project_id, version, status, rubric_markdown, prompt,
-           output_schema, model_binding, criterion_version_id, created_at)
+           output_schema, execution_binding, criterion_version_id, created_at)
          select 'skillv_semantics_3', skill_id, project_id, '1.2.0', status,
-                rubric_markdown, prompt, output_schema, model_binding,
+                rubric_markdown, prompt, output_schema, execution_binding,
                 criterion_version_id, created_at
          from skill_versions where id = 'skillv_semantics_2'`
       );
@@ -402,12 +403,7 @@ run("PostgreSQL convergence audit", () => {
         caseId: routeCaseId,
         skillVersionId: "skillv_langsmith_support_2"
       };
-      const base = createStrictJudgeProvider({
-        provider: "mock",
-        modelId: "mock",
-        modelVersion: "mock",
-        temperature: 0
-      });
+      const base = createStrictJudgeProvider(runtimeVersion(MOCK_BINDING));
       let providerCalls = 0;
       let enteredProvider!: () => void;
       let releaseProvider!: () => void;
@@ -809,11 +805,11 @@ async function seedConvergenceProject(pool: Pool, suffix: string): Promise<void>
   const fixture = [
     "Judge the trace against the criterion.",
     JSON.stringify(MinimumVerdictOutputSchema),
-    JSON.stringify({ provider: "mock", modelId: "mock", modelVersion: "convergence-test", temperature: 0 })
+    JSON.stringify(MOCK_BINDING)
   ];
   await pool.query(
     `insert into skill_versions
-      (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, model_binding,
+      (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, execution_binding,
        criterion_version_id, created_at)
      values
       ($4,$1,$2,'1.0.0','draft','Pass correct answers.',$6,$7,$8,$3,'2026-01-01T00:00:00Z'),

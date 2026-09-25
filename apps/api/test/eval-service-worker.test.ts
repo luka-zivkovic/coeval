@@ -3,6 +3,7 @@ import { MockJudgeProvider } from "@rubrist/audit/runtime";
 import type { SkillVersion } from "@rubrist/shared";
 import { DemoRepository, type JudgeRunContext } from "../src/repository.js";
 import { judgeAndRecord, processJudgeRunJob } from "../src/workers/judge.js";
+import { MOCK_BINDING } from "./fixtures/execution-binding.js";
 
 const TRACE = { input: { question: "Refund within 30 days?" }, output: { answer: "Yes, within 30 days." } };
 
@@ -15,7 +16,8 @@ function skillVersion(overrides: Partial<SkillVersion>): SkillVersion {
     status: "production",
     rubricMarkdown: "Rate the answer.",
     prompt: "Rate it.",
-    modelBinding: { provider: "mock", modelId: "mock", modelVersion: "test", temperature: 0 },
+    executionBinding: structuredClone(MOCK_BINDING),
+    customEndpointUrl: null,
     outputSchema: { type: "object" },
     goldenSetAgreement: null,
     tooStrictCount: 0,

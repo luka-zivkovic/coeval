@@ -603,7 +603,7 @@ export interface FeedbackSyncContext {
   id: string;
   projectId: string;
   provider: FeedbackSyncProvider;
-  judgeRun: JudgeRun & { modelBinding: SkillVersion["modelBinding"] };
+  judgeRun: JudgeRun & { executionBinding: SkillVersion["executionBinding"] };
   sourceTraceId: string;
   sourceTraceVersion: string | null;
   criterionStableKey: string;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderJudgeCardMarkdown } from "../src/lib/judge-card.js";
 import type { JudgeCard } from "@rubrist/shared";
+import { SEEDED_BINDING } from "./fixtures/execution-binding.js";
 
 // Every string field a user can control on the card. C1's job is to neutralize
 // each of these so a crafted value can't inject markdown/HTML/newlines.
@@ -18,7 +19,7 @@ function card(overrides: Partial<JudgeCard> = {}): JudgeCard {
       createdAt: "2026-07-05T00:00:00.000Z",
       approvedAt: "2026-07-05T00:00:00.000Z"
     },
-    modelBinding: { provider: "anthropic", modelId: "claude-sonnet-4-6", modelVersion: "20260101", temperature: 0 },
+    executionBinding: { ...structuredClone(SEEDED_BINDING), modelVersion: "20260101" },
     goldenSet: { size: 3, agreement: 0.9, tooStrict: 0, tooLenient: 1, ambiguous: 0 },
     regression: { status: "passed", compared: 3, regressed: 0, improved: 1, flipped: 0, overrideReason: null, createdAt: "2026-07-05T00:00:00.000Z" },
     judgeHumanKappa: [{ humanRater: "user_dana", kappa: 0.8, interpretation: "substantial", cases: 6 }],
@@ -58,8 +59,8 @@ describe("renderJudgeCardMarkdown — C1 injection safety", () => {
     { name: "skill.name", apply: (c, p) => ({ ...c, skill: { ...c.skill, name: p } }) },
     { name: "project.name", apply: (c, p) => ({ ...c, project: { ...c.project, name: p } }) },
     { name: "skill.ownerName", apply: (c, p) => ({ ...c, skill: { ...c.skill, ownerName: p } }) },
-    { name: "modelBinding.modelId", apply: (c, p) => ({ ...c, modelBinding: { ...c.modelBinding, modelId: p } }) },
-    { name: "modelBinding.modelVersion", apply: (c, p) => ({ ...c, modelBinding: { ...c.modelBinding, modelVersion: p } }) },
+    { name: "executionBinding.modelId", apply: (c, p) => ({ ...c, executionBinding: { ...c.executionBinding, modelId: p } }) },
+    { name: "executionBinding.modelVersion", apply: (c, p) => ({ ...c, executionBinding: { ...c.executionBinding, modelVersion: p } }) },
     { name: "regression.overrideReason", apply: (c, p) => ({ ...c, regression: { ...c.regression!, status: "overridden", overrideReason: p } }) },
     { name: "judgeHumanKappa[].humanRater", apply: (c, p) => ({ ...c, judgeHumanKappa: [{ ...c.judgeHumanKappa[0]!, humanRater: p }] }) },
     { name: "audit[].action", apply: (c, p) => ({ ...c, audit: [{ ...c.audit[0]!, action: p }] }) }
@@ -82,8 +83,9 @@ describe("renderJudgeCardMarkdown — C1 injection safety", () => {
     // Escaping must not mangle unremarkable text into backslash soup.
     expect(md).not.toContain("\\-");
     expect(md).not.toContain("Support Answer Quality\\");
-    expect(md).toContain("**Requested model**");
-    expect(md).toContain("catalog identity 20260101");
+    expect(md).toContain("**Execution binding**");
+    expect(md).toContain("version 20260101");
+    expect(md).toContain("temperature 0 · thinking disabled at effort high");
     expect(md).not.toContain("Model (pinned)");
   });
 

@@ -8,6 +8,7 @@ import { createApp, type RubristApi } from "../src/app.js";
 import { claimAgentSetupPairing, createAuth } from "../src/lib/auth.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
+import { MOCK_BINDING, SEEDED_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {
@@ -54,12 +55,7 @@ run("Postgres auth flow", () => {
         evaluator: {
           rubricMarkdown: "# Support answer quality\n\nPass when the reply is correct.",
           prompt: "Judge the reply using {{rubric_markdown}}.",
-          modelBinding: {
-            provider: "anthropic",
-            modelId: "test-anthropic",
-            modelVersion: "test-anthropic-v1",
-            temperature: 0
-          },
+          executionBinding: bindingInput(SEEDED_BINDING, { modelId: "test-anthropic", modelVersion: "test-anthropic-v1" }),
           outputSchema: verdictOutputSchema({
             verdictKind: "categorical",
             categoricalChoiceScores: { faithful: 1, unsupported: 0, partial: 0.5 }
@@ -136,7 +132,7 @@ run("Postgres auth flow", () => {
       const evaluator = CreateSkillVersionInputSchema.parse({
         rubricMarkdown: "# Support answer quality\n\nPass when the reply answers the question within policy.",
         prompt: "Judge the reply using {{rubric_markdown}}.",
-        modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 },
+        executionBinding: bindingInput(MOCK_BINDING),
         outputSchema: MinimumVerdictOutputSchema,
         verdictKind: "binary",
         timeScope: "both"
@@ -476,7 +472,7 @@ run("Postgres auth flow", () => {
         body: JSON.stringify({
           rubricMarkdown: "Member should not be able to edit this skill.",
           prompt: "Judge the trace.",
-          modelBinding: { provider: "mock", modelId: "mock", modelVersion: "test", temperature: 0 }
+          executionBinding: bindingInput(MOCK_BINDING)
         })
       });
       expect(memberSkillEdit.status).toBe(403);
@@ -679,10 +675,10 @@ run("Postgres auth flow", () => {
       expect(response.status).toBe(201);
       const body = await response.json() as {
         projectId: string;
-        modelBinding: { provider: string; modelId: string; modelVersion: string };
+        executionBinding: { provider: string; modelId: string; modelVersion: string };
         apiKey: { key: string };
       };
-      expect(body.modelBinding).toMatchObject({ provider: "mock", modelId: "mock", modelVersion: "mock" });
+      expect(body.executionBinding).toMatchObject({ provider: "mock", modelId: "mock", modelVersion: "mock", verdictProtocol: "mock/v1" });
       expect(body.apiKey.key).toMatch(/^rubrist_sk_/);
 
       // No provider credential row was minted for the mock pin.
@@ -895,7 +891,7 @@ run("Postgres auth flow", () => {
       const humanInput = CreateSkillVersionInputSchema.parse({
         rubricMarkdown: `# Human configuration\n\n${STARTER_RUBRIC_MARKER}.\n\nPass only after a human review.`,
         prompt: "Judge against {{rubric_markdown}}.",
-        modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 },
+        executionBinding: bindingInput(MOCK_BINDING),
         outputSchema: MinimumVerdictOutputSchema,
         verdictKind: "binary",
         timeScope: "new"

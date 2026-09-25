@@ -10,6 +10,7 @@ import { dispatchEvalRunOnce, processGateRunJob, runExistingCaseBackfill } from 
 import { scheduleImportedCaseJudging } from "../src/workers/import-judging.js";
 
 import { CapturingQueue, EmptySkillRepository } from "./app-test-support.js";
+import { SEEDED_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 describe("Rubrist Hono API", () => {
   it("PR #56/C5a: timeScope='new' (default) — async gate approves, no backfill", async () => {
@@ -22,7 +23,7 @@ describe("Rubrist Hono API", () => {
       body: JSON.stringify({
         rubricMarkdown: "## Updated rubric\n\nKeep judging support quality, just clarified phrasing.",
         prompt: "Judge support answer quality.",
-        modelBinding: { provider: "anthropic", modelId: "claude-sonnet-4-6", modelVersion: "2026-04-15", temperature: 0 }
+        executionBinding: bindingInput(SEEDED_BINDING)
       })
     });
     // Async gate (C5a): submit lands the version in `calibrating` (202) and
@@ -63,7 +64,7 @@ describe("Rubrist Hono API", () => {
       body: JSON.stringify({
         rubricMarkdown: "## Updated rubric\n\nKeep judging support quality.",
         prompt: "Judge support answer quality.",
-        modelBinding: { provider: "anthropic", modelId: "claude-sonnet-4-6", modelVersion: "2026-04-15", temperature: 0 },
+        executionBinding: bindingInput(SEEDED_BINDING),
         timeScope: "both"
       })
     });
@@ -104,7 +105,7 @@ describe("Rubrist Hono API", () => {
       body: JSON.stringify({
         rubricMarkdown: "## Updated rubric\n\nKeep judging support quality with clearer wording.",
         prompt: "Judge support answer quality.",
-        modelBinding: { provider: "anthropic", modelId: "claude-sonnet-4-6", modelVersion: "2026-04-15", temperature: 0 },
+        executionBinding: bindingInput(SEEDED_BINDING),
         timeScope: "both"
       })
     });
@@ -455,7 +456,7 @@ describe("Rubrist Hono API", () => {
       body: JSON.stringify({
         rubricMarkdown: "Fail borderline cases and require perfect answers.",
         prompt: "Be stricter than before.",
-        modelBinding: { provider: "anthropic", modelId: "claude-sonnet-4-6", modelVersion: "2026-04-15", temperature: 0 },
+        executionBinding: bindingInput(SEEDED_BINDING),
         timeScope: "existing"
       })
     });

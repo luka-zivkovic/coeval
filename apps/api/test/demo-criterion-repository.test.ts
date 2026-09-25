@@ -14,6 +14,7 @@ import {
 } from "../src/repository.js";
 import * as demoCriterionRepositoryModule from "../src/repository/demo-criteria.js";
 import { DemoCriterionSuiteRepository } from "../src/repository/demo-criteria.js";
+import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 const EXPECTED_METHODS = [
   "listCriteria",
@@ -265,12 +266,7 @@ describe("Demo criterion and evaluator-suite repository slice", () => {
       evaluator: {
         rubricMarkdown: "# Groundedness\n\nPass only when each claim is supported.",
         prompt: "Judge groundedness.\n{{rubric_markdown}}",
-        modelBinding: {
-          provider: "mock",
-          modelId: "mock",
-          modelVersion: "test",
-          temperature: 0
-        }
+        executionBinding: bindingInput(MOCK_BINDING)
       }
     });
     const created = await repository.createCriterion(projectId, input, { actorUserId: "owner_criteria" });

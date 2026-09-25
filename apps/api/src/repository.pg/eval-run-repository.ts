@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
-import type { EvalRun, EvalRunDetail, EvalRunItem } from "@rubrist/shared";
+import { ExecutionBindingSchema, type EvalRun, type EvalRunDetail, type EvalRunItem } from "@rubrist/shared";
 import type { Pool } from "pg";
+import { LegacyEvidenceUnsupportedError, legacyModelBinding } from "../lib/execution-binding.js";
 import { computeEvalRunSpend } from "../repository.js";
 import type {
   CompleteEvalRunItemInputDb,
@@ -22,7 +23,7 @@ import {
   bumpEvalRunCounters,
   mintAssessmentReceiptWithClient
 } from "./assessment-receipt-commands.js";
-import { rowToEvalRun, rowToEvalRunItem, toIso } from "./mappers.js";
+import { parseJson, rowToEvalRun, rowToEvalRunItem, toIso } from "./mappers.js";
 
 // PostgreSQL evaluation-run creation, durable dispatch, item execution, and
 // terminalization. Queue retries and receipt minting retain their existing
@@ -96,6 +97,20 @@ export class PgEvalRunRepository implements EvalRunRepositoryPort {
     const client = await this.pool.connect();
     try {
       await client.query("begin");
+      if (input.trigger === "release_evidence") {
+        // A release-evidence run ends in a v1 receipt, so refuse before any
+        // item runs when v1 can't state the binding (Batch 8D).
+        const version = (await client.query(
+          `select execution_binding, custom_endpoint_url from skill_versions where id=$1 and project_id=$2`,
+          [input.skillVersionId, input.projectId]
+        )).rows[0];
+        if (version && legacyModelBinding({
+          executionBinding: ExecutionBindingSchema.parse(parseJson(version.execution_binding)),
+          customEndpointUrl: version.custom_endpoint_url == null ? null : String(version.custom_endpoint_url)
+        }) === null) {
+          throw new LegacyEvidenceUnsupportedError("An assessment receipt v1");
+        }
+      }
       if (input.datasetRevisionId) {
         const revision = await client.query(
           `select source_kind from dataset_revisions where id=$1 and project_id=$2 for key share`,

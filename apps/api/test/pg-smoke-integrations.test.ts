@@ -13,6 +13,7 @@ import { processLangSmithImportJob } from "../src/workers/langsmith-import.js";
 import { ironsideTraceToTraceImport } from "../src/lib/ironside.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 import { CapturingQueue, FailingOnceQueue, runPgSmoke, seedSkill, waitFor } from "./pg-smoke-support.js";
+import { MOCK_BINDING } from "./fixtures/execution-binding.js";
 
 runPgSmoke("PgRepository smoke", () => {
   it("processes judge.run jobs through the real pg-boss queue", async () => {
@@ -470,7 +471,7 @@ runPgSmoke("PgRepository smoke", () => {
         value: "pass",
         sourceInfo: {
           skillVersionId: "skillv_test",
-          modelBinding: { provider: "mock", modelId: "mock", modelVersion: "test", temperature: 0 }
+          executionBinding: MOCK_BINDING
         }
       });
       const dashboard = await repo.getDashboardSummary("proj_test");

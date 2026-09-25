@@ -25,6 +25,7 @@ import {
   type EvaluatorLifecycleTransitionResult,
   type Skill
 } from "@rubrist/shared";
+import { ExecutionBindingInputError, executionBindingFromInput } from "../lib/execution-binding.js";
 import {
   evaluatorCandidateRequestDigest,
   evaluatorExecutionAuthorizationDigest,
@@ -71,6 +72,13 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
     input: EvaluatorCandidateCreateInput
   ): Promise<EvaluatorCandidateCreateResult> {
     requireOwner(actor);
+    let stored: ReturnType<typeof executionBindingFromInput>;
+    try {
+      stored = executionBindingFromInput(input.executionBinding);
+    } catch (error) {
+      if (error instanceof ExecutionBindingInputError) throw repoError("invalid_execution_binding", error.message);
+      throw error;
+    }
     const requestDigest = evaluatorCandidateRequestDigest(actor.projectId, input);
     const client = await this.pool.connect();
     try {
@@ -107,7 +115,7 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
 
       // Checked after replay, like the other candidate rules, so a committed
       // candidate always replays identically.
-      rejectMutableModelAlias(input.modelBinding.modelId, "become a candidate");
+      rejectMutableModelAlias(stored.executionBinding.modelId, "become a candidate");
       const subjectId = await ensureOwnerSubject(client, actor);
       const context = await loadCandidateContext(client, actor.projectId, input);
       assertCandidateContext(context, input);
@@ -207,17 +215,17 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
       )).rows[0]?.count ?? 0) + 1;
       await client.query(
         `insert into skill_versions
-           (id,skill_id,project_id,version,status,rubric_markdown,prompt,output_schema,model_binding,
+           (id,skill_id,project_id,version,status,rubric_markdown,prompt,output_schema,execution_binding,custom_endpoint_url,
             golden_set_agreement,too_strict_count,too_lenient_count,ambiguous_count,known_limitations,
             verdict_kind,scalar_range,categorical_choice_scores,rubric_provenance,
             regression_dataset_revision_id,created_at,approved_at,criterion_version_id,
             created_by_user_id,created_by_subject_id,developer_identity_status)
-         values ($1,$2,$3,$4,'calibrating',$5,$6,$7::jsonb,$8::jsonb,
+         values ($1,$2,$3,$4,'calibrating',$5,$6,$7::jsonb,$8::jsonb,$13,
                  null,0,0,0,'{}','binary',null,null,'human-authored',$9,
                  date_trunc('milliseconds',clock_timestamp()),null,$10,$11,$12,'recorded')`,
         [skillVersionId, skillId, actor.projectId, `${versionNumber}.0.0`, input.rubricMarkdown, input.prompt,
-          JSON.stringify(input.outputSchema ?? MinimumVerdictOutputSchema), JSON.stringify(input.modelBinding),
-          regressionRevisionId, input.criterionVersionId, actor.userId, subjectId]
+          JSON.stringify(input.outputSchema ?? MinimumVerdictOutputSchema), JSON.stringify(stored.executionBinding),
+          regressionRevisionId, input.criterionVersionId, actor.userId, subjectId, stored.customEndpointUrl]
       );
 
       const developerExposureEventId = `dse_${randomUUID()}`;
@@ -472,11 +480,11 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
       if (transition === "activated") {
         const activation = input as EvaluatorLifecycleActivateInput;
         const binding = (await client.query(
-          `select model_binding from skill_versions where project_id=$1 and id=$2`,
+          `select execution_binding from skill_versions where project_id=$1 and id=$2`,
           [actor.projectId, skillVersionId]
         )).rows[0];
         if (!binding) throw repoError("not_found", "Evaluator version not found");
-        rejectMutableModelAlias(String((parseJson(binding.model_binding) as { modelId: unknown }).modelId), "be activated");
+        rejectMutableModelAlias(String((parseJson(binding.execution_binding) as { modelId: unknown }).modelId), "be activated");
         const active = (await client.query(
           `select other.*,other_head.id as head_id,other_head.sequence as head_sequence,
                   other_head.content_digest as head_digest,other_head.state as head_state
@@ -723,7 +731,7 @@ async function loadSkill(db: Pool | PoolClient, projectId: string, skillVersionI
               else version.status
             end as version_status,
             version.rubric_markdown,version.prompt,
-            version.model_binding,version.output_schema,version.golden_set_agreement,
+            version.execution_binding,version.custom_endpoint_url,version.output_schema,version.golden_set_agreement,
             version.too_strict_count,version.too_lenient_count,version.ambiguous_count,
             version.known_limitations,version.verdict_kind,version.scalar_range,
             version.categorical_choice_scores,version.rubric_provenance,
@@ -745,7 +753,8 @@ async function loadSkill(db: Pool | PoolClient, projectId: string, skillVersionI
     status: row.version_status,
     rubricMarkdown: String(row.rubric_markdown),
     prompt: String(row.prompt),
-    modelBinding: parseJson(row.model_binding),
+    executionBinding: parseJson(row.execution_binding),
+    customEndpointUrl: row.custom_endpoint_url == null ? null : String(row.custom_endpoint_url),
     outputSchema: parseJson(row.output_schema),
     goldenSetAgreement: row.golden_set_agreement == null ? null : Number(row.golden_set_agreement),
     tooStrictCount: Number(row.too_strict_count ?? 0),

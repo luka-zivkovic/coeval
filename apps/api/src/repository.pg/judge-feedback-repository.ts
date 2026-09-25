@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
-  StoredModelBindingSchema,
+  ExecutionBindingSchema,
   type EvaluatorExecutionContext,
   type FeedbackSyncJob,
   type JudgeRun,
@@ -221,7 +221,7 @@ export class PgJudgeFeedbackRepository implements JudgeFeedbackRepositoryPort {
               jr.id as judge_run_id,
               jr.case_id,
               jr.skill_version_id,
-              sv.model_binding,
+              sv.execution_binding,
               criterion.stable_key as criterion_stable_key,
               jr.verdict,
               jr.score,
@@ -283,7 +283,7 @@ export class PgJudgeFeedbackRepository implements JudgeFeedbackRepositoryPort {
         projectId: String(row.project_id),
         caseId: String(row.case_id),
         skillVersionId: String(row.skill_version_id),
-        modelBinding: StoredModelBindingSchema.parse(parseJson(row.model_binding)),
+        executionBinding: ExecutionBindingSchema.parse(parseJson(row.execution_binding)),
         verdict: row.verdict === "fail" ? "fail" : row.verdict === "ambiguous" ? "ambiguous" : "pass",
         score: Number(row.score),
         reasoning: String(row.reasoning),

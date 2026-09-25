@@ -1,9 +1,10 @@
 import { z } from "zod";
 
+import { ExecutionBindingSchema } from "./evaluator-execution.js";
 import {
   HttpUrlSchema,
+  JudgeProviderCredentialSourceSchema,
   JudgeProviderIdSchema,
-  StoredModelBindingSchema,
   UnicodeScalarValueSchema
 } from "./judge.js";
 import { PROJECT_NAME_MAX_LENGTH, ProjectModeSchema } from "./projects.js";
@@ -86,7 +87,8 @@ export const AgentBootstrapModelInputSchema = z
     // Optional for catalog providers (server pins the first available model)
     // and for mock (the built-in heuristic has one model). Required for custom.
     modelId: z.string().trim().min(1).max(240).optional(),
-    temperature: z.number().min(0).max(2).default(0),
+    // `null` sends no temperature, for models that reject it (ADR-0014).
+    temperature: z.number().min(0).max(2).nullable().default(0),
     baseUrl: HttpUrlSchema.optional()
   })
   .superRefine((model, ctx) => {
@@ -219,7 +221,7 @@ export const AgentBootstrapResponseSchema = z.object({
   }).strict(),
   mode: ProjectModeSchema,
   rubricProvenance: z.literal("agent-drafted"),
-  modelBinding: StoredModelBindingSchema,
+  executionBinding: ExecutionBindingSchema,
   apiKey: CreatedApiKeySchema,
   // Ready-to-paste wiring with the one-time key pre-filled — the same plaintext
   // already travels in `apiKey.key`, so headless setups end wired, not just
@@ -273,8 +275,6 @@ export type JudgeServiceRequest = z.infer<typeof JudgeServiceRequestSchema>;
 // GET /api/judge/providers — credential availability (no secrets).
 // Lets the skill editor default to a runnable provider instead of dead-ending
 // on the regression gate's 503.
-export const JudgeProviderCredentialSourceSchema = z.enum(["built_in", "project", "environment"]);
-export type JudgeProviderCredentialSource = z.infer<typeof JudgeProviderCredentialSourceSchema>;
 
 export const JudgeProviderAvailabilityItemSchema = z.object({
   provider: JudgeProviderIdSchema,

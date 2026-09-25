@@ -1,9 +1,11 @@
 import { createHash } from "node:crypto";
 import { canonicalJson, sha256Digest } from "./canonical-json.js";
+import { LegacyEvidenceUnsupportedError, legacyModelBinding } from "./execution-binding.js";
 import {
   AssessmentReceiptSchema,
   type AssessmentReceipt,
   type EvalRunDetail,
+  type ModelBinding,
   type ProviderResponseMetadata,
   type SkillVersion
 } from "@rubrist/shared";
@@ -15,11 +17,18 @@ const UNAVAILABLE_PROVIDER_METADATA: ProviderResponseMetadata = {
   systemFingerprint: null
 };
 
+/** The v1 binding a v1 artifact records, refused when v1 can't state the version's binding. */
+export function requireLegacyModelBinding(version: SkillVersion, what = "v1 evidence"): ModelBinding {
+  const binding = legacyModelBinding(version);
+  if (binding === null) throw new LegacyEvidenceUnsupportedError(what);
+  return binding;
+}
+
 export function skillDigest(version: SkillVersion): string {
   return sha256Digest({
     rubricMarkdown: version.rubricMarkdown,
     prompt: version.prompt,
-    modelBinding: version.modelBinding,
+    modelBinding: requireLegacyModelBinding(version),
     outputSchema: version.outputSchema,
     verdictKind: version.verdictKind,
     scalarRange: version.scalarRange,
@@ -175,7 +184,7 @@ export function buildAssessmentReceipt(input: {
       failedItems: input.run.failedItems,
       agreedItems: input.run.agreedItems
     },
-    requestedModelBinding: input.skillVersion.modelBinding,
+    requestedModelBinding: requireLegacyModelBinding(input.skillVersion),
     skillDigest: skillDigest(input.skillVersion),
     datasetDigest,
     items

@@ -6,6 +6,7 @@ import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 import { canonicalJson, contentDigest } from "../src/lib/canonical-json.js";
 import { evidenceDigestForReceipt, receiptArtifactDigest } from "../src/lib/assessment-receipt.js";
+import { MOCK_BINDING } from "./fixtures/execution-binding.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {
@@ -32,7 +33,7 @@ async function withDatabase(test: (pool: Pool, repo: PgRepository) => Promise<vo
     await pool.query(`insert into skills (id, project_id, name, description, status, criterion_id) values ('skill_receipt', 'proj_receipt', 'Receipt Skill', 'Receipt tests', 'draft', 'criterion_receipt')`);
     await pool.query(
       `insert into skill_versions
-       (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, model_binding,
+       (id, skill_id, project_id, version, status, rubric_markdown, prompt, output_schema, execution_binding,
         criterion_version_id)
        values ('skillv_receipt','skill_receipt','proj_receipt','1.0.0','draft',$1,$2,$3,$4,
                'criterionv_receipt')`,
@@ -40,7 +41,7 @@ async function withDatabase(test: (pool: Pool, repo: PgRepository) => Promise<vo
         "Pass correct answers; fail incorrect answers.",
         "Judge the trace.",
         JSON.stringify(MinimumVerdictOutputSchema),
-        JSON.stringify({ provider: "mock", modelId: "mock", modelVersion: "receipt-test", temperature: 0 })
+        JSON.stringify(MOCK_BINDING)
       ]
     );
     await test(pool, new PgRepository(pool));

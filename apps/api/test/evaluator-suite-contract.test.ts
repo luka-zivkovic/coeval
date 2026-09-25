@@ -18,6 +18,7 @@ import {
   verifyEvaluatorSuiteManifest,
   type ExpectedEvaluatorSuiteManifest
 } from "../src/lib/evaluator-suite.js";
+import { SEEDED_BINDING } from "./fixtures/execution-binding.js";
 
 type Mutation =
   | { op: "add"; path: string; value: unknown }
@@ -149,12 +150,8 @@ function skillVersion(overrides: Partial<SkillVersion> & Pick<SkillVersion, "id"
     status: overrides.status ?? "approved",
     rubricMarkdown: overrides.rubricMarkdown ?? "# Criterion\n\nPass when the criterion is satisfied.",
     prompt: overrides.prompt ?? "Judge against {{rubric_markdown}}.",
-    modelBinding: overrides.modelBinding ?? {
-      provider: "anthropic",
-      modelId: "claude-sonnet-4-6",
-      modelVersion: "claude-sonnet-4-6",
-      temperature: 0
-    },
+    executionBinding: overrides.executionBinding ?? structuredClone(SEEDED_BINDING),
+    customEndpointUrl: overrides.customEndpointUrl ?? null,
     outputSchema: overrides.outputSchema ?? MinimumVerdictOutputSchema,
     goldenSetAgreement: overrides.goldenSetAgreement ?? null,
     tooStrictCount: overrides.tooStrictCount ?? 0,

@@ -5,6 +5,7 @@ import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 import { createRequestServices, type AppVariables } from "../src/request-services/index.js";
 import { registerSkillAdministrationRoutes } from "../src/routes/skill-administration.js";
+import { MOCK_BINDING, SEEDED_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 describe("skill administration routes", () => {
   const app = createApp();
@@ -199,12 +200,7 @@ describe("skill administration routes", () => {
       body: JSON.stringify({
         rubricMarkdown: "Fail borderline cases and require perfect answers.",
         prompt: "Be stricter than before.",
-        modelBinding: {
-          provider: "anthropic",
-          modelId: "claude-sonnet-4-6",
-          modelVersion: "2026-04-15",
-          temperature: 0
-        }
+        executionBinding: bindingInput(SEEDED_BINDING)
       })
     });
     expect(response.status).toBe(409);
@@ -233,7 +229,7 @@ describe("skill administration routes", () => {
       body: JSON.stringify({
         rubricMarkdown: "## Updated rubric",
         prompt: "Judge support answer quality.",
-        modelBinding: { provider: "anthropic", modelId: "claude-sonnet-4-6", modelVersion: "2026-04-15", temperature: 0 }
+        executionBinding: bindingInput(SEEDED_BINDING)
       })
     });
     expect(create.status).toBe(201);
@@ -262,7 +258,7 @@ describe("skill administration routes", () => {
       body: JSON.stringify({
         rubricMarkdown: "## Route binding",
         prompt: "Judge support answer quality.",
-        modelBinding: { provider: "mock", modelId: "mock", modelVersion: "mock", temperature: 0 }
+        executionBinding: bindingInput(MOCK_BINDING)
       })
     });
     const versionId = (await created.json() as { version: { id: string } }).version.id;
@@ -292,7 +288,7 @@ describe("Judge Card (M1 E5)", () => {
     const card = JudgeCardSchema.parse(await response.json());
     expect(card.version.id).toBe("skillv_1_2_0");
     expect(card.version.rubricProvenance).toBe("human-authored");
-    expect(card.modelBinding.provider).toBe("anthropic");
+    expect(card.executionBinding.provider).toBe("anthropic");
     expect(card.goldenSet.size).toBe(2);
     // Seeded demo has judge+human overlap AND repeat judge runs — the trust
     // signals must be REAL here, not nulls.

@@ -136,7 +136,7 @@ if (step("--dump")) {
   // because the rubric lived only in a dropped database. Never again.
   const versions = await query(`
     select sv.version, sv.status, sv.verdict_kind, sv.rubric_markdown, sv.prompt,
-           sv.model_binding, sv.golden_set_agreement, sv.too_strict_count,
+           sv.execution_binding, sv.custom_endpoint_url, sv.golden_set_agreement, sv.too_strict_count,
            sv.too_lenient_count, sv.ambiguous_count, sv.created_at
     from public.skill_versions sv
     order by sv.created_at, sv.id`);

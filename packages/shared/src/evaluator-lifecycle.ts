@@ -1,9 +1,9 @@
 import { z } from "zod";
 import {
   JsonSchemaSchema,
-  MinimumVerdictOutputSchema,
-  ModelBindingInputSchema
+  MinimumVerdictOutputSchema
 } from "./judge.js";
+import { ExecutionBindingInputSchema } from "./evaluator-execution.js";
 import { SkillSchema } from "./skills.js";
 
 // Batch 6B-4: explicit evaluator lifecycle for analysis-promotion criteria.
@@ -61,7 +61,7 @@ export const EvaluatorCandidateCreateInputSchema = z.object({
   skillDescription: z.string().trim().min(1).max(2_000),
   rubricMarkdown: z.string().trim().min(1).max(100_000),
   prompt: z.string().trim().min(1).max(100_000),
-  modelBinding: ModelBindingInputSchema,
+  executionBinding: ExecutionBindingInputSchema,
   outputSchema: JsonSchemaSchema.default(MinimumVerdictOutputSchema),
   idempotencyKey: EvaluatorLifecycleIdempotencyKeySchema
 }).strict();
