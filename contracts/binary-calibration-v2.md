@@ -13,8 +13,9 @@ v2 keeps every rule of v1 except what ADR-0014 changes:
 - provider identity groups record the OpenRouter upstream that served the
   calls.
 
-v2 replaces v1 (ADR-0014 decision 6). The v1 documents stay in this
-directory unchanged, as superseded history. The artifact is immutable, aggregate-only,
+v2 replaces v1 (ADR-0014 decision 6). The v1 documents are deleted with the
+v1 code, and at the launch baseline this contract takes the v1 name
+(decision 7). The artifact is immutable, aggregate-only,
 single-criterion evidence from one exact binary evaluator version measured
 against one exact governed-blind sealed-validation revision. It is not an
 assessment receipt, a provider transcript, or a release decision, and it does

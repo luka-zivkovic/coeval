@@ -6,8 +6,8 @@ of one Rubrist evaluator version: enough to read it, move it to another
 installation, and confirm that the evaluator received is the one exported.
 Rubrist ADR-0014 section 7 decides it. It replaces `skill-format/v1`
 (`spec/skill-format-v1.md`), which described a v1 model binding and left out
-the prompt and verdict kind; that document stays unchanged, as superseded
-history.
+the prompt and verdict kind; that document is deleted with the v1 export, and
+at the launch baseline this format takes the v1 name (ADR-0014 decision 7).
 
 Unlike evidence, a skill-format document carries the evaluator's full
 definition, including the rubric and prompt text, and a typed question's text.

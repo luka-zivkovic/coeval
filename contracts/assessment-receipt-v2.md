@@ -5,7 +5,8 @@ This document is normative for Rubrist assessment receipt v2 alongside
 document defines canonical bytes, digests, and the semantic rules a
 structurally valid receipt must also satisfy. Rubrist ADR-0014 section 7
 decides the contract. Receipt v2 replaces receipt v1 (ADR-0014 decision 6);
-the v1 documents stay in this directory unchanged, as superseded history.
+the v1 documents are deleted with the v1 code, and at the launch baseline
+this contract takes the v1 name (decision 7).
 
 ## Canonical JSON and digests
 
