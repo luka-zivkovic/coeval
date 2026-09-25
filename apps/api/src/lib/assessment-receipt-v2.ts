@@ -3,7 +3,7 @@ import {
   type AssessmentReceiptV2,
   type AssessmentReceiptV2Item
 } from "@rubrist/shared";
-import { canonicalJson, sha256Digest } from "./assessment-receipt.js";
+import { canonicalJson, sha256Digest } from "./canonical-json.js";
 import { skillDigestV2FromInput } from "./evaluator-identity.js";
 
 // Assessment receipt v2 (Rubrist ADR-0014 section 7;

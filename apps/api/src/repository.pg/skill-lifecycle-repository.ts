@@ -14,7 +14,7 @@ import {
 } from "@rubrist/shared";
 import type { Pool } from "pg";
 import { PgEvaluatorLifecycleRepository } from "../evaluator-lifecycle/repository.pg.js";
-import { evaluatorSuiteCriterionDigest } from "../lib/evaluator-suite.js";
+import { criterionVersionDigest } from "../lib/criterion-digest.js";
 import type { JudgeProviderFactory } from "../lib/judge-provider.js";
 import type { CreateSkillVersionContext } from "../repository.js";
 import {
@@ -420,7 +420,7 @@ export class PgSkillLifecycleRepository implements SkillLifecycleRepositoryPort 
           [context.projectId, criterionId]
         )).rows[0]?.revision ?? 1);
         criterionVersionId = `criterionv_${randomUUID()}`;
-        const criterionDigest = evaluatorSuiteCriterionDigest({
+        const criterionDigest = criterionVersionDigest({
           criterionId,
           criterionVersionId,
           criterionName: context.onboardingCriterion.name,

@@ -13,7 +13,7 @@ import {
   type SettingSupport,
   type VerdictProtocolId
 } from "@rubrist/shared";
-import { canonicalJson } from "./assessment-receipt.js";
+import { canonicalJson } from "./canonical-json.js";
 import { attributeProbeOutcome, capabilityProtocolOrder, type PublishedCapabilities } from "./evaluator-capability.js";
 
 // The capability check, resolution, and re-check of an execution binding

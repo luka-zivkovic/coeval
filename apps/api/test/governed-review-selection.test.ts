@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sha256Digest } from "../src/lib/assessment-receipt.js";
+import { sha256Digest } from "../src/lib/canonical-json.js";
 import { governedReviewServePositions } from "../src/lib/governed-review-artifacts.js";
 import { executeGovernedReviewSelection, type GovernedSelectionRequest } from "../src/governed-review/selection.js";
 

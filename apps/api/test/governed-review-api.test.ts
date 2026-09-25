@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import { canonicalJson } from "../src/lib/assessment-receipt.js";
+import { canonicalJson } from "../src/lib/canonical-json.js";
 import {
   GovernedReviewIdempotencyConflictError,
   GovernedReviewNotFoundError,

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { sha256Digest } from "../lib/assessment-receipt.js";
+import { sha256Digest } from "../lib/canonical-json.js";
 import { GOVERNED_REVIEW_SERVE_ORDER_VERSION, governedReviewServePositions } from "../lib/governed-review-artifacts.js";
 
 export interface GovernedSelectionFrameItem {

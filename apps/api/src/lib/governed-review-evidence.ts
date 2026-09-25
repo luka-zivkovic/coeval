@@ -11,8 +11,8 @@ import {
   type GovernedReviewTask,
   type ImportedHumanTruth
 } from "@rubrist/shared";
-import { canonicalJson, sha256Digest } from "./assessment-receipt.js";
-import { evaluatorSuiteCriterionDigest } from "./evaluator-suite.js";
+import { canonicalJson, sha256Digest } from "./canonical-json.js";
+import { criterionVersionDigest } from "./criterion-digest.js";
 import { governedContentV1Digest } from "./governed-content-digest.js";
 import {
   MAX_GOVERNED_REVIEW_PAYLOAD_BYTES,
@@ -72,7 +72,7 @@ export function buildGovernedBlindTaskView(input: {
   assertSame(input.criterion.projectId, task.projectId, "blind view criterion project");
   assertSame(input.criterion.id, task.criterionVersionId, "blind view criterion version");
   assertSame(input.criterion.criterionId, instruction.criterionId, "blind view criterion identity");
-  const expectedCriterionDigest = evaluatorSuiteCriterionDigest({
+  const expectedCriterionDigest = criterionVersionDigest({
     criterionId: input.criterion.criterionId,
     criterionVersionId: input.criterion.id,
     criterionName: input.criterion.name,

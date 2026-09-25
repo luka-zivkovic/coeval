@@ -1,4 +1,4 @@
-import { sha256Digest } from "./assessment-receipt.js";
+import { sha256Digest } from "./canonical-json.js";
 import type { DatasetRevisionRole as SharedDatasetRevisionRole } from "@rubrist/shared";
 
 export type DatasetRevisionRole = SharedDatasetRevisionRole;

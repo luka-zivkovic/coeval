@@ -17,9 +17,9 @@ import {
   buildEvaluatorSuiteManifest,
   canonicalEvaluatorSuiteManifestBytes,
   evaluatorSuiteCreateRequestDigest,
-  evaluatorSuiteCriterionDigest,
   parseCanonicalEvaluatorSuiteManifestBytes
 } from "../lib/evaluator-suite.js";
+import { criterionVersionDigest } from "../lib/criterion-digest.js";
 import type { DemoRepositoryStore } from "./demo-store.js";
 import {
   CriterionStableKeyConflictError,
@@ -81,7 +81,7 @@ export class DemoCriterionSuiteRepository implements CriterionSuiteRepositoryPor
       revision: 1,
       name: input.name,
       definition: input.definition,
-      criterionDigest: evaluatorSuiteCriterionDigest({
+      criterionDigest: criterionVersionDigest({
         criterionId: criterion.id,
         criterionVersionId: versionId,
         criterionName: input.name,
@@ -160,7 +160,7 @@ export class DemoCriterionSuiteRepository implements CriterionSuiteRepositoryPor
       revision: Math.max(0, ...prior.map((entry) => entry.revision)) + 1,
       name: input.name,
       definition: input.definition,
-      criterionDigest: evaluatorSuiteCriterionDigest({
+      criterionDigest: criterionVersionDigest({
         criterionId,
         criterionVersionId: id,
         criterionName: input.name,

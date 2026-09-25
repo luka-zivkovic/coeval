@@ -1,5 +1,5 @@
 import type { Pool, PoolClient } from "pg";
-import { canonicalJson } from "../lib/assessment-receipt.js";
+import { canonicalJson } from "../lib/canonical-json.js";
 
 import { datasetInputIdentity } from "../lib/dataset-revision.js";
 import { governedReviewRequestDigest } from "../lib/governed-review.js";

@@ -167,6 +167,33 @@ export const ExecutionBindingSchema = z.object({
 });
 export type ExecutionBinding = z.infer<typeof ExecutionBindingSchema>;
 
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object") {
+    for (const entry of Object.values(value)) deepFreeze(entry);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+/**
+ * The binding a new project's starter evaluator is seeded with (ADR-0014
+ * section 2): every identity field stated, and the documented default
+ * reasoning saved explicitly. Projects are seeded before any credential
+ * exists, so it is saved unresolved and resolves when a governed gate or
+ * run first needs it, or on demand. It is frozen: copy it before changing it.
+ */
+export const SEEDED_DEFAULT_EXECUTION_BINDING: ExecutionBinding = deepFreeze({
+  provider: "anthropic",
+  endpoint: { kind: "managed" },
+  modelId: "claude-sonnet-4-6",
+  modelVersion: "claude-sonnet-4-6",
+  sampling: { temperature: 0, topP: null },
+  reasoning: { family: "anthropic", thinking: { type: "disabled" }, effort: "high" },
+  outputTokenLimit: 1_200,
+  verdictProtocol: "anthropic.structured-output/v1",
+  routing: null
+});
+
 // The v1 skill-version invariants (skills.ts), which v2 identity keeps.
 const PromptedDefinitionSchema = z.object({
   kind: z.literal("prompted"),

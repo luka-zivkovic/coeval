@@ -7,7 +7,7 @@ import {
   ProductionDecisionLedgerRecordSchema,
   type ProductionDecisionLedgerRecord
 } from "@rubrist/shared";
-import { canonicalJson } from "../lib/assessment-receipt.js";
+import { canonicalJson } from "../lib/canonical-json.js";
 import { governedContentV1Digest } from "../lib/governed-content-digest.js";
 import {
   PRODUCTION_RECORD_APPEND_MAX_RECORDS,

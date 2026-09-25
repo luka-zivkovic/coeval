@@ -15,7 +15,7 @@ import {
   type VerdictLabel,
   regressionDirectionCounts
 } from "@rubrist/shared";
-import { evaluatorSuiteCriterionDigest } from "../lib/evaluator-suite.js";
+import { criterionVersionDigest } from "../lib/criterion-digest.js";
 import type { CreateSkillVersionContext } from "./contracts.js";
 import type { DemoRepositoryStore } from "./demo-store.js";
 import {
@@ -235,7 +235,7 @@ export class DemoSkillLifecycleRepository implements SkillLifecycleRepositoryPor
         revision: Math.max(0, ...prior.map((entry) => entry.revision)) + 1,
         name: context.onboardingCriterion.name,
         definition: context.onboardingCriterion.definition,
-        criterionDigest: evaluatorSuiteCriterionDigest({
+        criterionDigest: criterionVersionDigest({
           criterionId,
           criterionVersionId: id,
           criterionName: context.onboardingCriterion.name,

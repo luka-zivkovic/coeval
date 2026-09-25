@@ -6,7 +6,7 @@ import {
   type BinaryCalibrationPrivateLedger
 } from "@rubrist/shared";
 
-import { sha256Digest } from "../lib/assessment-receipt.js";
+import { sha256Digest } from "../lib/canonical-json.js";
 import {
   binaryCalibrationArtifactDigest,
   binaryCalibrationPrivateLedgerCommitmentDigest,

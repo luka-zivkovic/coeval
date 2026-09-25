@@ -8,11 +8,9 @@ import {
   type EvaluatorSuiteTrialPlan,
   type SkillVersion
 } from "@rubrist/shared";
-import {
-  canonicalJson,
-  sha256Digest,
-  skillDigest
-} from "./assessment-receipt.js";
+import { canonicalJson, sha256Digest } from "./canonical-json.js";
+import { criterionVersionDigest } from "./criterion-digest.js";
+import { skillDigest } from "./assessment-receipt.js";
 
 export interface EvaluatorSuiteCriterionInput {
   criterionId: string;
@@ -41,12 +39,7 @@ export interface ExpectedEvaluatorSuiteManifest {
 }
 
 export function evaluatorSuiteCriterionDigest(input: EvaluatorSuiteCriterionInput): string {
-  return sha256Digest({
-    criterionId: input.criterionId,
-    criterionVersionId: input.criterionVersionId,
-    criterionName: input.criterionName,
-    criterionDefinition: input.criterionDefinition
-  });
+  return criterionVersionDigest(input);
 }
 
 // This digest makes the output contract independently addressable in the

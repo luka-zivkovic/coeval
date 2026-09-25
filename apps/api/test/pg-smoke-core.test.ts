@@ -7,7 +7,8 @@ import { PgRepository } from "../src/repository.pg.js";
 
 import { dispatchEvalRunOnce } from "../src/workers/gate.js";
 
-import { buildAssessmentReceipt, contentDigest, evidenceDigestForReceipt } from "../src/lib/assessment-receipt.js";
+import { contentDigest } from "../src/lib/canonical-json.js";
+import { buildAssessmentReceipt, evidenceDigestForReceipt } from "../src/lib/assessment-receipt.js";
 
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 import { runPgSmoke, seedSkill } from "./pg-smoke-support.js";

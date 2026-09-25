@@ -15,7 +15,7 @@ import {
   type BinaryCalibrationV2Trial,
   type BinaryCalibrationV2WilsonRate
 } from "@rubrist/shared";
-import { canonicalJson } from "./assessment-receipt.js";
+import { canonicalJson } from "./canonical-json.js";
 import { skillDigestV2FromInput } from "./evaluator-identity.js";
 
 // Binary calibration v2 (Rubrist ADR-0014 section 7;

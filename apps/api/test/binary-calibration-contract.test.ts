@@ -10,7 +10,7 @@ import {
   type BinaryCalibrationArtifact,
   type BinaryCalibrationPrivateLedger
 } from "@rubrist/shared";
-import { canonicalJson } from "../src/lib/assessment-receipt.js";
+import { canonicalJson } from "../src/lib/canonical-json.js";
 import {
   BINARY_CALIBRATION_MAX_CANONICAL_BYTES,
   binaryCalibrationEvidenceDigest,

@@ -7,7 +7,8 @@ import {
   type ModelBinding
 } from "@rubrist/shared";
 
-import { canonicalJson, sha256Digest, skillDigest } from "../lib/assessment-receipt.js";
+import { canonicalJson, sha256Digest } from "../lib/canonical-json.js";
+import { skillDigest } from "../lib/assessment-receipt.js";
 
 import { evaluatorOutputContractDigest } from "../lib/evaluator-suite.js";
 import { governedContentV1Digest } from "../lib/governed-content-digest.js";

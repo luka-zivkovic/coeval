@@ -6,7 +6,8 @@ import {
   type EvaluatorSuiteManifestV2Member,
   type EvaluatorSuiteTrialPlan
 } from "@rubrist/shared";
-import { canonicalJson, sha256Digest } from "./assessment-receipt.js";
+import { canonicalJson, sha256Digest } from "./canonical-json.js";
+import { criterionVersionDigest } from "./criterion-digest.js";
 import { evaluatorOutputContractDigestV2, skillDigestV2 } from "./evaluator-identity.js";
 
 // Evaluator suite manifest v2 (Rubrist ADR-0014 section 7;
@@ -43,12 +44,7 @@ export interface ExpectedEvaluatorSuiteManifestV2 {
 }
 
 export function evaluatorSuiteCriterionDigestV2(input: EvaluatorSuiteCriterionV2Input): string {
-  return sha256Digest({
-    criterionId: input.criterionId,
-    criterionVersionId: input.criterionVersionId,
-    criterionName: input.criterionName,
-    criterionDefinition: input.criterionDefinition
-  });
+  return criterionVersionDigest(input);
 }
 
 export function evaluatorSuiteManifestV2Digest(

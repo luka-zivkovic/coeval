@@ -27,7 +27,7 @@ import {
   canonicalizeAnalysisCriterionPromotionSupports,
   decideAnalysisCriterionPromotionCommand
 } from "../lib/analysis-promotion.js";
-import { evaluatorSuiteCriterionDigest } from "../lib/evaluator-suite.js";
+import { criterionVersionDigest } from "../lib/criterion-digest.js";
 import {
   AnalysisPromotionRepositoryError,
   type AnalysisPromotionAccess,
@@ -150,7 +150,7 @@ export class PgAnalysisPromotionRepository implements AnalysisPromotionRepositor
       const criterionId = stableId("criterion", promotionId);
       const criterionVersionId = stableId("criterionv", promotionId, "1");
       const criterionStableKey = analysisCriterionPromotionStableKey(input.codeId);
-      const criterionDigest = evaluatorSuiteCriterionDigest({
+      const criterionDigest = criterionVersionDigest({
         criterionId,
         criterionVersionId,
         criterionName: input.criterionName,
