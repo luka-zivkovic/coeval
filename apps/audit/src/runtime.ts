@@ -21,6 +21,7 @@ export {
   parseSingleJsonObject,
   parseVerdictProtocolResponse,
   renderEvaluatorPrompt,
+  verdictProtocolMechanism,
   verdictProtocolRunsOn,
   verdictProtocolSurface,
   verdictProtocolTokenLimitParameter

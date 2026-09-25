@@ -20,15 +20,17 @@ export interface DocumentedReasoningDefault {
 }
 
 // ASSUMPTION, per Anthropic's documentation as reviewed on 2026-09-25 and
-// recorded in ADR-0014 section 2.
+// recorded in ADR-0014 section 2; each source says which part it documents.
 const REASONING_DEFAULTS_V1: readonly DocumentedReasoningDefault[] = [
   {
     provider: "anthropic",
     modelId: "claude-sonnet-4-6",
     reasoning: { family: "anthropic", thinking: { type: "disabled" }, effort: "high" },
     sources: [
+      // Thinking is off when the parameter is omitted.
       "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices",
-      "https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-6"
+      // Effort defaults to high.
+      "https://platform.claude.com/docs/en/build-with-claude/effort"
     ],
     reviewedOn: "2026-09-25"
   },
@@ -36,7 +38,12 @@ const REASONING_DEFAULTS_V1: readonly DocumentedReasoningDefault[] = [
     provider: "anthropic",
     modelId: "claude-opus-5-5",
     reasoning: { family: "anthropic", thinking: { type: "adaptive" }, effort: "medium" },
-    sources: ["Anthropic model documentation for Claude Opus 5.5, as reviewed for Rubrist ADR-0014 on 2026-09-25"],
+    sources: [
+      // Thinking is always on (adaptive).
+      "https://platform.claude.com/docs/en/models/opus-5-5/whats-new-opus-5-5",
+      // Effort defaults to medium.
+      "https://platform.claude.com/docs/en/build-with-claude/effort"
+    ],
     reviewedOn: "2026-09-25"
   }
 ];

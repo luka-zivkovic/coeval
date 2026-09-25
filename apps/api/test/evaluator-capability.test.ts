@@ -44,6 +44,7 @@ function probe(purpose: CapabilityProbe["purpose"], sent: Partial<CapabilityProb
     verdictProtocol: "anthropic.structured-output/v1",
     sent: { ...NO_SETTINGS, ...sent },
     ...attribution,
+    usage: null,
     costMicroUsd: null
   });
 }
@@ -145,6 +146,21 @@ describe("probe attribution", () => {
       .toMatchObject({ rejection: "value", rejectedParameter: "reasoning" });
     expect(probe("temperature", { temperature: 1.5 }, rejection("temperature: range: 0 <= temperature <= 1")))
       .toMatchObject({ rejection: "value", rejectedParameter: "temperature" });
+  });
+
+  it("reads default-only and non-default wording as a value rejection", () => {
+    for (const message of [
+      "`temperature` may only be set to 1 when thinking is enabled",
+      "temperature: non-default values are not supported",
+      "Only the default value of temperature is supported"
+    ]) {
+      expect(probe("temperature", { temperature: 1 }, rejection(message)), message).toMatchObject({ rejection: "value", rejectedParameter: "temperature" });
+    }
+    const coded = new EvaluatorCallError("provider_rejected_request", "x", {
+      physicalCall: true, status: 400,
+      providerError: { type: "invalid_request_error", code: "unsupported_value", param: "temperature", message: "temperature does not support this", raw: null, upstreamProvider: null }
+    });
+    expect(probe("temperature", { temperature: 1 }, coded)).toMatchObject({ rejection: "value" });
   });
 
   it("marks a mechanism rejection when only the output mechanism is named", () => {
