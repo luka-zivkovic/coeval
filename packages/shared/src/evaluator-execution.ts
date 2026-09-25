@@ -15,9 +15,12 @@ export const EVALUATOR_IDENTITY_BASIS = "rubrist/evaluator-identity/v2" as const
 
 const Sha256DigestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
 const NonEmptyTextSchema = (max: number) => UnicodeScalarValueSchema.pipe(z.string().min(1).max(max));
-// A parsed record assigns `__proto__` as the prototype, not as a key, so the
-// digest would silently drop it; identity refuses the key instead.
-const IdentityKeySchema = UnicodeScalarValueSchema.refine((key) => key !== "__proto__", { message: "__proto__ is not a valid key" });
+// A record parse skips an own `__proto__` key without reporting it, so the
+// parsed identity would silently differ from the document. Identity records
+// refuse the key on the raw input, before the record parse runs.
+const identityRecord = <T extends z.ZodType>(value: T) => z.unknown()
+  .refine((raw) => typeof raw !== "object" || raw === null || !Object.hasOwn(raw, "__proto__"), { message: "__proto__ is not a valid key" })
+  .pipe(z.record(UnicodeScalarValueSchema, value));
 
 export const ExecutionProviderIdSchema = z.enum(["mock", "anthropic", "openai", "openrouter", "custom", "typesafe"]);
 export type ExecutionProviderId = z.infer<typeof ExecutionProviderIdSchema>;
@@ -160,9 +163,9 @@ const PromptedDefinitionSchema = z.object({
   rubricMarkdown: z.string().max(100_000),
   prompt: z.string().max(100_000),
   verdictKind: z.enum(["binary", "scalar", "categorical"]),
-  outputSchema: z.record(IdentityKeySchema, z.unknown()),
+  outputSchema: identityRecord(z.unknown()),
   scalarRange: z.tuple([z.number(), z.number()]).nullable(),
-  categoricalChoiceScores: z.record(IdentityKeySchema, z.number().min(0).max(1)).nullable()
+  categoricalChoiceScores: identityRecord(z.number().min(0).max(1)).nullable()
 }).strict().superRefine((definition, ctx) => {
   if (definition.verdictKind === "scalar"
     ? definition.scalarRange === null || definition.scalarRange[0] >= definition.scalarRange[1]
@@ -197,7 +200,13 @@ const TypedQuestionDefinitionSchema = z.object({
   rationale: z.literal("not_provided")
 }).strict();
 
-export const EvaluatorDefinitionSchema = z.discriminatedUnion("kind", [PromptedDefinitionSchema, TypedQuestionDefinitionSchema]);
+export const EvaluatorDefinitionSchema = z.discriminatedUnion("kind", [PromptedDefinitionSchema, TypedQuestionDefinitionSchema])
+  .superRefine((definition, ctx) => {
+    // Canonical identities operate on Unicode scalar values, nested keys and values included.
+    if (containsLoneUtf16Surrogate(definition)) {
+      ctx.addIssue({ code: "custom", message: "evaluator definitions must not contain lone UTF-16 surrogates" });
+    }
+  });
 export type EvaluatorDefinition = z.infer<typeof EvaluatorDefinitionSchema>;
 
 export const EvaluatorIdentitySchema = z.object({
@@ -205,10 +214,6 @@ export const EvaluatorIdentitySchema = z.object({
   definition: EvaluatorDefinitionSchema,
   executionBinding: ExecutionBindingSchema
 }).strict().superRefine((identity, ctx) => {
-  // Canonical identities operate on Unicode scalar values, nested keys and values included.
-  if (containsLoneUtf16Surrogate(identity)) {
-    ctx.addIssue({ code: "custom", message: "evaluator identity must not contain lone UTF-16 surrogates" });
-  }
   const typed = identity.definition.kind === "typed-question";
   if (typed !== (identity.executionBinding.verdictProtocol === "typed-question/v1")) {
     ctx.addIssue({ code: "custom", path: ["executionBinding", "verdictProtocol"], message: "typed-question definitions run on typed-question/v1, and only they do" });
@@ -254,8 +259,24 @@ export const SettingSupportSchema = z.enum(["accepted", "value_rejected", "param
 export type SettingSupport = z.infer<typeof SettingSupportSchema>;
 
 const REJECTION_FAILURE_KINDS: readonly EvaluatorFailureKind[] = ["provider_rejected_request", "provider_protocol"];
+// ADR-0014 section 4: a check sends up to 3 protocol, 1 temperature, and 2
+// reasoning probes; a resolution attempt one confirming probe plus at most one
+// temperature and one reasoning probe.
+const PROBE_LIMITS = {
+  capability_check: { protocol: 3, temperature: 1, reasoning: 2, confirm: 0 },
+  resolution: { protocol: 0, temperature: 1, reasoning: 1, confirm: 1 },
+  recheck: { protocol: 0, temperature: 0, reasoning: 0, confirm: 0 }
+} as const;
 const CAPABILITY_CHECK_PROBE_LIMIT = 6;
 const RESOLUTION_PROBE_LIMIT = 3;
+
+/** Settings compare by value, whatever order a producer wrote their keys in. */
+function sameSettings(left: unknown, right: unknown): boolean {
+  const stable = (value: unknown): unknown => value !== null && typeof value === "object" && !Array.isArray(value)
+    ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable((value as Record<string, unknown>)[key])]))
+    : value;
+  return JSON.stringify(stable(left)) === JSON.stringify(stable(right));
+}
 
 /**
  * One probe call (ADR-0014 section 4), with every optional setting it sent.
@@ -305,8 +326,20 @@ export const CapabilityProbeSchema = z.object({
 });
 export type CapabilityProbe = z.infer<typeof CapabilityProbeSchema>;
 
-/** Whether some probe in the record supports the summary a gate reads. */
-function supportIsRecorded(probes: readonly CapabilityProbe[], setting: "temperature" | "reasoning", support: SettingSupport): boolean {
+/**
+ * Whether some probe in the record supports the summary a gate reads. Once a
+ * confirming probe exists, its reasoning is the saved reasoning, and a
+ * temperature summary must come from a probe sent with that reasoning.
+ */
+function supportIsRecorded(
+  allProbes: readonly CapabilityProbe[],
+  setting: "temperature" | "reasoning",
+  support: SettingSupport,
+  confirm: CapabilityProbe | undefined
+): boolean {
+  const probes = setting === "temperature" && confirm
+    ? allProbes.filter((probe) => sameSettings(probe.sent.reasoning, confirm.sent.reasoning))
+    : allProbes;
   switch (support) {
     case "accepted":
       return probes.some((probe) => probe.outcome === "accepted" && probe.sent[setting] !== null);
@@ -341,22 +374,28 @@ export const ResolutionRecordSchema = z.object({
 }).strict().superRefine((record, ctx) => {
   const checkProbes = record.probes.filter((probe) => probe.stage === "capability_check");
   const resolutionProbes = record.probes.filter((probe) => probe.stage === "resolution");
+  const counts = new Map<string, number>();
   record.probes.forEach((probe, index) => {
     if (probe.stage === "recheck") {
       ctx.addIssue({ code: "custom", path: ["probes", index, "stage"], message: "re-check probes belong to the run they guard" });
+      return;
     }
-    if ((probe.stage === "capability_check" && probe.purpose === "confirm") || (probe.stage === "resolution" && probe.purpose === "protocol")) {
-      ctx.addIssue({ code: "custom", path: ["probes", index, "purpose"], message: `a ${probe.stage} probe can't be a ${probe.purpose} probe` });
+    const key = `${probe.stage}/${probe.purpose}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+    if (counts.get(key)! > PROBE_LIMITS[probe.stage][probe.purpose]) {
+      ctx.addIssue({
+        code: "custom", path: ["probes", index, "purpose"],
+        message: `a ${probe.stage} holds at most ${PROBE_LIMITS[probe.stage][probe.purpose]} ${probe.purpose} probe(s)`
+      });
     }
   });
   if (checkProbes.length > CAPABILITY_CHECK_PROBE_LIMIT || resolutionProbes.length > RESOLUTION_PROBE_LIMIT) {
     ctx.addIssue({ code: "custom", path: ["probes"], message: "a record holds at most 6 capability-check probes and 3 resolution probes" });
   }
-  const confirms = resolutionProbes.filter((probe) => probe.purpose === "confirm");
-  if (confirms.length > 1) {
-    ctx.addIssue({ code: "custom", path: ["probes"], message: "a resolution attempt sends one confirming probe" });
+  const confirm = resolutionProbes.find((probe) => probe.purpose === "confirm");
+  if (resolutionProbes.length > 0 && confirm === undefined) {
+    ctx.addIssue({ code: "custom", path: ["probes"], message: "a resolution attempt starts with its confirming probe" });
   }
-  const confirm = confirms[0];
   const statusFits = record.status === "resolved"
     ? confirm?.outcome === "accepted"
     : record.status === "failed"
@@ -367,8 +406,8 @@ export const ResolutionRecordSchema = z.object({
   }
   for (const [field, setting] of [["temperatureSupport", "temperature"], ["reasoningSupport", "reasoning"]] as const) {
     const support = record[field];
-    if (support !== null && !supportIsRecorded(record.probes, setting, support)) {
-      ctx.addIssue({ code: "custom", path: [field], message: `no probe in the record shows ${setting} ${support}` });
+    if (support !== null && !supportIsRecorded(record.probes, setting, support, confirm)) {
+      ctx.addIssue({ code: "custom", path: [field], message: `no probe in the record shows ${setting} ${support}${setting === "temperature" && confirm ? " with the saved reasoning" : ""}` });
     }
   }
 });

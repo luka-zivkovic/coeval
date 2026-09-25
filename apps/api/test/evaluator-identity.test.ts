@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EVALUATOR_IDENTITY_BASIS,
+  EvaluatorDefinitionSchema,
   EvaluatorIdentitySchema,
   EvaluatorItemStateSchema,
   ExecutionBindingSchema,
@@ -178,9 +179,17 @@ describe("evaluator definition (ADR-0014 sections 1 and 5)", () => {
     expect(prompted({ verdictKind: "categorical", categoricalChoiceScores: { good: 1.5 } })).toContain("definition.categoricalChoiceScores.good");
   });
 
-  it("refuses lone surrogates anywhere in the identity, keys included", () => {
+  it("refuses lone surrogates anywhere in the definition, keys included, even parsed on its own", () => {
     expect(identityIssues({ ...PROMPTED, definition: { ...PROMPTED_DEFINITION, rubricMarkdown: "\ud800" } })).not.toEqual([]);
     expect(identityIssues({ ...PROMPTED, definition: { ...PROMPTED_DEFINITION, outputSchema: { properties: { "\ud800": {} } } } })).not.toEqual([]);
+    expect(EvaluatorDefinitionSchema.safeParse({ ...PROMPTED_DEFINITION, prompt: "\udc00" }).success).toBe(false);
+  });
+
+  it("refuses an own __proto__ key in identity records instead of dropping it", () => {
+    const withProto = (json: string) => ({ ...PROMPTED_DEFINITION, ...JSON.parse(json) });
+    expect(EvaluatorDefinitionSchema.safeParse(withProto(`{"outputSchema":{"type":"object","__proto__":{"x":1}}}`)).success).toBe(false);
+    expect(EvaluatorDefinitionSchema.safeParse(withProto(`{"verdictKind":"categorical","categoricalChoiceScores":{"good":1,"__proto__":0}}`)).success).toBe(false);
+    expect(EvaluatorDefinitionSchema.safeParse(withProto(`{"verdictKind":"categorical","categoricalChoiceScores":{"good":1}}`)).success).toBe(true);
   });
 
   it("ties typed-question definitions to typed-question/v1 in both directions", () => {
@@ -274,8 +283,12 @@ describe("resolution record (ADR-0014 section 4)", () => {
 
   it("holds at most a capability check of 6 probes and one resolution attempt of 3, with one confirming probe", () => {
     expect(recordIssues({ probes: [...Array(7).fill(protocolProbe), confirmProbe] })).toContain("probes");
+    expect(recordIssues({ probes: [protocolProbe, protocolProbe, protocolProbe, protocolProbe, temperatureProbe, confirmProbe] })).toContain("probes.3.purpose");
+    expect(recordIssues({ probes: [protocolProbe, temperatureProbe, temperatureProbe, confirmProbe] })).toContain("probes.2.purpose");
+    expect(recordIssues({ probes: [protocolProbe, reasoningProbe, reasoningProbe, reasoningProbe, temperatureProbe, confirmProbe] })).toContain("probes.3.purpose");
+    expect(recordIssues({ status: "unresolved", probes: [protocolProbe, temperatureProbe, reasoningProbe, { ...temperatureProbe, stage: "resolution" }] })).toContain("probes");
     expect(recordIssues({ probes: [...record.probes, { ...reasoningProbe, stage: "resolution" }, { ...reasoningProbe, stage: "resolution" }, { ...reasoningProbe, stage: "resolution" }] })).toContain("probes");
-    expect(recordIssues({ probes: [...record.probes, confirmProbe] })).toContain("probes");
+    expect(recordIssues({ probes: [...record.probes, confirmProbe] })).toContain("probes.4.purpose");
     expect(probeIssues({ ...protocolProbe, stage: "resolution" })).toContain("purpose");
     expect(probeIssues({ ...confirmProbe, stage: "capability_check" })).toContain("purpose");
   });
@@ -292,6 +305,15 @@ describe("resolution record (ADR-0014 section 4)", () => {
     const timedOut = { ...confirmProbe, outcome: "error", failureKind: "provider_timeout" };
     expect(recordIssues({ status: "unresolved", reasoningSupport: null, probes: [protocolProbe, temperatureProbe, timedOut] })).toEqual([]);
     expect(recordIssues({ status: "failed", reasoningSupport: null, probes: [protocolProbe, temperatureProbe, timedOut] })).toContain("status");
+  });
+
+  it("reads temperature support only from a probe sent with the saved reasoning", () => {
+    // The check probed temperature with adaptive thinking; the author saved thinking disabled.
+    const disabled = { family: "anthropic", thinking: { type: "disabled" }, effort: "high" } as const;
+    const savedConfirm = { ...confirmProbe, sent: { ...NOTHING_SENT, reasoning: disabled } };
+    expect(recordIssues({ probes: [protocolProbe, temperatureProbe, reasoningProbe, savedConfirm] })).toContain("temperatureSupport");
+    const resolutionTemperature = { ...temperatureProbe, stage: "resolution", sent: { ...NOTHING_SENT, temperature: 0, reasoning: { effort: "high", thinking: { type: "disabled" }, family: "anthropic" } } };
+    expect(recordIssues({ probes: [protocolProbe, temperatureProbe, reasoningProbe, savedConfirm, resolutionTemperature] })).toEqual([]);
   });
 
   it("keeps the gate-facing support fields backed by a probe that names that setting", () => {
