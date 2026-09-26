@@ -645,7 +645,6 @@ deploy           Release-owned Compose bundles for self-hosting
 tools/ci         Standalone CI gate client and examples
 tools/mcp        Stdio MCP server over the HTTP API
 tools/sim        Optional end-to-end simulation harness
-spec             Portable SkillFormat specification
 ```
 
 The architectural overview and core invariants are documented in [docs/architecture.md](docs/architecture.md).

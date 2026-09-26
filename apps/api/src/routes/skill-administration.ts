@@ -7,6 +7,8 @@ import {
   CreateOnboardingCheckInputSchema,
   CreateSkillVersionInputSchema,
   SKILL_FORMAT_V2_EXAMPLES_CAP,
+  SKILL_FORMAT_V2_OWNER_MAX,
+  isPortableSkillFormatV2Example,
   type EvaluatorIdentity,
   type SkillFormatV2
 } from "@rubrist/shared";
@@ -216,17 +218,24 @@ export function registerSkillAdministrationRoutes(
     } catch {
       return c.json({ error: "This evaluator version has no valid evaluator identity to export." }, 409);
     }
-    const examples = await repository.getSkillFormatExamples(
+    const golden = await repository.getSkillFormatExamples(
       projectId,
       SKILL_FORMAT_V2_EXAMPLES_CAP,
       criterionVersion.id
     );
+    // An example the format can't carry is left out, never the whole export.
+    const examples = golden.filter(isPortableSkillFormatV2Example);
     const notes: string[] = [];
-    if (examples.length === 0) {
+    if (golden.length === 0) {
       notes.push("examples: the golden set is empty; promote reviewed cases to seed few-shot examples.");
-    } else if (examples.length === SKILL_FORMAT_V2_EXAMPLES_CAP) {
+    } else if (golden.length === SKILL_FORMAT_V2_EXAMPLES_CAP) {
       notes.push(`examples: capped at ${SKILL_FORMAT_V2_EXAMPLES_CAP} of the golden set.`);
     }
+    if (examples.length < golden.length) {
+      notes.push(`examples: ${golden.length - examples.length} of the golden set left out because the format can't carry them (nested too deep, a __proto__ key, or a lone UTF-16 surrogate).`);
+    }
+    const owner = cutToLength(skill.ownerName, SKILL_FORMAT_V2_OWNER_MAX);
+    if (owner !== skill.ownerName) notes.push(`owner: the owner's display name is cut to ${SKILL_FORMAT_V2_OWNER_MAX} characters.`);
     if (identity.executionBinding.endpoint.kind === "custom") {
       notes.push("The evaluator calls a custom endpoint named only by its digest; an importer supplies the base URL, which must match that digest.");
     }
@@ -237,7 +246,7 @@ export function registerSkillAdministrationRoutes(
       doc = buildSkillFormatV2({
         name: skill.name,
         description: skill.description,
-        owner: skill.ownerName,
+        owner,
         version: version.version,
         status: version.status,
         identity,
@@ -247,7 +256,11 @@ export function registerSkillAdministrationRoutes(
         notes
       });
     } catch (error) {
-      return c.json({ error: `This evaluator version can't be exported as skill-format/v2: ${error instanceof Error ? error.message.slice(0, 300) : "invalid document"}` }, 422);
+      // A document the format refuses is the version's; anything else is a bug.
+      if (!(error instanceof z.ZodError)) throw error;
+      const issue = error.issues[0];
+      const where = issue && issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
+      return c.json({ error: `This evaluator version can't be exported as skill-format/v2: ${where}${issue?.message ?? "invalid document"}` }, 422);
     }
 
     if (c.req.query("download") === "1") {
@@ -523,4 +536,11 @@ export function registerSkillAdministrationRoutes(
     const status = result.regressionRun.status === "blocked" ? 409 : 201;
     return c.json({ ...result, ...(backfill ? { backfill } : {}) }, status);
   });
+}
+
+/** At most `max` UTF-16 units, never splitting a surrogate pair. */
+function cutToLength(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
 }

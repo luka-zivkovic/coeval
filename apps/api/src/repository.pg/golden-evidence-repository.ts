@@ -9,7 +9,7 @@ import {
   type VerdictRecord
 } from "@rubrist/shared";
 import type { Pool } from "pg";
-import { redactNormalizedTracePayload, type NormalizedTraceStep } from "../lib/redaction.js";
+import { redactNormalizedTracePayload, type NormalizedTracePayload, type NormalizedTraceStep } from "../lib/redaction.js";
 import type {
   PromoteExceptionToGoldenSetInput,
   RetireGoldenSetEntryInput
@@ -71,15 +71,17 @@ export class PgGoldenEvidenceRepository implements GoldenEvidenceRepositoryPort 
   ): Promise<SkillFormatV2Example[]> {
     const golden = (await this.listGoldenSet(projectId, criterionVersionId)).slice(0, cap);
     if (golden.length === 0) return [];
-    const traces = await this.loadGoldenSetTraces(golden);
+    const payloads = await this.loadRedactedPayloads(golden.map((entry) => entry.caseId));
     return golden.map((entry) => {
-      const trace = traces.get(entry.caseId);
-      const metadata = trace?.metadata;
+      // The contract's example is the trace's own input and output; a trace
+      // without one exports null rather than its whole payload.
+      const payload = payloads.get(entry.caseId);
+      const metadata = payload?.metadata;
       return {
         id: entry.id,
         label: entry.agreedLabel,
-        input: (trace?.input ?? null) as SkillFormatV2Example["input"],
-        output: (trace?.output ?? null) as SkillFormatV2Example["output"],
+        input: (payload?.input ?? null) as SkillFormatV2Example["input"],
+        output: (payload?.output ?? null) as SkillFormatV2Example["output"],
         reason: entry.reason,
         metadata: metadata && Object.keys(metadata).length > 0 ? metadata as SkillFormatV2Example["metadata"] : null
       };
@@ -417,23 +419,28 @@ export class PgGoldenEvidenceRepository implements GoldenEvidenceRepositoryPort 
   }
 
   private async loadGoldenSetTraces(goldenSet: GoldenSetEntry[]): Promise<Map<string, Trace>> {
-    const caseIds = goldenSet.map((entry) => entry.caseId);
     const output = new Map<string, Trace>();
-    if (caseIds.length === 0) return output;
-
-    const result = await this.pool.query(
-      `select id, normalized_payload from cases where id = any($1::text[])`,
-      [caseIds]
-    );
-    for (const row of result.rows) {
-      const payload = redactNormalizedTracePayload(parseJson(row.normalized_payload) as { input?: unknown; output?: unknown; metadata?: Record<string, unknown>; steps?: NormalizedTraceStep[] });
-      output.set(row.id, {
-        id: row.id,
+    for (const [caseId, payload] of await this.loadRedactedPayloads(goldenSet.map((entry) => entry.caseId))) {
+      output.set(caseId, {
+        id: caseId,
         input: payload.input ?? payload,
         output: payload.output ?? payload,
         metadata: payload.metadata ?? {},
         ...(payload.steps ? { steps: payload.steps } : {})
       });
+    }
+    return output;
+  }
+
+  private async loadRedactedPayloads(caseIds: string[]): Promise<Map<string, NormalizedTracePayload>> {
+    const output = new Map<string, NormalizedTracePayload>();
+    if (caseIds.length === 0) return output;
+    const result = await this.pool.query(
+      `select id, normalized_payload from cases where id = any($1::text[])`,
+      [caseIds]
+    );
+    for (const row of result.rows) {
+      output.set(row.id, redactNormalizedTracePayload(parseJson(row.normalized_payload) as NormalizedTracePayload));
     }
     return output;
   }
