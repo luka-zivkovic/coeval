@@ -1008,9 +1008,9 @@ effectively Rubrist's interface glossary.
 
 Each round is one page or flow, in this order:
 
-1. **Case detail (`/cases/:id`) and the Exceptions queue.** This is the
-   attention flow the Overview hands off to, audited with `user-flow` triage.
-   It includes the conditional double and triple primaries in the ruling card.
+1. **Case detail (`/cases/:id`) and the Exceptions queue.** Done in
+   [round 2](2026-09-26-triage-flow.md), which audits the whole triage flow,
+   the review player included.
 2. **Review guide and Check** (`/skill`, `/skill/edit`, versions, compare).
    This is the most-renamed destination.
 3. **First run, end to end** (`/skill/edit?first=1` → `/first-result`),
