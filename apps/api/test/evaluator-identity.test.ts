@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  CreateSkillVersionInputSchema,
+  EVALUATOR_DEFINITION_TEXT_MAX,
   EVALUATOR_IDENTITY_BASIS,
   EvaluatorDefinitionSchema,
   EvaluatorIdentitySchema,
@@ -15,11 +17,13 @@ import {
 } from "@rubrist/shared";
 import {
   evaluatorDefinitionDigest,
+  evaluatorIdentityFor,
   skillDigestInput,
   skillDigestV2,
   skillDigestV2FromInput,
   typedQuestionDigest
 } from "../src/lib/evaluator-identity.js";
+import { executionBindingFromInput } from "../src/lib/execution-binding.js";
 
 const SONNET_46: ExecutionBinding = {
   provider: "anthropic",
@@ -270,6 +274,53 @@ describe("skillDigest v2 (ADR-0014 section 1 and decision 5)", () => {
       + `"outputSchema":{"type":"object","__proto__":{"x":1}},"scalarRange":null,"categoricalChoiceScores":null},"executionBinding":${JSON.stringify(SONNET_46)}}`);
     expect(Object.keys(withProto.definition.outputSchema)).toContain("__proto__");
     expect(() => skillDigestV2(withProto)).toThrow();
+  });
+});
+
+describe("a saved version's identity", () => {
+  const version = {
+    rubricMarkdown: PROMPTED_DEFINITION.rubricMarkdown,
+    prompt: PROMPTED_DEFINITION.prompt,
+    verdictKind: "binary" as const,
+    outputSchema: { type: "object" },
+    scalarRange: null,
+    categoricalChoiceScores: null,
+    executionBinding: SONNET_46
+  };
+
+  it("is its prompted definition and execution binding", () => {
+    expect(evaluatorIdentityFor(version)).toEqual(PROMPTED);
+    expect(skillDigestV2(evaluatorIdentityFor(version))).toBe(skillDigestV2(PROMPTED));
+  });
+
+  it("refuses a version the identity rules refuse", () => {
+    expect(() => evaluatorIdentityFor({ ...version, rubricMarkdown: "x".repeat(100_001) })).toThrow();
+    expect(() => evaluatorIdentityFor({ ...version, executionBinding: { ...SONNET_46, provider: "typesafe", verdictProtocol: "typed-question/v1", reasoning: null, outputTokenLimit: null } })).toThrow();
+    expect(() => evaluatorIdentityFor({ ...version, verdictKind: "scalar" })).toThrow();
+  });
+
+  it("can be built from any version the create input accepts, at the longest text", () => {
+    const text = "x".repeat(EVALUATOR_DEFINITION_TEXT_MAX);
+    const base = { rubricMarkdown: text, prompt: text, executionBinding: { ...SONNET_46, endpoint: { kind: "managed" } } };
+    const inputs = [
+      base,
+      { ...base, verdictKind: "scalar", scalarRange: [1, 5] },
+      { ...base, verdictKind: "categorical", categoricalChoiceScores: { good: 1, bad: 0 } }
+    ];
+    for (const raw of inputs) {
+      const input = CreateSkillVersionInputSchema.parse(raw);
+      const { executionBinding } = executionBindingFromInput(input.executionBinding, { openAIBaseUrl: null });
+      expect(() => evaluatorIdentityFor({
+        rubricMarkdown: input.rubricMarkdown,
+        prompt: input.prompt,
+        verdictKind: input.verdictKind,
+        outputSchema: input.outputSchema,
+        scalarRange: input.scalarRange ?? null,
+        categoricalChoiceScores: input.categoricalChoiceScores ?? null,
+        executionBinding
+      })).not.toThrow();
+    }
+    expect(CreateSkillVersionInputSchema.safeParse({ ...base, rubricMarkdown: `${text}x` }).success).toBe(false);
   });
 });
 

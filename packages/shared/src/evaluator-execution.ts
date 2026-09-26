@@ -286,11 +286,18 @@ export const SEEDED_DEFAULT_EXECUTION_BINDING: ExecutionBinding = deepFreeze({
   routing: null
 });
 
+/**
+ * The longest rubric or prompt template a prompted definition holds. Every
+ * input that saves an evaluator version uses it, so every saved version has
+ * an identity.
+ */
+export const EVALUATOR_DEFINITION_TEXT_MAX = 100_000;
+
 // The v1 skill-version invariants (skills.ts), which v2 identity keeps.
 const PromptedDefinitionSchema = z.object({
   kind: z.literal("prompted"),
-  rubricMarkdown: z.string().max(100_000),
-  prompt: z.string().max(100_000),
+  rubricMarkdown: z.string().max(EVALUATOR_DEFINITION_TEXT_MAX),
+  prompt: z.string().max(EVALUATOR_DEFINITION_TEXT_MAX),
   verdictKind: z.enum(["binary", "scalar", "categorical"]),
   outputSchema: identityRecord(z.unknown()),
   scalarRange: z.tuple([z.number(), z.number()]).nullable(),

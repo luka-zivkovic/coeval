@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ExecutionBindingSchema } from "./evaluator-execution.js";
+import { EVALUATOR_DEFINITION_TEXT_MAX, ExecutionBindingSchema } from "./evaluator-execution.js";
 import {
   HttpUrlSchema,
   JudgeProviderCredentialSourceSchema,
@@ -127,10 +127,10 @@ export const AgentBootstrapRequestSchema = z.object({
   }).strict(),
   skill: z.object({
     name: z.string().trim().min(1).max(120).optional(),
-    rubricMarkdown: z.string().trim().min(1).max(100_000),
+    rubricMarkdown: z.string().trim().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX),
     // Omit for the safe built-in prompt that references the rubric. A supplied
     // prompt is accepted only after the endpoint's diagnostic validation.
-    prompt: z.string().trim().min(1).max(100_000).optional(),
+    prompt: z.string().trim().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX).optional(),
     model: AgentBootstrapModelInputSchema
   }),
   // Optional project-scoped provider credential. If omitted, the deployment's

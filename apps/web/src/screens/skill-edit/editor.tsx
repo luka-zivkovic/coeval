@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { Chip, Eyebrow, GateStrip, MarginNote, SectionHead } from "@/components/rubrist";
 import { SkillChangeReview, SkillEditFlow, type SkillEditPhase } from "@/components/skill-edit-flow";
-import { mutableModelAlias, describeExecutionBinding } from "@rubrist/shared";
+import { EVALUATOR_DEFINITION_TEXT_MAX, mutableModelAlias, describeExecutionBinding } from "@rubrist/shared";
 import type {
   CreateSkillVersionInput,
   JudgeModel,
@@ -220,6 +220,7 @@ export function SkillVersionEditor({
             <textarea
               value={rubric}
               aria-label="Review guide Markdown source"
+              maxLength={EVALUATOR_DEFINITION_TEXT_MAX}
               onChange={(e) => {
                 setRubric(e.target.value);
                 if (appliedStarter) setAppliedStarter(null);
@@ -252,6 +253,7 @@ export function SkillVersionEditor({
           <CardContent>
             <textarea
               value={prompt}
+              maxLength={EVALUATOR_DEFINITION_TEXT_MAX}
               onChange={(e) => {
                 setPrompt(e.target.value);
                 if (appliedStarter) setAppliedStarter(null);
