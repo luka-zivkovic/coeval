@@ -17,50 +17,68 @@ Later rounds add files to this folder; see [Next rounds](#next-rounds).
 
 ## How to read this
 
-- **Evidence labels** follow `AGENTS.md`. `TARGET` comes from `PRODUCT.md`,
-  accepted ADRs, and `docs/beginner-onboarding-journey.md`, which labels its
-  own journey and language TARGET under the charter. `CURRENT` is code at
-  `2c82321` and the rendered UI. `ASSUMPTION` is auditor inference; test it
-  before relying on it.
-- **Severity** follows NN/g's scale: **4** misstates evidence or blocks the
-  job; **3** is major (a likely wrong turn, a lost location, or a hidden
-  primary action); **2** is minor (it repeats, slows, or muddles); **1** is
-  cosmetic.
+- **Evidence labels** follow `AGENTS.md`:
+  - `TARGET` comes from `PRODUCT.md`, accepted ADRs, and
+    `docs/beginner-onboarding-journey.md`. That file labels its own journey and
+    language TARGET and is subordinate to the charter.
+  - `CURRENT` is code at `2c82321` and the rendered UI.
+  - `ASSUMPTION` is auditor inference. Test it before relying on it.
+- **Severity** follows NN/g's scale:
+  - **4** misstates evidence or blocks the job;
+  - **3** is major: a likely wrong turn, a lost location, or a hidden primary
+    action;
+  - **2** is minor: it repeats, slows, or muddles;
+  - **1** is cosmetic.
 - **Rules** cite the `ux-craft` skill references from
   [overclock#37](https://github.com/luka-zivkovic/overclock/pull/37) at
-  `e08b2e0` as `file › section`. `archetypes.md`, `layouts.md`,
-  `placement.md`, and `states.md` belong to `page-structure`;
-  `navigation.md` and `decisions.md` to `user-flow`; `labels.md`,
-  `errors.md`, and `casing.md` to `ui-naming`. Each file lists its primary
-  sources (NN/g, GOV.UK, Apple HIG, Material 3, WCAG).
-- **Status** is *fix* (no product decision needed), *decide* (needs a founder
-  decision), or *keep*.
+  `e08b2e0`, written as `file › section`:
+  - `archetypes.md`, `layouts.md`, `placement.md`, and `states.md` are in
+    `page-structure`;
+  - `navigation.md` and `decisions.md` are in `user-flow`;
+  - `labels.md`, `errors.md`, and `casing.md` are in `ui-naming`.
+
+  Each file lists its primary sources (NN/g, GOV.UK, Apple HIG, Material 3,
+  WCAG).
+- **Status** is one of *fix* (no product decision needed), *decide* (needs a
+  founder decision), or *keep*.
 
 ## Method
 
-- **Code.** I read the shell, the Overview and its components, and the routes
-  in `App.tsx`. A read-only sweep then inventoried every routed screen's
-  header, primary actions, container width, and states.
-- **Rendering.** The API ran in demo mode (in-memory fixtures, no auth) with
-  the Vite web app, captured at 1440×900 and 390×844 in Guided, Technical, and
-  Summary displays. The demo fixture has no day-0, provisional, bench, or
-  populated-exception data, so I rendered those states by rewriting the demo
-  `/api/dashboard` response in the browser: day 0 (tracing and bench),
-  provisional (owner and member), and production with 7 exceptions and 3
-  categories (tracing and bench). Values are synthetic; only the fields that
-  select a journey stage changed. 401, 500, and slow responses were rendered by
-  intercepting the same request. Postgres-backed mode was not exercised (the
-  local server was PostgreSQL 16; the migrations need 17).
-- **Skills.** `page-structure` (blueprint, archetypes, layouts, placement,
-  states), the `user-flow` navigation rules, and `ui-naming` label rules with
-  its read-only `scan_labels.py`. Per `ui-naming` step 0, a project's own
-  content guide outranks the skill's generic defaults, so terminology is judged
-  against Rubrist's product-language contract.
-- **Scanner caveat.** `scan_labels.py` extracted 1,267 strings from
-  `apps/web/src`, but it misses elements whose props contain arrow functions,
-  elements with icon children, and object-literal labels. It found none of the
-  14 sidebar labels and none of the Overview's buttons, so its counts below are
-  a lower bound.
+- I read the shell, the Overview and its components, and the routes in
+  `App.tsx`. A read-only sweep then inventoried every routed screen's header,
+  primary actions, container width, and states.
+- I ran the API in demo mode (in-memory fixtures, no auth) with the Vite web
+  app. Captures were at 1440×900 and 390×844, in Guided, Technical, and
+  Summary displays.
+- The demo fixture has no day-0, provisional, bench, or populated-exception
+  data. I rendered those states by rewriting the demo `/api/dashboard`
+  response in the browser:
+  - day 0 (tracing and bench);
+  - provisional (owner and member);
+  - production with 7 exceptions and 3 categories (tracing and bench).
+
+  Values are synthetic. Only the fields that select a journey stage changed.
+  I rendered 401, 500, and slow responses by intercepting the same request.
+- Postgres-backed mode was not exercised: the local server was PostgreSQL 16,
+  and the migrations need 17.
+- Skills applied:
+  - `page-structure`: blueprint, archetypes, layouts, placement, and states;
+  - `user-flow`: navigation rules;
+  - `ui-naming`: label rules and its read-only `scan_labels.py`.
+
+  Per `ui-naming` step 0, a project's own content guide outranks the skill's
+  generic defaults. Terminology is therefore judged against Rubrist's
+  product-language contract.
+- **Scanner caveat:** `scan_labels.py` extracted 1,267 strings from
+  `apps/web/src`, but it misses three kinds of text:
+  - elements whose props contain an inline arrow function, which includes
+    `<Button onClick={() => …}>Submit</Button>`, so its generic-label check
+    misses those buttons too;
+  - elements with icon children;
+  - object-literal labels.
+
+  It found none of the 14 sidebar labels and none of the Overview's buttons,
+  so the scanner counts below are a lower bound.
 
 ## Top findings, in fix order
 
@@ -513,10 +531,18 @@ the act names the sidebar uses.
 
 Sev 3 · CURRENT · *fix*
 
-The production order (`screens/dashboard.tsx:176-514`) is: key card (shown
-once) → setup receipt → header → pipeline → a three-line serif summary → four
-KPI tiles of equal weight → distribution → categories beside the Check card →
-Exceptions waiting → Manage integrations.
+The production order (`screens/dashboard.tsx:176-514`) is:
+
+1. key card (shown once);
+2. setup receipt;
+3. header;
+4. pipeline;
+5. a three-line serif summary;
+6. four KPI tiles of equal weight;
+7. distribution;
+8. categories beside the Check card;
+9. Exceptions waiting;
+10. Manage integrations.
 
 At 1440×900 with 7 Results waiting, the only filled button, "Review all 7"
 (`screens/dashboard.tsx:443-451`), sits about 1,345 px down, below the fold.
