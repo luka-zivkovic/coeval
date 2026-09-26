@@ -32,6 +32,8 @@ export function EvaluatorLifecyclePanel({
   const [items,setItems] = useState<EvaluatorLifecycleProjection[]>([]);
   const [projectRole,setProjectRole] = useState<"owner"|"member"|null>(null);
   const [loading,setLoading] = useState(true);
+  // Bumped on every load, so each row's resolution is read again after an activation or refresh.
+  const [loadCount,setLoadCount] = useState(0);
   const [working,setWorking] = useState(false);
   const [error,setError] = useState<string|null>(null);
   const [skillName,setSkillName] = useState(`${criterionName} evaluator`);
@@ -50,6 +52,7 @@ export function EvaluatorLifecyclePanel({
       const response = await fetchAllEvaluatorLifecycles();
       setProjectRole(response.projectRole);
       setItems(response.items.filter((item) => item.lifecycle.criterionId===criterionId));
+      setLoadCount((count) => count+1);
     } catch (cause) {
       setError(message(cause));
     } finally {
@@ -169,7 +172,9 @@ export function EvaluatorLifecyclePanel({
         <div className="mt-2 text-[10.5px] text-ink-3">
           implicit execution · {projection.implicitExecutionAllowed ? "allowed" : `denied (${projection.implicitDenialReasons.join(", ") || "not active"})`}
         </div>
-        {projection.currentEvent.state!=="retired" ? <BindingResolutionStatus skillVersionId={projection.lifecycle.skillVersionId} embedded /> : null}
+        {projection.currentEvent.state!=="retired" ? (
+          <BindingResolutionStatus skillVersionId={projection.lifecycle.skillVersionId} embedded refreshKey={loadCount} disabled={working} />
+        ) : null}
       </div>)}
       {projectRole==="owner" ? <div className="grid gap-3 rounded-sm border border-rule-soft p-4 md:grid-cols-2">
         <div className="md:col-span-2 flex items-center gap-2 text-[12px] text-ink-2"><ShieldAlert className="size-4"/> {items.length ? "Create another governed candidate" : "Create the first governed candidate"}</div>

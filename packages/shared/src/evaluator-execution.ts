@@ -591,22 +591,27 @@ export type ResolutionRecord = z.infer<typeof ResolutionRecordSchema>;
  */
 export const GovernedGateRefusalSchema = z.object({
   message: z.string(),
-  problems: z.array(z.string()),
-  providerMessage: z.string().nullable(),
+  problems: z.array(z.string()).min(1),
+  providerMessage: z.string().max(2_000).nullable(),
   suggestion: z.string()
 }).strict();
+
+/** How a binding states a setting the gates ask about: set, left unset, or not one its provider takes. */
+export const BindingSettingStateSchema = z.enum(["stated", "unset", "not_applicable"]);
 export type GovernedGateRefusal = z.infer<typeof GovernedGateRefusalSchema>;
 
 /**
  * A version's resolution as its author sees it: the latest record (`null`
- * before any attempt), why the binding can't pass a governed gate (`null`
- * when it can), and whether resolving now could change the record. The
- * caller's role says whether they may resolve it.
+ * before any attempt), how the binding states temperature and reasoning, why
+ * it can't pass a governed gate (`null` when it can), and whether resolving
+ * now could change the record. The caller's role says whether they may
+ * resolve it.
  */
 export const BindingResolutionStatusSchema = z.object({
   skillVersionId: z.string().min(1),
   projectRole: z.enum(["owner", "member"]),
   record: ResolutionRecordSchema.nullable(),
+  settings: z.object({ temperature: BindingSettingStateSchema, reasoning: BindingSettingStateSchema }).strict(),
   gateRefusal: GovernedGateRefusalSchema.nullable(),
   resolvable: z.boolean()
 }).strict();

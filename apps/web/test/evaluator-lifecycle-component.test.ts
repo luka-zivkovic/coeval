@@ -10,7 +10,12 @@ vi.mock("@/components/ui/card",()=>({
   CardHeader:({children,...props}:{children?:unknown})=>createElement("header",props,children as never),
   CardTitle:({children,...props}:{children?:unknown})=>createElement("h2",props,children as never)
 }));
-vi.mock("@/components/rubrist",()=>({
+vi.mock("../src/components/ui/button.js",()=>({Button:({children,...props}:{children?:unknown})=>createElement("button",props,children as never)}));
+vi.mock("../src/components/ui/card.js",()=>({
+  Card:({children}:{children?:unknown})=>createElement("section",null,children as never),
+  CardContent:({children}:{children?:unknown})=>createElement("div",null,children as never)
+}));
+vi.mock("../src/components/rubrist/index.js",()=>({
   Chip:({children}:{children?:unknown})=>createElement("span",null,children as never),
   Eyebrow:({children}:{children?:unknown})=>createElement("span",null,children as never)
 }));

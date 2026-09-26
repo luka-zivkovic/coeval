@@ -479,7 +479,7 @@ export function SkillVersionDetailScreen() {
             </CardContent>
           </Card>
 
-          <BindingResolutionStatus skillVersionId={v.id} />
+          <BindingResolutionStatus key={v.id} skillVersionId={v.id} />
 
           {v.knownLimitations.length > 0 ? (
             <Card>

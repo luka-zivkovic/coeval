@@ -173,6 +173,7 @@
     "BinaryTypedQuestionVerdictPayloadSchema",
     "BinaryVerdictPayloadSchema",
     "BindingResolutionStatusSchema",
+    "BindingSettingStateSchema",
     "CONVERGENCE_CASE_PAGE_DEFAULT_LIMIT",
     "CONVERGENCE_CASE_PAGE_MAX_LIMIT",
     "CapabilityCheckInputSchema",

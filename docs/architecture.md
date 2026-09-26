@@ -144,12 +144,17 @@ hosts a custom endpoint may name is not yet enforced (CURRENT).
 
 The author sees a version's resolution on its version page and in the
 evaluator lifecycle panel (`GET /api/evaluator-lifecycles/:id/resolution`):
-the status, every probe of the latest attempt with what it sent and how the
-model answered, and whether the binding can pass a governed gate, with the
-provider's message and what to change where it can't. An owner can resolve
-on demand (`POST` on the same route) where resolving could change the
-record; a failed binding stays failed. The in-memory demo keeps no
-resolution records, so it shows none.
+the status, what the model showed about each setting the binding leaves
+unset, every probe of the latest attempt with what it sent and how the model
+answered, and whether the binding can pass a governed gate, with what to
+change where it can't. A mutable model alias and the built-in mock are named
+as the reason first, since the gates refuse them before reading resolution.
+An owner can resolve on demand (`POST` on the same route) where resolving
+could change the record; an alias is never probed (422), and a failed
+binding stays failed. Resolution after save stores its record only where the
+version has none or an unresolved one, so it never erases a fuller record a
+concurrent resolution stored. The in-memory demo keeps no resolution
+records, so it shows none.
 
 Binary provider output is pass, fail, or ambiguous. Pass and fail are the two
 classification outcomes; ambiguous is an explicit evaluator abstention. The

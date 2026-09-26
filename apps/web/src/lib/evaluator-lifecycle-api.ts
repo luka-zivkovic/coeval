@@ -138,7 +138,9 @@ async function resolutionStatus(response:Response,fallback:string):Promise<Bindi
   const body = await response.json().catch(() => null) as { error?: unknown; code?: unknown } | null;
   if (response.status===501 && body?.code==="evaluator_lifecycle_database_required") return null;
   if (!response.ok) throw responseError(response,body,fallback);
-  return BindingResolutionStatusSchema.parse(body);
+  const status = BindingResolutionStatusSchema.safeParse(body);
+  if (!status.success) throw new Error("The server returned a resolution status this page can't read.");
+  return status.data;
 }
 
 async function result<T>(response:Response,schema:{parse(value:unknown):T},fallback:string):Promise<T> {

@@ -30,7 +30,9 @@ import {
 } from "../lib/evaluator-lifecycle.js";
 import { ExecutionBindingInputError, executionBindingFromInput } from "../lib/execution-binding.js";
 import {
-  governedGateRefusal,
+  authorGateRefusal,
+  bindingSettingStates,
+  probeableBinding,
   resolutionNeeded,
   resolveGovernedBinding,
   resolveSavedBinding,
@@ -190,6 +192,14 @@ export function createEvaluatorLifecycleRouter(options: CreateEvaluatorLifecycle
     if (!options.bindingResolution) {
       return c.json({ error: "Resolution needs provider access this deployment doesn't configure", code: "evaluator_lifecycle_unsupported" },501);
     }
+    // Every governed gate refuses an alias, so resolving one would spend probes for nothing.
+    const saved = await options.repository!.getGovernedBinding(actor,skillVersionId);
+    if (saved && mutableModelAlias(saved.binding.executionBinding.modelId) !== null) {
+      return c.json({
+        error: `An evaluator bound to the mutable model alias "${saved.binding.executionBinding.modelId}" isn't resolved; pin a specific model id`,
+        code: "mutable_model_alias"
+      },422);
+    }
     const resolved = await resolveWhenUnresolved(options,actor.projectId,skillVersionId,"on_demand",`on-demand:${actor.userId}:${new Date().toISOString()}`);
     if (resolved === undefined) return c.json({ error: "Evaluator version not found", code: "evaluator_lifecycle_not_found" },404);
     return c.json(resolutionStatus(options,skillVersionId,actor.projectRole,resolved.binding,resolved.record));
@@ -244,7 +254,7 @@ export function savedVersionResolver(
     const governed = await repository.getGovernedBinding({ projectId }, skillVersionId);
     if (!governed) return;
     const binding = governed.binding.executionBinding;
-    if (binding.provider === "mock" || mutableModelAlias(binding.modelId) !== null) return;
+    if (!probeableBinding(binding)) return;
     if (governed.record !== null && governed.record.status !== "unresolved") return;
     const record = await resolveSavedBinding(services, governed.binding);
     await repository.recordResolution({
@@ -267,8 +277,9 @@ function resolutionStatus(
 ) {
   return BindingResolutionStatusSchema.parse({
     skillVersionId, projectRole, record,
-    gateRefusal: governedGateRefusal(binding,record),
-    resolvable: options.bindingResolution !== undefined && resolutionNeeded(binding,record)
+    settings: bindingSettingStates(binding),
+    gateRefusal: authorGateRefusal(binding,record),
+    resolvable: options.bindingResolution !== undefined && probeableBinding(binding) && resolutionNeeded(binding,record)
   });
 }
 
@@ -289,7 +300,10 @@ async function resolveWhenUnresolved(
   const governed = await options.repository!.getGovernedBinding({ projectId },skillVersionId);
   if (!governed) return undefined;
   const binding = governed.binding.executionBinding;
-  if (!options.bindingResolution || !resolutionNeeded(binding,governed.record)) return { binding, record: governed.record };
+  // An alias is refused at every governed gate, so it is never probed.
+  if (!options.bindingResolution || mutableModelAlias(binding.modelId) !== null || !resolutionNeeded(binding,governed.record)) {
+    return { binding, record: governed.record };
+  }
   const record = await resolveGovernedBinding(options.bindingResolution,governed.binding);
   return {
     binding,

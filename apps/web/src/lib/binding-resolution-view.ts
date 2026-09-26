@@ -25,9 +25,10 @@ export interface ResolutionView {
   label: string;
   tone: ResolutionTone;
   summary: string;
+  /** What the model showed about each setting the binding leaves unset. */
   settings: Array<{ setting: string; support: string }>;
   probes: ResolutionProbeRow[];
-  gate: { ready: true } | { ready: false; problems: string[]; suggestion: string | null; providerMessage: string | null };
+  gate: { ready: true } | { ready: false; failed: boolean; problems: string[]; suggestion: string | null };
   /** Whether the viewer may resolve now, and doing so could change the record. */
   canResolve: boolean;
 }
@@ -86,31 +87,37 @@ export function resolutionView(status: BindingResolutionStatus): ResolutionView 
     : record.status === "resolved" ? "Resolved"
       : record.status === "failed" ? "Failed" : "Unresolved";
   const tone: ResolutionTone = record?.status === "resolved" ? "pass" : record?.status === "failed" ? "fail" : "ambig";
+  const canResolve = status.projectRole === "owner" && status.resolvable;
   const summary = record === null
-    ? "No resolution has run yet. It runs after save, the first time a governed gate needs it, or on demand."
+    ? `No resolution has run yet.${canResolve ? " Resolve it now, or a governed gate resolves it before use." : ""}`
     : `Last attempt${record.checkedAt === null ? "" : ` ${utcMinute(record.checkedAt)}`}, ${record.credentialSource === null ? "without a credential" : `with ${CREDENTIAL[record.credentialSource]}`}.${
       record.status === "failed" ? " A failed binding is fixed only by a new evaluator version." : ""}`;
   return {
     label,
     tone,
     summary,
-    settings: record === null ? [] : [
-      { setting: "Temperature", support: record.temperatureSupport === null ? "not probed" : SUPPORT[record.temperatureSupport] },
-      { setting: "Reasoning", support: record.reasoningSupport === null ? "not probed" : SUPPORT[record.reasoningSupport] }
-    ],
+    // A stated setting is sent as saved, and one the provider doesn't take has nothing to show.
+    settings: record === null ? [] : ([
+      ["Temperature", status.settings.temperature, record.temperatureSupport],
+      ["Reasoning", status.settings.reasoning, record.reasoningSupport]
+    ] as const).filter(([, state]) => state === "unset").map(([setting, , support]) => ({
+      setting,
+      support: support === null ? "left unset; not probed yet" : `left unset; ${SUPPORT[support]}`
+    })),
     probes: (record?.probes ?? []).map((probe) => ({
       purpose: `${PURPOSE[probe.purpose]}${probe.stage === "capability_check" ? " (check)" : ""} · ${probe.verdictProtocol}`,
       sent: sentSettings(probe.sent),
       ...probeOutcome(probe),
       providerMessage: probe.providerMessage
     })),
+    // The provider's message shows on the probe it answered.
     gate: status.gateRefusal === null ? { ready: true } : {
       ready: false,
+      failed: record?.status === "failed",
       problems: status.gateRefusal.problems,
       // Before any attempt, resolving is the next step, not a retry.
-      suggestion: record === null ? null : status.gateRefusal.suggestion,
-      providerMessage: status.gateRefusal.providerMessage
+      suggestion: record === null && canResolve ? null : status.gateRefusal.suggestion
     },
-    canResolve: status.projectRole === "owner" && status.resolvable
+    canResolve
   };
 }

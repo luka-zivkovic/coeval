@@ -4,6 +4,7 @@ import {
   REASONING_DEFAULTS_VERSION,
   defaultVerdictProtocol,
   documentedReasoningDefault,
+  mutableModelAlias,
   reasoningFamilyFor,
   takesSamplingSettings,
   verdictProtocolsFor,
@@ -173,6 +174,14 @@ export function resolutionNeeded(binding: ExecutionBinding, record: ResolutionRe
   return unansweredSettings(binding, record).length > 0;
 }
 
+/** The settings the binding's provider takes that the binding leaves unset. */
+function unsetSettings(binding: ExecutionBinding): Array<"temperature" | "reasoning"> {
+  return [
+    ...(takesSamplingSettings(binding.provider) && binding.sampling.temperature === null ? ["temperature" as const] : []),
+    ...(reasoningFamilyFor(binding.provider) !== null && binding.reasoning === null ? ["reasoning" as const] : [])
+  ];
+}
+
 /** Unset settings the gate needs an answer for that the record doesn't have. */
 function unansweredSettings(binding: ExecutionBinding, record: ResolutionRecord): Array<"temperature" | "reasoning"> {
   const unanswered: Array<"temperature" | "reasoning"> = [];
@@ -191,6 +200,42 @@ function unansweredSettings(binding: ExecutionBinding, record: ResolutionRecord)
  * asks for: "leave it unset" only where the parameter itself was rejected,
  * "choose another value" where only a value was. `null` when the gate passes.
  */
+/**
+ * Why a binding can't pass the governed gates, for its author: a mutable
+ * model alias and the built-in mock are refused before resolution is read
+ * (every gate refuses an alias; sealed calibration refuses the mock), so
+ * they lead; then {@link governedGateRefusal}.
+ */
+export function authorGateRefusal(binding: ExecutionBinding, record: ResolutionRecord | null): GovernedGateRefusal | null {
+  const refusal = governedGateRefusal(binding, record);
+  const blocked = binding.provider === "mock"
+    ? { problem: "the built-in mock makes no provider call, so it can't run sealed calibration", suggestion: "Save a new evaluator version bound to a real provider." }
+    : mutableModelAlias(binding.modelId) !== null
+      ? { problem: `${binding.modelId} is a mutable model alias, which every governed gate refuses`, suggestion: "Save a new evaluator version with a pinned model id." }
+      : null;
+  if (blocked === null) return refusal;
+  const problems = [blocked.problem, ...(refusal?.problems ?? [])];
+  return {
+    message: `The execution binding can't pass a governed gate: ${problems.join("; ")}`,
+    problems,
+    providerMessage: refusal?.providerMessage ?? null,
+    suggestion: blocked.suggestion
+  };
+}
+
+/** Whether resolution may probe a binding: the mock makes no call, and an alias is refused at every governed gate. */
+export function probeableBinding(binding: ExecutionBinding): boolean {
+  return binding.provider !== "mock" && mutableModelAlias(binding.modelId) === null;
+}
+
+/** How a binding states each setting the gates ask about, for its author. */
+export function bindingSettingStates(binding: ExecutionBinding): { temperature: "stated" | "unset" | "not_applicable"; reasoning: "stated" | "unset" | "not_applicable" } {
+  return {
+    temperature: !takesSamplingSettings(binding.provider) ? "not_applicable" : binding.sampling.temperature === null ? "unset" : "stated",
+    reasoning: reasoningFamilyFor(binding.provider) === null ? "not_applicable" : binding.reasoning === null ? "unset" : "stated"
+  };
+}
+
 export function governedGateRefusal(binding: ExecutionBinding, record: ResolutionRecord | null): GovernedGateRefusal | null {
   const problems = governedGateProblems(binding, record);
   if (problems.length === 0) return null;
@@ -205,25 +250,30 @@ export function governedGateRefusal(binding: ExecutionBinding, record: Resolutio
     // A provider with one protocol (TypeSafe's typed-question/v1) has no other to choose.
     suggestion = verdictProtocolsFor(binding.provider).length > 1
       ? "Save a new evaluator version with another verdict protocol."
-      : `${binding.provider}'s response broke its only verdict protocol; try again later, or choose another model.`;
+      : `${binding.provider}'s response broke its only verdict protocol; save a new evaluator version to try again later, or choose another model.`;
   } else if (record?.status === "failed") {
     suggestion = "Save a new evaluator version with settings the model accepts.";
+  } else if (record !== null && record.status === "unresolved" && record.credentialSource === null && record.probes.length === 0) {
+    suggestion = `Add a key for ${binding.provider} in Settings, then resolve the binding again.`;
   } else if (record?.status !== "resolved") {
     suggestion = "Try again once the provider is reachable with a working credential.";
-  } else if (unansweredSettings(binding, record).length > 0) {
+  } else {
+    // An answered setting the model takes but the binding leaves unset needs
+    // a new version whatever else resolution finds, so it leads.
     const unanswered = unansweredSettings(binding, record);
+    const support = { temperature: record.temperatureSupport, reasoning: record.reasoningSupport };
+    const unstated = unsetSettings(binding).filter((setting) => support[setting] !== null && support[setting] !== "parameter_rejected");
     // Resolution after save never probes reasoning, so a setting may simply not have been asked about yet.
     const errored = unanswered.filter((setting) => record.probes.some((probe) => probe.purpose === setting && probe.outcome === "error"));
-    suggestion = errored.length > 0
-      ? `Try again: the model's answer about ${errored.join(" and ")} wasn't recorded, because its probe failed.`
-      : `Resolve the binding: the model hasn't been asked about ${unanswered.join(" and ")} yet. A governed gate resolves it before use.`;
-  } else {
-    // Every setting is answered, so what's left is a setting the model takes that the binding leaves unset.
-    const unstated = [
-      takesSamplingSettings(binding.provider) && binding.sampling.temperature === null && record.temperatureSupport !== "parameter_rejected" ? "temperature" : null,
-      reasoningFamilyFor(binding.provider) !== null && binding.reasoning === null && record.reasoningSupport !== "parameter_rejected" ? "reasoning" : null
-    ].filter((setting): setting is string => setting !== null);
-    suggestion = `Save a new evaluator version that states its ${unstated.join(" and ")} explicitly.`;
+    if (unstated.length > 0) {
+      suggestion = `Save a new evaluator version that states its ${unstated.join(" and ")} explicitly${
+        unanswered.length > 0 ? `; resolve first to learn whether its ${unanswered.join(" and ")} must be stated too` : ""}.${
+        unstated.some((setting) => support[setting] === "value_rejected") ? " The model rejected the value the check probed, so choose one it accepts." : ""}`;
+    } else if (errored.length > 0) {
+      suggestion = `Try again: the model's answer about ${errored.join(" and ")} wasn't recorded, because its probe failed.`;
+    } else {
+      suggestion = `Resolve the binding: the model hasn't been asked about ${unanswered.join(" and ")} yet. A governed gate resolves it before use.`;
+    }
   }
   return {
     message: `The execution binding can't pass a governed gate: ${problems.join("; ")}`,
