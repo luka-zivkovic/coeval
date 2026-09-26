@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import type { AnalysisWorkflowMeasurementReport, BinaryCalibrationWilsonRate } from "@rubrist/shared";
+import type { AnalysisWorkflowMeasurementReport, BinaryCalibrationV2WilsonRate } from "@rubrist/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchAnalysisWorkflowMeasurement } from "@/lib/analysis-measurement-api";
 
@@ -132,7 +132,7 @@ function EvaluatorComponents({ evaluator }: {
           <MeasurementFact label="Classified" value={trial.classified} />
           <MeasurementFact label="Abstained" value={trial.abstained} />
           <MeasurementFact label="Errored" value={trial.errored} />
-          <MeasurementFact label="Unevaluated" value={trial.unevaluated} />
+          <MeasurementFact label="Not attempted" value={trial.notAttempted} />
           <MeasurementFact label="False pass" value={trial.falsePass} />
           <MeasurementFact label="False fail" value={trial.falseFail} />
           <MeasurementFact label="Classified coverage" value={rate(trial.classifiedCoverage.overall)} />
@@ -168,7 +168,7 @@ function duration(value: NonNullable<AnalysisWorkflowMeasurementReport["evaluato
   return value.state === "missing" ? "missing" : `${value.durationMilliseconds} ms`;
 }
 
-function rate(value: BinaryCalibrationWilsonRate): string {
+function rate(value: BinaryCalibrationV2WilsonRate): string {
   return value.state === "undefined"
     ? "undefined (zero denominator)"
     : `${value.numerator}/${value.denominator} · Wilson95 ${value.interval.lowerBinary64}–${value.interval.upperBinary64}`;

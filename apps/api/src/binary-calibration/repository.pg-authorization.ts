@@ -4,14 +4,20 @@ import {
   ExecutionBindingSchema,
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   mutableModelAlias,
-  type BinaryCalibrationCompletionEligibilityReason
+  VerdictKindSchema,
+  reasoningFamilyFor,
+  takesSamplingSettings,
+  type BinaryCalibrationV2CompletionEligibilityReason,
+  type EvaluatorIdentity
 } from "@rubrist/shared";
 
-import { legacyCalibrationBinding } from "../lib/execution-binding.js";
 import { canonicalJson, sha256Digest } from "../lib/canonical-json.js";
-import { skillDigest } from "../lib/assessment-receipt.js";
-
-import { evaluatorOutputContractDigest } from "../lib/evaluator-suite.js";
+import {
+  evaluatorIdentityFor,
+  evaluatorOutputContractDigestV2,
+  skillDigestInput,
+  skillDigestV2
+} from "../lib/evaluator-identity.js";
 import { governedContentV1Digest } from "../lib/governed-content-digest.js";
 import type {
   BinaryCalibrationAuthorizedRun,
@@ -32,8 +38,6 @@ import {
   parseJson,
   providerPolicyFor,
   repoError,
-  requestedBindingFor,
-  requestedBindingFromRun,
   skillVersionFromRow,
   stableId,
   toIso
@@ -87,34 +91,42 @@ export async function deriveRunIdentity(
   if (skillVersion.verdictKind !== "binary") {
     throw repoError("unsupported", "binary calibration requires a binary evaluator version");
   }
-  const modelBinding = legacyCalibrationBinding(skillVersion);
-  if (modelBinding === null) {
-    throw repoError(
-      "unsupported",
-      "sealed calibration v1 runs only a binding the v1 providers send exactly (a forced tool or function, no reasoning or top-p, no routing, Anthropic's 1,200 output tokens); calibration v2 runs every binding (Batch 8D)"
-    );
+  // Calibration runs a prompted evaluator through the executor, one physical
+  // call per item. Typed-question evaluators arrive in Batch 8E, and the mock
+  // makes no call, so neither can produce sealed evidence.
+  const binding = skillVersion.executionBinding;
+  if (binding.provider === "mock" || binding.provider === "typesafe") {
+    throw repoError("unsupported", `sealed calibration can't run a ${binding.provider} binding; it needs a prompted evaluator on a provider it calls`);
   }
-  if (modelBinding.topP !== undefined) {
-    throw repoError("unsupported", "sealed calibration v1 does not execute a top-p binding until every provider preserves it exactly");
+  let identity: EvaluatorIdentity;
+  try {
+    identity = evaluatorIdentityFor(skillVersion);
+  } catch (error) {
+    throw repoError("unsupported", `sealed calibration requires an evaluator version with a valid v2 identity (${identityProblem(error)})`);
   }
-  if (mutableModelAlias(modelBinding.modelId) !== null) {
+  // Governed gate (ADR-0014 section 2): sealed calibration states its
+  // temperature and reasoning. A resolution record can show the model
+  // rejecting the parameter itself, which lets it stay unset; those records
+  // arrive in Batch 8D-3, so until then an unset setting is refused.
+  if (takesSamplingSettings(binding.provider) && binding.sampling.temperature === null) {
+    throw repoError("ineligible", "sealed calibration requires an explicit temperature until resolution can show the model rejects the parameter (Batch 8D-3)");
+  }
+  if (reasoningFamilyFor(binding.provider) !== null && binding.reasoning === null) {
+    throw repoError("ineligible", "sealed calibration requires explicit reasoning until resolution can show the model rejects the parameter (Batch 8D-3)");
+  }
+  if (mutableModelAlias(binding.modelId) !== null) {
     throw repoError(
       "ineligible",
-      `sealed calibration requires a pinned model id; "${modelBinding.modelId}" is a mutable alias under ${MUTABLE_MODEL_ALIAS_RULE_VERSION}`
+      `sealed calibration requires a pinned model id; "${binding.modelId}" is a mutable alias under ${MUTABLE_MODEL_ALIAS_RULE_VERSION}`
     );
   }
-  const requestedBinding = requestedBindingFor(modelBinding);
-  const providerPolicy = providerPolicyFor(requestedBinding);
-  const providerPolicyBytes = Buffer.from(canonicalJson({
-    contract: "rubrist/provider-data-handling-policy/v1",
-    schemaVersion: 1,
-    provider: requestedBinding.provider,
-    endpointKind: requestedBinding.endpointKind,
-    baseUrlDigest: requestedBinding.baseUrlDigest,
-    executionEnvironment: providerPolicy.executionEnvironment,
-    payloadTransmission: providerPolicy.payloadTransmission,
-    rawProviderResponsePersistence: "none"
-  }), "utf8");
+  const evaluatorDigests = {
+    definitionDigest: skillDigestInput(identity).definitionDigest,
+    skillDigest: skillDigestV2(identity),
+    outputContractDigest: evaluatorOutputContractDigestV2(identity.definition),
+    requestedBindingDigest: sha256Digest(identity.executionBinding)
+  };
+  const { policy: providerPolicy, canonicalBytes: providerPolicyBytes } = providerPolicyFor(identity.executionBinding);
 
   let suiteBinding: { manifestId: string; manifestDigest: string; memberPosition: number } | null = null;
   if (input.suiteBinding) {
@@ -131,8 +143,8 @@ export async function deriveRunIdentity(
     if (!member || canonicalJson(parseJson(member.trial_plan)) !== "null" ||
         String(member.skill_version_id) !== skillVersion.id ||
         String(member.criterion_version_id) !== skillVersion.criterionVersionId ||
-        String(member.skill_digest) !== skillDigest(skillVersion) ||
-        String(member.output_contract_digest) !== evaluatorOutputContractDigest(skillVersion)) {
+        String(member.skill_digest) !== evaluatorDigests.skillDigest ||
+        String(member.output_contract_digest) !== evaluatorDigests.outputContractDigest) {
       throw repoError("ineligible", "suite binding is not the exact single-trial evaluator member");
     }
     suiteBinding = {
@@ -171,9 +183,8 @@ export async function deriveRunIdentity(
     criterionVersionId: String(row.criterion_version_id),
     criterionDigest: String(row.criterion_digest),
     skillVersion,
-    skillDigest: skillDigest(skillVersion),
-    outputContractDigest: evaluatorOutputContractDigest(skillVersion),
-    requestedBinding,
+    executionBinding: identity.executionBinding,
+    ...evaluatorDigests,
     providerPolicy,
     providerPolicyBytes,
     suiteBinding,
@@ -287,7 +298,7 @@ export async function evaluateEligibility(
     evaluatorReuse: reuse
   };
   const comparableFactsDigest = sha256Digest(comparableFacts);
-  const reasons: BinaryCalibrationCompletionEligibilityReason[] = [];
+  const reasons: BinaryCalibrationV2CompletionEligibilityReason[] = [];
   if (exposureDetected || capabilityChecks.some((check) => check.excludedCapabilities.length > 0)) {
     reasons.push("development_exposure_detected");
   }
@@ -312,7 +323,7 @@ export async function evaluateEligibility(
       }
     }
   }
-  const sortedReasons = [...new Set(reasons)].sort() as BinaryCalibrationCompletionEligibilityReason[];
+  const sortedReasons = [...new Set(reasons)].sort() as BinaryCalibrationV2CompletionEligibilityReason[];
   const snapshot = {
     contract: "rubrist/binary-calibration-exposure-snapshot/v1",
     schemaVersion: 1,
@@ -569,7 +580,7 @@ export function snapshotRecord(
   phase: "authorization" | "completion",
   exposureState: "protected" | "exposed",
   eligibility: "eligible" | "ineligible",
-  reasons: BinaryCalibrationCompletionEligibilityReason[],
+  reasons: BinaryCalibrationV2CompletionEligibilityReason[],
   snapshot: Record<string, unknown>,
   recordedAt: string
 ) {
@@ -615,13 +626,57 @@ export async function loadExposureCheck(db: Db, checkId: string): Promise<{
   return { id: String(row.id), snapshotDigest: String(row.snapshot_digest), recordedAt: toIso(row.recorded_at) };
 }
 
+/** A short, text-free reason an evaluator version has no valid identity. */
+function identityProblem(error: unknown): string {
+  const issues = (error as { issues?: Array<{ path: PropertyKey[]; message: string }> }).issues;
+  if (Array.isArray(issues) && issues.length > 0) {
+    return issues.slice(0, 3).map((issue) => `${issue.path.map(String).join(".") || "identity"}: ${issue.message}`).join("; ");
+  }
+  return error instanceof Error ? error.message.slice(0, 200) : "invalid identity";
+}
+
+/**
+ * Whether the evaluator version still holds the identity its run pinned: the
+ * execution binding and the definition digest. Versions are immutable, so a
+ * difference means the stored version changed out of band.
+ */
+export function evaluatorVersionHoldsPin(run: Record<string, unknown>, versionRow: Record<string, unknown>): boolean {
+  try {
+    const identity = evaluatorIdentityFor({
+      rubricMarkdown: String(versionRow.rubric_markdown),
+      prompt: String(versionRow.prompt),
+      verdictKind: VerdictKindSchema.parse(versionRow.verdict_kind),
+      outputSchema: parseJson(versionRow.output_schema) as Record<string, unknown>,
+      scalarRange: versionRow.scalar_range == null ? null : parseJson(versionRow.scalar_range) as [number, number],
+      categoricalChoiceScores: versionRow.categorical_choice_scores == null
+        ? null : parseJson(versionRow.categorical_choice_scores) as Record<string, number>,
+      executionBinding: ExecutionBindingSchema.parse(parseJson(versionRow.execution_binding))
+    });
+    return canonicalJson(identity.executionBinding) === canonicalJson(parseJson(run.execution_binding)) &&
+      sha256Digest(identity.executionBinding) === String(run.requested_binding_digest) &&
+      skillDigestInput(identity).definitionDigest === String(run.definition_digest);
+  } catch {
+    return false;
+  }
+}
+
+export async function loadPinnedVersionRow(db: Db, run: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+  return (await db.query(
+    `select rubric_markdown,prompt,verdict_kind,output_schema,scalar_range,categorical_choice_scores,execution_binding
+     from skill_versions where id=$1 and project_id=$2`,
+    [run.skill_version_id, run.project_id]
+  )).rows[0] ?? null;
+}
+
 export async function loadAuthorizedRun(
   db: Db,
   claim: BinaryCalibrationExecutionClaim,
   knownRun?: RunRow
 ): Promise<BinaryCalibrationAuthorizedRun> {
   const result = await db.query(
-    `select run.*,version.rubric_markdown,version.prompt,version.output_schema,version.execution_binding,version.custom_endpoint_url,
+    `select run.*,version.rubric_markdown,version.prompt,version.verdict_kind,version.output_schema,
+            version.scalar_range,version.categorical_choice_scores,
+            version.execution_binding as version_execution_binding,version.custom_endpoint_url,
             auth_check.snapshot_digest,auth_check.recorded_at
      from binary_calibration_runs run
      join skill_versions version on version.id=run.skill_version_id
@@ -634,11 +689,12 @@ export async function loadAuthorizedRun(
   );
   const row = result.rows[0] ?? knownRun;
   if (!result.rows[0] || !row) throw repoError("state_conflict", "binary calibration authorization claim is stale");
-  const binding = legacyCalibrationBinding({
-    executionBinding: ExecutionBindingSchema.parse(parseJson(row.execution_binding)),
-    customEndpointUrl: row.custom_endpoint_url == null ? null : String(row.custom_endpoint_url)
-  });
-  if (binding === null) throw repoError("unsupported", "sealed calibration v1 runs only a binding the v1 providers send exactly");
+  // The run pins the evaluator's identity; the version must still hold it,
+  // since its rubric and prompt are what each call sends.
+  const executionBinding = ExecutionBindingSchema.parse(parseJson(row.execution_binding));
+  if (!evaluatorVersionHoldsPin(row, { ...row, execution_binding: row.version_execution_binding })) {
+    throw repoError("state_conflict", "binary calibration evaluator version no longer holds the identity its run pinned");
+  }
   return {
     claim: {
       runId: claim.runId,
@@ -651,8 +707,8 @@ export async function loadAuthorizedRun(
     revisionDigest: String(row.revision_digest),
     itemCount: Number(row.item_count),
     skillVersionId: String(row.skill_version_id),
-    requestedModelBinding: requestedBindingFromRun(row),
-    executionModelBinding: binding,
+    executionBinding,
+    customEndpointUrl: row.custom_endpoint_url == null ? null : String(row.custom_endpoint_url),
     providerDataHandling: {
       executionEnvironment: String(row.execution_environment) as
         BinaryCalibrationProviderDataHandlingPolicy["executionEnvironment"],
@@ -662,8 +718,7 @@ export async function loadAuthorizedRun(
     },
     evaluator: {
       rubricMarkdown: String(row.rubric_markdown),
-      prompt: String(row.prompt),
-      outputSchema: parseJson(row.output_schema)
+      prompt: String(row.prompt)
     },
     authorization: {
       snapshotDigest: String(row.snapshot_digest),

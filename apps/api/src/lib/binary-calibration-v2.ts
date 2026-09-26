@@ -23,8 +23,7 @@ import { skillDigestV2FromInput } from "./evaluator-identity.js";
 // ADR-0014 names: the evaluator is the v2 execution binding and definition
 // digest, failures use the shared taxonomy, never-attempted items are
 // `notAttempted`, ledger records carry the shared item result, and provider
-// groups record the OpenRouter upstream. Runtime emission moves here in 8D,
-// when the v1 module is removed.
+// groups record the OpenRouter upstream.
 
 // Public v2 contract constants and artifact-construction inputs.
 export const BINARY_CALIBRATION_V2_CONTRACT = "rubrist/binary-calibration/v2" as const;

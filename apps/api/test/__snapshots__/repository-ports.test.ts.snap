@@ -119,15 +119,15 @@ exports[`repository ports > partition the complete facade into exact, disjoint m
     },
     {
       "kind": "MethodSignature",
-      "signature": "createEvaluatorSuiteManifest(projectId: string, input: CreateEvaluatorSuiteManifestInput, context: { actorUserId?: string | undefined; }): Promise<EvaluatorSuiteManifest>;",
+      "signature": "createEvaluatorSuiteManifest(projectId: string, input: CreateEvaluatorSuiteManifestInput, context: { actorUserId?: string | undefined; }): Promise<EvaluatorSuiteManifestV2>;",
     },
     {
       "kind": "MethodSignature",
-      "signature": "listEvaluatorSuiteManifests(projectId: string, suiteId?: string | undefined): Promise<EvaluatorSuiteManifest[]>;",
+      "signature": "listEvaluatorSuiteManifests(projectId: string, suiteId?: string | undefined): Promise<EvaluatorSuiteManifestV2[]>;",
     },
     {
       "kind": "MethodSignature",
-      "signature": "getEvaluatorSuiteManifest(projectId: string, manifestId: string): Promise<EvaluatorSuiteManifest | null>;",
+      "signature": "getEvaluatorSuiteManifest(projectId: string, manifestId: string): Promise<EvaluatorSuiteManifestV2 | null>;",
     },
   ],
   "DatasetRepositoryPort": [

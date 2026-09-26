@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BinaryCalibrationWilsonRateSchema } from "./binary-calibration.js";
+import { BinaryCalibrationV2WilsonRateSchema } from "./binary-calibration-v2.js";
 import {
   AnalysisStudyStateSchema,
   AnalysisTaxonomyCoverageSchema
@@ -98,16 +98,16 @@ export const AnalysisCalibrationTrialMeasurementSchema = z.object({
   classified: AnalysisMeasurementCountSchema,
   abstained: AnalysisMeasurementCountSchema,
   errored: AnalysisMeasurementCountSchema,
-  unevaluated: AnalysisMeasurementCountSchema,
+  notAttempted: AnalysisMeasurementCountSchema,
   falsePass: AnalysisMeasurementCountSchema,
   falseFail: AnalysisMeasurementCountSchema,
   classifiedCoverage: z.object({
-    overall: BinaryCalibrationWilsonRateSchema,
-    truthPass: BinaryCalibrationWilsonRateSchema,
-    truthFail: BinaryCalibrationWilsonRateSchema
+    overall: BinaryCalibrationV2WilsonRateSchema,
+    truthPass: BinaryCalibrationV2WilsonRateSchema,
+    truthFail: BinaryCalibrationV2WilsonRateSchema
   }).strict()
 }).strict().superRefine((value, context) => {
-  if (value.classified + value.abstained + value.errored + value.unevaluated !== value.planned ||
+  if (value.classified + value.abstained + value.errored + value.notAttempted !== value.planned ||
       value.falsePass + value.falseFail > value.classified) {
     context.addIssue({ code: "custom", message: "calibration trial outcomes must conserve planned support" });
   }

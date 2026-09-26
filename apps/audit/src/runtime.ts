@@ -1,6 +1,4 @@
 export { MockJudgeProvider } from "./llm/mock.js";
-export { AnthropicJudgeProvider } from "./llm/anthropic.js";
-export { OpenAIJudgeProvider } from "./llm/openai.js";
 export type { JudgeProvider, StructuredJudgeResult } from "./llm/provider.js";
 export { DEFAULT_OUTPUT_SCHEMA } from "./skill/default-output-schema.js";
 // The "merge personal judging prompts into one governed team skill" compiler —

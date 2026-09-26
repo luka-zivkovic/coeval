@@ -1196,9 +1196,9 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
           provider: "openai",
           modelId: "gpt-4o-mini",
           modelVersion: "2024-07-18",
-          reasoning: null,
+          reasoning: { family: "openai", effort: "low" },
           outputTokenLimit: null,
-          verdictProtocol: "openai.forced-function/v1"
+          verdictProtocol: "openai.structured-output/v1"
         }),
         outputSchema: MinimumVerdictOutputSchema,
         idempotencyKey: "promotion-repository-candidate"
@@ -1291,9 +1291,9 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
           provider: "openai",
           modelId: "gpt-4o-mini",
           modelVersion: "2024-07-18",
-          reasoning: null,
+          reasoning: { family: "openai", effort: "low" },
           outputTokenLimit: null,
-          verdictProtocol: "openai.forced-function/v1"
+          verdictProtocol: "openai.structured-output/v1"
         }),
         outputSchema: MinimumVerdictOutputSchema,
         idempotencyKey: "promotion-repository-candidate"
@@ -1409,8 +1409,8 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
       expect(calibrationAttempt).not.toBeNull();
       await calibration.recordProviderCallStarted(calibrationClaim!,calibrationAttempt!.attemptId);
       await calibration.completeAttempt(calibrationClaim!,calibrationAttempt!.attemptId,{
-        terminalEvaluatorOutcome:"evaluator_fail",attemptState:"terminal",errorCode:null,
-        providerObservation:{provider:"openai",observedModel:"gpt-4o-mini",observedVersion:"2024-07-18",systemFingerprint:null}
+        result:{state:"outcome",outcome:"fail"},attemptState:"terminal",
+        providerObservation:{provider:"openai",observedModel:"gpt-4o-mini",observedVersion:"2024-07-18",systemFingerprint:null,upstreamProvider:null}
       });
       const calibrationMint = await calibration.finalizeRun(calibrationClaim!);
       expect(calibrationMint.artifact.status).toBe("complete");

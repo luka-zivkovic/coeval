@@ -2,8 +2,9 @@
 
 ## Binary calibration artifact v2
 
-`binary-calibration-v2.schema.json` replaces calibration v1 (Rubrist ADR-0014
-section 7, decision 6) and keeps every v1 rule except what ADR-0014 changes:
+`binary-calibration-v2.schema.json` is the contract Rubrist emits for sealed
+calibration. It replaced calibration v1 (Rubrist ADR-0014 section 7, decision
+6) and keeps every v1 rule except what ADR-0014 changes:
 the evaluator is the v2 evaluator identity with `skillDigest` and
 `requestedBindingDigest` recomputed from it, error codes are the shared
 failure taxonomy, never-attempted items are `notAttempted`, private-ledger v2
@@ -14,28 +15,14 @@ carries every v1 case forward with the binding cases rewritten for the v2
 execution binding. The normative rules are in
 [`binary-calibration-v2.md`](binary-calibration-v2.md).
 
-## Binary calibration artifact v1 (superseded)
-
-`binary-calibration-v1.schema.json` is the closed, policy-free,
-aggregate-only contract for one exact binary evaluator/criterion measured over
-one governed-blind sealed-validation revision. It binds exact evaluator,
-criterion, truth, exposure, selection, provider-observation, and repeated-trial
-identity; publishes semantic confusion counts, exact fractions, coverage, and
-pinned Wilson interval bits; and exposes no sealed item or observation record.
-
-The three exact-canonical positive fixtures and adversarial corpus in
-`fixtures/` cover valid abstention, repeated trials, permanent
-`outcome_unknown`, incomplete execution, schema/runtime parity, canonical
-bytes, conservation, provenance, and identity substitution. The normative
-rules and private-ledger commitment basis are in
-[`binary-calibration-v1.md`](binary-calibration-v1.md).
-The producer-internal private-ledger schema and dummy-salt golden fixture pin
-the public commitment algorithm; they do not create a private-ledger read API.
-
 ## Evaluator suite manifest v2
 
-`evaluator-suite-manifest-v2.schema.json` replaces manifest v1 (Rubrist
-ADR-0014 section 7, decision 6). Its shape and verification are v1's; members
+`evaluator-suite-manifest-v2.schema.json` is the suite manifest Rubrist
+publishes. It replaced manifest v1 (Rubrist ADR-0014 section 7, decision 6)
+and keeps its shape and verification: an immutable ordered suite that binds
+each criterion definition to one exact evaluator version and output contract,
+with no release roles, weights, thresholds, aggregation, or release decision.
+Members
 carry the v2 `skillDigest`, which receipt v2 and calibration v2 recompute from
 their evaluator identity, and the v2 output-contract digest. The positive
 fixture names a prompted and a typed-question evaluator, and the corpus
@@ -50,22 +37,6 @@ replacing the informal `spec/skill-format-v1.md`. It carries the full
 definition, the execution binding, and a typed question's text, with the
 digests an importer recomputes and compares with the identity it expected.
 The normative rules are in [`skill-format-v2.md`](skill-format-v2.md).
-
-## Evaluator suite manifest v1 (superseded)
-
-`evaluator-suite-manifest-v1.schema.json` is the closed, policy-free contract
-for an immutable ordered suite. It binds each criterion definition to one exact
-evaluator version and output contract, with only `all_items` applicability and
-an optional closed independent-repetitions plan. It never contains release
-roles, weights, thresholds, aggregation, or a release decision.
-
-The positive fixture and adversarial corpus in `fixtures/` cover schema/runtime
-parity, canonical digest verification, and rejection of reordered, missing,
-substituted, duplicated, or unknown criteria. The normative rules are in
-[`evaluator-suite-manifest-v1.md`](evaluator-suite-manifest-v1.md).
-
-This manifest groups separately verifiable criterion assessments; it does not
-replace or alter assessment receipt v1.
 
 ## Assessment receipt v2
 
@@ -110,9 +81,9 @@ canonicalization, digest, mutation, and pinned-file rules are in
   renumbers instead of keeping history.
 - Rubrist emits governed assessment evidence only. Thresholds and release
   decisions are forbidden from the receipt.
-- Calibration does not extend receipt v1. ADR-0009 accepts the separate
-  `rubrist/binary-calibration/v1` aggregate artifact; its Batch 5B persistence,
-  API, sealed execution, and revocation lookup remain runtime work.
+- Calibration does not extend the receipt. ADR-0009 accepts a separate
+  aggregate-only calibration artifact, now `rubrist/binary-calibration/v2`,
+  which Rubrist mints from its sealed execution runtime.
 - The JSON Schema documents the structural contract. Runtime verifiers must
   additionally recompute the canonical evidence and dataset digests and check
   semantic invariants such as complete counters and exact item coverage.

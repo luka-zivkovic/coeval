@@ -13,7 +13,7 @@ import type {
   EvalRunDetail,
   EvalRunItem,
   EvaluatorSuite,
-  EvaluatorSuiteManifest,
+  EvaluatorSuiteManifestV2,
   GoldenSetEntry,
   GoldenSetRetirementContext,
   ImportJobRecord,
@@ -157,7 +157,7 @@ export class DemoRepositoryStore {
   readonly criterionVersions: CriterionVersion[] = [];
   readonly evaluatorSuites: EvaluatorSuite[] = [];
   readonly evaluatorSuiteManifests: Array<{
-    manifest: EvaluatorSuiteManifest;
+    manifest: EvaluatorSuiteManifestV2;
     canonicalBytes: Buffer;
     idempotencyKey: string;
     requestDigest: string;

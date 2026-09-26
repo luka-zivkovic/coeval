@@ -37,7 +37,7 @@ import {
   setupRequired
 } from "../lib/auth.js";
 import { sha256Digest } from "../lib/canonical-json.js";
-import { canonicalEvaluatorSuiteManifestBytes } from "../lib/evaluator-suite.js";
+import { canonicalEvaluatorSuiteManifestV2Bytes } from "../lib/evaluator-suite-manifest-v2.js";
 import { buildFindings, latestDiscreteVerdictByCase } from "../lib/findings.js";
 import {
   judgeProviderEnvironmentKey,
@@ -768,7 +768,7 @@ export function registerV1AgentAdministrationRoutes(
       const manifest = await repository.createEvaluatorSuiteManifest(c.get("projectId"), parsed.data, {
         actorUserId: c.get("user")?.id
       });
-      return c.body(canonicalEvaluatorSuiteManifestBytes(manifest).toString("utf8"), 201, {
+      return c.body(canonicalEvaluatorSuiteManifestV2Bytes(manifest).toString("utf8"), 201, {
         "content-type": "application/json; charset=UTF-8"
       });
     } catch (error) {
@@ -788,7 +788,7 @@ export function registerV1AgentAdministrationRoutes(
       c.req.param("manifestId")
     );
     return manifest
-      ? c.body(canonicalEvaluatorSuiteManifestBytes(manifest).toString("utf8"), 200, {
+      ? c.body(canonicalEvaluatorSuiteManifestV2Bytes(manifest).toString("utf8"), 200, {
           "content-type": "application/json; charset=UTF-8"
         })
       : c.json({ error: "Evaluator suite manifest not found" }, 404);

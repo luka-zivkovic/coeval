@@ -1,6 +1,6 @@
 import {
-  BinaryCalibrationArtifactSchema,
-  type BinaryCalibrationArtifact
+  BinaryCalibrationV2ArtifactSchema,
+  type BinaryCalibrationV2Artifact
 } from "@rubrist/shared";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
@@ -79,7 +79,7 @@ const ARTIFACT_STATUS_REASONS = [
 ] as const;
 
 export interface BinaryCalibrationArtifactDownload {
-  artifact: BinaryCalibrationArtifact;
+  artifact: BinaryCalibrationV2Artifact;
   canonicalBytes: Uint8Array;
   artifactDigest: string;
   evidenceDigest: string;
@@ -167,7 +167,7 @@ export async function fetchBinaryCalibrationArtifact(
   } catch {
     throw new Error("Binary calibration artifact is not valid UTF-8 JSON");
   }
-  const artifact = BinaryCalibrationArtifactSchema.parse(raw);
+  const artifact = BinaryCalibrationV2ArtifactSchema.parse(raw);
   if (artifact.artifactId !== artifactId) {
     throw new Error("Binary calibration artifact identity does not match the requested artifact");
   }

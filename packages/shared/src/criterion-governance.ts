@@ -27,11 +27,12 @@ import {
 import { EVALUATOR_DEFINITION_TEXT_MAX, ExecutionBindingInputSchema } from "./evaluator-execution.js";
 import { SkillSchema } from "./skills.js";
 
-// Evaluator suite manifest v1 is a separate, policy-free artifact. It binds
-// immutable criterion definitions to exact evaluator versions while leaving
-// every criterion's assessment in its existing receipt-v1 artifact. Keep all
-// nested objects strict: release roles, thresholds, weights, compensation,
-// and composite decisions are intentionally not representable here.
+// Evaluator suites are separate, policy-free artifacts (the manifest schema is
+// in evaluator-suite-manifest-v2.ts). A suite binds immutable criterion
+// definitions to exact evaluator versions while leaving every criterion's
+// assessment in its own receipt. Keep all nested objects strict: release
+// roles, thresholds, weights, compensation, and composite decisions are
+// intentionally not representable here.
 const EvaluatorSuiteSha256DigestSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 
 export const CriterionSourceKindSchema = z.enum(["native", "analysis_promotion"]);
@@ -485,34 +486,6 @@ export const EvaluatorSuiteTrialPlanSchema = z.object({
   trialsPerItem: z.number().int().min(2).max(10)
 }).strict();
 export type EvaluatorSuiteTrialPlan = z.infer<typeof EvaluatorSuiteTrialPlanSchema>;
-
-export const EvaluatorSuiteManifestMemberSchema = z.object({
-  position: z.number().int().nonnegative(),
-  criterionId: z.string().min(1),
-  criterionVersionId: z.string().min(1),
-  criterionName: z.string().min(1),
-  criterionDefinition: z.string().min(1),
-  criterionDigest: EvaluatorSuiteSha256DigestSchema,
-  skillId: z.string().min(1),
-  skillVersionId: z.string().min(1),
-  skillDigest: EvaluatorSuiteSha256DigestSchema,
-  outputContractDigest: EvaluatorSuiteSha256DigestSchema,
-  applicability: EvaluatorSuiteApplicabilitySchema
-}).strict();
-export type EvaluatorSuiteManifestMember = z.infer<typeof EvaluatorSuiteManifestMemberSchema>;
-
-export const EvaluatorSuiteManifestSchema = z.object({
-  contract: z.literal("rubrist/evaluator-suite-manifest/v1"),
-  schemaVersion: z.literal(1),
-  manifestId: z.string().min(1),
-  suiteId: z.string().min(1),
-  projectId: z.string().min(1),
-  revision: z.number().int().positive(),
-  members: z.array(EvaluatorSuiteManifestMemberSchema).min(1),
-  trialPlan: EvaluatorSuiteTrialPlanSchema.nullable(),
-  manifestDigest: EvaluatorSuiteSha256DigestSchema
-}).strict();
-export type EvaluatorSuiteManifest = z.infer<typeof EvaluatorSuiteManifestSchema>;
 
 export const EvaluatorSuiteSchema = z.object({
   id: z.string().min(1),

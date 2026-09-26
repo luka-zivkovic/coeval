@@ -2,11 +2,12 @@ import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import {
   EVALUATOR_EXECUTION_AUTHORIZATION_VERSION,
+  EvaluatorFailureKindSchema,
   SkillVersionSchema,
-  type BinaryCalibrationCompletionEligibilityReason,
-  type BinaryCalibrationErrorCode,
-  type BinaryCalibrationPrivateLedger,
-  type ModelBinding,
+  type BinaryCalibrationV2CompletionEligibilityReason,
+  type BinaryCalibrationV2ErrorCode,
+  type BinaryCalibrationV2PrivateLedger,
+  type ExecutionBinding,
   type SkillVersion
 } from "@rubrist/shared";
 import { evaluatorExecutionAuthorizationDigest } from "../lib/evaluator-lifecycle.js";
@@ -17,12 +18,11 @@ import type {
   BinaryCalibrationArtifactCopy,
   BinaryCalibrationExecutionClaim,
   BinaryCalibrationProviderDataHandlingPolicy,
-  BinaryCalibrationRequestedModelBinding,
   BinaryCalibrationRunProjection,
   CompleteBinaryCalibrationAttemptInput,
   CreateBinaryCalibrationRunInput
 } from "./repository.js";
-import { binaryCalibrationBaseUrlDigest, BinaryCalibrationRepositoryError } from "./repository.js";
+import { BinaryCalibrationRepositoryError } from "./repository.js";
 
 export type Db = Pool | PoolClient;
 
@@ -49,12 +49,8 @@ export interface RunRow extends Record<string, unknown> {
   skill_id: string;
   skill_version_id: string;
   requested_provider: string;
-  requested_model_id: string;
-  requested_model_version: string;
-  temperature_decimal: string;
-  top_p_decimal: string | null;
-  endpoint_kind: "managed" | "custom";
-  base_url_digest: string | null;
+  definition_digest: string;
+  execution_binding: unknown;
   requested_binding_digest: string;
   suite_manifest_id: string | null;
   suite_manifest_digest: string | null;
@@ -93,22 +89,22 @@ export interface FrozenOriginRow extends Record<string, unknown> {
 export interface EligibilityResult {
   exposureState: "protected" | "exposed";
   eligible: boolean;
-  reasons: BinaryCalibrationCompletionEligibilityReason[];
+  reasons: BinaryCalibrationV2CompletionEligibilityReason[];
   snapshot: Record<string, unknown>;
 }
-export function aggregateTrial(records: BinaryCalibrationPrivateLedger["records"]) {
+export function aggregateTrial(records: BinaryCalibrationV2PrivateLedger["records"]) {
   const outcomes = {
     planned: records.length,
     classified: 0,
     abstained: 0,
     errored: 0,
-    unevaluated: 0,
+    notAttempted: 0,
     providerCalls: 0,
     byTruth: {
-      pass: { classified: 0, abstained: 0, errored: 0, unevaluated: 0 },
-      fail: { classified: 0, abstained: 0, errored: 0, unevaluated: 0 }
+      pass: { classified: 0, abstained: 0, errored: 0, notAttempted: 0 },
+      fail: { classified: 0, abstained: 0, errored: 0, notAttempted: 0 }
     },
-    errors: [] as Array<{ code: BinaryCalibrationErrorCode; count: number }>
+    errors: [] as Array<{ code: BinaryCalibrationV2ErrorCode; count: number }>
   };
   const truthSupport = { total: records.length, pass: 0, fail: 0 };
   const confusionMatrix = {
@@ -117,34 +113,34 @@ export function aggregateTrial(records: BinaryCalibrationPrivateLedger["records"
     truthFailEvaluatorPass: 0,
     truthFailEvaluatorFail: 0
   };
-  const errors = new Map<BinaryCalibrationErrorCode, number>();
+  const errors = new Map<BinaryCalibrationV2ErrorCode, number>();
   const groups = new Map<string, {
     provider: string;
     observedModel: string | null;
     observedVersion: string | null;
     systemFingerprint: string | null;
+    upstreamProvider: string | null;
     identityStrength: "observed_version" | "observed_fingerprint" | "observed_model" | "requested_only";
     observationCount: number;
   }>();
   for (const record of records) {
     truthSupport[record.truthLabel] += 1;
     outcomes.providerCalls += record.physicalProviderCalls;
-    const bucket = record.terminalEvaluatorOutcome === "evaluator_pass" ||
-      record.terminalEvaluatorOutcome === "evaluator_fail"
-      ? "classified"
-      : record.terminalEvaluatorOutcome;
-    const outcomeBucket = bucket === "classified" || bucket === "abstained" ||
-      bucket === "errored" || bucket === "unevaluated" ? bucket : "errored";
-    outcomes[outcomeBucket] += 1;
-    outcomes.byTruth[record.truthLabel][outcomeBucket] += 1;
-    if (record.terminalEvaluatorOutcome === "evaluator_pass") {
-      confusionMatrix[record.truthLabel === "pass" ?
-        "truthPassEvaluatorPass" : "truthFailEvaluatorPass"] += 1;
-    } else if (record.terminalEvaluatorOutcome === "evaluator_fail") {
-      confusionMatrix[record.truthLabel === "pass" ?
-        "truthPassEvaluatorFail" : "truthFailEvaluatorFail"] += 1;
+    const result = record.result;
+    const bucket = result.state === "not_attempted"
+      ? "notAttempted"
+      : result.state === "failure"
+        ? "errored"
+        : result.outcome === "abstain" ? "abstained" : "classified";
+    outcomes[bucket] += 1;
+    outcomes.byTruth[record.truthLabel][bucket] += 1;
+    if (result.state === "outcome" && result.outcome !== "abstain") {
+      const evaluatorPass = result.outcome === "pass";
+      confusionMatrix[record.truthLabel === "pass"
+        ? evaluatorPass ? "truthPassEvaluatorPass" : "truthPassEvaluatorFail"
+        : evaluatorPass ? "truthFailEvaluatorPass" : "truthFailEvaluatorFail"] += 1;
     }
-    if (record.errorCode) errors.set(record.errorCode, (errors.get(record.errorCode) ?? 0) + 1);
+    if (result.state === "failure") errors.set(result.failureKind, (errors.get(result.failureKind) ?? 0) + 1);
     const identityStrength = record.providerObservation.observedVersion !== null
       ? "observed_version" as const
       : record.providerObservation.systemFingerprint !== null
@@ -158,6 +154,7 @@ export function aggregateTrial(records: BinaryCalibrationPrivateLedger["records"
       observedModel: group.observedModel,
       observedVersion: group.observedVersion,
       systemFingerprint: group.systemFingerprint,
+      upstreamProvider: group.upstreamProvider,
       identityStrength: group.identityStrength
     });
     const prior = groups.get(key);
@@ -171,64 +168,35 @@ export function aggregateTrial(records: BinaryCalibrationPrivateLedger["records"
   return { outcomes, truthSupport, confusionMatrix, providerIdentityGroups };
 }
 
-export function requestedBindingFor(binding: ModelBinding): BinaryCalibrationRequestedModelBinding {
-  if (!["anthropic", "openai", "openrouter", "custom", "mock"].includes(binding.provider)) {
-    throw repoError("unsupported", "sealed calibration requires a canonical supported provider id");
-  }
-  if (!binding.modelId || !binding.modelVersion ||
-      Array.from(binding.modelId).length > 4_096 || Array.from(binding.modelVersion).length > 4_096 ||
-      containsLoneSurrogate(binding.modelId) || containsLoneSurrogate(binding.modelVersion)) {
-    throw repoError("unsupported", "sealed calibration requires a nonempty model id and requested version");
-  }
-  const endpointKind = binding.provider === "custom" ? "custom" as const : "managed" as const;
-  if ((endpointKind === "custom") !== Boolean(binding.baseUrl)) {
-    throw repoError("unsupported", "custom sealed calibration bindings require an exact base URL");
-  }
-  const unsigned = {
-    provider: binding.provider,
-    modelId: binding.modelId,
-    modelVersion: binding.modelVersion,
-    temperatureDecimal: canonicalDecimal(binding.temperature),
-    topPDecimal: binding.topP === undefined ? null : canonicalDecimal(binding.topP),
-    endpointKind,
-    baseUrlDigest: binding.baseUrl ? binaryCalibrationBaseUrlDigest(binding.baseUrl) : null
-  };
-  return { ...unsigned, requestedBindingDigest: sha256Digest(unsigned) };
-}
-
-export function requestedBindingFromRun(run: Record<string, unknown>): BinaryCalibrationRequestedModelBinding {
-  return {
-    provider: String(run.requested_provider),
-    modelId: String(run.requested_model_id),
-    modelVersion: String(run.requested_model_version),
-    temperatureDecimal: String(run.temperature_decimal),
-    topPDecimal: nullableString(run.top_p_decimal),
-    endpointKind: run.endpoint_kind === "custom" ? "custom" : "managed",
-    baseUrlDigest: nullableString(run.base_url_digest),
-    requestedBindingDigest: String(run.requested_binding_digest)
-  };
-}
-
-export function providerPolicyFor(
-  binding: BinaryCalibrationRequestedModelBinding
-): BinaryCalibrationProviderDataHandlingPolicy {
-  const executionEnvironment = binding.provider === "mock" ? "local_provider" : "external_provider";
+/**
+ * What sealed calibration tells a provider's data-handling reviewer: which
+ * provider and endpoint receive the sealed payload, and that no raw response
+ * is kept. The endpoint is the binding's own (managed, or a custom URL named
+ * by digest), so the policy never names a URL.
+ */
+export function providerPolicyFor(binding: ExecutionBinding): {
+  policy: BinaryCalibrationProviderDataHandlingPolicy;
+  canonicalBytes: Buffer;
+} {
+  const executionEnvironment = "external_provider" as const;
   const policyContent = {
-    contract: "rubrist/provider-data-handling-policy/v1",
-    schemaVersion: 1,
+    contract: "rubrist/provider-data-handling-policy/v2",
+    schemaVersion: 2,
     provider: binding.provider,
-    endpointKind: binding.endpointKind,
-    baseUrlDigest: binding.baseUrlDigest,
+    endpoint: binding.endpoint,
     executionEnvironment,
     payloadTransmission: "sealed_payload_to_pinned_provider" as const,
     rawProviderResponsePersistence: "none"
   };
   const policyDigest = sha256Digest(policyContent);
   return {
-    executionEnvironment,
-    policyId: stableId("bcp", policyDigest),
-    policyDigest,
-    payloadTransmission: "sealed_payload_to_pinned_provider"
+    policy: {
+      executionEnvironment,
+      policyId: stableId("bcp", policyDigest),
+      policyDigest,
+      payloadTransmission: "sealed_payload_to_pinned_provider"
+    },
+    canonicalBytes: Buffer.from(canonicalJson(policyContent), "utf8")
   };
 }
 
@@ -340,41 +308,60 @@ export function validateClaimInput(workerId: string, claimTtlMs: number): void {
 }
 
 export function validateAttemptCompletion(input: CompleteBinaryCalibrationAttemptInput): void {
-  const allowedOutcomes = ["evaluator_pass", "evaluator_fail", "abstained", "errored", "unevaluated"];
-  const allowedErrors: BinaryCalibrationErrorCode[] = [
-    "provider_unavailable", "provider_authentication", "provider_rate_limit", "provider_timeout",
-    "provider_transport", "provider_protocol", "invalid_evaluator_output", "outcome_unknown", "internal"
-  ];
-  if (!allowedOutcomes.includes(input.terminalEvaluatorOutcome)) {
+  const result = input.result;
+  if (result.state === "failure" && !EvaluatorFailureKindSchema.safeParse(result.failureKind).success) {
+    throw repoError("unsupported", "unknown binary calibration failure kind");
+  }
+  if (result.state === "outcome" && !["pass", "fail", "abstain"].includes(result.outcome)) {
     throw repoError("unsupported", "unknown terminal evaluator outcome");
   }
-  if (input.errorCode !== null && !allowedErrors.includes(input.errorCode)) {
-    throw repoError("unsupported", "unknown binary calibration error code");
-  }
-  if ((input.terminalEvaluatorOutcome === "errored") !== (input.errorCode !== null)) {
-    throw repoError("conflict", "only errored calibration outcomes carry an error code");
-  }
-  if (input.errorCode === "outcome_unknown") {
+  if (result.state === "failure" && result.failureKind === "outcome_unknown") {
     throw repoError("conflict", "outcome_unknown is reserved for repository crash recovery");
   }
-  const expectedState = input.terminalEvaluatorOutcome === "unevaluated" ? "not_started" : "terminal";
+  const expectedState = result.state === "not_attempted" ? "not_started" : "terminal";
   if (input.attemptState !== expectedState) {
-    throw repoError("conflict", `${input.terminalEvaluatorOutcome} requires ${expectedState} attempt state`);
+    throw repoError("conflict", `${result.state} requires ${expectedState} attempt state`);
   }
-  if ((input.providerObservation.observedVersion !== null ||
-      input.providerObservation.systemFingerprint !== null) &&
-      input.providerObservation.observedModel === null) {
+  const observation = input.providerObservation;
+  if ((observation.observedVersion !== null || observation.systemFingerprint !== null) &&
+      observation.observedModel === null) {
     throw repoError("conflict", "observed provider version/fingerprint requires an observed model");
   }
   for (const value of [
-    input.providerObservation.provider,
-    input.providerObservation.observedModel,
-    input.providerObservation.observedVersion,
-    input.providerObservation.systemFingerprint
+    observation.provider,
+    observation.observedModel,
+    observation.observedVersion,
+    observation.systemFingerprint,
+    observation.upstreamProvider
   ]) {
     if (value !== null && (Array.from(value).length > 4_096 || containsLoneSurrogate(value))) {
       throw repoError("unsupported", "provider observation strings exceed the contract boundary");
     }
+  }
+}
+
+/** The stored accounting columns of a shared item result. */
+export function attemptColumnsFor(result: CompleteBinaryCalibrationAttemptInput["result"]): {
+  terminalEvaluatorOutcome: "evaluator_pass" | "evaluator_fail" | "abstained" | "errored" | "not_attempted";
+  errorCode: BinaryCalibrationV2ErrorCode | null;
+} {
+  if (result.state === "not_attempted") return { terminalEvaluatorOutcome: "not_attempted", errorCode: null };
+  if (result.state === "failure") return { terminalEvaluatorOutcome: "errored", errorCode: result.failureKind };
+  return {
+    terminalEvaluatorOutcome: result.outcome === "pass" ? "evaluator_pass" : result.outcome === "fail" ? "evaluator_fail" : "abstained",
+    errorCode: null
+  };
+}
+
+/** The shared item result of stored accounting columns. */
+export function attemptResultFromRow(row: Record<string, unknown>): CompleteBinaryCalibrationAttemptInput["result"] {
+  switch (String(row.terminal_evaluator_outcome)) {
+    case "evaluator_pass": return { state: "outcome", outcome: "pass" };
+    case "evaluator_fail": return { state: "outcome", outcome: "fail" };
+    case "abstained": return { state: "outcome", outcome: "abstain" };
+    case "not_attempted": return { state: "not_attempted" };
+    case "errored": return { state: "failure", failureKind: EvaluatorFailureKindSchema.parse(row.error_code) };
+    default: throw repoError("state_conflict", "binary calibration attempt has no terminal accounting");
   }
 }
 
@@ -470,23 +457,6 @@ export async function insertEvaluatorExecutionAuthorization(
 
 export function stableId(prefix: string, ...parts: string[]): string {
   return `${prefix}_${createHash("sha256").update(parts.join("\0")).digest("hex").slice(0, 48)}`;
-}
-
-function canonicalDecimal(value: number): string {
-  if (!Number.isFinite(value) || value < 0 || Object.is(value, -0)) {
-    throw repoError("unsupported", "model binding decimal is not a canonical nonnegative finite number");
-  }
-  const raw = JSON.stringify(value);
-  if (!/[eE]/.test(raw)) return raw;
-  const match = /^(\d+)(?:\.(\d+))?[eE]([+-]?\d+)$/.exec(raw);
-  if (!match) throw repoError("unsupported", "model binding decimal cannot be canonicalized");
-  const integer = match[1]!;
-  const fraction = match[2] ?? "";
-  const digits = `${integer}${fraction}`;
-  const point = integer.length + Number(match[3]);
-  if (point <= 0) return `0.${"0".repeat(-point)}${digits}`;
-  if (point >= digits.length) return `${digits}${"0".repeat(point - digits.length)}`;
-  return `${digits.slice(0, point)}.${digits.slice(point)}`;
 }
 
 export async function databaseClock(db: Db): Promise<string> {

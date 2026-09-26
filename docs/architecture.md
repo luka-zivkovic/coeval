@@ -97,13 +97,16 @@ agreement is one.
 
 In Postgres mode, an owner launches an explicit single-trial run bound to one
 binary evaluator, criterion version, complete governed sealed-validation
-revision, selection provenance, execution model binding, provider policy, and
-authorization/completion exposure snapshots. The repository acquires a
-durable revision lease before execution. The worker receives one protected
-payload without truth, records provider-call start durably immediately before
-physical dispatch, and makes exactly one call with the requested parameters.
-Hidden SDK retries and parameter-changing fallbacks are disabled; unsupported
-non-null `topP` is rejected before dispatch.
+revision, selection provenance, the evaluator's v2 identity (definition digest
+and execution binding), provider policy, and authorization/completion exposure
+snapshots. The repository acquires a durable revision lease before execution.
+The worker receives one protected payload without truth and runs it through
+the v2 executor, which sends exactly the pinned binding through its verdict
+protocol in one physical call, with no retries and no parameter-changing
+fallbacks (ADR-0014). Provider-call start is recorded durably after every
+check that can refuse the call and immediately before dispatch, so a refusal
+counts no call. The mock makes no call and typed-question evaluators arrive in
+Batch 8E, so neither can be calibrated.
 
 Binary provider output is pass, fail, or ambiguous. Pass and fail are the two
 classification outcomes; ambiguous is an explicit evaluator abstention. The
@@ -118,7 +121,9 @@ rechecks exposure, derives aggregate statistics from the private salted
 ledger, writes exact canonical public artifact bytes, and releases the lease.
 
 The public artifact contains aggregate counts, metrics, confidence intervals,
-and requested/observed provider provenance. It contains no item identity,
+the evaluator identity (never the rubric or prompt text), and requested and
+observed provider provenance, including the OpenRouter upstream that served a
+call. It contains no item identity,
 protected payload, per-item truth or prediction, rationale, provider body, or
 request/response identifier. The private ledger has no application, HTTP,
 project-key, browser, analytics, CDC, debug, or operator-export read surface.
@@ -130,8 +135,10 @@ The frozen contract and conformance corpus cover repeated-trial artifacts, but
 the current producer runtime accepts only
 `{ kind: "single", trialsPerItem: 1 }`. Dailies has an independent local
 contract verifier and consumes explicitly configured artifacts through its
-config v6, policy v2, report v6, runner, and CLI. It does not perform a network
-or latest-status lookup.
+config v6, policy v2, report v6, runner, and CLI. It still verifies
+calibration v1 and moves to v2 evidence with Rubrist's receipt v2 (Dailies
+ADR-0008), so until then it can't consume the v2 artifacts Rubrist mints. It
+does not perform a network or latest-status lookup.
 
 ### Governed Analyze populations and coding studies
 

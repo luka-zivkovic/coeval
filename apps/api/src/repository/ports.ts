@@ -24,7 +24,7 @@ import type {
   EvalRunItem,
   EvaluatorExecutionContext,
   EvaluatorSuite,
-  EvaluatorSuiteManifest,
+  EvaluatorSuiteManifestV2,
   ExceptionDetail,
   FeedbackSyncJob,
   GateCheck,
@@ -178,9 +178,9 @@ export interface CriterionSuiteRepositoryPort {
     projectId: string,
     input: CreateEvaluatorSuiteManifestInput,
     context: { actorUserId?: string | undefined }
-  ): Promise<EvaluatorSuiteManifest>;
-  listEvaluatorSuiteManifests(projectId: string, suiteId?: string | undefined): Promise<EvaluatorSuiteManifest[]>;
-  getEvaluatorSuiteManifest(projectId: string, manifestId: string): Promise<EvaluatorSuiteManifest | null>;
+  ): Promise<EvaluatorSuiteManifestV2>;
+  listEvaluatorSuiteManifests(projectId: string, suiteId?: string | undefined): Promise<EvaluatorSuiteManifestV2[]>;
+  getEvaluatorSuiteManifest(projectId: string, manifestId: string): Promise<EvaluatorSuiteManifestV2 | null>;
 }
 
 export interface SkillLifecycleRepositoryPort {
