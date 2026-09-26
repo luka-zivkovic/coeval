@@ -243,10 +243,15 @@ export interface CompleteEvalRunItemInputDb {
   providerMetadata?: ProviderResponseMetadata | undefined;
 }
 
-/** How a failed item ended (ADR-0014 section 6): a classified failure of an attempted call, or never attempted. */
+/**
+ * How a failed item ended (ADR-0014 section 6): a classified failure of an
+ * attempted call, or never attempted. Not attempted is refused once the item's
+ * call has started, unless `executorRefused` records that the executor itself
+ * proved the request never left after the start marker.
+ */
 export type EvalRunItemFailure =
   | { state: "failure"; failureKind: EvaluatorFailureKind; observed: ObservedCall }
-  | { state: "not_attempted" };
+  | { state: "not_attempted"; executorRefused?: true | undefined };
 
 export interface FailEvalRunItemInputDb {
   projectId: string;

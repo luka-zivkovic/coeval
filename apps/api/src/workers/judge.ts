@@ -2,7 +2,6 @@ import { z } from "zod";
 import { DEFAULT_OUTPUT_SCHEMA, EvaluatorCallError, type JudgePrompt, type JudgeProvider, type StructuredVerdict } from "@rubrist/audit/runtime";
 import {
   JudgeRunJobSchema,
-  ObservedCallSchema,
   renderJudgePromptContent,
   type EvaluatorScore,
   type JudgeRun,
@@ -14,6 +13,7 @@ import {
 } from "@rubrist/shared";
 import type { Queue } from "@rubrist/queue";
 import type { RubristRepository } from "../repository.js";
+import { observedCallFrom } from "../lib/observed-call.js";
 import {
   createJudgeProvider,
   JudgeProviderUnavailableError,
@@ -141,8 +141,10 @@ export async function judgeAndRecord(
   }
   await providerCallLifecycle?.providerCallReturned();
   const { verdict: structured, usage, providerMetadata: observedMetadata } = judged;
-  const observed = judged.observed ? ObservedCallSchema.parse(judged.observed) : null;
-  const evaluatorScore = evaluatorScoreFor(structured, skillVersion.executionBinding.verdictProtocol);
+  // A provider that executes no binding (the demo mock fallback) observes
+  // nothing, and its heuristic score is no evaluator's: neither is recorded.
+  const observed = judged.observed ? observedCallFrom(judged.observed) : null;
+  const evaluatorScore = observed === null ? null : evaluatorScoreFor(structured, skillVersion.executionBinding.verdictProtocol);
   const latencyMs = Date.now() - startedAt;
   const payload = structuredVerdictToPayload(structured);
   const legacy = structuredVerdictToLegacy(structured);

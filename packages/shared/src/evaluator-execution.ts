@@ -396,7 +396,6 @@ export const EvaluatorItemStateSchema = z.discriminatedUnion("state", [
 ]);
 export type EvaluatorItemState = z.infer<typeof EvaluatorItemStateSchema>;
 
-/** A score is either the model's own stated probability or an LLM's self-reported score; neither is calibrated. */
 /**
  * What the provider reported back for one attempted call (ADR-0014 section
  * 6). Every field is `null` when the provider didn't report it.
@@ -413,6 +412,7 @@ export const ObservedCallSchema = z.object({
 }).strict();
 export type ObservedCall = z.infer<typeof ObservedCallSchema>;
 
+/** A score is either the model's own stated probability or an LLM's self-reported score; neither is calibrated. */
 export const EvaluatorScoreSchema = z.object({
   value: z.number().min(0).max(1),
   kind: z.enum(["native_probability", "self_reported_score"])

@@ -620,7 +620,10 @@ export class DemoEvaluationRepository implements
     if (
       !item ||
       item.status !== "pending" ||
-      (input.executionToken !== undefined && this.store.evalRunItemExecutions.get(item.id)?.executionToken !== input.executionToken)
+      (input.executionToken !== undefined && this.store.evalRunItemExecutions.get(item.id)?.executionToken !== input.executionToken) ||
+      // A started call was attempted, whatever the caller believed (parity with PG).
+      (input.failure.state === "not_attempted" && input.failure.executorRefused !== true &&
+        this.store.evalRunItemExecutions.get(item.id)?.providerCallStarted === true)
     ) return { runFinished: this.isRunFinished(run) };
     const runBefore = structuredClone(run);
     const itemBefore = structuredClone(item);

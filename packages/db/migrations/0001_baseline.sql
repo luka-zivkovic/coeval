@@ -12069,7 +12069,7 @@ CREATE TABLE verdicts (
     -- evaluator's own score (ADR-0014 section 6).
     observed jsonb,
     evaluator_score jsonb,
-    CONSTRAINT verdicts_evaluator_provenance_check CHECK ((((observed IS NULL) AND (evaluator_score IS NULL)) OR (source = 'llm_judge'::text)) AND ((observed IS NULL) OR (jsonb_typeof(observed) = 'object'::text)) AND ((evaluator_score IS NULL) OR (jsonb_typeof(evaluator_score) = 'object'::text))),
+    CONSTRAINT verdicts_evaluator_provenance_check CHECK ((((observed IS NULL) AND (evaluator_score IS NULL)) OR (source = 'llm_judge'::text)) AND ((evaluator_score IS NULL) OR (observed IS NOT NULL)) AND ((observed IS NULL) OR (jsonb_typeof(observed) = 'object'::text)) AND ((evaluator_score IS NULL) OR (jsonb_typeof(evaluator_score) = 'object'::text))),
     CONSTRAINT verdicts_source_check CHECK ((source = ANY (ARRAY['llm_judge'::text, 'human'::text, 'imported_external'::text, 'adjudicated'::text]))),
     CONSTRAINT verdicts_verdict_kind_check CHECK ((verdict_kind = ANY (ARRAY['binary'::text, 'scalar'::text, 'categorical'::text])))
 );

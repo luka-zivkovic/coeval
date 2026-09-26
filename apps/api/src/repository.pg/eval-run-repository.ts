@@ -677,6 +677,9 @@ export class PgEvalRunRepository implements EvalRunRepositoryPort {
              finished_at = now()
          where id = $1 and eval_run_id = $2 and project_id = $3 and status = 'pending'
            and ($5::text is null or execution_token = $5)
+           -- An item whose call has started was attempted; a stale snapshot
+           -- that says otherwise changes nothing, and the next sweep records it.
+           and (not $7 or $9 or provider_call_started_at is null)
            and exists (
              select 1 from eval_runs run
              where run.id = eval_run_items.eval_run_id
@@ -687,7 +690,8 @@ export class PgEvalRunRepository implements EvalRunRepositoryPort {
         [input.evalRunItemId, input.evalRunId, input.projectId, input.error, input.executionToken ?? null,
           input.failure.state === "failure" ? input.failure.failureKind : null,
           input.failure.state === "not_attempted",
-          input.failure.state === "failure" ? JSON.stringify(input.failure.observed) : null]
+          input.failure.state === "failure" ? JSON.stringify(input.failure.observed) : null,
+          input.failure.state === "not_attempted" && input.failure.executorRefused === true]
       );
       if (!itemResult.rows[0]) {
         await client.query("rollback");

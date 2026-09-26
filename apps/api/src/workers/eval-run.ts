@@ -1,20 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { EvaluatorCallError, type ObservedProvenance } from "@rubrist/audit/runtime";
+import { EvaluatorCallError } from "@rubrist/audit/runtime";
 import {
   EvalItemJobSchema,
   EvalRunJobSchema,
-  ObservedCallSchema,
   verdictLabelFromPayload,
   type EvalItemJob,
-  type EvalRunJob,
-  type EvaluatorFailureKind,
-  type ObservedCall
+  type EvalRunJob
 } from "@rubrist/shared";
 import type { Queue } from "@rubrist/queue";
 import type { RubristRepository } from "../repository.js";
 import type { EvalRunItemFailure } from "../repository/contracts.js";
-import { JudgeProviderUnavailableError, createJudgeProvider, isJudgeAuthError } from "../lib/judge-provider.js";
+import { createJudgeProvider } from "../lib/judge-provider.js";
+import { NOTHING_OBSERVED, observedCallFrom } from "../lib/observed-call.js";
 import { isPermanentError, judgeAndRecord, type ProviderArg } from "./judge.js";
 
 // Eval-run fan-out: one `eval.run` job per run, which enqueues one `eval.item`
@@ -98,7 +96,7 @@ export async function registerEvalRunWorkers(
             error: finalAttempt && !permanent
               ? `Judge failed after ${retryCount + 1} attempt(s): ${errorMessage(error)}`
               : errorMessage(error),
-            failure: preCallFailure(error)
+            failure: NOT_ATTEMPTED
           });
         }
       }
@@ -129,6 +127,7 @@ function errorMessage(error: unknown): string {
 
 function postDispatchFailureMessage(error: unknown, providerCallReturned: boolean): string {
   if (!providerCallReturned && error instanceof EvaluatorCallError) {
+    if (!error.physicalCall) return `The judge call was refused before sending (${error.failureKind}): ${errorMessage(error)}`;
     return `The judge call failed (${error.failureKind}); the evaluator was not called again: ${errorMessage(error)}`;
   }
   return providerCallReturned
@@ -136,49 +135,24 @@ function postDispatchFailureMessage(error: unknown, providerCallReturned: boolea
     : `Provider outcome unknown after a dispatched call failed without a durable result; the evaluator was not called again: ${errorMessage(error)}`;
 }
 
-// How failed items are classified (ADR-0014 section 6). An attempted item is
-// a failure with its kind and what its call observed (every field null when
-// nothing came back); an item no evaluator ever took up is not attempted.
-const NOTHING_OBSERVED: ObservedCall = {
-  model: null, requestId: null, responseId: null, systemFingerprint: null,
-  upstreamProvider: null, thinkingReturned: null, reasoningTokens: null
-};
+// How failed items are classified (ADR-0014 section 6). A call that left
+// Rubrist is a failure with its kind and what it observed (every field null
+// when nothing came back); an item whose request never left Rubrist, whether
+// refused before the call or never taken up, is not attempted, and its error
+// text keeps the reason.
 const OUTCOME_UNKNOWN: EvalRunItemFailure = { state: "failure", failureKind: "outcome_unknown", observed: NOTHING_OBSERVED };
 const NOT_ATTEMPTED: EvalRunItemFailure = { state: "not_attempted" };
 
-function observedCall(observed: ObservedProvenance | null): ObservedCall {
-  return observed === null ? NOTHING_OBSERVED : ObservedCallSchema.parse({
-    model: observed.model,
-    requestId: observed.requestId,
-    responseId: observed.responseId,
-    systemFingerprint: observed.systemFingerprint,
-    upstreamProvider: observed.upstreamProvider,
-    thinkingReturned: observed.thinkingReturned,
-    reasoningTokens: observed.reasoningTokens
-  });
-}
-
-function failureKindOf(error: unknown): EvaluatorFailureKind {
-  if (error instanceof EvaluatorCallError) return error.failureKind;
-  if (error instanceof JudgeProviderUnavailableError) return "provider_unavailable";
-  if (isJudgeAuthError(error)) return "provider_authentication";
-  return "internal";
-}
-
-/** A failure proven to precede any provider call: its own kind, nothing observed. */
-function preCallFailure(error: unknown): EvalRunItemFailure {
-  return { state: "failure", failureKind: failureKindOf(error), observed: NOTHING_OBSERVED };
-}
-
 /**
  * A failure after the durable call-start marker. A judge call that failed
- * with a known kind keeps it and what it observed; anything else, including
- * a provider answer whose completion wasn't recorded, can't show what the
- * provider did.
+ * with a known kind keeps it and what it observed, and one refused before
+ * sending was never attempted; anything else, including a provider answer
+ * whose completion wasn't recorded, can't show what the provider did.
  */
 function postDispatchFailure(error: unknown, providerCallReturned: boolean): EvalRunItemFailure {
   if (!providerCallReturned && error instanceof EvaluatorCallError) {
-    return { state: "failure", failureKind: error.failureKind, observed: observedCall(error.observed) };
+    if (!error.physicalCall) return { state: "not_attempted", executorRefused: true };
+    return { state: "failure", failureKind: error.failureKind, observed: observedCallFrom(error.observed, error.providerError) };
   }
   return OUTCOME_UNKNOWN;
 }
@@ -468,7 +442,7 @@ export async function runEvalRunInline(
           ? errorMessage(error)
           : postDispatchFailureMessage(error, disposition.providerCallReturned),
         failure: disposition.state === "pre_call_held" || disposition.state === "released"
-          ? preCallFailure(error)
+          ? NOT_ATTEMPTED
           : postDispatchFailure(error, disposition.providerCallReturned)
       });
     }
