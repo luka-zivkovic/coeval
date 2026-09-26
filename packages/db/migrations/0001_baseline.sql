@@ -11613,7 +11613,8 @@ CREATE TABLE judge_runs (
     skill_version_id text NOT NULL,
     verdict text NOT NULL,
     score numeric NOT NULL,
-    reasoning text NOT NULL,
+    -- Null when the evaluator states no reason: a typed-question verdict.
+    reasoning text,
     raw_request jsonb,
     raw_response jsonb,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -12083,6 +12084,9 @@ CREATE TABLE verdicts (
     observed jsonb,
     evaluator_score jsonb,
     CONSTRAINT verdicts_evaluator_provenance_check CHECK ((((observed IS NULL) AND (evaluator_score IS NULL)) OR (source = 'llm_judge'::text)) AND ((evaluator_score IS NULL) OR (observed IS NOT NULL)) AND ((observed IS NULL) OR (jsonb_typeof(observed) = 'object'::text)) AND ((evaluator_score IS NULL) OR (jsonb_typeof(evaluator_score) = 'object'::text))),
+    -- Only an evaluator records a verdict that states no rationale (a
+    -- typed-question verdict, ADR-0014 section 5); a person always gives one.
+    CONSTRAINT verdicts_rationale_status_check CHECK ((NOT (payload ? 'rationaleStatus'::text)) OR (source = 'llm_judge'::text)),
     CONSTRAINT verdicts_source_check CHECK ((source = ANY (ARRAY['llm_judge'::text, 'human'::text, 'imported_external'::text, 'adjudicated'::text]))),
     CONSTRAINT verdicts_verdict_kind_check CHECK ((verdict_kind = ANY (ARRAY['binary'::text, 'scalar'::text, 'categorical'::text])))
 );

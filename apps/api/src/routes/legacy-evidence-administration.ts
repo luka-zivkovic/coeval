@@ -5,12 +5,13 @@ import { z } from "zod";
 import {
   AddReviewQueueItemsInputSchema,
   CreateReviewQueueInputSchema,
+  HumanVerdictPayloadSchema,
   PromoteGoldenSetInputSchema,
   RetireGoldenSetEntryInputSchema,
   ReviewQueueStatusSchema,
   VERDICT_LIST_MAX_LIMIT,
-  VerdictPayloadSchema,
-  VerdictSourceSchema
+  VerdictSourceSchema,
+  payloadRationale
 } from "@rubrist/shared";
 import { userProjectRole } from "../lib/auth.js";
 import { buildTrustDigest, SPEND_WINDOW_RUNS } from "../lib/trust-digest.js";
@@ -139,7 +140,7 @@ export function registerLegacyEvidenceAdministrationRoutes(
 
     const body = await c.req.json().catch(() => null);
     const parsed = z.object({
-      payload: VerdictPayloadSchema,
+      payload: HumanVerdictPayloadSchema,
       skillVersionId: z.string().min(1).optional()
     }).strict().safeParse(body);
     if (!parsed.success) {
@@ -194,7 +195,7 @@ export function registerLegacyEvidenceAdministrationRoutes(
 
     const body = await c.req.json().catch(() => null);
     const parsed = z.object({
-      payload: VerdictPayloadSchema,
+      payload: HumanVerdictPayloadSchema,
       skillVersionId: z.string().min(1).optional()
     }).strict().safeParse(body);
     if (!parsed.success) {
@@ -811,7 +812,7 @@ function verdictsToCsv(verdicts: import("@rubrist/shared").VerdictRecord[]): str
       verdict.externalRunId ?? "",
       verdictKind,
       verdictValue,
-      payload.rationale,
+      payloadRationale(payload) ?? "",
       scalarMin,
       scalarMax,
       categoricalChoices,

@@ -1,6 +1,13 @@
 import { JudgePrompt, JudgeVerdict, Trace } from "../schema.js";
 import { StructuredVerdict, VerdictSpec } from "./verdict-spec.js";
 import type { ObservedProvenance } from "../execution/failure.js";
+import type { TypedQuestionVerdict } from "../protocols/typed-question.js";
+
+/**
+ * What an evaluator returns: a prompted protocol's structured verdict, or a
+ * typed-question verdict, which states no rationale (ADR-0014 section 5).
+ */
+export type EvaluatorVerdict = StructuredVerdict | TypedQuestionVerdict;
 
 export interface JudgeProvider {
   readonly name: string;
@@ -40,7 +47,7 @@ export interface ProviderResponseMetadata {
 }
 
 export interface StructuredJudgeResult {
-  verdict: StructuredVerdict;
+  verdict: EvaluatorVerdict;
   usage?: TokenUsage;
   providerMetadata?: ProviderResponseMetadata;
   /** Everything the call observed (ADR-0014 section 6); absent for a provider that doesn't execute a binding. */

@@ -604,6 +604,6 @@ describe("golden-set regression", () => {
       }
     });
 
-    expect(regression.cases[0]!.rationale.length).toBeLessThanOrEqual(280);
+    expect(regression.cases[0]!.rationale!.length).toBeLessThanOrEqual(280);
   });
 });

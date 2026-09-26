@@ -32,7 +32,8 @@ export const FindingsHumanOverrideSchema = z.object({
   source: z.enum(["human", "adjudicated"]),
   label: z.string(),
   judgeLabel: z.string(),
-  rationale: z.string(),
+  // Null when the verdict states no reason.
+  rationale: z.string().nullable(),
   skillVersionId: z.string().nullable(),
   createdAt: z.string()
 });
@@ -85,7 +86,8 @@ export type V1FindingsResponse = z.infer<typeof V1FindingsResponseSchema>;
 // skill patch can be re-run on the exact cases the judge saw.
 export const V1CaseVerdictSchema = z.object({
   label: z.string(),
-  rationale: z.string(),
+  // Null when the verdict states no reason: a typed-question verdict.
+  rationale: z.string().nullable(),
   source: VerdictSourceSchema,
   skillVersionId: z.string().nullable(),
   createdAt: z.string()

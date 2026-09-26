@@ -318,11 +318,17 @@ export class PgSkillLifecycleRepository implements SkillLifecycleRepositoryPort 
     const suppliedCredential = context.agentSetup?.providerCredential;
     const submitKey = suppliedCredential && suppliedCredential.provider === submitProvider
       ? suppliedCredential.apiKey
-      : submitProvider !== "mock" && submitProvider !== "typesafe"
+      : submitProvider !== "mock"
         ? await this.dependencies.getJudgeProviderCredential(context.projectId, submitProvider)
         : null;
     const judgeProvider = this.judgeProviderFactory(
-      { ...stored, rubricMarkdown: input.rubricMarkdown ?? null, prompt: input.prompt ?? null },
+      {
+        ...stored,
+        rubricMarkdown: input.rubricMarkdown ?? null,
+        prompt: input.prompt ?? null,
+        typedQuestion: input.typedQuestion ?? null,
+        decisionThreshold: input.decisionThreshold ?? null
+      },
       submitKey ? { apiKey: submitKey } : undefined
     );
     if (submitProvider !== "mock" && judgeProvider.name === "mock") {
@@ -694,7 +700,7 @@ export class PgSkillLifecycleRepository implements SkillLifecycleRepositoryPort 
     // never the mock fallback (see createSkillVersionPending, which refuses at
     // submit time; this re-check covers env changes between enqueue and run).
     const gateProvider = version.executionBinding.provider;
-    const gateKey = gateProvider !== "mock" && gateProvider !== "typesafe"
+    const gateKey = gateProvider !== "mock"
       ? await this.dependencies.getJudgeProviderCredential(job.projectId, gateProvider)
       : null;
     const judgeProvider = this.judgeProviderFactory(version, gateKey ? { apiKey: gateKey } : undefined);

@@ -15,11 +15,10 @@ import {
   type RegressionCaseDiff,
   type RegressionRunResult,
   type SkillVersion,
-  type VerdictLabel,
-  renderJudgePromptContent
+  type VerdictLabel
 } from "@rubrist/shared";
 import { RegressionGateJudgeError } from "./errors.js";
-import { promptedText } from "../lib/evaluator-definition.js";
+import { judgePromptContent } from "../lib/evaluator-definition.js";
 
 // Subset of JudgeProvider needed by the binary golden-set regression gate. A
 // full JudgeProvider satisfies it structurally; declaring it narrowly lets
@@ -50,7 +49,7 @@ export async function runGoldenSetRegression(input: {
     id: input.skillVersion.id,
     name: input.skillVersion.version,
     kind: "unified",
-    content: renderJudgePromptContent(promptedText(input.skillVersion))
+    content: judgePromptContent(input.skillVersion)
   };
 
   // Judge the comparable entries with bounded concurrency. Real providers
@@ -117,7 +116,7 @@ export async function runGoldenSetRegression(input: {
       agreedLabel: entry.agreedLabel,
       newLabel: verdict.label,
       change,
-      rationale: verdict.reason.slice(0, REGRESSION_RATIONALE_MAX_LENGTH)
+      rationale: verdict.reason?.slice(0, REGRESSION_RATIONALE_MAX_LENGTH) ?? null
     });
   }
 

@@ -153,7 +153,7 @@ export class PgJudgeFeedbackRepository implements JudgeFeedbackRepositoryPort {
         input.skillVersionId,
         input.verdict.label,
         input.verdict.score,
-        input.verdict.reason,
+        input.verdict.reason ?? null,
         JSON.stringify(input.rawRequest ?? {}),
         JSON.stringify(input.rawResponse ?? input.verdict),
         input.latencyMs ?? null,

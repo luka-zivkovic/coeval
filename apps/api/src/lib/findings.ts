@@ -8,7 +8,8 @@ import {
   type GoldenSetEntry,
   type JudgeHumanDisagreementSummary,
   type V1FindingsResponse,
-  type VerdictRecord
+  type VerdictRecord,
+  payloadRationale
 } from "@rubrist/shared";
 import type { CaseListEntry } from "../repository.js";
 import { toDiscreteCategory } from "./kappa.js";
@@ -40,7 +41,7 @@ export function normalizeFirstSentence(text: string): string {
 
 interface LatestVerdict {
   label: string;
-  rationale: string;
+  rationale: string | null;
   source: VerdictRecord["source"];
   skillVersionId: string | null;
   createdAt: string;
@@ -70,7 +71,7 @@ export function latestDiscreteVerdictByCase(
         id: verdict.id,
         verdict: {
           label,
-          rationale: verdict.payload.rationale,
+          rationale: payloadRationale(verdict.payload),
           source: verdict.source,
           skillVersionId: verdict.skillVersionId,
           createdAt: verdict.createdAt
@@ -113,7 +114,7 @@ export function buildFindings(input: BuildFindingsInput): V1FindingsResponse {
       source: verdict.source,
       label,
       judgeLabel: judge.label,
-      rationale: verdict.payload.rationale,
+      rationale: payloadRationale(verdict.payload),
       skillVersionId: verdict.skillVersionId,
       createdAt: verdict.createdAt
     });
@@ -134,12 +135,14 @@ export function buildFindings(input: BuildFindingsInput): V1FindingsResponse {
     sampleRationale: string;
     sampleCreatedAt: string;
   }>();
+  // A verdict that states no reason has nothing to cluster on.
   const addToCluster = (
     source: "human_override" | "judge",
     caseId: string,
-    rationale: string,
+    rationale: string | null,
     createdAt: string
   ): void => {
+    if (rationale === null) return;
     const key = normalizeFirstSentence(rationale);
     if (key === "") return;
     const mapKey = `${source}\u0000${key}`;
@@ -166,7 +169,7 @@ export function buildFindings(input: BuildFindingsInput): V1FindingsResponse {
     // cursor bounds BOTH cluster sources, not just overrides.
     if (input.since !== null && verdict.createdAt <= input.since) continue;
     if (toDiscreteCategory(verdict.payload) !== "fail") continue;
-    addToCluster("judge", verdict.caseId, verdict.payload.rationale, verdict.createdAt);
+    addToCluster("judge", verdict.caseId, payloadRationale(verdict.payload), verdict.createdAt);
   }
   const failureClusters: FindingsFailureCluster[] = [...clusters.values()]
     .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key) || a.source.localeCompare(b.source))

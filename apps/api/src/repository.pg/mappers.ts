@@ -252,7 +252,7 @@ export function rowToJudgeRun(row: Record<string, unknown>): JudgeRun {
     skillVersionId: String(row.skill_version_id),
     verdict: row.verdict === "fail" ? "fail" : row.verdict === "ambiguous" ? "ambiguous" : "pass",
     score: Number(row.score),
-    reasoning: String(row.reasoning),
+    reasoning: row.reasoning == null ? null : String(row.reasoning),
     ...(row.latency_ms === null || row.latency_ms === undefined ? {} : { latencyMs: Number(row.latency_ms) }),
     providerMetadata: {
       model: typeof metadata.model === "string" ? metadata.model : null,
@@ -710,9 +710,8 @@ export function rowToExceptionCase(row: Record<string, unknown>): ExceptionCase 
     ? null
     : String(row.latest_judge_run_id);
   const judgeRunId = String(row.judge_run_id ?? row.id ?? "");
-  const latestReason = row.latest_reasoning === null || row.latest_reasoning === undefined
-    ? null
-    : String(row.latest_reasoning);
+  // The legacy exception queue shows "" for a verdict that states no reason.
+  const latestReason = String(row.latest_reasoning ?? "");
   const reason = String(row.reasoning ?? "");
   const rejudgedSince = latestJudgeRunId && latestJudgeRunId !== judgeRunId && latestVerdict && (
     latestVerdict !== verdict || latestReason !== reason
@@ -720,7 +719,7 @@ export function rowToExceptionCase(row: Record<string, unknown>): ExceptionCase 
     ? {
         judgeRunId: latestJudgeRunId,
         verdict: latestVerdict,
-        reason: latestReason ?? "",
+        reason: latestReason,
         createdAt: row.latest_created_at ? toIso(row.latest_created_at) : toIso(row.created_at)
       }
     : null;

@@ -98,4 +98,39 @@ runPgSmoke("eval item provenance storage", () => {
       await cleanup();
     }
   });
+
+  it("stores a typed-question verdict with no rationale, which only an evaluator may record", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_smoke");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'manual')`);
+      await seedSkill(pool);
+      const { caseId } = await repo.importTrace("proj_test", "manual", {
+        sourceTraceId: "typed_verdict", input: { q: "refund?" }, output: { a: "yes" }, metadata: {}
+      }, { ingestionPurpose: "analysis_eligible_manual" });
+
+      const payload = { kind: "binary" as const, pass: false, rationaleStatus: "not_provided" as const };
+      const observed = { ...NOTHING, model: "jev-1.13.0", requestId: "req_typed" };
+      const verdict = await repo.recordVerdict({
+        projectId: "proj_test", caseId, source: "llm_judge", skillVersionId: "skillv_test",
+        payload, observed, evaluatorScore: { value: 0.31, kind: "native_probability" }
+      });
+      expect(verdict).toMatchObject({ payload, evaluatorScore: { value: 0.31, kind: "native_probability" } });
+      const run = await repo.recordJudgeRun({
+        projectId: "proj_test", caseId, skillVersionId: "skillv_test",
+        verdict: { label: "fail", score: 0.31, confidence: 0.69 }
+      });
+      expect(run.reasoning).toBeNull();
+      expect((await pool.query(`select reasoning from judge_runs where id=$1`, [run.id])).rows[0]).toEqual({ reasoning: null });
+
+      await expect(pool.query(
+        `insert into verdicts (id,project_id,case_id,source,skill_version_id,verdict_kind,payload) values ('v_person','proj_test',$1,'human','skillv_test','binary',$2::jsonb)`,
+        [caseId, JSON.stringify(payload)]
+      )).rejects.toMatchObject({ code: "23514", constraint: "verdicts_rationale_status_check" });
+    } finally {
+      await cleanup();
+    }
+  });
 });

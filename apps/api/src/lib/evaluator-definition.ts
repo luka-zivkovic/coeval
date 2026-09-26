@@ -1,4 +1,4 @@
-import type { SkillVersion } from "@rubrist/shared";
+import { renderJudgePromptContent, type SkillVersion } from "@rubrist/shared";
 
 // An evaluator version's definition text (ADR-0014 section 1). A prompted
 // version has a rubric and a prompt; a typed-question version asks a question
@@ -10,4 +10,13 @@ export function promptedText(version: Pick<SkillVersion, "rubricMarkdown" | "pro
     throw new Error("This evaluator version has no rubric and prompt to judge with");
   }
   return { rubricMarkdown: version.rubricMarkdown, prompt: version.prompt };
+}
+
+/**
+ * What a judge request records as its prompt: a prompted version's rendered
+ * prompt, or a typed-question version's question, which is what that model
+ * is asked about the trace.
+ */
+export function judgePromptContent(version: Pick<SkillVersion, "rubricMarkdown" | "prompt" | "typedQuestion">): string {
+  return version.typedQuestion !== null ? JSON.stringify(version.typedQuestion) : renderJudgePromptContent(promptedText(version));
 }

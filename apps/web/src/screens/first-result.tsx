@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CircleAlert, LoaderCircle, RefreshCcw } from "lucide-react";
-import { verdictLabelFromPayload, type CriterionVersion, type EvalRunDetail, type VerdictRecord } from "@rubrist/shared";
+import { payloadRationale, verdictLabelFromPayload, type CriterionVersion, type EvalRunDetail, type VerdictRecord } from "@rubrist/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eyebrow, SectionHead, VerdictChip } from "@/components/rubrist";
@@ -358,7 +358,7 @@ export function FirstResultScreen() {
             <div>
               <Eyebrow>Why the Check said this</Eyebrow>
               <div className="mt-2 text-[13px] leading-[1.65] text-ink-2">
-                {result.verdict.payload.rationale}
+                {payloadRationale(result.verdict.payload) ?? <span className="text-ink-3">This evaluator states no rationale.</span>}
               </div>
               <Button
                 className="mt-4"

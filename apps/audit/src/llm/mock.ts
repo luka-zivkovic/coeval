@@ -69,7 +69,8 @@ export class MockJudgeProvider implements JudgeProvider {
 
   // Verdict-kind-aware mock: run the label heuristic, then project it onto the
   // requested kind so demo mode renders a non-trivial verdict of every shape.
-  async judgeStructured(input: { prompt: JudgePrompt; trace: Trace; spec: VerdictSpec }): Promise<StructuredJudgeResult> {
+  // The heuristic always states a reason, so its verdict is a prompted one.
+  async judgeStructured(input: { prompt: JudgePrompt; trace: Trace; spec: VerdictSpec }): Promise<StructuredJudgeResult & { verdict: StructuredVerdict }> {
     const base = await this.judge({ prompt: input.prompt, trace: input.trace, outputSchema: {} });
     const rationale = base.reason;
     const spec = input.spec;

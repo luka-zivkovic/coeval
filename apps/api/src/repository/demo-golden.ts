@@ -11,6 +11,7 @@ import {
   type SkillFormatV2Example,
   type VerdictRecord,
   effectiveHumanLabel,
+  payloadRationale,
   verdictLabelFromPayload
 } from "@rubrist/shared";
 import { redactTrace } from "../lib/redaction.js";
@@ -147,7 +148,8 @@ export class DemoGoldenEvidenceRepository implements GoldenEvidenceRepositoryPor
         caseId,
         trace?.id ?? caseId,
         judged.verdict,
-        judged.reasoning,
+        // The legacy exception queue shows "" for a verdict that states no reason.
+        judged.reasoning ?? "",
         undefined,
         judged
       );
@@ -214,12 +216,15 @@ export class DemoGoldenEvidenceRepository implements GoldenEvidenceRepositoryPor
         source: "llm_judge",
         actorUserId: null,
         actorName: null,
-        payload: {
-          kind: "categorical",
-          choice: recordedRun.verdict,
-          choiceScores: { pass: 1, fail: 0, ambiguous: 0.5 },
-          rationale: recordedRun.reasoning
-        },
+        // A run that states no reason is a typed-question verdict: pass or fail.
+        payload: recordedRun.reasoning === null
+          ? { kind: "binary", pass: recordedRun.verdict === "pass", rationaleStatus: "not_provided" }
+          : {
+              kind: "categorical",
+              choice: recordedRun.verdict,
+              choiceScores: { pass: 1, fail: 0, ambiguous: 0.5 },
+              rationale: recordedRun.reasoning
+            },
         externalRunId: null,
         createdAt: recordedRun.createdAt
       };
@@ -235,7 +240,12 @@ export class DemoGoldenEvidenceRepository implements GoldenEvidenceRepositoryPor
     const displayedVerdict = recordedRun?.verdict ?? (
       latestHistoricalJudge ? verdictLabelFromPayload(latestHistoricalJudge.payload) : verdict
     );
-    const displayedReason = recordedRun?.reasoning ?? latestHistoricalJudge?.payload.rationale ?? reason;
+    // Null when the displayed verdict states no reason; the legacy exception
+    // queue shows "" for it.
+    const displayedReasoning = recordedRun
+      ? recordedRun.reasoning
+      : latestHistoricalJudge ? payloadRationale(latestHistoricalJudge.payload) : reason;
+    const displayedReason = displayedReasoning ?? "";
     const displayedCreatedAt = recordedRun?.createdAt ?? latestHistoricalJudge?.createdAt ?? demoProject.updatedAt;
     const displayedJudgeRunId = recordedRun?.id ?? (
       latestHistoricalJudge ? `judge_from_${latestHistoricalJudge.id}` : `judge_${caseId}`
@@ -298,7 +308,7 @@ export class DemoGoldenEvidenceRepository implements GoldenEvidenceRepositoryPor
         skillVersionId: displayedSkillVersionId,
         verdict: displayedVerdict,
         score: displayedVerdict === "fail" ? 0.2 : displayedVerdict === "pass" ? 0.9 : 0.5,
-        reasoning: displayedReason,
+        reasoning: displayedReasoning,
         createdAt: displayedCreatedAt
       },
       latestHumanLabel: effectiveHumanLabel(verdictHistory),

@@ -38,6 +38,8 @@ export function runtimeVersion(binding: ExecutionBinding, overrides: Partial<Eva
     customEndpointUrl: null,
     rubricMarkdown: "Pass grounded answers.",
     prompt: "Judge the trace against the review guide below.\n\n<review_guide>\n{{rubric_markdown}}\n</review_guide>",
+    typedQuestion: null,
+    decisionThreshold: null,
     ...overrides
   };
 }
