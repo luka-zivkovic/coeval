@@ -230,6 +230,15 @@ export async function processBinaryCalibrationRun(input: {
             { physicalCall: true }
           );
         }
+        // A typed-question evaluator never abstains (ADR-0014 decision 8); an
+        // abstention from one is invalid output, which the artifact can hold.
+        if (result.outcome === "abstain" && authorizedRun.evaluator.kind === "typed-question") {
+          throw new BinaryCalibrationProviderError(
+            "invalid_evaluator_output",
+            "A typed-question evaluator returned an abstention.",
+            { physicalCall: true }
+          );
+        }
         await input.repository.completeAttempt(activeClaim, attempt.attemptId, {
           result: { state: "outcome", outcome: result.outcome },
           attemptState: "terminal",

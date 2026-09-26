@@ -1,11 +1,10 @@
 import { z } from "zod";
 import {
   JsonSchemaSchema,
-  MinimumVerdictOutputSchema,
   containsLoneUtf16Surrogate
 } from "./judge.js";
-import { EVALUATOR_DEFINITION_TEXT_MAX, ExecutionBindingInputSchema } from "./evaluator-execution.js";
-import { SkillSchema } from "./skills.js";
+import { EVALUATOR_DEFINITION_TEXT_MAX, ExecutionBindingInputSchema, TypedQuestionSchema } from "./evaluator-execution.js";
+import { SkillSchema, defaultEvaluatorOutputSchema, evaluatorDefinitionInputIssues } from "./skills.js";
 
 // Batch 6B-4: explicit evaluator lifecycle for analysis-promotion criteria.
 // Legacy skill_versions.status remains a compatibility projection only; once
@@ -60,14 +59,24 @@ export const EvaluatorCandidateCreateInputSchema = z.object({
   expectedTruthContentDigest: EvaluatorLifecycleDigestSchema,
   skillName: z.string().trim().min(1).max(200),
   skillDescription: z.string().trim().min(1).max(2_000),
-  rubricMarkdown: z.string().trim().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX),
-  prompt: z.string().trim().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX),
+  // A prompted candidate's rubric and prompt, or a typed-question candidate's
+  // question and decision threshold (ADR-0014 section 5), never both.
+  rubricMarkdown: z.string().trim().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX).optional(),
+  prompt: z.string().trim().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX).optional(),
+  typedQuestion: TypedQuestionSchema.optional(),
+  decisionThreshold: z.number().gt(0).lt(1).optional(),
   executionBinding: ExecutionBindingInputSchema,
-  outputSchema: JsonSchemaSchema.default(MinimumVerdictOutputSchema),
+  outputSchema: JsonSchemaSchema.optional(),
   idempotencyKey: EvaluatorLifecycleIdempotencyKeySchema
 }).strict().refine((value) => !containsLoneUtf16Surrogate(value), {
   message: "Evaluator input must not contain an unpaired UTF-16 surrogate"
-});
+}).superRefine((v, ctx) => {
+  for (const { path, message } of evaluatorDefinitionInputIssues(v)) ctx.addIssue({ code: "custom", path: [path], message });
+  // PostgreSQL text can't hold a NUL character.
+  for (const path of ["skillName", "skillDescription"] as const) {
+    if (v[path].includes("\u0000")) ctx.addIssue({ code: "custom", path: [path], message: "must not contain a NUL character" });
+  }
+}).transform((v) => ({ ...v, outputSchema: v.outputSchema ?? defaultEvaluatorOutputSchema(v.executionBinding.verdictProtocol) }));
 export type EvaluatorCandidateCreateInput = z.infer<typeof EvaluatorCandidateCreateInputSchema>;
 
 export const EvaluatorLifecycleArtifactSchema = z.object({

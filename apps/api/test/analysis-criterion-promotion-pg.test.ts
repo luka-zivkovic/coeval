@@ -6,7 +6,10 @@ import {
   ANALYSIS_CRITERION_PROMOTION_CONTRACT_VERSION,
   ANALYSIS_CRITERION_PROMOTION_HANDOFF_VERSION,
   CreateSkillVersionInputSchema,
+  EvaluatorCandidateCreateInputSchema,
   MinimumVerdictOutputSchema,
+  TypedQuestionOutputSchema,
+  type ExecutionBinding,
   type AnalysisCriterionPromotionCreateInput,
   type AnalysisCriterionPromotionHandoff,
   type AnalysisCriterionPromotionSupportArtifact,
@@ -34,6 +37,13 @@ import { openPostgresTestDatabase } from "./helpers/postgres.js";
 import { MOCK_BINDING, SEEDED_BINDING, bindingInput, resolvedRecordFor } from "./fixtures/execution-binding.js";
 import { executionBindingFromInput } from "../src/lib/execution-binding.js";
 import { sha256Digest } from "../src/lib/canonical-json.js";
+import { evaluatorCandidateRequestDigest } from "../src/lib/evaluator-lifecycle.js";
+
+const TYPED_BINDING: ExecutionBinding = {
+  provider: "typesafe", endpoint: { kind: "managed" }, modelId: "jev-1.13.0", modelVersion: "jev-1.13.0",
+  sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null,
+  verdictProtocol: "typed-question/v1", routing: null
+};
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {
@@ -1312,6 +1322,41 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
         outputSchema: MinimumVerdictOutputSchema,
         idempotencyKey: "promotion-repository-candidate"
       })).toMatchObject({ replayed: true });
+      // A typed-question candidate's request digest (ADR-0014 section 5) is the
+      // one the database recomputes from the stored version: shown on this
+      // candidate's lifecycle with its version rewritten as typed, then rolled back.
+      const typedRewrite: EvaluatorCandidateCreateInput = {
+        ...candidateInput,
+        rubricMarkdown: undefined,
+        prompt: undefined,
+        typedQuestion: { type: "noul", instructions: "Is the answer substantively correct?", criteria: { true: "Correct.", false: "Incorrect." } },
+        decisionThreshold: 0.123456789,
+        executionBinding: {
+          provider: "typesafe", endpoint: { kind: "managed" }, modelId: "jev-1.13.0", modelVersion: "jev-1.13.0",
+          sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null,
+          verdictProtocol: "typed-question/v1", routing: null
+        },
+        outputSchema: TypedQuestionOutputSchema
+      };
+      const rewrite = await pool.connect();
+      try {
+        await rewrite.query("begin");
+        await rewrite.query(
+          `update skill_versions set execution_binding=$2::jsonb, rubric_markdown=null, prompt=null,
+                  typed_question=$3::jsonb, decision_threshold=$4, output_schema=$5::jsonb
+            where id=$1`,
+          [candidate.skill.currentVersion.id, JSON.stringify(typedRewrite.executionBinding), JSON.stringify(typedRewrite.typedQuestion),
+            typedRewrite.decisionThreshold, JSON.stringify(TypedQuestionOutputSchema)]
+        );
+        const recomputed = (await rewrite.query(
+          `select evaluator_lifecycle_request_digest_v1(lifecycle) as digest from evaluator_lifecycles lifecycle where id=$1`,
+          [candidate.projection.lifecycle.id]
+        )).rows[0]!.digest;
+        expect(recomputed).toBe(evaluatorCandidateRequestDigest(evidence.projectId, typedRewrite));
+      } finally {
+        await rewrite.query("rollback");
+        rewrite.release();
+      }
       await expect(lifecycle.authorizeExecution({
         projectId: evidence.projectId,
         skillVersionId: candidate.skill.currentVersion.id,
@@ -1584,6 +1629,32 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
       expect(Number((await pool.query(
         `select count(*) as count from skills where criterion_id=$1`, [created.criterion.id]
       )).rows[0]!.count)).toBe(1);
+
+      // A typed-question candidate over the same frozen truth, through the real
+      // insert: the trigger accepts its request digest, its threshold reads back
+      // exactly, a replay sending the fixed contract returns it, and another
+      // threshold under the same key conflicts.
+      const { rubricMarkdown: _rubric, prompt: _prompt, outputSchema: _schema, ...candidateRest } = candidateInput;
+      const typedRaw = {
+        ...candidateRest,
+        typedQuestion: { type: "noul" as const, instructions: "Is the answer substantively correct?", criteria: { true: "Correct.", false: "Incorrect." } },
+        decisionThreshold: 0.1 + 0.2,
+        executionBinding: bindingInput(TYPED_BINDING),
+        idempotencyKey: "promotion-repository-typed-candidate"
+      };
+      const typedResolution = { bindingDigest: sha256Digest(TYPED_BINDING), record: await resolvedRecordFor(TYPED_BINDING) };
+      const typedCandidate = await lifecycle.createCandidate(actor, EvaluatorCandidateCreateInputSchema.parse(typedRaw), typedResolution);
+      expect(typedCandidate).toMatchObject({
+        replayed: false,
+        skill: { currentVersion: {
+          rubricMarkdown: null, prompt: null, typedQuestion: typedRaw.typedQuestion, decisionThreshold: 0.30000000000000004,
+          executionBinding: TYPED_BINDING, outputSchema: TypedQuestionOutputSchema
+        } }
+      });
+      expect(await lifecycle.createCandidate(actor, EvaluatorCandidateCreateInputSchema.parse({ ...typedRaw, outputSchema: TypedQuestionOutputSchema }), typedResolution))
+        .toMatchObject({ replayed: true, skill: { currentVersion: { id: typedCandidate.skill.currentVersion.id } } });
+      await expect(lifecycle.createCandidate(actor, EvaluatorCandidateCreateInputSchema.parse({ ...typedRaw, decisionThreshold: 0.31 }), typedResolution))
+        .rejects.toMatchObject({ code: "idempotency_conflict" });
     });
   });
 

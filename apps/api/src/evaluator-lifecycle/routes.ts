@@ -13,7 +13,7 @@ import {
   type EvaluatorCandidateCreateResult,
   type ResolutionRecord
 } from "@rubrist/shared";
-import { sha256Digest } from "../lib/canonical-json.js";
+import { canonicalJson, sha256Digest } from "../lib/canonical-json.js";
 import {
   EvaluatorLifecycleRepositoryError,
   type EvaluatorLifecycleAccess,
@@ -202,7 +202,7 @@ async function resolveCandidateBinding(
   if (!options.bindingResolution) return null;
   let stored: ReturnType<typeof executionBindingFromInput>;
   try {
-    stored = executionBindingFromInput(input.executionBinding);
+    stored = executionBindingFromInput(input.executionBinding, undefined, { typedQuestion: input.typedQuestion !== undefined });
   } catch (error) {
     if (!(error instanceof ExecutionBindingInputError)) throw error;
     return c.json({ error: error.message, code: "evaluator_lifecycle_invalid_execution_binding", details: {} },400);
@@ -290,8 +290,10 @@ function candidateResultMatches(
     lifecycle.createdByUserId===actor.userId && lifecycle.idempotencyKey===input.idempotencyKey &&
     lifecycle.requestDigest===evaluatorCandidateRequestDigest(actor.projectId,input) &&
     result.skill.name===input.skillName && result.skill.description===input.skillDescription &&
-    result.skill.currentVersion.rubricMarkdown===input.rubricMarkdown &&
-    result.skill.currentVersion.prompt===input.prompt &&
+    result.skill.currentVersion.rubricMarkdown===(input.rubricMarkdown ?? null) &&
+    result.skill.currentVersion.prompt===(input.prompt ?? null) &&
+    canonicalJson(result.skill.currentVersion.typedQuestion)===canonicalJson(input.typedQuestion ?? null) &&
+    result.skill.currentVersion.decisionThreshold===(input.decisionThreshold ?? null) &&
     result.projection.currentEvent.state==="candidate" &&
     result.projection.currentEvent.transition==="candidate_created" &&
     result.projection.currentEvent.actorUserId===actor.userId &&

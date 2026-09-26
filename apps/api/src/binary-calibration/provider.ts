@@ -1,5 +1,6 @@
 import {
   EvaluatorCallError,
+  executeTypedQuestion,
   executeVerdict,
   type ExecutionFetch,
   type ObservedProvenance
@@ -39,10 +40,12 @@ export type BinaryCalibrationProviderExecutor = (input: {
 
 /**
  * Closed, persistence-free provider path for sealed calibration. Each attempt
- * is one executeVerdict call (ADR-0014 sections 2 and 6): the run's pinned
- * binding, sent exactly, in one physical call. The result can't carry a
- * rationale, raw output, request or response IDs, prompts, or credentials
- * into the private ledger.
+ * is one call of the evaluator's executor (ADR-0014 sections 2, 5, and 6):
+ * the run's pinned binding, sent exactly, in one physical call; a prompted
+ * protocol through executeVerdict, typed-question/v1 through
+ * executeTypedQuestion. The result can't carry a rationale, raw output,
+ * request or response IDs, prompts, questions, or credentials into the
+ * private ledger.
  */
 export function createBinaryCalibrationProviderExecutor(input: {
   resolveProjectCredential: BinaryCalibrationCredentialResolver;
@@ -51,10 +54,10 @@ export function createBinaryCalibrationProviderExecutor(input: {
 }): BinaryCalibrationProviderExecutor {
   return async ({ authorizedRun, attempt, beforePhysicalCall }) => {
     const binding = authorizedRun.executionBinding;
-    if (binding.provider === "mock" || binding.provider === "typesafe") {
+    if (binding.provider === "mock") {
       throw new BinaryCalibrationProviderError(
         "internal",
-        "Sealed calibration runs only a prompted evaluator on a provider it calls.",
+        "Sealed calibration runs only an evaluator on a provider it calls.",
         { physicalCall: false }
       );
     }
@@ -68,28 +71,45 @@ export function createBinaryCalibrationProviderExecutor(input: {
     let dispatched = false;
     let callStartFailed = false;
 
+    // The last step before the one physical call, after every refusal: each
+    // invocation is one durable physical-call count.
+    const beforeDispatch = async () => {
+      try {
+        await beforePhysicalCall();
+      } catch (error) {
+        callStartFailed = true;
+        throw error;
+      }
+      dispatched = true;
+    };
+    const transport = {
+      beforeDispatch,
+      ...(input.fetch ? { fetch: input.fetch } : {}),
+      ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {})
+    };
+
     try {
+      const evaluator = authorizedRun.evaluator;
+      if (evaluator.kind === "typed-question") {
+        // A typed-question verdict is pass or fail on its threshold; it never abstains.
+        const result = await executeTypedQuestion({
+          binding,
+          apiKey,
+          evaluator: { question: evaluator.question, threshold: evaluator.threshold },
+          trace,
+          ...transport
+        });
+        return { outcome: result.verdict.label, providerObservation: providerObservationFor(binding, result.observed) };
+      }
       const result = await executeVerdict({
         binding,
         apiKey,
         customBaseUrl: endpointUrlFor(authorizedRun),
-        rubricMarkdown: authorizedRun.evaluator.rubricMarkdown,
-        prompt: authorizedRun.evaluator.prompt,
+        rubricMarkdown: evaluator.rubricMarkdown,
+        prompt: evaluator.prompt,
         trace,
         spec: { verdictKind: "binary", scalarRange: null, categoricalChoiceScores: null },
-        // The last step before the one physical call, after every refusal:
-        // each invocation is one durable physical-call count.
-        beforeDispatch: async () => {
-          try {
-            await beforePhysicalCall();
-          } catch (error) {
-            callStartFailed = true;
-            throw error;
-          }
-          dispatched = true;
-        },
-        ...(input.fetch ? { fetch: input.fetch } : {}),
-        ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {})
+        ...transport
       });
       if (result.verdict.kind !== "binary") {
         throw new BinaryCalibrationProviderError(

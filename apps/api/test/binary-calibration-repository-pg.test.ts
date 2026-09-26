@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runMigrations } from "@rubrist/db";
-import { CreateSkillVersionInputSchema, TypedQuestionOutputSchema } from "@rubrist/shared";
+import { CreateSkillVersionInputSchema, TypedQuestionOutputSchema, type ExecutionBinding } from "@rubrist/shared";
 import { canonicalJson, sha256Digest } from "../src/lib/canonical-json.js";
 import {
   parseCanonicalBinaryCalibrationV2ArtifactBytes,
@@ -207,11 +207,12 @@ run("PgBinaryCalibrationRepository", () => {
           message: expect.stringContaining("mutable alias")
         });
       }
-      // The mock makes no call and typed-question calibration arrives in 8E-4,
-      // so neither can produce sealed evidence yet.
+      // The mock makes no call, so it can't produce sealed evidence.
       await pool.query(`update skill_versions set execution_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(MOCK_BINDING)]);
       await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({ code: "unsupported" });
-      const typedQuestion = { ...MOCK_BINDING, provider: "typesafe", modelId: "jev-1.13.0", modelVersion: "jev-1.13.0", verdictProtocol: "typed-question/v1" };
+      // A typed-question evaluator calibrates like any other once its binding
+      // resolves (ADR-0014 section 5).
+      const typedQuestion = { ...MOCK_BINDING, provider: "typesafe", modelId: "jev-1.13.0", modelVersion: "jev-1.13.0", verdictProtocol: "typed-question/v1" } as ExecutionBinding;
       const prompted = (await pool.query(`select rubric_markdown,prompt,output_schema from skill_versions where id=$1`, [skillVersionId])).rows[0]!;
       await pool.query(
         `update skill_versions set execution_binding = $2::jsonb, rubric_markdown = null, prompt = null,
@@ -222,7 +223,12 @@ run("PgBinaryCalibrationRepository", () => {
           JSON.stringify(TypedQuestionOutputSchema)
         ]
       );
-      await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({ code: "unsupported" });
+      await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({ code: "ineligible", message: expect.stringContaining("unresolved") });
+      await saveResolutionRecord(pool, PROJECT_ID, skillVersionId, typedQuestion, await resolvedRecordFor(typedQuestion));
+      const typedRun = await repository.createRun(OWNER, { ...input, idempotencyKey: "cal-run-typed" });
+      expect(typedRun).toMatchObject({ state: "queued" });
+      await pool.query(`update binary_calibration_runs set state='rejected',rejection_reason='test_cleanup',completed_at=clock_timestamp() where id=$1`, [typedRun.runId]);
+      await pool.query(`delete from evaluator_resolution_records where skill_version_id=$1`, [skillVersionId]);
       await pool.query(
         `update skill_versions set execution_binding = $2::jsonb, rubric_markdown = $3, prompt = $4,
                 typed_question = null, decision_threshold = null, output_schema = $5::jsonb where id=$1`,
@@ -315,7 +321,10 @@ run("PgBinaryCalibrationRepository", () => {
     let claim = await repository.claimRun(runProjection.runId, "cal-worker-a", 60_000);
     expect(claim).not.toBeNull();
     const authorized = await repository.authorizeRun(claim!);
-    expect(authorized).toMatchObject({ itemCount: 2, executionBinding: SEEDED_BINDING, customEndpointUrl: null });
+    expect(authorized).toMatchObject({
+      itemCount: 2, executionBinding: SEEDED_BINDING, customEndpointUrl: null,
+      evaluator: { kind: "prompted", rubricMarkdown: "# Binary rubric" }
+    });
     expect("getPrivateLedger" in repository).toBe(false);
 
     const blocker = await pool.connect();

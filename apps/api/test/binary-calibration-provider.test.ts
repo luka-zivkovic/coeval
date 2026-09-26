@@ -12,8 +12,8 @@ import type {
 import { endpointBaseUrlDigest } from "../src/lib/evaluator-identity.js";
 import { SEEDED_BINDING } from "./fixtures/execution-binding.js";
 
-// Sealed calibration runs each attempt as one executeVerdict call with the
-// run's pinned binding (ADR-0014 sections 2 and 6).
+// Sealed calibration runs each attempt as one call of the evaluator's executor
+// with the run's pinned binding (ADR-0014 sections 2, 5, and 6).
 
 const DIGEST = `sha256:${"a".repeat(64)}`;
 const VERDICT = { label: "pass", score: 0.99, rationale: "RATIONALE_CANARY" };
@@ -26,6 +26,17 @@ const OPENROUTER: ExecutionBinding = {
   outputTokenLimit: null,
   verdictProtocol: "openai.forced-function/v1",
   routing: { requireParameters: true, allowFallbacks: false }
+};
+
+const JEV: ExecutionBinding = {
+  provider: "typesafe", endpoint: { kind: "managed" }, modelId: "jev-1.13.0", modelVersion: "jev-1.13.0",
+  sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null,
+  verdictProtocol: "typed-question/v1", routing: null
+};
+const TYPED_EVALUATOR: BinaryCalibrationAuthorizedRun["evaluator"] = {
+  kind: "typed-question",
+  question: { type: "noul", instructions: "Is QUESTION_CANARY answered?", criteria: { true: "Answered.", false: "Not answered." } },
+  threshold: 0.62
 };
 
 function authorizedRun(overrides: Partial<BinaryCalibrationAuthorizedRun> = {}): BinaryCalibrationAuthorizedRun {
@@ -44,7 +55,7 @@ function authorizedRun(overrides: Partial<BinaryCalibrationAuthorizedRun> = {}):
       policyDigest: DIGEST,
       payloadTransmission: "sealed_payload_to_pinned_provider"
     },
-    evaluator: { rubricMarkdown: "Never persist PROMPT_CANARY.", prompt: "Judge against {{rubric_markdown}}." },
+    evaluator: { kind: "prompted", rubricMarkdown: "Never persist PROMPT_CANARY.", prompt: "Judge against {{rubric_markdown}}." },
     authorization: { snapshotDigest: DIGEST, eventId: "event_1", recordedAt: "2026-08-23T12:00:00.000Z" },
     ...overrides
   };
@@ -105,6 +116,7 @@ async function providerError(promise: Promise<unknown>): Promise<BinaryCalibrati
 
 afterEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.TYPESAFE_API_KEY;
   delete process.env.OPENAI_BASE_URL;
 });
 
@@ -188,16 +200,84 @@ describe("sealed binary calibration provider execution", () => {
     expect(http.sent).toHaveLength(0);
   });
 
-  it("refuses the mock and typed-question bindings without a call", async () => {
+  it("refuses the mock binding without a call", async () => {
     const http = stub(() => anthropicAnswer());
-    for (const provider of ["mock", "typesafe"] as const) {
-      const error = await providerError(executor(http.fetch).execute({
-        authorizedRun: authorizedRun({ executionBinding: { ...SEEDED_BINDING, provider } }),
-        attempt: ATTEMPT,
-        beforePhysicalCall: async () => { throw new Error("must not start"); }
-      }));
-      expect(error).toMatchObject({ code: "internal", physicalCall: false });
+    const error = await providerError(executor(http.fetch).execute({
+      authorizedRun: authorizedRun({ executionBinding: { ...SEEDED_BINDING, provider: "mock" } }),
+      attempt: ATTEMPT,
+      beforePhysicalCall: async () => { throw new Error("must not start"); }
+    }));
+    expect(error).toMatchObject({ code: "internal", physicalCall: false });
+    expect(http.sent).toHaveLength(0);
+  });
+
+  it("asks a typed-question evaluator's question in one call, and records its label with no probability or question", async () => {
+    const order: string[] = [];
+    const answer = (noul: number) => new Response(JSON.stringify({
+      model: "jev-1.13.0", answers: { verdict: { type: "noul", noul } }, usage: { input_tokens: 40, output_tokens: 2 }
+    }), { status: 200, headers: { "x-typesafe-request-id": "REQUEST_ID_CANARY" } });
+    const typedRun = authorizedRun({ executionBinding: JEV, evaluator: TYPED_EVALUATOR });
+    for (const [noul, outcome] of [[0.62, "pass"], [0.61, "fail"]] as const) {
+      const http = stub(() => answer(noul), () => order.push("sent"));
+      const { execute, reads } = executor(http.fetch, "typesafe-project-key");
+      const result = await execute({ authorizedRun: typedRun, attempt: ATTEMPT, beforePhysicalCall: async () => { order.push("call-start"); } });
+      expect(reads).toEqual(["typesafe"]);
+      expect(http.sent).toHaveLength(1);
+      expect(http.sent[0]!.url).toBe("https://api.typesafe.ai/v1/systemone");
+      expect(JSON.parse(http.sent[0]!.body)).toEqual({
+        state: { input: { question: "INPUT_CANARY" }, output: { answer: "OUTPUT_CANARY" } },
+        questions: { verdict: TYPED_EVALUATOR.question },
+        model: "jev-1.13.0"
+      });
+      expect(result).toEqual({
+        outcome,
+        providerObservation: { provider: "typesafe", observedModel: "jev-1.13.0", observedVersion: null, systemFingerprint: null, upstreamProvider: null }
+      });
+      expect(JSON.stringify(result)).not.toMatch(/CANARY|0\.6/);
     }
+    expect(order).toEqual(["call-start", "sent", "call-start", "sent"]);
+  });
+
+  it("refuses a prompted evaluator on a TypeSafe binding, and a typed item with no key, before call-start", async () => {
+    const http = stub(() => anthropicAnswer());
+    const promptedOnTypeSafe = await providerError(executor(http.fetch).execute({
+      authorizedRun: authorizedRun({ executionBinding: JEV }),
+      attempt: ATTEMPT,
+      beforePhysicalCall: async () => { throw new Error("must not start"); }
+    }));
+    expect(promptedOnTypeSafe).toMatchObject({ code: "internal", physicalCall: false });
+    process.env.TYPESAFE_API_KEY = "";
+    const keyless = await providerError(executor(http.fetch, null).execute({
+      authorizedRun: authorizedRun({ executionBinding: JEV, evaluator: TYPED_EVALUATOR }),
+      attempt: ATTEMPT,
+      beforePhysicalCall: async () => { throw new Error("must not start"); }
+    }));
+    expect(keyless).toMatchObject({ code: "provider_unavailable", physicalCall: false });
+    expect(http.sent).toHaveLength(0);
+  });
+
+  it("classifies a TypeSafe rate limit or outage once, after the call, keeping no request id", async () => {
+    for (const [status, code] of [[429, "provider_rate_limit"], [503, "provider_unavailable"]] as const) {
+      const http = stub(() => new Response(JSON.stringify({ detail: "busy" }), { status, headers: { "x-typesafe-request-id": "REQUEST_ID_CANARY" } }));
+      let started = 0;
+      const error = await providerError(executor(http.fetch, "typesafe-project-key").execute({
+        authorizedRun: authorizedRun({ executionBinding: JEV, evaluator: TYPED_EVALUATOR }),
+        attempt: ATTEMPT,
+        beforePhysicalCall: async () => { started += 1; }
+      }));
+      expect({ status, code: error.code, physicalCall: error.physicalCall, started }).toEqual({ status, code, physicalCall: true, started: 1 });
+      expect(JSON.stringify(error.observed)).not.toContain("CANARY");
+    }
+  });
+
+  it("refuses a typed-question evaluator on a prompted binding before call-start", async () => {
+    const http = stub(() => anthropicAnswer());
+    const error = await providerError(executor(http.fetch).execute({
+      authorizedRun: authorizedRun({ evaluator: TYPED_EVALUATOR }),
+      attempt: ATTEMPT,
+      beforePhysicalCall: async () => { throw new Error("must not start"); }
+    }));
+    expect(error).toMatchObject({ code: "internal", physicalCall: false });
     expect(http.sent).toHaveLength(0);
   });
 

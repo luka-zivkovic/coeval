@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   MinimumVerdictOutputSchema,
-  type EvaluatorCandidateCreateResult
+  TypedQuestionOutputSchema,
+  type EvaluatorCandidateCreateResult,
+  type ExecutionBinding
 } from "@rubrist/shared";
 import { EvaluatorLifecycleRepositoryError, type EvaluatorLifecycleRepository } from "../src/evaluator-lifecycle/repository.js";
 import { createEvaluatorLifecycleRouter } from "../src/evaluator-lifecycle/routes.js";
@@ -228,6 +230,40 @@ describe("evaluator lifecycle API boundary", () => {
       projectId: "project", skillVersionId: "skill-version",
       datasetRevisionId: "regression", actorUserId: "owner"
     });
+  });
+
+  it("replays a typed-question candidate, matching its question and threshold", async () => {
+    const jev: ExecutionBinding = {
+      provider: "typesafe", endpoint: { kind: "managed" }, modelId: "jev-1.13.0", modelVersion: "jev-1.13.0",
+      sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null,
+      verdictProtocol: "typed-question/v1", routing: null
+    };
+    const question = { type: "noul" as const, instructions: "Is it correct?", criteria: { true: "Correct.", false: "Incorrect." } };
+    const { rubricMarkdown: _rubric, prompt: _prompt, outputSchema: _schema, ...rest } = CANDIDATE_INPUT;
+    const typedInput = { ...rest, typedQuestion: question, decisionThreshold: 0.1 + 0.2, executionBinding: bindingInput(jev) };
+    const typedResult = (threshold: number): EvaluatorCandidateCreateResult => {
+      const result = candidateResult(true);
+      result.skill.currentVersion = {
+        ...result.skill.currentVersion, rubricMarkdown: null, prompt: null, typedQuestion: question, decisionThreshold: threshold,
+        executionBinding: jev, outputSchema: TypedQuestionOutputSchema as unknown as typeof MinimumVerdictOutputSchema
+      };
+      result.projection.lifecycle.requestDigest = evaluatorCandidateRequestDigest("project", { ...typedInput, outputSchema: TypedQuestionOutputSchema });
+      return result;
+    };
+    const post = async (result: EvaluatorCandidateCreateResult) => {
+      const repo = repository();
+      vi.mocked(repo.candidateExists).mockResolvedValue(true);
+      vi.mocked(repo.createCandidate).mockResolvedValue(result);
+      const owner = createEvaluatorLifecycleRouter({
+        repository: repo, databaseMode: true,
+        requestIdentity: () => ({ userId: "owner", projectId: "project" }),
+        resolveProjectRole: async () => "owner"
+      });
+      return owner.request("/candidates", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(typedInput) });
+    };
+    expect((await post(typedResult(0.1 + 0.2))).status).toBe(200);
+    // A stored version whose threshold differs is not this request's candidate.
+    expect((await post(typedResult(0.3))).status).toBe(500);
   });
 
   describe("resolution at the governed gates (ADR-0014 section 4)", () => {

@@ -92,12 +92,12 @@ describe("typed-question version input", () => {
       ["typed and scalar", { ...TYPED_INPUT, verdictKind: "scalar", scalarRange: [0, 1] }, "verdictKind"],
       ["typed with another output schema", { ...TYPED_INPUT, outputSchema: MinimumVerdictOutputSchema }, "outputSchema"],
       ["typed with an empty criterion", { ...TYPED_INPUT, typedQuestion: { ...QUESTION, criteria: { ...QUESTION.criteria, false: "" } } }, "typedQuestion"],
-      ["typed with a NUL in its question", { ...TYPED_INPUT, typedQuestion: { ...QUESTION, instructions: nul(QUESTION.instructions) } }, null],
+      ["typed with a NUL in its question", { ...TYPED_INPUT, typedQuestion: { ...QUESTION, instructions: nul(QUESTION.instructions) } }, "typedQuestion"],
       ["prompted with a question", { ...PROMPTED_INPUT, typedQuestion: QUESTION }, "typedQuestion"],
       ["prompted with a threshold", { ...PROMPTED_INPUT, decisionThreshold: THRESHOLD }, "decisionThreshold"],
       ["prompted without a rubric", noRubric, "rubricMarkdown"],
       ["prompted without a prompt", noPrompt, "prompt"],
-      ["prompted with a NUL in its rubric", { ...PROMPTED_INPUT, rubricMarkdown: nul("Pass.") }, null]
+      ["prompted with a NUL in its rubric", { ...PROMPTED_INPUT, rubricMarkdown: nul("Pass.") }, "rubricMarkdown"]
     ];
     for (const [name, input, field] of refused) {
       const result = CreateSkillVersionInputSchema.safeParse(input);
