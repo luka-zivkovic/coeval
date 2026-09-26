@@ -24,9 +24,8 @@ apply here and are not repeated:
 - S3: no route sets a document title, and page titles are not headings.
 
 Round 2's T10 (buttons that navigate instead of links) also applies. These
-pages hold 14 of the app's 58 `onClick={() => navigate(…)}` handlers on
-buttons. Three clickable rows also navigate, but they keep a real link
-inside.
+pages hold 17 of the app's 58 `onClick={() => navigate(…)}` handlers: 14 on
+buttons, and three on clickable rows that keep a real link inside.
 
 ## How to read this
 
@@ -34,9 +33,9 @@ Evidence labels, severity scale, and statuses follow
 [round 1](2026-09-26-shell-and-overview.md#how-to-read-this). Each finding
 also carries an effort estimate:
 
-- quick: one file, under an hour;
-- medium: a few files;
-- large: a shared component or several screens.
+- quick: under an hour;
+- medium: under a day;
+- large: more than a day, or a new pattern that several screens adopt.
 
 There is no product analytics, so every severity was judged without frequency
 data.
@@ -63,13 +62,17 @@ marked *installed*, *add*, or *Rubrist*.
     `screens/skill-edit/regression.tsx`;
   - `screens/skill-versions.tsx` and `screens/compare-versions.tsx`;
   - `components/skill-edit-flow.tsx` and `components/rubrist/gate.tsx`;
+  - `lib/judge-provider-selection.ts`, and every screen that links to the
+    editor (C3);
   - the version-creation route in
     `apps/api/src/routes/skill-administration.ts`.
 
   Paths are relative to `apps/web/src` unless they start with `apps/`.
 - **TARGET intent.** Read in `PRODUCT.md`, `docs/beginner-onboarding-journey.md`
   (BOJ), `docs/glossary.md`, and ADR-0010 and ADR-0014 (both Accepted). No
-  ADR is Proposed.
+  ADR is Proposed. BOJ is the first-run contract (BOJ:7-8), so applying it to
+  these pages is marked ASSUMPTION.
+- **CURRENT intent.** `docs/architecture.md` (ARCH) for the regression gate.
 - **Rendering.** Demo stack at 1440×900 and 390×844 in Guided display, plus
   Technical display for the version page. The demo Check is "Support Answer
   Quality" at v1.2.0 (current) with one earlier version, v1.1.0. The owner is
@@ -85,55 +88,68 @@ marked *installed*, *add*, or *Rubrist*.
   clipped controls and controls behind a scroll.
 - **Vocabulary.** I ran `scan_labels.py` over the seven Check-page files,
   using a throwaway `UX.md` built from the contract's glossary, as in round 2.
+  The files are `screens/skill.tsx`, `screens/skill-edit.tsx`,
+  `screens/skill-edit/editor.tsx`, `screens/skill-edit/regression.tsx`,
+  `screens/skill-versions.tsx`, `screens/compare-versions.tsx`, and
+  `components/skill-edit-flow.tsx`.
 
 ## Top findings, in fix order
 
 | # | Finding | Sev | Effort | Status |
 |---|---|---|---|---|
-| 1 | Missing regression evidence reads as clean. Versions with no recorded check wear "regression · clean", and the comparison reports 0 regressions from zero recorded runs. (C1) | 4 | quick | fix |
-| 2 | Members can open an editor they cannot save. Three entry points skip the owner check, and the API refuses the save with a 403. (C3) | 3 | quick | fix |
+| 1 | Missing regression evidence reads as clean. Versions with no recorded check wear "regression · clean". Compare reports 0 regressions from zero recorded runs, and its header counts saves as recorded runs. (C1) | 4 | medium | fix |
+| 2 | Members can open an editor they cannot save. Six entry points skip the owner check, and in Postgres mode the API refuses the save with a 403. (C3) | 3 | medium | fix |
 | 3 | The editor discards unsaved work. A template click, "Reset", Cancel, Back, and Version history all drop typed text without asking. (C2) | 3 | medium | fix |
-| 4 | On phones, the override button runs off the screen, and the version tables hide their evidence columns behind a sideways scroll. (C4) | 3 | quick | fix |
-| 5 | The version page is titled with the model name, leads with technical evidence, says "current" twice, and offers no next step. (C5) | 3 | medium | fix, *decide* Guided content |
-| 6 | The editor is reached through five different labels, and status words come from legacy version status. (C12) | 3 | medium | *decide* |
-| 7 | Load failures read as "Version not found" or "Nothing to compare yet", and error states tell users to start the API. (C7) | 2 | medium | fix |
-| 8 | Waits never end. The running check polls forever with no elapsed time, and a count can say "Loading…" indefinitely. (C6) | 2 | quick | fix |
-| 9 | The check's outcomes point away from the fix. A blocked result makes the override the filled button, and a failed check offers no Retry. (C8) | 2 | quick | *decide* |
-| 10 | The editor buries the Review guide below four blocks. A chosen template looks like a primary, and save is enabled with nothing changed. (C9) | 2 | medium | fix, *decide* identical saves |
-| 11 | The Check page's tabs are not in the URL. A metric doubles as a navigation button, and the guide's own heading repeats the title in bold. (C10) | 2 | quick | fix |
-| 12 | Compare's pickers can trap a reversed pair that the page then asks you to swap. (C11) | 2 | quick | fix |
+| 4 | Opening the editor swaps an unavailable provider without asking, and the change review counts the swap as the owner's edit. (C13) | 3 | medium | fix |
+| 5 | On phones, the override button runs off the screen, and the version tables hide their evidence columns behind a sideways scroll. (C4) | 3 | medium | fix |
+| 6 | The version page is titled with the model name, leads with technical evidence, says "current" twice, and offers no next step. (C5) | 3 | medium | fix, *decide* Guided content |
+| 7 | The editor is reached through seven different labels, and status words come from legacy version status. (C12) | 3 | large | *decide* |
+| 8 | Load failures read as "Version not found" or "Nothing to compare yet". Failed evidence reads vanish or show as empty, and error states tell users to start the API. (C7) | 2 | large | fix |
+| 9 | Waits never end. The running check polls forever with no elapsed time, and a count can say "Loading…" indefinitely. (C6) | 2 | medium | fix |
+| 10 | The check's outcomes point away from the fix. A blocked result makes the override the filled button, and a failed check offers no Retry. (C8) | 2 | quick | *decide* |
+| 11 | The editor buries the Review guide below four blocks. A chosen template looks like a primary, and save is enabled with nothing changed. (C9) | 2 | medium | fix, *decide* identical saves |
+| 12 | The Check page's tabs are not in the URL. A metric doubles as a navigation button, and the guide's own heading repeats the title in bold. (C10) | 2 | medium | fix |
+| 13 | Compare's pickers can trap a reversed pair that the page then asks you to swap. (C11) | 2 | quick | fix |
 
 ---
 
 ## What holds up (*keep*)
 
 - **Saving never overwrites.** Every save creates an immutable version, and the
-  editor says so before the save. Its change review compares the new text with
-  the base version line by line (`components/skill-edit-flow.tsx:152-227`).
-  This matches TARGET ADR-0014 ("Evaluator versions are immutable").
+  editor says so before the save. Its change review marks each field changed
+  or unchanged, gives line counts, and shows both sources side by side on wide
+  screens (`components/skill-edit-flow.tsx:124-146,167-223`). This matches
+  TARGET ADR-0014:224 ("Evaluator versions are immutable").
 - **The save has visible stages.** A four-step strip (review, create, check,
-  outcome) announces each step through a live region and stays pinned on
-  wider screens (`components/skill-edit-flow.tsx:69-111`).
+  outcome) announces each step through a live region, moves focus to the
+  current step (`components/skill-edit-flow.tsx:65-67`), and stays pinned on
+  wider screens (`:73`).
 - **A reload resumes the exact version.** The queued version's id stays in
   `?version=`, so a reload during the check returns to it
   (`screens/skill-edit.tsx:280-313,355-361`).
 - **Compare keeps its pair in the URL** (`?from=` and `?to=`,
-  `screens/compare-versions.tsx:44-45,134-141`). It computes only from recorded
-  runs and says so in its subtitle.
+  `screens/compare-versions.tsx:44-45,134-141`). Its totals sum only recorded
+  runs (`:120-129`), and its subtitle says it "does not invent missing
+  results" (`:176`). Its header still counts saves as recorded runs (C1).
 - **The honesty copy is present.**
   - "Passing is not an overall quality or release decision"
-    (`screens/skill.tsx:186-192`).
+    (`screens/skill.tsx:186-192`). This matches TARGET PRODUCT.md:116-117: a
+    release decision "is not part of Rubrist's evidence."
   - "Runnable is not the same as accurate" on a starter Check (`:106-110`).
+    BOJ:272 says the same for first run.
   - "A failed or partial check cannot count as a pass"
-    (`screens/skill-edit/regression.tsx:326-329`).
+    (`screens/skill-edit/regression.tsx:326-329`). This matches TARGET
+    PRODUCT.md:201; BOJ:279 repeats it for first run.
 
-  These match TARGET PRODUCT.md:201 and BOJ:279. C1 is where the page
-  contradicts its own copy.
-- **Model pins stay honest.**
+  C1 is where the pages contradict their own copy.
+- **A pinned model stays pinned.**
   - A pinned model that dropped out of the catalog stays selected with a
     warning (`screens/skill-edit/editor.tsx:351-366`).
   - A movable alias gets a warning about activation
     (`screens/skill-edit/editor.tsx:389-394`).
+
+  The provider is not protected the same way: when it is unavailable, the
+  editor swaps it (C13).
 - **Version rows are real links.** Each row keeps a `RowLink` on its version
   number (`screens/skill-versions.tsx:182-191`).
 - **The editor's primary sits at the end of the form**, with Cancel apart on
@@ -145,7 +161,7 @@ marked *installed*, *add*, or *Rubrist*.
 
 ### C1. Missing regression evidence reads as clean
 
-Sev 4 · CURRENT vs TARGET · *fix* · quick
+Sev 4 · CURRENT vs TARGET · *fix* · medium
 
 `gateStateForVersion` returns "clean" unless one of these holds
 (`components/rubrist/gate.tsx:26-33`):
@@ -171,17 +187,22 @@ one. As rendered:
   - The tiles read "Regressions across versions 0" and "Improvements 0"
     (`screens/compare-versions.tsx:234-240`), summed from zero recorded runs.
     Only the fourth tile's foot says "0 with a recorded run".
+  - The picker bar reads "1 recorded run between them"
+    (`screens/compare-versions.tsx:203-205`). It counts saves, not runs: the
+    same number fills the "Saves between" tile (`:241-245`).
+  - The path card says "Each row is a recorded evaluator-version regression
+    check" (`:252`) above a row whose run was never recorded.
   - On phones, the "On the record" column that explains the gap sits behind
     the sideways scroll (C4).
 
-TARGET:
+TARGET: PRODUCT.md:201: "Missing or failed evaluation is never converted into
+a favorable result."
 
-- PRODUCT.md:201: "Missing or failed evaluation is never converted into a
-  favorable result."
-- ADR-0010:265-266: "still-running, censored, incomplete, and later-revoked
-  states remain explicit rather than becoming zero or success."
+By analogy only, since that section governs Analyze workflow measurements:
+ADR-0010:264-266, "Missing, still-running, censored, incomplete, and
+later-revoked states remain explicit rather than becoming zero or success."
 
-Rule: `states.md` › Rules ("A value that has not loaded is not zero");
+Rule: `states.md` › Rules ("show '—' for a missing value");
 `review.md` › Mislabelled data.
 
 Proposal:
@@ -190,6 +211,8 @@ Proposal:
   for every version without a regression run.
 - In compare, show "—" with "no recorded run" for any total that includes an
   unrecorded hop, never a bare 0.
+- Count saves and runs separately in the picker bar: "1 save between them ·
+  0 recorded runs".
 
 Any version with no persisted run shows this. That includes versions created
 before the gate, which the Judge Card's basis names as one case.
@@ -203,8 +226,9 @@ Nothing guards the form. The trace-test builder already does: it calls
 unsaved changes?" (`screens/trace-test-builder/components.tsx:789`).
 
 - **Leaving loses the text.** I typed into the Review guide and clicked
-  "Version history". The page left without asking. After Back, the editor
-  showed the saved guide and the typed text was gone.
+  "Version history". The page left without asking. Once the versions page had
+  rendered, I pressed Back: the editor showed the saved guide, and the typed
+  text was gone.
 - **A template click overwrites it.** Clicking a template replaces the Review
   guide and the prompt (`applyStarter`, `screens/skill-edit.tsx:184-192`) with
   no confirmation or undo. Rendered: the typed text became the "RAG
@@ -223,28 +247,44 @@ Rule: `decisions.md` › Back, Cancel, Close, and unsaved changes;
 
 Proposal:
 
-- Block leaving while the form differs from its base, as the trace-test builder
-  does. Ask in an `AlertDialog` (*add*), not another hand-built dialog.
+- Block leaving while the form differs from its state when it opened, as the
+  trace-test builder does. Ask in an `AlertDialog` (*add*), not another
+  hand-built dialog. Compare with the opened form, not the base version: C13's
+  provider swap makes those differ before the user types anything.
 - Make template and reset undoable: apply at once and offer Undo in a toast
   (`Sonner`, *add*). Alternatively, confirm in an `AlertDialog` only when the
   form has unsaved changes.
 
 ### C3. Members can open an editor they cannot save
 
-Sev 3 · CURRENT · *fix* · quick
+Sev 3 · CURRENT · *fix* · medium
 
 - **The API refuses non-owners.** In Postgres mode it rejects a new version
   from anyone but an owner, returning 403 "Only owners can edit skills"
-  (`apps/api/src/routes/skill-administration.ts:386-391`).
-- **Only the Check page hides the way in.** It hides "Edit evaluator" from
-  non-owners (`screens/skill.tsx:97-101`). Three other entry points open the
-  editor for anyone:
+  (`apps/api/src/routes/skill-administration.ts:386-391`). Demo mode skips
+  this check, so the synthetic member in the renders below could still save.
+- **Two entry points check the role; six do not.** The Check page hides "Edit
+  evaluator" from non-owners (`screens/skill.tsx:97-101`), and the setup
+  ledger shows "Review the Check" only to owners
+  (`components/first-run-setup-ledger.tsx:53-54`). These open the editor for
+  anyone:
   - "Open rubric alongside" on the provisional queue
     (`screens/exceptions.tsx:330-332`);
   - "Draft rubric edit from these cases" in the review done view
     (`screens/review.tsx:168-170`, navigating at `:100`);
   - "Review the rubric" on the provisional Traces page
-    (`screens/traces.tsx:223-225`).
+    (`screens/traces.tsx:223-225`);
+  - "Review Check", the Overview journey's next action once the Check is no
+    longer a starter and its current version is neither approved nor in
+    production (`components/rubrist/journey-pipeline.tsx:39-44`,
+    `lib/journey.ts:50-53`). Rendered with the
+    viewer as a member and the version "validated": the button landed on
+    `/skill/edit`;
+  - "Set up without a run" in the setup ledger, which opens the ordinary
+    editor once the Check is no longer a starter
+    (`components/first-run-setup-ledger.tsx:21,40-41`);
+  - "Review the Check" on a failed first Result
+    (`screens/first-result.tsx:334-336`).
 - **The editor checks the role only in first-run setup**
   (`screens/skill-edit.tsx:781`). Rendered with the viewer as a member, the
   ordinary editor shows every field and an enabled "Create version & check
@@ -266,7 +306,7 @@ Proposal:
 
 ### C4. On phones, the override runs off the screen
 
-Sev 3 · CURRENT · *fix* · quick
+Sev 3 · CURRENT · *fix* · medium
 
 - **Blocked result.** "Create a new version with override" spans x=178–423 at
   390 px, so the page scrolls sideways by 33 px. Its row does not wrap. It
@@ -283,9 +323,13 @@ Sev 3 · CURRENT · *fix* · quick
 - **Check page.** The tab rail, Regression, and Ownership blocks stack above
   the Review guide, which starts at y=789 (`screens/skill.tsx:124-184`).
 
+The severity rests on the blocked result: the whole page scrolls sideways at
+the one moment an owner has to act. The tables alone repeat round 2's T5,
+which rated Sev 2.
+
 Rule:
 
-- `shadcn.md` › Responsive rules (a row that holds actions wraps);
+- `shadcn.md` › Responsive rules in Tailwind (a row that holds actions wraps);
 - `review.md` › "Behind a scroll";
 - `layouts.md` › Table page (cards or a stacked list on narrow screens).
 
@@ -300,12 +344,14 @@ Proposal:
 
 ### C5. The version page names the model, leads with evidence, and offers no next step
 
-Sev 3 · CURRENT vs TARGET · *fix* · medium · Guided content *decide*
+Sev 3 · CURRENT · *fix* · medium · Guided content *decide* · extends round 1's
+O7
 
 - **The title is the model id,** "anthropic/claude-sonnet-4-6"
   (`screens/skill-versions.tsx:380-382`). The version number appears only in
-  the eyebrow ("Judge card · v1.2.0") and a mono line (`:371-377`). Two versions
-  on the same model share a title. This extends S1 and S3.
+  small type: the eyebrow ("Judge card · v1.2.0", `:381`), a mono line
+  (`:372`), and the Judge Card's own eyebrow (`:619`). Two versions on the
+  same model share a title. This extends S1 and S3.
 - **"Current" appears twice.** The status chip maps `production` to "current"
   (`screens/skill-versions.tsx:388`, with the label at `:33`), and a second
   chip is added when the version is current (`:391`). Rendered: "CURRENT ·
@@ -317,26 +363,33 @@ Sev 3 · CURRENT vs TARGET · *fix* · medium · Guided content *decide*
   edit" (`screens/skill.tsx:202-203`), comes after it
   (`screens/skill-versions.tsx:398-408`).
 - **Facts repeat.**
-  - The execution binding appears four times: the mono line (`:371-377`), the
-    title (`:382`), a Judge Card row (`:639-640`), and the binding card
-    (`:446-478`).
+  - The model appears in four places: the mono line (`:371-377`), the title
+    (`:382`), a Judge Card row (`:639-640`), and the binding card
+    (`:446-478`). The full binding is spelled out twice: in that Judge Card
+    row and in the card's "Binding" row (`:460-461`).
   - Known-failure agreement appears twice in two formats: "recorded ratio 0.86"
     (`:643-648`) and "86%" (`:432-435`).
 - **Guided and Technical display render the same page** (2,612 px tall at
-  1440 in both). In either display, the self-consistency empty state tells
-  users to call `POST /api/v1/judge` with `force: true` (`:700-705`).
+  1440 in both). On v1.1.0, which has no repeat runs, the self-consistency
+  empty state tells users in either display to call `POST /api/v1/judge` with
+  `force: true` (`:700-705`).
 - **No next step.** The page offers no "Compare with current" and no "Start a
-  new version from this one". Its only actions are Back and three exports.
+  new version from this one". Its actions are "Back to versions", three
+  exports ("Export as Markdown", "Copy", and "SkillFormat"), and the case
+  links in the convergence card.
 
-TARGET:
+CURRENT promise: Guided display "hides secondary diagnostics and technical
+details" (`lib/display-mode.ts:15`). This page hides none of them.
 
-- BOJ:68: technical details are "Available for inspection without blocking
-  the default journey."
-- BOJ:70-71: "In Guided display, prefer **Check** before introducing
-  **Evaluator**."
+ASSUMPTION: the onboarding contract's rules carry over to this page. It files
+technical details as "Available for inspection without blocking the default
+journey" (BOJ:68). In Guided display it prefers **Check** before
+**Evaluator** (BOJ:70-71). BOJ governs first run (BOJ:7-8), so whether it
+applies here is part of the Guided-content decision.
 
 Rule: `archetypes.md` › Detail (the primary action is the object's most
-common next step); `review.md` › Repeated facts; `labels.md` › Page titles.
+common next step); `review.md` › Repeated facts; `labels.md` › Page titles
+and navigation labels.
 
 Proposal:
 
@@ -353,18 +406,21 @@ Proposal:
 
 ### C6. Waits never end
 
-Sev 2 · CURRENT · *fix* · quick
+Sev 2 · CURRENT · *fix* · medium
 
 - **The running check polls forever.** It polls every 2 s with no limit
   (`screens/skill-edit.tsx:393-431`, repeating at `:423`). With the regression
-  record withheld, it polled 7 times in about 10 s. It never showed elapsed
-  time or an end.
+  record withheld, it made 7 requests in about 8 s: three at the start in the
+  dev build, then one every 2 s. It never showed elapsed time or an end.
 - **A count can load forever.** "Cases in revision" reads "Loading exact
   count…" whenever the count is unknown
   (`screens/skill-edit/regression.tsx:165`). The count stays unknown when the
-  version has no pinned revision, or when the metadata read fails
-  (`screens/skill-edit.tsx:371-391`). Rendered: still "Loading exact count…"
-  after 10 s.
+  version has no pinned revision, or when the metadata read fails or returns
+  nothing (`screens/skill-edit.tsx:371-391`, the swallowed failure at
+  `:380-387`). The API refuses to queue a version without a pinned revision
+  (`apps/api/src/routes/skill-administration.ts:432-436`), so in practice a
+  failed read is the cause. Rendered with a synthetic unpinned version: still
+  "Loading exact count…" after 10 s.
 - **Version history polls too.** It polls every 3 s while any version is
   "regression running" (`screens/skill-versions.tsx:81-103`). The chip shows
   no elapsed time either.
@@ -379,16 +435,32 @@ Proposal:
   leave" and the link to history.
 - Say "Count unavailable" when there is no revision or the read failed.
 
-### C7. Failures read as "not found" or "nothing to compare"
+### C7. Failures read as "not found", "nothing to compare", or empty
 
-Sev 2 · CURRENT · *fix* · medium
+Sev 2 · CURRENT · *fix* · large
 
-- **Version page.** Any load failure is titled "Version not found"
-  (`screens/skill-versions.tsx:344-360`). Rendered with the versions request
-  returning 500: "Version not found".
-- **Compare.** The page has no loading state. While versions load, the list is
-  empty, so it renders "Nothing to compare yet" with "All versions"
-  (`screens/compare-versions.tsx:151-164`). Rendered 1.5 s into a 5 s load.
+- **Version page.**
+  - A failed read of the skill, the version list, or the regression record
+    titles the page "Version not found" (`screens/skill-versions.tsx:282-293`,
+    caught at `:322-323`, rendered at `:344-360`). That includes a version that
+    loaded but whose regression read failed. Rendered with the versions
+    request returning 500: "Version not found".
+  - The Judge Card, convergence, and self-consistency reads swallow their
+    failures (`:299-320`). With the Judge Card request returning 500, the card
+    was missing with no message. A failed self-consistency read shows "No
+    repeat runs under this version yet" (`:700-705`).
+- **Compare.**
+  - The version list has no loading state. While it loads, the list is empty,
+    so the page renders "Nothing to compare yet" with "All versions"
+    (`screens/compare-versions.tsx:151-164`). Rendered 1.5 s into a 5 s load.
+    Only the path table has a loading row, "Loading recorded runs…"
+    (`:267-270`).
+  - While those runs load, the tiles already read "Regressions across
+    versions 0", "Improvements 0", and "0 with a recorded run": the totals
+    start from an empty list (`:120-129`). Rendered 1.5 s into a 5 s load.
+  - A failed regression read becomes "no run recorded for this save"
+    (`.catch(() => null)` at `:110`). Rendered with that request returning
+    500.
 - **Error states.**
   - The Check page, the editor, and version history print the raw error, or
     the developer instruction "Start the API with `pnpm dev:api` and refresh."
@@ -404,14 +476,19 @@ Sev 2 · CURRENT · *fix* · medium
 The queue's error state in round 2 has the same shape.
 
 Rule: `states.md` › Three kinds of empty ("A failed load is none of these");
-`states.md` › Rules ("Offer Retry only when retrying can work");
-`review.md` › Hardcoded diagnostics.
+`states.md` › Rules ("A value that has not loaded is not zero"; "Offer Retry
+only when retrying can work"); `review.md` › Errors shown as empty;
+`review.md` › Hardcoded diagnostics; `decisions.md` › Errors and recovery
+(the error's surface matches its scope).
 
 Proposal: one page-state pattern for all five routes:
 
 - `EmptyShell` (*Rubrist*) with "Couldn't load … " and Retry;
 - `Skeleton` (*add*) in the page's shape while loading;
-- "Version not found" only on a 404.
+- "Version not found" only on a 404;
+- a failed section read says so inside its section, with Retry, while the
+  rest of the page keeps working;
+- compare's tiles show "—" until every run has loaded.
 
 ### C8. The check's outcomes point away from the fix
 
@@ -437,9 +514,11 @@ Context:
 - TARGET for Batch 6 lineages (ADR-0010:214-216): "blocked, overridden, or
   error results cannot activate."
 
-Rule: `placement.md` (one filled button per state, on the recommended path);
-`decisions.md` › Errors and recovery ("Offer Retry only when retrying can
-work").
+Rule: `placement.md` › In shadcn apps ("One filled button per page state");
+`decisions.md` › Errors and recovery ("One way forward"; "Offer Retry only
+when retrying can work"). Which path gets the filled button is this audit's
+recommendation, not a rule. Revising is the proposed default because the
+override records an exception to the gate.
 
 Proposal (*decide*):
 
@@ -460,7 +539,8 @@ Sev 2 · CURRENT · *fix* · medium · identical saves *decide*
   (`screens/skill-edit/editor.tsx:105-178`).
 - **A chosen template looks like a primary.** A selected template chip uses the
   primary's ink fill (`screens/skill-edit/editor.tsx:165-167`). After applying
-  one, the page measured two filled buttons.
+  one, the page measured two filled buttons. Round 2's T7 made the same
+  diagnosis for the queue's filter chips.
 - **Step 1 is misnamed.** The progress strip's first step reads "Review changes"
   while the user is editing (`components/skill-edit-flow.tsx:52`).
 - **"Apply to" uses the wrong words.** It names its scopes in traces and
@@ -469,13 +549,17 @@ Sev 2 · CURRENT · *fix* · medium · identical saves *decide*
 - **Save works with nothing changed.**
   - The save condition has no change check (`screens/skill-edit.tsx:552-563`),
     so save stays enabled.
-  - The change review then reads "0 evaluator fields changed"
-    (`components/skill-edit-flow.tsx:183-185`).
-  - Saving creates an identical version. ADR-0014:236-237 notes that identical
-    definitions and bindings share a digest.
+  - When the stored provider is available, the change review reads "0
+    evaluator fields changed" (`components/skill-edit-flow.tsx:183-185`), and
+    saving creates an identical version. The demo already holds one: v1.2.0
+    matches v1.1.0 in every evaluator field, so Version history labels it "no
+    evaluator-field change" (`lib/skill-edit-flow.ts:49`). ADR-0014:236-237
+    notes that identical definitions and bindings share a digest.
+  - Without that provider, as in the demo, the editor swaps in another binding
+    and counts it as a change (C13).
 
-Rule: `archetypes.md` › Form; `placement.md` (one filled button per state);
-`labels.md` › Terminology.
+Rule: `archetypes.md` › Form; `placement.md` › In shadcn apps ("One filled
+button per page state"); `labels.md` › Terminology.
 
 Proposal:
 
@@ -485,11 +569,13 @@ Proposal:
 - Rename step 1 "Edit".
 - Use Runs and Results in Guided display.
 - Disable save until something changes, or name the identical save "Re-run the
-  check" if that use is intended (*decide*).
+  check" if that use is intended (*decide*). Here "changes" means against the
+  base version, as the digest does; C13's fix keeps the editor from adding a
+  change the owner did not make.
 
 ### C10. The Check page mixes tabs, metrics, and navigation
 
-Sev 2 · CURRENT · *fix* · quick
+Sev 2 · CURRENT · *fix* · medium
 
 - **The tab isn't kept.** The four tabs are buttons with `aria-pressed`, and
   their state lives in `useState` (`screens/skill.tsx:16-23,32,127-140`).
@@ -512,7 +598,7 @@ Proposal:
   `?tab=`.
 - Label the rail "Check".
 - Show agreement as a stat with a separate "View history" link.
-- Render Markdown headings from `h3` down.
+- Render Markdown headings from `h3` down, as S3 proposed.
 
 ### C11. Compare's pickers can trap a reversed pair
 
@@ -531,15 +617,17 @@ button and list only older versions in From.
 
 ### C12. Naming and status words
 
-Sev 3 · CURRENT vs TARGET · *decide* · medium · extends round 1's naming
-proposal and O9
+Sev 3 · CURRENT · *decide* · large · extends round 1's naming proposal and O9
 
-- **Five labels lead to the editor:**
+- **Seven labels lead to the editor:**
   - "Edit evaluator" (`screens/skill.tsx:98-100`);
   - "Open rubric alongside" (`screens/exceptions.tsx:331`);
   - "Draft rubric edit from these cases" (`screens/review.tsx:169`);
   - "Review the rubric" (`screens/traces.tsx:224`);
-  - "Review the Check" (`screens/first-result.tsx:335`).
+  - "Review the Check" (`screens/first-result.tsx:335`,
+    `components/first-run-setup-ledger.tsx:54`);
+  - "Review Check" (`components/rubrist/journey-pipeline.tsx:39`);
+  - "Set up without a run" (`components/first-run-setup-ledger.tsx:40`).
 
   The editor is titled "Edit the evaluator", sits under the crumb "Skill"
   (S1), and has the Back link "Back to skill".
@@ -553,32 +641,78 @@ proposal and O9
 
   It found no generic labels, filler copy, or banned error words.
 - **Status words come from legacy version status:**
-  - "Approved 4/30/2026" on the Check page (`screens/skill.tsx:165`) and the
-    version page (`screens/skill-versions.tsx:385`);
+  - "Approved 4/30/2026" on the Check page (`screens/skill.tsx:165`) and
+    "Approved 4/30/2026, 8:00:00 PM" on the version page
+    (`screens/skill-versions.tsx:385`);
   - the status chips "approved", "validated", and "draft · held"
     (`screens/skill-versions.tsx:32-42`).
 
-TARGET:
+Context:
 
-- BOJ:61-62: **Check** and **Review guide** are the names.
-- BOJ:70-71: in Guided display, prefer Check before Evaluator.
-- BOJ:316-317: "assurance copy derives from absent, supplied-label,
+- TARGET for first run: BOJ:61-62 names the **Check** and the **Review
+  guide**, and BOJ:70-71 prefers Check before Evaluator in Guided display.
+  BOJ:316-317 says "assurance copy derives from absent, supplied-label,
   governed-comparison, and calibrated evidence rather than legacy version
   status."
-- ADR-0010:187-188: a candidate is never "described as approved". This covers
-  Batch 6-created lineages; others keep their compatibility behavior
-  (ADR-0010:193-195).
+- TARGET for Batch 6-created lineages: a candidate is never "described as
+  approved" (ADR-0010:187-188). Other lineages keep their compatibility
+  behavior (ADR-0010:193-195).
 
-ASSUMPTION: BOJ:316-317 sits in the onboarding contract. Whether it governs
-the Check pages is part of the decision.
+ASSUMPTION: BOJ governs first run (BOJ:7-8). Some of these labels sit on
+first-run surfaces, the setup ledger and the first Result, and lead into this
+editor. Whether BOJ's names and status rule govern the Check pages is part of
+the decision.
 
 Proposal:
 
 - Use one label for the way in: "Edit the Review guide" for owners and "View
   the Review guide" for others. Match it in the title and the Back link.
+  Round 2's T6 keeps "Open the Review guide" for the queue banner, which opens
+  the guide beside the queue.
 - Apply round 1's Guided names (Check, Run, Result, Protected examples).
 - *Decide* the status vocabulary: what "approved" and "validated" become, and
   whether the date line stays.
+
+### C13. Opening the editor swaps an unavailable provider without asking
+
+Sev 3 · CURRENT · *fix* · medium
+
+- **The swap.** When the stored provider is not available,
+  `resolveJudgeProviderSelection` picks the first available provider, or the
+  mock (`lib/judge-provider-selection.ts:16-21`). The editor then clears the
+  model fields (`applyBindingFields`, `screens/skill-edit.tsx:163-179`), and
+  the model catalog fills in its first model (`:470`). "Reset to v1.2.0" does
+  the same (`:209-213`).
+- **Rendered in the demo,** which has no provider keys. The stored
+  `anthropic/claude-sonnet-4-6` became "Mock (local testing)", the only
+  provider option. Before anything was typed, the change review read "1
+  evaluator field changed", with "Execution binding · Changed ·
+  claude-sonnet-4-6 → mock". The only notice sits by the provider field, below
+  the fold (y≈1376): "Only the local mock is available. Add an Anthropic,
+  OpenAI, OpenRouter, or custom provider key in Settings…". It does not say
+  the stored binding was replaced.
+- **What it risks.** In code, when another provider is available, an owner
+  who edits only the Review guide saves a version bound to a provider and
+  model they never chose. When only the mock remains, Postgres mode refuses
+  the save: "The mock judge is only available in local demo mode"
+  (`apps/api/src/routes/skill-administration.ts:400-402`).
+
+Context (TARGET, ADR-0014:222-226): every part of the binding is fixed when a
+version is saved, and resolution "never changes it." The swap does not break
+that, because it creates a new version, but it chooses the new version's
+binding for the owner.
+
+Rule: `decisions.md` › Defaults, derivation, deferral ("Never default a
+consequential choice silently"); `decisions.md` › Errors and recovery
+("Prevent what you can foresee").
+
+Proposal:
+
+- Keep the stored binding in the form, marked unavailable with the reason
+  ("no Anthropic key"), and link to Settings beside it.
+- Block saving until the owner adds the key or picks another provider and
+  model. Never pick them on the owner's behalf.
+- Apply the same rule to "Reset".
 
 ---
 
@@ -634,6 +768,7 @@ The step strip appears once the save starts.
 | State | Heading | Primary | Secondary | Notes |
 |---|---|---|---|---|
 | Editing, unchanged | Edit the Review guide | Create version (disabled) | Cancel | C9 |
+| Stored provider unavailable | Edit the Review guide, with the binding marked unavailable | Create version (disabled until a provider is chosen) | Open Settings | C13 |
 | Editing, changed | Edit the Review guide | Create version | Cancel (asks before discarding) | C2 |
 | Member | The Review guide (read-only) | — | "Ask Product Lead" | C3 |
 | Running | Checking 2 Protected examples · started 1 min ago | View history | — | C6 |
@@ -648,7 +783,7 @@ Project / Review guide / Versions / v1.2.0                                    [+
 Version 1.2.0 (h1) [Current] [no recorded check]    Compare with current [ Start from v1.2.0 ]
 Saved Apr 30, 2026 · anthropic/claude-sonnet-4-6 · 2 known limitations
 ┌ What changed from v1.1.0 ──────────────────────────────────────────────────────────────────┐
-│ Review guide changed · model unchanged                                                     │
+│ No evaluator field changed: same guide, instructions, binding, and format                  │
 └────────────────────────────────────────────────────────────────────────────────────────────┘
 ┌ Review guide ────────────────────────────────┐ ┌ Known-failure check ──────────────────────┐
 │ …                                            │ │ No recorded run for this version          │
@@ -661,18 +796,20 @@ Saved Apr 30, 2026 · anthropic/claude-sonnet-4-6 · 2 known limitations
 | Header | The version as the title, one status chip, compare link, owner primary | C5, C1 |
 | Change | What changed from the previous version | C5 |
 | Main | The Review guide, then the known-failure check with an explicit "no recorded run" | C1, C5 |
-| Technical | Judge Card, κ, self-consistency, binding, schema; collapsed in Guided | C5; BOJ:68 |
+| Technical | Judge Card, κ, self-consistency, binding, schema; collapsed in Guided | C5 |
 
 | Zone | Empty | Loading | Error |
 |---|---|---|---|
 | Version page | — | `Skeleton` (*add*) in the page's shape | `EmptyShell` (*Rubrist*): "Couldn't load this version" with Retry; "Version not found" only on a 404 |
-| Compare | "Save a second version to compare." | `Skeleton` rows (*add*); never the empty state | `EmptyShell` with Retry |
+| Version page sections (Judge Card, convergence, self-consistency) | Each section's own empty copy, with no API instructions | `Skeleton` in the section | "Couldn't load the Judge Card" in the section, with Retry; the page keeps working |
+| Compare | "Save a second version to compare." | `Skeleton` rows (*add*); tiles show "—"; never the empty state | `EmptyShell` with Retry; a failed run read says so in its row |
 | Running check | — | "Started N min ago"; past a set time, "taking longer than usual" | Poll errors keep the last state and say when it was last checked |
 
 ## Open questions
 
 1. **Guided content of the version page (C5).** What should Guided display
-   show, and what goes under Technical evidence?
+   show, what goes under Technical evidence, and does BOJ:68 apply beyond
+   first run?
 2. **Override prominence (C8).** Should revising be the default path, with the
    override behind a disclosure?
 3. **Retrying a failed check (C8).** Can the API re-run the check for an
@@ -681,7 +818,7 @@ Saved Apr 30, 2026 · anthropic/claude-sonnet-4-6 · 2 known limitations
 5. **A base version for the editor (C5).** Should "Start from v1.2.0" exist,
    and through which parameter?
 6. **Status vocabulary (C12).** What should "approved" and "validated" say,
-   and does BOJ:316-317 govern these pages?
+   and do BOJ's names and its status rule (BOJ:316-317) govern these pages?
 
 ## Next rounds
 
