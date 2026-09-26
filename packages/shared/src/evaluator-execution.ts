@@ -585,6 +585,39 @@ export const ResolutionRecordSchema = z.object({
 export type ResolutionRecord = z.infer<typeof ResolutionRecordSchema>;
 
 /**
+ * Why a binding can't pass a governed gate (ADR-0014 sections 2 and 4): the
+ * problems, the provider's message where it rejected the saved request, and
+ * what to change.
+ */
+export const GovernedGateRefusalSchema = z.object({
+  message: z.string(),
+  problems: z.array(z.string()).min(1),
+  providerMessage: z.string().max(2_000).nullable(),
+  suggestion: z.string()
+}).strict();
+
+/** How a binding states a setting the gates ask about: set, left unset, or not one its provider takes. */
+export const BindingSettingStateSchema = z.enum(["stated", "unset", "not_applicable"]);
+export type GovernedGateRefusal = z.infer<typeof GovernedGateRefusalSchema>;
+
+/**
+ * A version's resolution as its author sees it: the latest record (`null`
+ * before any attempt), how the binding states temperature and reasoning, why
+ * it can't pass a governed gate (`null` when it can), and whether resolving
+ * now could change the record. The caller's role says whether they may
+ * resolve it.
+ */
+export const BindingResolutionStatusSchema = z.object({
+  skillVersionId: z.string().min(1),
+  projectRole: z.enum(["owner", "member"]),
+  record: ResolutionRecordSchema.nullable(),
+  settings: z.object({ temperature: BindingSettingStateSchema, reasoning: BindingSettingStateSchema }).strict(),
+  gateRefusal: GovernedGateRefusalSchema.nullable(),
+  resolvable: z.boolean()
+}).strict();
+export type BindingResolutionStatus = z.infer<typeof BindingResolutionStatusSchema>;
+
+/**
  * What a capability check probes (ADR-0014 section 4): a model at an
  * endpoint, before its sampling, reasoning, and verdict protocol are chosen.
  * The check finds those, so the author can choose them.

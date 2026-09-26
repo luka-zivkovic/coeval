@@ -275,6 +275,14 @@ run("PgBinaryCalibrationRepository", () => {
       await pool.query(`delete from projects where id='proj_binary_records'`);
       await pool.query(`delete from evaluator_resolution_records where skill_version_id=$1`, [skillVersionId]);
       await saveResolutionRecord(pool, PROJECT_ID, skillVersionId, SEEDED_BINDING, await resolvedRecordFor(SEEDED_BINDING));
+      // Resolution after save replaces only an unresolved record, so it can't
+      // erase a fuller one a concurrent resolution stored.
+      const unresolved = { ...(await resolvedRecordFor(SEEDED_BINDING)), status: "unresolved" as const, probes: [] };
+      expect(await saveResolutionRecord(pool, PROJECT_ID, skillVersionId, SEEDED_BINDING, unresolved, { onlyOverUnresolved: true }))
+        .toMatchObject({ status: "resolved" });
+      await saveResolutionRecord(pool, PROJECT_ID, skillVersionId, SEEDED_BINDING, unresolved);
+      expect(await saveResolutionRecord(pool, PROJECT_ID, skillVersionId, SEEDED_BINDING, await resolvedRecordFor(SEEDED_BINDING), { onlyOverUnresolved: true }))
+        .toMatchObject({ status: "resolved" });
       // A version whose text the definition's limits refuse has no identity.
       await pool.query(`update skill_versions set execution_binding = $2::jsonb, rubric_markdown = repeat('x', 100001) where id=$1`, [skillVersionId, JSON.stringify(storedBinding)]);
       await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({

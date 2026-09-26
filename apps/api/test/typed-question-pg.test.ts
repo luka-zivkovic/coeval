@@ -122,9 +122,16 @@ runPgSmoke("typed-question evaluators on PostgreSQL", () => {
       const before = sent.length;
       const resolution = await post(`/api/evaluator-lifecycles/${version.id}/resolution`, {});
       expect(resolution.status).toBe(200);
+      // The author sees a resolved binding that can pass a governed gate, with nothing left to resolve.
       await expect(resolution.json()).resolves.toMatchObject({
-        record: { status: "resolved", credentialSource: "environment", probes: [{ stage: "resolution", purpose: "confirm", outcome: "accepted" }] }
+        skillVersionId: version.id,
+        projectRole: "owner",
+        record: { status: "resolved", credentialSource: "environment", probes: [{ stage: "resolution", purpose: "confirm", outcome: "accepted" }] },
+        gateRefusal: null,
+        resolvable: false
       });
+      const read = await app.request(`/api/evaluator-lifecycles/${version.id}/resolution`, { headers: { cookie } });
+      await expect(read.json()).resolves.toMatchObject({ record: { status: "resolved" }, gateRefusal: null, resolvable: false });
       expect(sent.length - before).toBe(0);
 
       // Without a key the version route refuses, naming only TypeSafe as a way forward, and saves nothing.

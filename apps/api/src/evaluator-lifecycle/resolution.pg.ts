@@ -55,14 +55,18 @@ export async function loadResolutionRecord(
  * Stores a version's latest resolution record and returns the one stored. A
  * failed record for the same binding is never replaced (only a new evaluator
  * version fixes it), so a concurrent resolution can't turn failed into
- * resolved; the stored failed record is returned instead.
+ * resolved; the stored failed record is returned instead. With
+ * `onlyOverUnresolved`, a record for the same binding replaces only an
+ * unresolved one, so resolution after save, which never probes reasoning,
+ * can't erase a fuller record a concurrent resolution stored.
  */
 export async function saveResolutionRecord(
   db: Db,
   projectId: string,
   skillVersionId: string,
   binding: ExecutionBinding,
-  record: ResolutionRecord
+  record: ResolutionRecord,
+  options: { onlyOverUnresolved?: boolean } = {}
 ): Promise<ResolutionRecord | null> {
   const parsed = ResolutionRecordSchema.parse(record);
   await db.query(
@@ -72,9 +76,10 @@ export async function saveResolutionRecord(
        set binding_digest=excluded.binding_digest,status=excluded.status,record=excluded.record,
            recorded_at=date_trunc('milliseconds',clock_timestamp())
      where evaluator_resolution_records.project_id=excluded.project_id
-       and (evaluator_resolution_records.status<>'failed'
+       and (evaluator_resolution_records.status=any($6::text[])
          or evaluator_resolution_records.binding_digest<>excluded.binding_digest)`,
-    [skillVersionId, projectId, sha256Digest(binding), parsed.status, JSON.stringify(parsed)]
+    [skillVersionId, projectId, sha256Digest(binding), parsed.status, JSON.stringify(parsed),
+      options.onlyOverUnresolved ? ["unresolved"] : ["unresolved", "resolved"]]
   );
   const owner = (await db.query(`select project_id from evaluator_resolution_records where skill_version_id=$1`, [skillVersionId])).rows[0];
   if (owner && String(owner.project_id) !== projectId) {

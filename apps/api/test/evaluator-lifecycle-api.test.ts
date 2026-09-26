@@ -8,7 +8,7 @@ import {
 import { EvaluatorLifecycleRepositoryError, type EvaluatorLifecycleRepository } from "../src/evaluator-lifecycle/repository.js";
 import { createEvaluatorLifecycleRouter } from "../src/evaluator-lifecycle/routes.js";
 import { evaluatorCandidateRequestDigest } from "../src/lib/evaluator-lifecycle.js";
-import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
+import { MOCK_BINDING, SEEDED_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 function repository(): EvaluatorLifecycleRepository {
   return {
@@ -335,21 +335,82 @@ describe("evaluator lifecycle API boundary", () => {
       }
     });
 
+    const seededGoverned = { ...mockGoverned, executionBinding: structuredClone(SEEDED_BINDING) };
+
     it("reads a version's resolution, and resolves on demand only where probes are configured", async () => {
       const repo = repository();
-      vi.mocked(repo.getGovernedBinding).mockResolvedValue({ binding: mockGoverned, record: null });
+      vi.mocked(repo.getGovernedBinding).mockResolvedValue({ binding: seededGoverned, record: null });
       const read = await router(repo).request("/skill-version/resolution");
       expect(read.status).toBe(200);
-      await expect(read.json()).resolves.toEqual({ skillVersionId: "skill-version", record: null });
+      // The author sees the record, how the binding states its settings, their role, and why it can't pass a governed gate yet.
+      await expect(read.json()).resolves.toEqual({
+        skillVersionId: "skill-version",
+        projectRole: "owner",
+        record: null,
+        settings: { temperature: "stated", reasoning: "stated" },
+        gateRefusal: {
+          message: "The execution binding can't pass a governed gate: the execution binding is unresolved, not resolved",
+          problems: ["the execution binding is unresolved, not resolved"],
+          providerMessage: null,
+          suggestion: "Try again once the provider is reachable with a working credential."
+        },
+        resolvable: true
+      });
 
       expect((await post(router(repo, null), "/skill-version/resolution", {})).status).toBe(501);
-      const resolved = await post(router(repo), "/skill-version/resolution", {});
-      expect(resolved.status).toBe(200);
-      await expect(resolved.json()).resolves.toMatchObject({ record: { status: "resolved" } });
+      // No key: nothing is sent, and the author is told to add one.
+      const keyless = await post(router(repo), "/skill-version/resolution", {});
+      expect(keyless.status).toBe(200);
+      await expect(keyless.json()).resolves.toMatchObject({
+        projectRole: "owner", record: { status: "unresolved", credentialSource: null, probes: [] },
+        gateRefusal: { suggestion: "Add a key for anthropic in Settings, then resolve the binding again." }
+      });
       expect(repo.recordResolution).toHaveBeenCalledWith(expect.objectContaining({ triggerKind: "on_demand" }), expect.anything());
+      // Without probe access, a read says resolving now couldn't change anything.
+      await expect((await router(repo, null).request("/skill-version/resolution")).json()).resolves.toMatchObject({ resolvable: false });
 
       vi.mocked(repo.getGovernedBinding).mockResolvedValue(null);
       expect((await router(repo).request("/missing/resolution")).status).toBe(404);
+    });
+
+    it("never offers to resolve an alias or the mock, and says why neither passes a governed gate", async () => {
+      const repo = repository();
+      const alias = { ...seededGoverned, executionBinding: { ...structuredClone(SEEDED_BINDING), modelId: "claude-latest" } };
+      vi.mocked(repo.getGovernedBinding).mockResolvedValue({ binding: alias, record: null });
+      await expect((await router(repo).request("/skill-version/resolution")).json()).resolves.toMatchObject({
+        resolvable: false,
+        gateRefusal: {
+          problems: ["claude-latest is a mutable model alias, which every governed gate refuses", "the execution binding is unresolved, not resolved"],
+          suggestion: "Save a new evaluator version with a pinned model id."
+        }
+      });
+      const refused = await post(router(repo), "/skill-version/resolution", {});
+      expect(refused.status).toBe(422);
+      await expect(refused.json()).resolves.toMatchObject({ code: "mutable_model_alias" });
+      expect(repo.recordResolution).not.toHaveBeenCalled();
+
+      vi.mocked(repo.getGovernedBinding).mockResolvedValue({ binding: mockGoverned, record: null });
+      await expect((await router(repo).request("/skill-version/resolution")).json()).resolves.toMatchObject({
+        resolvable: false,
+        settings: { temperature: "not_applicable", reasoning: "not_applicable" },
+        gateRefusal: {
+          problems: ["the built-in mock makes no provider call, so it can't run sealed calibration", "the execution binding is unresolved, not resolved"],
+          suggestion: "Save a new evaluator version bound to a real provider."
+        }
+      });
+    });
+
+    it("lets a member read the status but not resolve it", async () => {
+      const repo = repository();
+      vi.mocked(repo.getGovernedBinding).mockResolvedValue({ binding: seededGoverned, record: null });
+      const member = createEvaluatorLifecycleRouter({
+        repository: repo, databaseMode: true, bindingResolution: services,
+        requestIdentity: () => ({ userId: "member", projectId: "project" }),
+        resolveProjectRole: async () => "member"
+      });
+      await expect((await member.request("/skill-version/resolution")).json()).resolves.toMatchObject({ projectRole: "member" });
+      expect((await post(member, "/skill-version/resolution", {})).status).toBe(403);
+      expect(repo.recordResolution).not.toHaveBeenCalled();
     });
   });
 });

@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronRight, Copy, Download, RefreshCcw } from "lucide-reac
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MarkdownPreview } from "@/components/markdown-preview";
+import { BindingResolutionStatus } from "@/components/binding-resolution-status";
 import { regressionReceiptLabel, skillVersionChangeLabels } from "@/lib/skill-edit-flow";
 import { Table } from "@/components/ui/table";
 import { RowLink } from "@/components/row-action";
@@ -477,6 +478,8 @@ export function SkillVersionDetailScreen() {
               </div>
             </CardContent>
           </Card>
+
+          <BindingResolutionStatus key={v.id} skillVersionId={v.id} />
 
           {v.knownLimitations.length > 0 ? (
             <Card>

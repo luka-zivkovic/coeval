@@ -10,12 +10,22 @@ vi.mock("@/components/ui/card",()=>({
   CardHeader:({children,...props}:{children?:unknown})=>createElement("header",props,children as never),
   CardTitle:({children,...props}:{children?:unknown})=>createElement("h2",props,children as never)
 }));
+vi.mock("../src/components/ui/button.js",()=>({Button:({children,...props}:{children?:unknown})=>createElement("button",props,children as never)}));
+vi.mock("../src/components/ui/card.js",()=>({
+  Card:({children}:{children?:unknown})=>createElement("section",null,children as never),
+  CardContent:({children}:{children?:unknown})=>createElement("div",null,children as never)
+}));
+vi.mock("../src/components/rubrist/index.js",()=>({
+  Chip:({children}:{children?:unknown})=>createElement("span",null,children as never),
+  Eyebrow:({children}:{children?:unknown})=>createElement("span",null,children as never)
+}));
 vi.mock("@/components/ui/input",()=>({Input:(props:Record<string,unknown>)=>createElement("input",props)}));
 vi.mock("@/components/ui/textarea",()=>({Textarea:(props:Record<string,unknown>)=>createElement("textarea",props)}));
 vi.mock("@/lib/api",()=>({fetchDatasetRevision:vi.fn(),fetchSkillVersionRegression:vi.fn()}));
 vi.mock("@/lib/binary-calibration-api",()=>({fetchBinaryCalibrationRuns:vi.fn()}));
 vi.mock("@/lib/evaluator-lifecycle-api",()=>({
   activateEvaluator:vi.fn(),createEvaluatorCandidate:vi.fn(),fetchAllEvaluatorLifecycles:vi.fn(),
+  fetchBindingResolution:vi.fn(),resolveBindingNow:vi.fn(),
   lifecycleIdempotencyKey:vi.fn((kind:string)=>`test-${kind}`),retireEvaluator:vi.fn()
 }));
 

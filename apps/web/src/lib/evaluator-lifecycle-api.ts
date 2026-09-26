@@ -1,10 +1,12 @@
 import {
+  BindingResolutionStatusSchema,
   EvaluatorCandidateCreateInputSchema,
   EvaluatorCandidateCreateResultSchema,
   EvaluatorLifecycleActivateInputSchema,
   EvaluatorLifecycleListPageSchema,
   EvaluatorLifecycleRetireInputSchema,
   EvaluatorLifecycleTransitionResultSchema,
+  type BindingResolutionStatus,
   type EvaluatorCandidateCreateInput,
   type EvaluatorCandidateCreateResult,
   type EvaluatorLifecycleActivateInput,
@@ -110,6 +112,35 @@ async function transition(
     { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input) }
   );
   return result(response,EvaluatorLifecycleTransitionResultSchema,`Evaluator ${action} failed`);
+}
+
+/**
+ * A version's execution-binding resolution (ADR-0014 section 4), or `null`
+ * where the deployment keeps no resolution records (the in-memory demo).
+ */
+export async function fetchBindingResolution(skillVersionId: string): Promise<BindingResolutionStatus | null> {
+  const response = await projectFetch(`${API_BASE}/api/evaluator-lifecycles/${encodeURIComponent(skillVersionId)}/resolution`);
+  return resolutionStatus(response,"Reading the binding's resolution failed");
+}
+
+/** Resolves a version's binding now (owner-only); a failed binding stays failed. */
+export async function resolveBindingNow(skillVersionId: string): Promise<BindingResolutionStatus> {
+  const response = await projectFetch(
+    `${API_BASE}/api/evaluator-lifecycles/${encodeURIComponent(skillVersionId)}/resolution`,
+    { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }
+  );
+  const status = await resolutionStatus(response,"Resolving the binding failed");
+  if (status === null) throw new Error("This deployment keeps no resolution records.");
+  return status;
+}
+
+async function resolutionStatus(response:Response,fallback:string):Promise<BindingResolutionStatus|null> {
+  const body = await response.json().catch(() => null) as { error?: unknown; code?: unknown } | null;
+  if (response.status===501 && body?.code==="evaluator_lifecycle_database_required") return null;
+  if (!response.ok) throw responseError(response,body,fallback);
+  const status = BindingResolutionStatusSchema.safeParse(body);
+  if (!status.success) throw new Error("The server returned a resolution status this page can't read.");
+  return status.data;
 }
 
 async function result<T>(response:Response,schema:{parse(value:unknown):T},fallback:string):Promise<T> {

@@ -100,7 +100,9 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
       await client.query("begin");
       await appendResolutionAttempt(client, attempt);
       const stored = record !== null && attempt.skillVersionId !== null
-        ? await saveResolutionRecord(client, attempt.projectId, attempt.skillVersionId, attempt.executionBinding, record)
+        ? await saveResolutionRecord(client, attempt.projectId, attempt.skillVersionId, attempt.executionBinding, record, {
+          onlyOverUnresolved: attempt.triggerKind === "version_save"
+        })
         : record;
       await client.query("commit");
       return stored;
