@@ -483,8 +483,9 @@ The pattern is app-wide: `apps/web/src` has 58
 
 Rule: links navigate and buttons act (Vercel Web Interface Guidelines ›
 Navigation & State: "Links use `<a>`/`<Link>` (Cmd/Ctrl+click, middle-click
-support)"; WAI-ARIA Authoring Practices, Link and Button patterns).
-`navigation.md` › "Everything shareable has a URL" covers only part of it.
+support)"; WAI-ARIA Authoring Practices, Link and Button patterns). ux-craft
+added it after this round as `navigation.md` › Navigation is a link (overclock
+`8fa9f51`).
 
 Proposal: `<Button asChild><Link to={…} state={…}>…</Link></Button>`
 (*installed*: `Button` already supports `asChild` through Radix Slot). Router
