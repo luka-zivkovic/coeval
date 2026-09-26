@@ -12,6 +12,7 @@ import {
   type CapabilityProbe,
   type ExecutionBinding,
   type ExecutionProviderId,
+  type GovernedGateRefusal,
   type JudgeProviderCredentialSource,
   type ResolutionRecord
 } from "@rubrist/shared";
@@ -184,13 +185,6 @@ function unansweredSettings(binding: ExecutionBinding, record: ResolutionRecord)
   return unanswered;
 }
 
-export interface GovernedGateRefusal {
-  message: string;
-  problems: string[];
-  /** The provider's message from the confirming probe, where it rejected the saved request. */
-  providerMessage: string | null;
-  suggestion: string;
-}
 
 /**
  * Why a governed gate refuses a binding, with the suggestion ADR-0014 section 4
@@ -217,9 +211,19 @@ export function governedGateRefusal(binding: ExecutionBinding, record: Resolutio
   } else if (record?.status !== "resolved") {
     suggestion = "Try again once the provider is reachable with a working credential.";
   } else if (unansweredSettings(binding, record).length > 0) {
-    suggestion = `Try again: the model's answer about ${unansweredSettings(binding, record).join(" and ")} wasn't recorded, because its probe failed.`;
+    const unanswered = unansweredSettings(binding, record);
+    // Resolution after save never probes reasoning, so a setting may simply not have been asked about yet.
+    const errored = unanswered.filter((setting) => record.probes.some((probe) => probe.purpose === setting && probe.outcome === "error"));
+    suggestion = errored.length > 0
+      ? `Try again: the model's answer about ${errored.join(" and ")} wasn't recorded, because its probe failed.`
+      : `Resolve the binding: the model hasn't been asked about ${unanswered.join(" and ")} yet. A governed gate resolves it before use.`;
   } else {
-    suggestion = "Save a new evaluator version that states its temperature and reasoning explicitly.";
+    // Every setting is answered, so what's left is a setting the model takes that the binding leaves unset.
+    const unstated = [
+      takesSamplingSettings(binding.provider) && binding.sampling.temperature === null && record.temperatureSupport !== "parameter_rejected" ? "temperature" : null,
+      reasoningFamilyFor(binding.provider) !== null && binding.reasoning === null && record.reasoningSupport !== "parameter_rejected" ? "reasoning" : null
+    ].filter((setting): setting is string => setting !== null);
+    suggestion = `Save a new evaluator version that states its ${unstated.join(" and ")} explicitly.`;
   }
   return {
     message: `The execution binding can't pass a governed gate: ${problems.join("; ")}`,

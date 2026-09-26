@@ -10,12 +10,17 @@ vi.mock("@/components/ui/card",()=>({
   CardHeader:({children,...props}:{children?:unknown})=>createElement("header",props,children as never),
   CardTitle:({children,...props}:{children?:unknown})=>createElement("h2",props,children as never)
 }));
+vi.mock("@/components/rubrist",()=>({
+  Chip:({children}:{children?:unknown})=>createElement("span",null,children as never),
+  Eyebrow:({children}:{children?:unknown})=>createElement("span",null,children as never)
+}));
 vi.mock("@/components/ui/input",()=>({Input:(props:Record<string,unknown>)=>createElement("input",props)}));
 vi.mock("@/components/ui/textarea",()=>({Textarea:(props:Record<string,unknown>)=>createElement("textarea",props)}));
 vi.mock("@/lib/api",()=>({fetchDatasetRevision:vi.fn(),fetchSkillVersionRegression:vi.fn()}));
 vi.mock("@/lib/binary-calibration-api",()=>({fetchBinaryCalibrationRuns:vi.fn()}));
 vi.mock("@/lib/evaluator-lifecycle-api",()=>({
   activateEvaluator:vi.fn(),createEvaluatorCandidate:vi.fn(),fetchAllEvaluatorLifecycles:vi.fn(),
+  fetchBindingResolution:vi.fn(),resolveBindingNow:vi.fn(),
   lifecycleIdempotencyKey:vi.fn((kind:string)=>`test-${kind}`),retireEvaluator:vi.fn()
 }));
 

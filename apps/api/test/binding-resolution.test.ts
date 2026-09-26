@@ -122,7 +122,7 @@ describe("a gate refusal", () => {
     expect(accepting.temperatureSupport).toBe("accepted");
     expect(governedGateRefusal(OPUS, accepting)).toMatchObject({
       problems: [expect.stringContaining("temperature must be explicit")],
-      suggestion: expect.stringContaining("states its temperature")
+      suggestion: "Save a new evaluator version that states its temperature explicitly."
     });
 
     const parameter = await resolveGovernedBinding(services(() => rejected("`temperature` is deprecated for this model.")).services, governed(SEEDED_BINDING));
@@ -144,6 +144,11 @@ describe("a transient error on a setting probe never fails a binding", () => {
     expect(record).toMatchObject({ status: "resolved", temperatureSupport: null });
     expect(resolutionNeeded(OPUS, record)).toBe(true);
     expect(governedGateRefusal(OPUS, record)?.suggestion).toContain("Try again");
+    // A setting resolution after save never asked about isn't a failed probe.
+    const saved = await resolveSavedBinding(services(() => accepted()).services, governed({ ...OPUS, reasoning: null }));
+    expect(saved.reasoningSupport).toBeNull();
+    expect(governedGateRefusal({ ...OPUS, reasoning: null }, saved)?.suggestion)
+      .toBe("Resolve the binding: the model hasn't been asked about reasoning yet. A governed gate resolves it before use.");
 
     expect(resolutionNeeded(OPUS, await temperatureRejectingRecordFor(OPUS))).toBe(false);
     expect(resolutionNeeded(SEEDED_BINDING, await resolvedRecordFor(SEEDED_BINDING))).toBe(false);

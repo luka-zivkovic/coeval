@@ -16,6 +16,7 @@ import {
 } from "@/lib/evaluator-lifecycle-api";
 import type { GovernedBatchSummary } from "@/lib/governed-review-api";
 import { executionBindingInputFromFields } from "../lib/execution-binding-draft.js";
+import { BindingResolutionStatus } from "./binding-resolution-status.js";
 
 export function EvaluatorLifecyclePanel({
   criterionId,
@@ -168,6 +169,7 @@ export function EvaluatorLifecyclePanel({
         <div className="mt-2 text-[10.5px] text-ink-3">
           implicit execution · {projection.implicitExecutionAllowed ? "allowed" : `denied (${projection.implicitDenialReasons.join(", ") || "not active"})`}
         </div>
+        {projection.currentEvent.state!=="retired" ? <BindingResolutionStatus skillVersionId={projection.lifecycle.skillVersionId} embedded /> : null}
       </div>)}
       {projectRole==="owner" ? <div className="grid gap-3 rounded-sm border border-rule-soft p-4 md:grid-cols-2">
         <div className="md:col-span-2 flex items-center gap-2 text-[12px] text-ink-2"><ShieldAlert className="size-4"/> {items.length ? "Create another governed candidate" : "Create the first governed candidate"}</div>

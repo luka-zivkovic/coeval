@@ -142,6 +142,15 @@ probes after save (CURRENT). A check against a custom endpoint reaches the
 URL the owner names, as the saved binding's calls would; restricting which
 hosts a custom endpoint may name is not yet enforced (CURRENT).
 
+The author sees a version's resolution on its version page and in the
+evaluator lifecycle panel (`GET /api/evaluator-lifecycles/:id/resolution`):
+the status, every probe of the latest attempt with what it sent and how the
+model answered, and whether the binding can pass a governed gate, with the
+provider's message and what to change where it can't. An owner can resolve
+on demand (`POST` on the same route) where resolving could change the
+record; a failed binding stays failed. The in-memory demo keeps no
+resolution records, so it shows none.
+
 Binary provider output is pass, fail, or ambiguous. Pass and fail are the two
 classification outcomes; ambiguous is an explicit evaluator abstention. The
 ordinary path routes it to needs-review/exception surfaces, while sealed

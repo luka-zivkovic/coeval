@@ -340,12 +340,26 @@ describe("evaluator lifecycle API boundary", () => {
       vi.mocked(repo.getGovernedBinding).mockResolvedValue({ binding: mockGoverned, record: null });
       const read = await router(repo).request("/skill-version/resolution");
       expect(read.status).toBe(200);
-      await expect(read.json()).resolves.toEqual({ skillVersionId: "skill-version", record: null });
+      // The author sees the record, their role, and why the binding can't pass a governed gate yet.
+      await expect(read.json()).resolves.toEqual({
+        skillVersionId: "skill-version",
+        projectRole: "owner",
+        record: null,
+        gateRefusal: {
+          message: "The execution binding can't pass a governed gate: the execution binding is unresolved, not resolved",
+          problems: ["the execution binding is unresolved, not resolved"],
+          providerMessage: null,
+          suggestion: "Try again once the provider is reachable with a working credential."
+        },
+        resolvable: true
+      });
 
       expect((await post(router(repo, null), "/skill-version/resolution", {})).status).toBe(501);
       const resolved = await post(router(repo), "/skill-version/resolution", {});
       expect(resolved.status).toBe(200);
-      await expect(resolved.json()).resolves.toMatchObject({ record: { status: "resolved" } });
+      await expect(resolved.json()).resolves.toMatchObject({ projectRole: "owner", record: { status: "resolved" }, resolvable: false });
+      // Without probe access, a read says resolving now couldn't change anything.
+      await expect((await router(repo, null).request("/skill-version/resolution")).json()).resolves.toMatchObject({ resolvable: false });
       expect(repo.recordResolution).toHaveBeenCalledWith(expect.objectContaining({ triggerKind: "on_demand" }), expect.anything());
 
       vi.mocked(repo.getGovernedBinding).mockResolvedValue(null);
