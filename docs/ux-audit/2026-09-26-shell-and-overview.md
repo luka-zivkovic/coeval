@@ -7,6 +7,13 @@ settled on 2026-09-26 by taking the recommended options; see
 
 Last reviewed: 2026-09-26 · code at `2c82321`
 
+Vocabulary: findings describe today's UI in the onboarding contract's words
+(Run, Check, Result), which were TARGET when this round was written.
+Proposals, blueprints, the naming table, and decisions use the single
+vocabulary of [ADR-0015](../decisions/0015-one-vocabulary-and-two-display-modes.md)
+(Proposed): evaluator, rubric, case, assessment, golden set, and review queue,
+in both of its display modes.
+
 This is round 1 of a page-by-page UX audit of the web app (`apps/web`). It
 covers:
 
@@ -94,7 +101,7 @@ Later rounds add files to this folder; see [Next rounds](#next-rounds).
 | 5 | Guided surfaces name the evaluator four ways and the human queue five ways on the production Overview (six counting provisional), against the product-language contract. (O4, O8) | 3 | fix (D2, D11) |
 | 6 | The production Overview has no dominant element. The only filled button and the attention list are in the last card, below the fold. (O3) | 3 | fix |
 | 7 | Shell error states mislead. A 401 leaves the page loading with no way back to sign-in. A 500 reads as a lost internet connection. (S6) | 2 | fix |
-| 8 | Guided display shows the model binding, and bench projects are labelled "production". (O7, O9) | 2 | fix |
+| 8 | The Overview's Check card shows the model twice, and bench projects are labelled "production". (O7, O9) | 2 | fix |
 
 ---
 
@@ -103,7 +110,7 @@ Later rounds add files to this folder; see [Next rounds](#next-rounds).
 ### Job and structure
 
 Job line: on every signed-in page, the quality owner **knows which project,
-Check, and page they are on and can reach any stage of the evaluator
+criterion, and page they are on and can reach any stage of the evaluator
 lifecycle in one move**, so that **they never act on the wrong evidence**.
 
 `page-structure` has no archetype for a shell. I assessed it with:
@@ -270,7 +277,7 @@ Error (what failed, what the user can do, and only the data that did load).
 
 Proposal:
 
-- label the count "Runs imported", with no 7-day count (D7);
+- label the count "traces imported", with no 7-day count (D7);
 - show placeholders, not zeros, until the dashboard loads;
 - hide the stats on error.
 
@@ -329,7 +336,7 @@ Sev 2 · CURRENT · *fix*
   the page says the connection is down.
 - **Loading.** The shell's loading message (`root-layout.tsx:216-219`) is
   plain text in a box. In Guided display it leads with "criterion" and
-  "evaluator".
+  "evaluator", which ADR-0015 (Proposed) would make the right words.
 - **Unreachable branches.** `/` and most other routes are criterion-scoped
   (`lib/criterion-selection.ts:5-13`), so the shell replaces the page before
   the screens' own branches can render. These are therefore unreachable:
@@ -378,8 +385,9 @@ ungoverned" onto two lines.
 On the day-0 Overview in Guided display, the sidebar lists "Criteria",
 "Golden set", and "Human truth · governed". The contract asks that first-run
 screens not *lead* with "criterion" or "golden" (TARGET,
-`docs/beginner-onboarding-journey.md` › Product language). D5 treats
-persistent navigation as leading.
+`docs/beginner-onboarding-journey.md` › Product language). ADR-0015
+(Proposed) drops that rule: "criterion" and "golden set" are the vocabulary,
+and Beginner mode explains them (D5).
 
 - TARGET: the separation itself is required. See `PRODUCT.md` principles 1
   and 10, and the intent comment at `sidebar.tsx:49-51`: a trace count or
@@ -447,7 +455,8 @@ flow), set in the shell.
 ### Job line and archetype
 
 On the Overview, the quality owner **notices what is waiting on them and the
-one next step for the selected Check**, so that **they can go and act on it**.
+one next step for the selected evaluator**, so that **they can go and act on
+it**.
 
 | Journey state (`lib/journey.ts:27-32`) | Screen | Leading archetype |
 |---|---|---|
@@ -608,7 +617,7 @@ promises protection, but its button goes to triage. ASSUMPTION: the intent is
 Rule: `labels.md` › Buttons and actions (say what happens). This is also the
 `user-flow` leading idea: every step keeps the scent of what happens next.
 
-Proposal: label the button by its outcome, for example "Review 7 Results to
+Proposal: label the button by its outcome, for example "Review 7 cases to
 protect". Alternatively, let the next-action zone own triage and keep Act 3's
 button for protection.
 
@@ -644,7 +653,7 @@ Proposal:
 
 ### O7. Guided display shows the model binding
 
-Sev 2 · CURRENT · *fix*
+Sev 1 · CURRENT · *fix* · narrowed by ADR-0015
 
 The Check card prints two technical lines in every display
 (`screens/dashboard.tsx:412-422`):
@@ -657,13 +666,13 @@ The Check card prints two technical lines in every display
 Only "Too strict / lenient" is marked `dev-only`. Guided promises to hide
 "secondary diagnostics and technical details" (`lib/display-mode.ts:15`).
 
-TARGET: the contract files model bindings, versions, and digests under
-"Technical details", which are "available for inspection without blocking the
-default journey". It also says such terms "remain exact on Technical surfaces
-and in evidence" (`docs/beginner-onboarding-journey.md` › Product language).
+This was Sev 2 against Guided display's promise. ADR-0015 (Proposed) keeps
+technical detail in both of its display modes, so the binding stays on the
+card. What remains is repetition: the model appears on its own line and again
+inside the binding.
 
-Proposal: move Model and Binding into `.dev-only`. Keep the name, status,
-agreement, and owner.
+Proposal: show the execution binding once, model first. Beginner mode adds a
+one-line explanation of what a binding is.
 
 ### O8. Terminology on Guided surfaces
 
@@ -706,6 +715,10 @@ where "evaluator" is correct. By number of strings: "evaluator" 47, "judge"
 contract's.
 
 Rule: `labels.md` › Terminology; `ui-naming` step 0.
+
+ADR-0015 (Proposed) would replace the contract's Guided vocabulary with the
+glossary's terms in both display modes, so the inconsistency is fixed with one
+name per concept rather than two.
 
 Proposal: the [naming table](#naming-proposal) below.
 
@@ -778,7 +791,7 @@ competing visually with it."
 Rule: `archetypes.md` › Empty or first-run ("One primary action, never a tour of
 features").
 
-Proposal: keep the primary and one "Other ways to bring a Run" disclosure for
+Proposal: keep the primary and one "Other ways to add traces" disclosure for
 the tracer, API, and agent paths. Cut each explanation to one line.
 
 ### O12. Provisional sign-off is one click next to the primary
@@ -804,8 +817,8 @@ Results to the tracing platform.
 - Rule: `placement.md` › Universal rules (keep consequential options apart from
   benign ones); `decisions.md` › Confirmation, undo, or nothing.
 - Proposal (decided in D4): add a confirmation that names the effect, such as
-  "Sign off Check v0.1.0? Its Results stop being provisional." Add the
-  write-back sentence only if the check above confirms it.
+  "Sign off evaluator v0.1.0? Its assessments stop being provisional." Add
+  the write-back sentence only if the check above confirms it.
 
 ### O13. Governed evidence is absent from the Overview
 
@@ -842,29 +855,29 @@ main loop visible from the home page.
 
 *Proposal; not built.* The shell is unchanged apart from S1–S5.
 
-Desktop, tracing, 7 Results waiting:
+Desktop, tracing, 7 cases waiting for review:
 
 ```text
 Project / Overview                                       [+ Import trace]     ← topbar
 ───────────────────────────────────────────────────────────────────────────
 Overview                                             Data as of Apr 30, 20:00
-Support Answer Quality · Check v1.2.0 · active
+Support Answer Quality · evaluator v1.2.0 · active
 ┌─ Next ──────────────────────────────────────────────────────────────────┐
-│ 7 Results are waiting on a person.               [ Review 7 Results → ] │ dominant
-│ ✓ Choose a Check    ✓ See Results    ● Protect examples · 2 of 5        │
+│ 7 cases are waiting for review.                    [ Review 7 cases → ] │ dominant
+│ ✓ Define the evaluator  ✓ Review assessments  ● Grow the golden set 2/5 │
 └─────────────────────────────────────────────────────────────────────────┘
-Waiting on a person · showing 5 of 7                            Open queue →
-  When     Run                                   Check said   Why
+Review queue · showing 5 of 7                                   Open queue →
+  When     Case                                  Assessment   Why
   20:00    Refund request for duplicate charge   Fail         Answer cites a…
   …
-┌ Runs imported ┐┌ Latest Results ───────┐┌ Agreement ─────────┐┌ Sync-back ┐
-│ 1,248         ││ 1,196 · 87% pass      ││ 86% · 2 protected  ││ 97%       │
-│ LangSmith     ││ ▇▇▇▇▇▇▇▇▇▇▇▇▇▆▂       ││ examples           ││ partial   │
-└───────────────┘└───────────────────────┘└────────────────────┘└───────────┘
-Failure categories                          │ Check
+┌ Traces imported ┐┌ Latest assessments ───┐┌ Golden set ──────┐┌ Sync-back ┐
+│ 1,248           ││ 1,196 · 87% pass      ││ 86% agreement    ││ 97%       │
+│ LangSmith       ││ ▇▇▇▇▇▇▇▇▇▇▇▇▇▆▂       ││ 2 golden cases   ││ partial   │
+└─────────────────┘└───────────────────────┘└──────────────────┘└───────────┘
+Failure categories                          │ Evaluator
   Unsupported promise   41   high volume    │ Support Answer Quality
   Policy misquote       22   moderate       │ v1.2.0 · active · Owner: Product Lead
-  Missing escalation     9   low            │ [Open Check]   Technical: model, binding
+  Missing escalation     9   low            │ [Open evaluator] · claude-sonnet-4-6
 ───────────────────────────────────────────────────────────────────────────
 Governed evidence · status only                                    (O13, D3)
   Analysis study: closed · Human truth: 1 revision · Calibration: not admissible
@@ -877,19 +890,19 @@ Narrow (390 px), same content, stacked in job order:
 Overview · as of Apr 30, 20:00
 Support Answer Quality · v1.2.0 active
 ┌───────────────────────────────┐
-│ 7 Results are waiting on a    │
-│ person.                       │
-│ [ Review 7 Results → ]        │
-│ ✓ Check  ✓ Results  ● 2 of 5  │
+│ 7 cases are waiting for       │
+│ review.                       │
+│ [ Review 7 cases → ]          │
+│ ✓ Define ✓ Review ● Grow 2/5  │
 └───────────────────────────────┘
-Waiting on a person · 5 of 7
+Review queue · 5 of 7
   Refund request for dup…  Fail
   Apr 30, 20:00
   …                  Open queue →
-[Runs 1,248   ] [Results 1,196 ]
-[Agreement 86%] [Sync-back 97% ]
+[Traces 1,248  ] [Assessed 1,196]
+[Golden set 86%] [Sync-back 97% ]
 Failure categories (stacked list)
-Check summary
+Evaluator summary
 Governed evidence (D3)
 ```
 
@@ -898,12 +911,12 @@ Governed evidence (D3)
 | Zone | Contents | Why |
 |---|---|---|
 | Location (topbar) | Breadcrumb `Project / Overview` with links; Import trace | S1, S2; `navigation.md` › Location |
-| Header | `h1` Overview; the Check's name and status beside it; data as of | O1; `placement.md` › Header zone contents (status beside the title) |
-| Next *(dominant)* | One sentence, one primary button, and the loop strip using the sidebar's act names | O2–O4; `archetypes.md` › Dashboard; contract: one primary per state |
-| Waiting | The first 5 waiting Results, "showing 5 of N", and an Open queue link | `archetypes.md` › Dashboard (attention list); `states.md` › Partial |
-| Health | 3–4 tiles of equal weight, each linking to where the user acts; the distribution bar inside the Results tile | `archetypes.md` › Dashboard |
+| Header | `h1` Overview; the evaluator's name and status beside it; data as of | O1; `placement.md` › Header zone contents (status beside the title) |
+| Next *(dominant)* | One sentence, one primary button, and the loop strip using the sidebar's stage names | O2–O4; `archetypes.md` › Dashboard; contract: one primary per state |
+| Waiting | The first 5 cases in the review queue, "showing 5 of N", and an Open queue link | `archetypes.md` › Dashboard (attention list); `states.md` › Partial |
+| Health | 3–4 tiles of equal weight, each linking to where the user acts; the distribution bar inside the assessments tile | `archetypes.md` › Dashboard |
 | Breakdown | Failure categories, still with no similarity claim | `PRODUCT.md` principle 9 (TARGET) |
-| Check | Name, mapped status, owner, and agreement; model and binding in Technical only | O7, O9 |
+| Evaluator | Name, mapped status, owner, golden-set agreement, and the execution binding once | O7, O9 |
 | Governed evidence | Status only, visually separate | O13, D3; `PRODUCT.md` principles 1 and 10 |
 
 Removed:
@@ -916,15 +929,15 @@ Removed:
 
 **Placement decisions**
 
-1. **One filled button.** It reads "Review N Results", or, when nothing is
-   waiting, the first incomplete act's action. It goes at the top, in Next.
+1. **One filled button.** It reads "Review N cases", or, when nothing is
+   waiting, the first incomplete stage's action. It goes at the top, in Next.
    - `placement.md` › Universal rules.
    - The dashboard exception applies (`archetypes.md` › Dashboard): the
      Overview is the launch point for the loop's next task.
 2. **"Open queue" is a text link** in the Waiting header, and clicking a row
-   opens that Run (`placement.md` › Row and item actions).
-3. **The Check's status sits beside its name in the header**, not in a chip
-   inside a card (`placement.md` › Header zone contents).
+   opens that case (`placement.md` › Row and item actions).
+3. **The evaluator's status sits beside its name in the header**, not in a
+   chip inside a card (`placement.md` › Header zone contents).
 4. **Provisional sign-off is a separate secondary action** with a confirmation
    that names its effect (O12; `placement.md` › Universal rules;
    `decisions.md` › Confirmation, undo, or nothing).
@@ -935,11 +948,11 @@ Removed:
 
 | Zone | Empty | Loading | Partial | Error |
 |---|---|---|---|---|
-| Next | Nothing waiting and every act done: "Nothing is waiting on a person." with the loop strip and no primary | One-line skeleton and a disabled button | — | "Couldn't load the Overview." with Retry and whatever did load; never zeros |
-| Waiting | "Nothing is waiting on a person. Failed or ambiguous Results appear here." | Five-row skeleton | Fewer than 5 rows: no "showing" line | Inline "Couldn't load waiting Results" with Retry |
+| Next | Nothing waiting and every stage done: "Nothing is waiting for review." with the loop strip and no primary | One-line skeleton and a disabled button | — | "Couldn't load the Overview." with Retry and whatever did load; never zeros |
+| Waiting | "Nothing is waiting for review. Cases with a failed or ambiguous assessment appear here." | Five-row skeleton | Fewer than 5 rows: no "showing" line | Inline "Couldn't load the review queue" with Retry |
 | Health | Day 0 uses the first-run layout instead | Tile skeletons; numbers show "—", never "0" | A tile with no source says why (a manual import has no sync-back) | "Unavailable" in the tile itself |
-| Breakdown | "No failure categories yet. They appear when the Check returns one." | Table skeleton | One or two rows are fine | Inline retry |
-| Check | — | Skeleton | Starter versions show "Starter · unvalidated" (contract) | Inline retry |
+| Breakdown | "No failure categories yet. They appear when the evaluator returns one." | Table skeleton | One or two rows are fine | Inline retry |
+| Evaluator | — | Skeleton | Starter versions show "Starter · unvalidated" (contract) | Inline retry |
 | Governed evidence | "No analysis study yet" with a link to Analyze | Skeleton | Each item not yet started says "not started" | Inline retry |
 
 ### Day 0 and provisional (differences from production)
@@ -947,15 +960,15 @@ Removed:
 Day 0, first-run archetype:
 
 ```text
-Overview                                  eyebrow: New project · no Runs yet
-Get your first Result from one recorded Run.
+Overview                                  eyebrow: New project · no traces yet
+Get your first assessment from one trace.
 ┌ Save your project key · shown once ────────── [Copy key]  [I saved it] ┐   only while unsaved
 └────────────────────────────────────────────────────────────────────────┘
 Setup · 0 of 3
-  ① Bring one Run                  [ Add a recorded Run ]   Set up without a Run
-  ② Choose one thing to Check
-  ③ See the first Result
-▸ Other ways to bring a Run: connect LangSmith or Langfuse · call the API · ask your AI agent
+  ① Add one trace                 [ Import a trace ]   Set up without a trace
+  ② Define the evaluator
+  ③ See the first assessment
+▸ Other ways to add traces: connect LangSmith or Langfuse · call the API · ask your AI agent
 What "starter" means, in one line · What Rubrist can see, in one line
 ```
 
@@ -963,56 +976,60 @@ Provisional:
 
 ```text
 Overview                                  eyebrow: First import · LangSmith
-12 Runs imported; the starter Check returned 10 Results.   [Provisional]
-Results stay provisional until an owner signs off the Review guide.
-  [ Review the Check ]                               Sign off as is…  (confirms)
-Latest Result (stacks on phones)
+12 traces imported; the starter evaluator assessed 10 cases.   [Provisional]
+Assessments stay provisional until an owner signs off the rubric.
+  [ Review the evaluator ]                           Sign off as is…  (confirms)
+Latest assessment (stacks on phones)
 Setup · 2 of 3 (step 2 current)
 ```
 
 ### Naming proposal
 
-In `ui-naming` format. Each row names a concept once for Guided display and
-once for Technical display. Rules are `labels.md` › Terminology and the
-contract's Product language table.
+In `ui-naming` format. Each row names a concept once, the same in both of
+ADR-0015's display modes. Rules are `labels.md` › Terminology and
+`docs/glossary.md`.
 
-| Concept | Current names (where) | Proposed: Guided / Technical | Status |
+| Concept | Current names (where) | Proposed | Status |
 |---|---|---|---|
-| The evaluator | Check (sentence, button); Skill (card title, "Skill said", breadcrumb, "Skill owner"); evaluator; judge | Check / evaluator | rename |
-| Its rubric | Review guide (nav); guide; starter guide; rubric; breadcrumb "Skill" | Review guide / rubric | keep; fix the breadcrumb |
-| Unit of evidence | traces, Runs, cases, examples | Run / trace or case; bench uses "example" | rename (D11) |
-| The evaluator's output | Result; verdict; "Skill said" | Result / verdict; column "Check said" | rename |
-| Waiting queue | Exceptions; Needs a human; waiting on a person; Waiting on a reviewer; Humans next; Need a closer look (provisional) | Waiting on a person / Exceptions | rename (D2) |
-| Ungoverned human rulings | Legacy human checks | Corrections · ungoverned, from the contract's "Correct this result" | rename (D11) |
-| Regression set | Golden set; golden cases; Golden-set agreement; Protected examples; Guard known failures | Protected examples / Golden set | rename |
-| Loop steps | Three sets (O2) | Setup: three numbered steps. Loop: "Choose a Check", "See Results", "Protect examples", unnumbered, identical in the sidebar and the Overview | rename (D1) |
+| The evaluator | Check (sentence, button); Skill (card title, "Skill said", breadcrumb, "Skill owner"); evaluator; judge | evaluator | rename |
+| Its rubric | Review guide (nav); guide; starter guide; rubric; breadcrumb "Skill" | rubric | rename |
+| Unit of evidence | traces, Runs, cases, examples | case; its source is a trace, or an example in bench projects | rename (D11) |
+| The evaluator's output | Result; verdict; "Skill said" | assessment; column "Assessment" | rename |
+| Waiting queue | Exceptions; Needs a human; waiting on a person; Waiting on a reviewer; Humans next; Need a closer look (provisional) | review queue | rename (D2) |
+| Ungoverned human rulings | Legacy human checks | ungoverned human labels | rename (D11) |
+| Regression set | Golden set; golden cases; Golden-set agreement; Protected examples; Guard known failures | golden set, whose members are golden cases | rename |
+| Loop steps | Three sets (O2) | Setup, numbered: "Add one trace", "Define the evaluator", "See the first assessment". Loop, unnumbered and the same in the sidebar and the Overview: "Define the evaluator", "Review assessments", "Grow the golden set" | rename (D1) |
 | This page | Overview; Project overview; "Monday morning" (dead loading title); project dashboard | Overview | rename |
-| Version status | Raw `status` enum | Copy mapped per mode (O9) | rename |
-| Imported count | "traces this week" (topbar); "Traces imported" (KPI) | Runs imported | rename |
-| Crumb casing | First Result | First result | rename |
+| Version status | Raw `status` enum | One label per status, as in round 3's D6 (O9) | rename |
+| Imported count | "traces this week" (topbar); "Traces imported" (KPI) | traces imported | rename |
+| Crumb casing | First Result | First assessment | rename |
 
-These names are decided (D1, D2, D11). They become TARGET only when the queue
-name, the loop step names, and the rejected synonyms are added to the
-contract's Product language table, which is effectively Rubrist's interface
-glossary.
+These names are decided (D1, D2, D11) and follow ADR-0015 (Proposed). They
+become TARGET when that ADR is accepted and the onboarding contract's Product
+language section is rewritten to match.
 
 ## Decisions
 
-Decided 2026-09-26: the founder asked to take the recommended options. These
-are design decisions for implementing this audit, not product authority.
+Decided 2026-09-26: the founder asked to take the recommended options. Later
+the same day, the founder chose one vocabulary and two display modes
+([ADR-0015](../decisions/0015-one-vocabulary-and-two-display-modes.md),
+Proposed), so D1, D2, D5, D7, D10, and D11 use that ADR's terms. These are
+design decisions for implementing this audit, not product authority.
 `PRODUCT.md`, the accepted ADRs, and the onboarding contract are unchanged.
 Items 9–11 were marked *decide* in their findings but were not in the open
 questions.
 
 1. **Loop and setup naming (O2).** Setup is the ledger's three numbered
-   steps. It shows until complete, then collapses to a one-line receipt. The
-   loop is three unnumbered stages with the same names in the sidebar and on
-   the Overview: "Choose a Check", "See Results", and "Protect examples".
-   Bench projects get the loop strip once setup is complete (O6). Only setup
-   is numbered, so no screen shows two numbered sequences.
-2. **The queue's name (O4, O8).** "Waiting on a person" in Guided display and
-   "Exceptions" in Technical display, the same in the nav, crumb, title, and
-   eyebrow. Round 2's T8 uses the same names.
+   steps: "Add one trace" ("Add one example" in bench projects), "Define the
+   evaluator", and "See the first assessment". It shows until complete, then
+   collapses to a one-line receipt. The loop is three unnumbered stages with
+   the same names in the sidebar and on the Overview: "Define the evaluator",
+   "Review assessments", and "Grow the golden set". Bench projects get the
+   loop strip once setup is complete (O6). Only setup is numbered, so no
+   screen shows two numbered sequences.
+2. **The queue's name (O4, O8).** "Review queue" in both display modes, the
+   same in the nav, crumb, title, and eyebrow. Round 2's T8 uses the same
+   name.
 3. **Governed evidence on the Overview (O13).** Add the status-only zone to the
    production Overview, visually separate from the operational zones. It shows
    whether an analysis study is open, the number of truth revisions, and
@@ -1022,32 +1039,32 @@ questions.
    the Analyze and Human truth round should confirm where they come from.
 4. **Sign-off (O12).** Keep sign-off on the Overview as a separate secondary
    action, behind an `AlertDialog` (*add*) that names its effect. Write that
-   copy from verified behavior: O12 now records a doubt about when Results
-   sync back.
+   copy from verified behavior: O12 now records a doubt about when
+   assessments sync back.
 5. **Sidebar grouping (S7).** Group by evidence class: the ungoverned loop,
    governed evidence, and system. Order the loop's items by stage, without
-   numbers, and drop the per-item governance suffixes. Persistent navigation
-   counts as leading, so Guided display names the regression set "Protected
-   examples" (D11) and hides "Criteria" during setup unless the project has a
-   second criterion. Tree-test 5–8 real tasks before shipping.
+   numbers, and drop the per-item governance suffixes. Nav labels use
+   ADR-0015's terms, such as "Review queue" and "Golden set", and no display
+   mode hides an item. Tree-test 5–8 real tasks before shipping.
 6. **Criterion scope (S5).** When a project has more than one criterion, the
    breadcrumb reads `Project / Criterion / Page`, and the criterion crumb is
    the switcher (`DropdownMenu`, *add*). With one criterion, the crumb is
    omitted.
-7. **Topbar count (S4).** "Imported" is enough: the stat reads "N Runs
-   imported", with no 7-day count. Pages other than the Overview keep the
-   topbar stats, hidden below `sm`.
+7. **Topbar count (S4).** "Imported" is enough: the stat reads "N traces
+   imported" ("N examples added" in bench projects), with no 7-day count.
+   Pages other than the Overview keep the topbar stats, hidden below `sm`.
 8. **Content widths (S9).** One width token per archetype, set in the shell:
    one for list, detail, and dashboard pages, one for settings, and one for
    flows.
 9. **The Overview's title (O1).** `h1` "Overview" in every journey state, with
    the state in the eyebrow and the lead sentence.
-10. **Ways to start on day 0 (O11).** One primary, "Add a recorded Run", and
-    one "Other ways to bring a Run" disclosure for the tracer, API, and agent
+10. **Ways to start on day 0 (O11).** One primary, "Import a trace", and one
+    "Other ways to add traces" disclosure for the tracer, API, and agent
     paths. Each explanation is cut to one line.
-11. **The naming table (O8).** Adopt it as written. Bench projects say
-    "example" for the unit of evidence, and ungoverned human rulings are
-    "Corrections · ungoverned".
+11. **The naming table (O8).** Adopt it as written. It follows ADR-0015: one
+    term per concept in both display modes. A case's source is a trace, or an
+    example in bench projects, and labels a reviewer records while seeing the
+    assessment are "ungoverned human labels".
 
 ## Next rounds
 
@@ -1056,8 +1073,8 @@ Each round is one page or flow, in this order:
 1. **Case detail (`/cases/:id`) and the Exceptions queue.** Done in
    [round 2](2026-09-26-triage-flow.md), which audits the whole triage flow,
    the review player included.
-2. **Review guide and Check** (`/skill`, `/skill/edit`, versions, compare).
-   This is the most-renamed destination.
+2. **The evaluator pages** (`/skill`, `/skill/edit`, versions, compare). Done
+   in [round 3](2026-09-26-check-pages.md).
 3. **First run, end to end** (`/skill/edit?first=1` → `/first-result`),
    checked against the contract's seven steps.
 4. **Traces list and import.**

@@ -7,6 +7,13 @@ settled on 2026-09-26 by taking the recommended options; see
 
 Last reviewed: 2026-09-26 · code at `2c82321`
 
+Vocabulary: findings describe today's UI in the onboarding contract's words
+(Run, Check, Result), which were TARGET when this round was written.
+Proposals, the flow spec, blueprints, and decisions use the single vocabulary
+of [ADR-0015](../decisions/0015-one-vocabulary-and-two-display-modes.md)
+(Proposed): case, evaluator, assessment, rubric, golden set, and review queue,
+in both of its display modes.
+
 This round covers the attention flow that the Overview hands off to:
 
 - the queue at `/exceptions`;
@@ -184,10 +191,10 @@ response are Technical-only (`components/rubrist/judge-call-panel.tsx:86-116`).
   `archetypes.md` › Detail (the primary action is the object's most common
   next step); `placement.md` › Universal rules (reach on touch).
 - Proposal: put the decision card first in the right column and make it
-  sticky on desktop (`lg:sticky`). Show the Check's Result and reasoning
-  inside it. Collapse Judge call and Decision history below it, open by
-  default only in Technical display. On phones, use a sticky bottom action bar
-  with the two decisions (see the blueprint).
+  sticky on desktop (`lg:sticky`). Show the evaluator's assessment and
+  reasoning inside it. Collapse Judge call and Decision history below it in
+  both display modes. On phones, use a sticky bottom action bar with the two
+  decisions (see the blueprint).
 
 ### T2. The page's only filled button is not the decision
 
@@ -232,9 +239,9 @@ Rule: `placement.md` › In shadcn apps (one filled button per page state);
 
 Proposal:
 
-- Before a ruling, the filled button is "Accept result".
+- Before a ruling, the filled button is "Accept assessment".
 - After a ruling, the decision card's next step is the banner's action for
-  that Result (for a failed one, "Prevent this next time"), and it becomes
+  that assessment (for a failed one, "Prevent this next time"), and it becomes
   filled. The banner moves into that post-ruling state, and "Not now" stays.
 
 ### T3. Two surfaces for one decision, and a round trip per item
@@ -292,8 +299,8 @@ last decision); `decisions.md` › In shadcn apps (sonner with an Undo action).
 
 Proposal: add shadcn's `Sonner` (*add*; it wraps the `sonner` package) and
 mount its `Toaster` once in the root layout. Then call
-`toast("Result accepted", { action: { label: "Change", onClick } })`.
-"Change" moves the cursor back and opens "Correct this result", and the
+`toast("Assessment accepted", { action: { label: "Change", onClick } })`.
+"Change" moves the cursor back and opens "Correct assessment", and the
 correction appends a superseding ruling (D2). Rulings are append-only rows,
 and no record returns a case to "not reviewed"
 (`apps/api/src/routes/legacy-evidence-administration.ts:129-132`), so the
@@ -322,8 +329,8 @@ Rule: `layouts.md` › Table page (narrow viewport: "cards or a stacked
 key-value list; keep sort and filter as a sheet"); `shadcn.md` › Responsive
 rules.
 
-Proposal: below `md`, render each row as a stacked item: title, Result chip,
-category, and one action. Put the filters in a `Sheet` (*add*).
+Proposal: below `md`, render each row as a stacked item: title, assessment
+chip, category, and one action. Put the filters in a `Sheet` (*add*).
 
 ### T6. Scent breaks along the flow
 
@@ -352,13 +359,13 @@ destination).
 
 Proposal:
 
-- Open the Review guide in a `Sheet` (*add*) beside the queue, from a banner
-  button named "Open the Review guide".
+- Open the rubric in a `Sheet` (*add*) beside the queue. That makes the
+  banner's current label, "Open rubric alongside", accurate.
 - Pass the corrected case ids to the editor, as the flow's landing proposes.
-- Keep Reliability as the home for reviewer disagreements, and show it in
-  Guided display when this card appears (D5).
+- Keep Reliability as the home for reviewer disagreements, listed in the nav
+  in both display modes (D5).
 - Carry `?from=` in the URL, with a fallback the nav shows.
-- Link the note to the Review guide.
+- Link the note to the rubric.
 
 ### T7. Queue structure
 
@@ -398,8 +405,8 @@ Proposal:
   inline on the row.
 - Add "Clear filters" to the No matches state.
 - Humanize category labels by formatting only, with the exact value in a
-  `Tooltip` (*add*) and verbatim in Technical display (D4). The code keeps
-  exact evaluator categories on purpose, so no label is invented.
+  `Tooltip` (*add*) (D4). The code keeps exact evaluator categories on
+  purpose, so no label is invented.
 
 ### T8. Naming along the flow
 
@@ -407,7 +414,9 @@ Sev 3 · CURRENT vs TARGET · *fix* · decided in D3
 
 TARGET (`docs/beginner-onboarding-journey.md` › Product language): **Result**
 (the Check's output), **Correct this result** (the visible, ungoverned
-ruling), **Protected example** (a golden case), and **Check**.
+ruling), **Protected example** (a golden case), and **Check**. ADR-0015
+(Proposed) would replace these with the glossary's terms: assessment,
+"Correct assessment", golden case, and evaluator.
 
 CURRENT names:
 
@@ -428,19 +437,21 @@ I ran the scanner with the contract's glossary over the flow's five UI files:
 - `components/review-player.tsx`.
 
 It reports drift toward "judge" 4×, "Skill" 1×, "verdict" 7×, "golden" 8×,
-and "trace" 9× (the contract's Run).
+and "trace" 9× (the contract's Run). Against ADR-0015's vocabulary, "judge",
+"Skill", and "verdict" are still drift; "golden" is the chosen term, and
+"trace" is right where it names the imported source.
 
 Rule: `verbs.md` (a confirmation repeats the verb of the button that opened
 it); `labels.md` › Terminology.
 
-Proposal (Guided / Technical):
+Proposal (ADR-0015's vocabulary, the same in both display modes):
 
 | Element | Proposed |
 |---|---|
-| Queue | "Waiting on a person" / "Exceptions", as in round 1 |
-| Output card | "The Check's Result" / "Evaluator output" |
-| Columns | Result, The Check's note, Category |
-| Actions | "Accept result"; "Correct this result" submitting "Record correction"; "Add to protected examples" submitting the same words |
+| Queue | "Review queue", as in round 1 |
+| Output card | "Evaluator assessment" |
+| Columns | Assessment, Evaluator note, Category |
+| Actions | "Accept assessment"; "Correct assessment" submitting "Record correction"; "Add to golden set" submitting the same words |
 | Player status | "Not reviewed yet" and "Reviewed" |
 
 ### T9. Location inside the flow
@@ -449,12 +460,13 @@ Sev 2 · CURRENT · *fix* (extends S1–S3)
 
 - On `/review` and `/cases/:id`, the breadcrumb shows only the project, and
   no nav item is active. The queue's nav item should stay active through
-  the walk. The crumbs should read "Waiting on a person / Review" and
-  "Waiting on a person / ‹case title›".
-- The case page shows raw ids in Guided display (`screens/trace.tsx:132-134`).
-  Move them to `.dev-only`.
-- The document title stays "Rubrist". Set it to "Case 3 of 7 · Waiting on a
-  person · Rubrist".
+  the walk. The crumbs should read "Review queue / Review" and "Review queue /
+  ‹case title›".
+- The case page shows raw ids in its top bar, beside Back, in Guided display
+  (`screens/trace.tsx:132-134`). ADR-0015 keeps them in both display modes:
+  move them into the case's metadata line, with a copy button.
+- The document title stays "Rubrist". Set it to "Case 3 of 7 · Review queue ·
+  Rubrist".
 
 ### T10. Buttons that navigate instead of links
 
@@ -504,35 +516,35 @@ must carry what the destination needs (T3, T6).
 
 | Line | Value |
 |---|---|
-| Actor and goal | A reviewer rules on every Result that is waiting, fast and without losing context. |
-| Entry points | The Overview's next action, the queue's "Review N Results", and any queue row. |
+| Actor and goal | A reviewer rules on every assessment that is waiting, fast and without losing context. |
+| Entry points | The Overview's next action, the queue's "Review N cases", and any queue row. |
 | Success | Every item is ruled or deliberately skipped, and the reviewer is back where they started with a summary. |
-| Stakes | Rulings are append-only and correctable by a later ruling. Promotion to protected examples is a separate, rarer action. |
+| Stakes | Rulings are append-only and correctable by a later ruling. Promotion to the golden set is a separate, rarer action. |
 | Inputs | A decision per item. A reason only when correcting or promoting. |
 
 **Steps.**
 
 | Step | Asks or shows | Inputs and defaults | Validation | Back and exit | Progress | States |
 |---|---|---|---|---|---|---|
-| 1 Queue | Waiting Results, with filters | Category and Result filters, kept in the URL | — | Sidebar | "7 waiting" | Empty: "Nothing is waiting on a person" with a link to Runs. No matches: Clear filters. Loading: `Skeleton` rows (*add*). Error: `EmptyShell` (*Rubrist*) with Retry |
-| 2 Decide | The Run, the Check's Result and reasoning, and a link to the Review guide | Accept or Correct; no preselected choice | — | Prev and Next; Pause (Esc) keeps the position | "3 of 7" and a bar | Loading: skeleton inside the frame, with header and progress kept. Error: Retry, keeping the position. Already ruled: show the ruling and "Change ruling" |
-| 3 Correct | A new Result and a reason | Result choice; reason required | On submit | Cancel keeps the draft; Esc closes the form first | Unchanged | Error inline; the reason is kept |
+| 1 Queue | Waiting cases, with filters | Category and assessment filters, kept in the URL | — | Sidebar | "7 waiting" | Empty: "Nothing is waiting for review" with a link to Traces. No matches: Clear filters. Loading: `Skeleton` rows (*add*). Error: `EmptyShell` (*Rubrist*) with Retry |
+| 2 Decide | The case, the evaluator's assessment and reasoning, and a link to the rubric | Accept or Correct; no preselected choice | — | Prev and Next; Pause (Esc) keeps the position | "3 of 7" and a bar | Loading: skeleton inside the frame, with header and progress kept. Error: Retry, keeping the position. Already ruled: show the ruling and "Change ruling" |
+| 3 Correct | A corrected assessment label and a reason | Label choice; reason required | On submit | Cancel keeps the draft; Esc closes the form first | Unchanged | Error inline; the reason is kept |
 | 4 Summary | Decided, skipped, and still waiting | — | — | Primary returns to where the walk started | Done | Skipped > 0: "Review 2 skipped" |
 
 ```mermaid
 flowchart LR
-  O[Overview] -->|Review N Results| P
-  Q[Waiting on a person] -->|"Review N Results, or any row"| P[Decide: case i of N]
-  P -->|"Accept result (A)"| U[Toast: Result accepted, Change]
+  O[Overview] -->|Review N cases| P
+  Q[Review queue] -->|"Review N cases, or any row"| P[Decide: case i of N]
+  P -->|"Accept assessment (A)"| U[Toast: Assessment accepted, Change]
   U --> P
-  P -->|"Correct this result (C)"| F[Reason, then Record correction]
+  P -->|"Correct assessment (C)"| F[Reason, then Record correction]
   F --> P
   P -->|"Skip (S)"| P
   P -->|"Pause (Esc)"| Q
   P -->|last item decided| D[Summary]
   D -->|"primary: back to where the walk started"| Q
-  D -->|"N corrections: open the Review guide with these Results"| E[Review guide]
-  P -.->|"after a ruling: the Result's test step, e.g. Prevent this next time"| X[Trace-to-test builder]
+  D -->|"N corrections: open the rubric with these cases"| E[Rubric]
+  P -.->|"after a ruling: the assessment's test step, e.g. Prevent this next time"| X[Trace-to-test builder]
 ```
 
 **Decisions.**
@@ -542,8 +554,8 @@ flowchart LR
   actions, but an append-only ruling can be superseded, not undone.
 - **Correct:** the required reason is the deliberate step, so there is no
   extra confirmation.
-- **Add to protected examples:** a separate action, offered after a
-  ruling. It keeps its required reason.
+- **Add to golden set:** a separate action, offered after a ruling. It keeps
+  its required reason.
 - **Pause:** no guard, unless a reason draft is open. Then ask "Discard
   reason?" in an `AlertDialog` (*add*, rather than a tenth hand-built
   dialog), with Keep editing as the default (`decisions.md` › Back, Cancel,
@@ -553,7 +565,7 @@ flowchart LR
 
 **Landing.** The summary's primary returns to the queue when the walk started
 there, and to the Overview when it started there. Corrections offer the
-Review guide, seeded with those Results.
+rubric, seeded with those cases.
 
 **Screens for page-structure:** Queue (List), Decide (Detail with a task
 zone; one component serves `/review` and `/cases/:id`), Summary
@@ -566,34 +578,34 @@ zone; one component serves `/review` and `/cases/:id`), Summary
 Desktop:
 
 ```text
-Project / Waiting on a person / Refund promised outside policy             [+ Import trace]
+Project / Review queue / Refund promised outside policy                    [+ Import trace]
 ─────────────────────────────────────────────────────────────────────────────────────────
 ‹ Prev  Next ›    3 of 7  ▇▇▇▁▁▁▁    Category: policy grounding          Pause (Esc)
 Refund promised outside the 30-day policy                                  (h1)
-Captured Apr 30, 20:00 · open in LangSmith ↗
-┌ The Run ──────────────────────────────────┐ ┌ Decide (sticky) ────────────────────────┐
-│ Input   (formatted, JSON on request)      │ │ The Check says  FAIL                    │
+Case from a LangSmith trace · Apr 30, 20:00 · open in LangSmith ↗
+┌ The case ─────────────────────────────────┐ ┌ Decide (sticky) ────────────────────────┐
+│ Input   (formatted, JSON on request)      │ │ Evaluator assessment  FAIL              │
 │ Output  …                                 │ │ "The answer promises a refund the       │
 │ Steps ▸ (when supplied)                   │ │  policy does not allow."                │
-└───────────────────────────────────────────┘ │ Review guide · policy grounding ↗       │
-▸ Review guide excerpt                        │ [ Accept result  A ]     (filled)       │
-                                              │ [ Correct this result  C ]              │
+└───────────────────────────────────────────┘ │ Rubric · policy grounding ↗             │
+▸ Rubric excerpt                              │ [ Accept assessment  A ]  (filled)      │
+                                              │ [ Correct assessment  C ]               │
                                               │ Skip  S                                 │
                                               └─────────────────────────────────────────┘
-                                              ▸ Decision history (1) ▸ Judge call (Technical)
+                                              ▸ Decision history (1)  ▸ Judge call
 ```
 
 Narrow (390 px):
 
 ```text
-[☰] Waiting on a person / 3 of 7
+[☰] Review queue / 3 of 7
 Refund promised outside the 30-day policy
-The Check says FAIL: "The answer promises…"
-▸ The Run (input, output)
-▸ Review guide excerpt
+Assessment: FAIL · "The answer promises…"
+▸ The case (input, output)
+▸ Rubric excerpt
 ▸ Decision history
 ┌ sticky bottom bar ───────────────────────┐
-│ [ Correct ]            [ Accept result ] │
+│ [ Correct ]        [ Accept assessment ] │
 └──────────────────────────────────────────┘
 ```
 
@@ -601,19 +613,19 @@ The Check says FAIL: "The answer promises…"
 |---|---|---|
 | Location | Breadcrumb with the queue as parent; the queue's nav item active; document title with the position | T9; `navigation.md` › In shadcn apps |
 | Walk bar | Prev and Next, the position and progress, the scope, Pause | `patterns.md` › Triage a queue |
-| Evidence | The Run, formatted, with raw JSON on request; the Review guide excerpt | Everything the decision needs |
-| Decide *(sticky; the task zone)* | The Check's Result and reasoning, a link to the guide, one filled "Accept result", "Correct this result", Skip | T1, T2 |
-| After a ruling | The ruling, "Change ruling", and next steps: the Result's test step ("Prevent this next time" on a failed Result, "Protect this behavior" on a passing one), then "Add to protected examples" | T2 and D6; T8 (naming) |
-| History and technical | Decision history and Judge call, collapsed (open in Technical display) | O7 in round 1; `lib/display-mode.ts:15` |
+| Evidence | The case, formatted, with raw JSON on request; the rubric excerpt | Everything the decision needs |
+| Decide *(sticky; the task zone)* | The evaluator's assessment and reasoning, a link to the rubric, one filled "Accept assessment", "Correct assessment", Skip | T1, T2 |
+| After a ruling | The ruling, "Change ruling", and next steps: the assessment's test step ("Prevent this next time" on a failed assessment, "Protect this behavior" on a passing one), then "Add to golden set" | T2 and D6; T8 (naming) |
+| History and technical | Decision history and Judge call, collapsed in both display modes | O7 in round 1; ADR-0015 |
 
 ### Queue
 
 Desktop:
 
 ```text
-Project / Waiting on a person                                               [+ Import trace]
-Waiting on a person   (h1)   7 waiting · 3 ruled this week        [ Review 7 Results → ]
-[Category ▾ toggle group]  [Result ▾ toggle group]   Save as review session…
+Project / Review queue                                                      [+ Import trace]
+Review queue   (h1)   7 waiting · 3 ruled this week                 [ Review 7 cases → ]
+[Category ▾ toggle group]  [Assessment ▾ toggle group]   Save as review session…
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │ Refund promised outside the 30-day policy   FAIL   Policy grounding   note ▸   Review › │
 │ …                                                                                       │
@@ -621,13 +633,13 @@ Waiting on a person   (h1)   7 waiting · 3 ruled this week        [ Review 7 Re
 Reviewer disagreements · 1 → compare     ·     ▸ Ruled this week · 3 (append-only record)
 ```
 
-Narrow: each row stacks title, Result chip, and category; tapping it opens
-the Decide page at that row; the filters open in a `Sheet` (*add*).
+Narrow: each row stacks title, assessment chip, and category; tapping it
+opens the Decide page at that row; the filters open in a `Sheet` (*add*).
 
 | Zone | Empty | Loading | Partial | Error |
 |---|---|---|---|---|
-| List | "Nothing is waiting on a person. New Results the Check fails or finds ambiguous appear here." with a link to Runs (`EmptyShell`, *Rubrist*) | Five `Skeleton` rows (*add*) | Short list, no pagination | `EmptyShell` (*Rubrist*): "Couldn't load the queue" with Retry |
-| Filters | No matches: "No Results match these filters" with Clear filters | — | — | — |
+| List | "Nothing is waiting for review. Cases the evaluator fails or finds ambiguous appear here." with a link to Traces (`EmptyShell`, *Rubrist*) | Five `Skeleton` rows (*add*) | Short list, no pagination | `EmptyShell` (*Rubrist*): "Couldn't load the queue" with Retry |
+| Filters | No matches: "No cases match these filters" with Clear filters | — | — | — |
 | Ruled this week | "No rulings in the last 7 days" | `Skeleton` line (*add*) | — | Inline retry |
 
 Today the queue's error state is titled "API unavailable". It shows the raw
@@ -636,9 +648,12 @@ refresh.", and it has no Retry (`screens/exceptions.tsx:271-282`).
 
 ## Decisions
 
-Decided 2026-09-26: the founder asked to take the recommended options. These
-are design decisions for implementing this audit, not product authority.
-`PRODUCT.md`, the accepted ADRs, and the onboarding contract are unchanged.
+Decided 2026-09-26: the founder asked to take the recommended options. Later
+the same day, the founder chose one vocabulary and two display modes
+([ADR-0015](../decisions/0015-one-vocabulary-and-two-display-modes.md),
+Proposed), so D2–D6 use that ADR's terms. These are design decisions for
+implementing this audit, not product authority. `PRODUCT.md`, the accepted
+ADRs, and the onboarding contract are unchanged.
 
 1. **One decision surface (T3).** Every entry opens the player at the chosen
    row, within the current filtered list, with Prev and Next. `/cases/:id`
@@ -648,28 +663,27 @@ are design decisions for implementing this audit, not product authority.
    a new row, and no record returns a case to "not reviewed"
    (`apps/api/src/routes/legacy-evidence-administration.ts:129-132`). The
    toast therefore offers "Change", not "Undo". It returns to that case with
-   "Correct this result" open, and the correction appends a superseding
+   "Correct assessment" open, and the correction appends a superseding
    ruling. A true Undo would need a retraction record, which would change the
    evidence model and the κ history built on these rows; this audit does not
    propose one.
-3. **The queue's name (T8).** "Waiting on a person" in Guided display and
-   "Exceptions" in Technical display (round 1's D2), with the rest of T8's
-   table.
+3. **The queue's name (T8).** "Review queue" in both display modes (round 1's
+   D2), with the rest of T8's table.
 4. **Category labels (T7).** Humanize by formatting only, so
    `policy_grounding` becomes "Policy grounding"; never invent a name. The
-   exact value shows in a `Tooltip` (*add*) and verbatim in Technical display.
-5. **Reviewer disagreements (T6, T7).** Reliability stays their home. Guided
-   display shows its nav item whenever a disagreement exists, and the queue's
-   card becomes one line below the list, as in the queue blueprint.
+   exact value shows in a `Tooltip` (*add*) in both display modes.
+5. **Reviewer disagreements (T6, T7).** Reliability stays their home and is
+   listed in the nav in both display modes. The queue's card becomes one line
+   below the list, as in the queue blueprint.
 6. **Test creation (T2).** It follows the ruling, as the decision card's next
-   step. A test built before review would encode the Check's unreviewed
-   opinion. The contract lists these steps only as optional next steps after
+   step. A test built before review would encode the evaluator's unreviewed
+   assessment. The contract lists these steps only as optional next steps after
    first run (`docs/beginner-onboarding-journey.md` › Optional next steps).
 
 ## Next rounds
 
-1. The Review guide and Check pages (`/skill`, `/skill/edit`, versions,
-   compare).
+1. The evaluator pages (`/skill`, `/skill/edit`, versions, compare). Done in
+   [round 3](2026-09-26-check-pages.md).
 2. First run, end to end (`/skill/edit?first=1` → `/first-result`).
 3. Traces list and import.
 4. Analyze and Human truth, which needs Postgres 17.

@@ -1,4 +1,4 @@
-# UX audit 3: the Check pages (Review guide, editor, versions, compare)
+# UX audit 3: the evaluator pages (evaluator, editor, versions, compare)
 
 Status: **audit record, not product authority.** It records CURRENT
 observations and proposals for founder review. Its open questions were
@@ -7,9 +7,16 @@ settled on 2026-09-26 by taking the recommended options; see
 
 Last reviewed: 2026-09-26 · code at `2c82321`
 
+Vocabulary: findings quote today's UI words. Proposals, blueprints, and
+decisions use the single vocabulary of
+[ADR-0015](../decisions/0015-one-vocabulary-and-two-display-modes.md)
+(Proposed): evaluator, rubric, case, assessment, golden set, review queue,
+and regression check. It applies in both of that ADR's display modes,
+Beginner and Standard.
+
 This round covers the pages behind the Review guide nav item:
 
-- the Check page at `/skill`;
+- the evaluator page at `/skill`;
 - the editor at `/skill/edit`, with its regression-check outcomes;
 - version history at `/skill/versions` and one version at
   `/skill/versions/:id`;
@@ -75,19 +82,19 @@ marked *installed*, *add*, or *Rubrist*.
   these pages is marked ASSUMPTION.
 - **CURRENT intent.** `docs/architecture.md` (ARCH) for the regression gate.
 - **Rendering.** Demo stack at 1440×900 and 390×844 in Guided display, plus
-  Technical display for the version page. The demo Check is "Support Answer
+  Technical display for the version page. The demo evaluator is "Support Answer
   Quality" at v1.2.0 (current) with one earlier version, v1.1.0. The owner is
   the viewer, and the Golden set holds 2 cases.
 - **Synthetic states.** These came from `page.route` rewrites; no demo data
   was changed:
-  - the viewer as a member, and a Starter · unvalidated Check;
+  - the viewer as a member, and an evaluator marked "Starter · unvalidated";
   - a 5 s delay for the loading states, and a 500 for the error states;
   - the regression check's four outcomes. The save request returns a
     blocked (409), passed, or failed (201) result, or a queued version (202)
     whose regression record never arrives.
 - **Measurements** follow `review.md` §3, including the new split between
   clipped controls and controls behind a scroll.
-- **Vocabulary.** I ran `scan_labels.py` over the seven Check-page files,
+- **Vocabulary.** I ran `scan_labels.py` over the seven evaluator-page files,
   using a throwaway `UX.md` built from the contract's glossary, as in round 2.
   The files are `screens/skill.tsx`, `screens/skill-edit.tsx`,
   `screens/skill-edit/editor.tsx`, `screens/skill-edit/regression.tsx`,
@@ -103,13 +110,13 @@ marked *installed*, *add*, or *Rubrist*.
 | 3 | The editor discards unsaved work. A template click, "Reset", Cancel, Back, and Version history all drop typed text without asking. (C2) | 3 | medium | fix |
 | 4 | Opening the editor swaps an unavailable provider without asking, and the change review counts the swap as the owner's edit. (C13) | 3 | medium | fix |
 | 5 | On phones, the override button runs off the screen, and the version tables hide their evidence columns behind a sideways scroll. (C4) | 3 | medium | fix |
-| 6 | The version page is titled with the model name, leads with technical evidence, says "current" twice, and offers no next step. (C5) | 3 | medium | fix (D1, D5) |
+| 6 | The version page is titled with the model name, opens with the Judge Card before what changed, says "current" twice, and offers no next step. (C5) | 3 | medium | fix (D1, D5) |
 | 7 | The editor is reached through seven different labels, and status words come from legacy version status. (C12) | 3 | large | fix (D6) |
 | 8 | Load failures read as "Version not found" or "Nothing to compare yet". Failed evidence reads vanish or show as empty, and error states tell users to start the API. (C7) | 2 | large | fix |
 | 9 | Waits never end. The running check polls forever with no elapsed time, and a count can say "Loading…" indefinitely. (C6) | 2 | medium | fix |
 | 10 | The check's outcomes point away from the fix. A blocked result makes the override the filled button, and a failed check offers no Retry. (C8) | 2 | quick | fix (D2, D3) |
 | 11 | The editor buries the Review guide below four blocks. A chosen template looks like a primary, and save is enabled with nothing changed. (C9) | 2 | medium | fix (D4) |
-| 12 | The Check page's tabs are not in the URL. A metric doubles as a navigation button, and the guide's own heading repeats the title in bold. (C10) | 2 | medium | fix |
+| 12 | The evaluator page's tabs are not in the URL. A metric doubles as a navigation button, and the guide's own heading repeats the title in bold. (C10) | 2 | medium | fix |
 | 13 | Compare's pickers can trap a reversed pair that the page then asks you to swap. (C11) | 2 | quick | fix |
 
 ---
@@ -208,10 +215,10 @@ Rule: `states.md` › Rules ("show '—' for a missing value");
 
 Proposal:
 
-- Add a "no recorded check" gate state, neutral rather than the pass variant,
-  for every version without a regression run.
-- In compare, show "—" with "no recorded run" for any total that includes an
-  unrecorded hop, never a bare 0.
+- Add a "No recorded regression check" gate state, neutral rather than the
+  pass variant, for every version without a regression run.
+- In compare, show "—" with "no recorded regression check" for any total that
+  includes an unrecorded hop, never a bare 0.
 - Count saves and runs separately in the picker bar: "1 save between them ·
   0 recorded runs".
 
@@ -264,7 +271,7 @@ Sev 3 · CURRENT · *fix* · medium
   from anyone but an owner, returning 403 "Only owners can edit skills"
   (`apps/api/src/routes/skill-administration.ts:386-391`). Demo mode skips
   this check, so the synthetic member in the renders below could still save.
-- **Two entry points check the role; six do not.** The Check page hides "Edit
+- **Two entry points check the role; six do not.** The evaluator page hides "Edit
   evaluator" from non-owners (`screens/skill.tsx:97-101`), and the setup
   ledger shows "Review the Check" only to owners
   (`components/first-run-setup-ledger.tsx:53-54`). These open the editor for
@@ -275,14 +282,14 @@ Sev 3 · CURRENT · *fix* · medium
     (`screens/review.tsx:168-170`, navigating at `:100`);
   - "Review the rubric" on the provisional Traces page
     (`screens/traces.tsx:223-225`);
-  - "Review Check", the Overview journey's next action once the Check is no
-    longer a starter and its current version is neither approved nor in
+  - "Review Check", the Overview journey's next action once the evaluator is
+    no longer a starter and its current version is neither approved nor in
     production (`components/rubrist/journey-pipeline.tsx:39-44`,
     `lib/journey.ts:50-53`). Rendered with the
     viewer as a member and the version "validated": the button landed on
     `/skill/edit`;
   - "Set up without a run" in the setup ledger, which opens the ordinary
-    editor once the Check is no longer a starter
+    editor once the evaluator is no longer a starter
     (`components/first-run-setup-ledger.tsx:21,40-41`);
   - "Review the Check" on a failed first Result
     (`screens/first-result.tsx:334-336`).
@@ -291,7 +298,7 @@ Sev 3 · CURRENT · *fix* · medium
   ordinary editor shows every field and an enabled "Create version & check
   references", and never mentions owners.
 
-A member can write a whole Review guide and learn only at save that they
+A member can rewrite a whole rubric and learn only at save that they
 cannot keep it.
 
 Rule: `decisions.md` › Errors and recovery ("Prevent what you can foresee";
@@ -299,11 +306,11 @@ Rule: `decisions.md` › Errors and recovery ("Prevent what you can foresee";
 
 Proposal:
 
-- For non-owners, show the entry points as "View the Review guide", linking to
+- For non-owners, show the entry points as "View evaluator", linking to
   `/skill`.
-- If a member reaches `/skill/edit` directly, render the guide read-only with
-  "Only an owner can save a new version. Ask Product Lead." The owner's name
-  is already on the Check page (`screens/skill.tsx:161`).
+- If a member reaches `/skill/edit` directly, render the evaluator read-only
+  with "Only an owner can save a new version. Ask Product Lead." The owner's
+  name is already on the evaluator page (`screens/skill.tsx:161`).
 
 ### C4. On phones, the override runs off the screen
 
@@ -321,7 +328,7 @@ Sev 3 · CURRENT · *fix* · medium
     (`screens/skill-versions.tsx:147-239`).
 - **Compare.** The path table scrolls to 493 px. "On the record", the column
   that explains a missing run, is fully hidden.
-- **Check page.** The tab rail, Regression, and Ownership blocks stack above
+- **Evaluator page.** The tab rail, Regression, and Ownership blocks stack above
   the Review guide, which starts at y=789 (`screens/skill.tsx:124-184`).
 
 The severity rests on the blocked result: the whole page scrolls sideways at
@@ -340,7 +347,7 @@ Proposal:
   with reason".
 - Below `md`, render version rows and compare steps as stacked items that keep
   status and the gate state visible.
-- On the Check page below `lg`, put the Review guide first and the metadata
+- On the evaluator page below `lg`, put the rubric first and the metadata
   after it.
 
 ### C5. The version page names the model, leads with evidence, and offers no next step
@@ -359,7 +366,7 @@ Sev 3 · CURRENT · *fix* · medium · decided in D1 and D5 · extends round 1's
 - **Technical evidence comes first.** The page opens with the attested Judge
   Card (`screens/skill-versions.tsx:396`): execution binding, rubric
   provenance, κ with reviewer ids, and self-consistency. The Review guide, which
-  the Check page's own copy calls "the main content reviewers should read and
+  the evaluator page's own copy calls "the main content reviewers should read and
   edit" (`screens/skill.tsx:202-203`), comes after it
   (`screens/skill-versions.tsx:398-408`).
 - **Facts repeat.**
@@ -369,23 +376,21 @@ Sev 3 · CURRENT · *fix* · medium · decided in D1 and D5 · extends round 1's
     row and in the card's "Binding" row (`:460-461`).
   - Known-failure agreement appears twice in two formats: "recorded ratio 0.86"
     (`:643-648`) and "86%" (`:432-435`).
-- **Guided and Technical display render the same page** (2,612 px tall at
-  1440 in both). On v1.1.0, which has no repeat runs, the self-consistency
-  empty state tells users in either display to call `POST /api/v1/judge` with
-  `force: true` (`:700-705`).
+- **An empty state is a bare API instruction.** On v1.1.0, which has no
+  repeat runs, the self-consistency section tells users to call
+  `POST /api/v1/judge` with `force: true` (`:700-705`). It never says what
+  self-consistency measures. Guided and Technical display render the same
+  page (2,612 px tall at 1440 in both).
 - **No next step.** The page offers no "Compare with current" and no "Start a
   new version from this one". Its actions are "Back to versions", three
   exports ("Export as Markdown", "Copy", and "SkillFormat"), and the case
   links in the convergence card.
 
 CURRENT promise: Guided display "hides secondary diagnostics and technical
-details" (`lib/display-mode.ts:15`). This page hides none of them.
-
-ASSUMPTION: the onboarding contract's rules carry over to this page. It files
-technical details as "Available for inspection without blocking the default
-journey" (BOJ:68). In Guided display it prefers **Check** before
-**Evaluator** (BOJ:70-71). BOJ governs first run (BOJ:7-8); D6 applies its
-product language here as a design decision, and BOJ itself is unchanged.
+details" (`lib/display-mode.ts:15`). This page hides none of them. ADR-0015
+(Proposed) drops that promise: both of its display modes show technical
+detail, and Beginner mode explains it. The page's problems are its order, its
+title, and its missing next step, not the detail it shows.
 
 Rule: `archetypes.md` › Detail (the primary action is the object's most
 common next step); `review.md` › Repeated facts; `labels.md` › Page titles
@@ -394,15 +399,16 @@ and navigation labels.
 Proposal:
 
 - Title the page "Version 1.2.0", with one status chip.
-- Lead with the Review guide and what changed from the previous version.
-- Move the Judge Card, κ, and self-consistency into a "Technical evidence"
-  section. It is open by default in Technical display and collapsed in Guided
-  (D1).
+- Lead with what changed from the previous version, then the rubric.
+- Move the Judge Card, κ, and self-consistency into an "Evidence" section
+  after the rubric, open in both display modes (D1).
 - Add "Compare with current" as a link to `/skill/compare?from=…&to=…`.
 - For owners, add "Start a new version from v1.2.0", linking to
   `/skill/edit?from=<id>` (D5).
-- Replace the API instruction with "No case has been judged twice under this
-  version yet."
+- Keep the API instruction, which technical users can act on, and say what
+  it measures: "No case has been assessed twice under this version. To
+  measure self-consistency, re-assess a case with `force: true` on
+  `POST /api/v1/judge`."
 
 ### C6. Waits never end
 
@@ -462,7 +468,7 @@ Sev 2 · CURRENT · *fix* · large
     (`.catch(() => null)` at `:110`). Rendered with that request returning
     500.
 - **Error states.**
-  - The Check page, the editor, and version history print the raw error, or
+  - The evaluator page, the editor, and version history print the raw error, or
     the developer instruction "Start the API with `pnpm dev:api` and refresh."
     None offers Retry (`screens/skill.tsx:62-73`, `screens/skill-edit.tsx:668-684`,
     `screens/skill-versions.tsx:113-124`).
@@ -500,12 +506,13 @@ Sev 2 · CURRENT · *fix* · quick · decided in D2 and D3
     disabled until the reason has 8 characters.
   - "Back to edit" is a ghost button (`:442-444`).
   - At 1440 the override sits at y≈1301, below the fold.
-- **Check failed.** The card says to "retry from the editor"
+- **Regression check incomplete.** The card says to "retry from the editor"
   (`screens/skill-edit/regression.tsx:328`), but there is no Retry. The filled
   button is "View skill versions" (`:461-463`), and "Back to edit" is a ghost
   button (`:458-460`).
 - **Passed and failed** both end on "View skill versions"
-  (`screens/skill-edit.tsx:749,761`), not on the Check the user just changed.
+  (`screens/skill-edit.tsx:749,761`), not on the evaluator the user just
+  changed.
 
 Context:
 
@@ -524,11 +531,12 @@ Proposal (decided in D2 and D3):
 
 - **Blocked:** the primary is "Revise the edit". The override moves into a
   secondary "Record an override…" disclosure, which keeps its reason field.
-- **Check failed:** the primary is "Back to edit". There, the unchanged form's
-  save reads "Re-run the check" and creates the next version (D4). When the
+- **Regression check incomplete:** the primary is "Back to edit". There, the
+  unchanged form's save reads "Re-run the regression check" and creates the
+  next version (D4). When the
   version's provider is unavailable, retrying cannot work, so the primary is
   "Open Settings" instead.
-- **Passed:** the primary is "View the Check" (`/skill`).
+- **Passed:** the primary is "View evaluator" (`/skill`).
 
 ### C9. The editor buries the Review guide and blurs its controls
 
@@ -544,9 +552,10 @@ Sev 2 · CURRENT · *fix* · medium · decided in D4
   diagnosis for the queue's filter chips.
 - **Step 1 is misnamed.** The progress strip's first step reads "Review changes"
   while the user is editing (`components/skill-edit-flow.tsx:52`).
-- **"Apply to" uses the wrong words.** It names its scopes in traces and
-  verdicts: "New traces only", "Existing verdicts untouched"
-  (`screens/skill-edit/editor.tsx:24-28`).
+- **"Apply to" says "verdicts".** Its scopes read "New traces only" and
+  "Existing verdicts untouched" (`screens/skill-edit/editor.tsx:24-28`). The
+  glossary's word for an evaluator's output is "assessment"
+  (`docs/glossary.md:53-55`).
 - **Save works with nothing changed.**
   - The save condition has no change check (`screens/skill-edit.tsx:552-563`),
     so save stays enabled.
@@ -564,18 +573,19 @@ button per page state"); `labels.md` › Terminology.
 
 Proposal:
 
-- Put the Review guide first under the title.
+- Put the rubric first under the title.
 - Move templates into a "Start from a template…" `DropdownMenu` (*add*), or
-  into the empty-guide state. Templates are one-shot actions, not toggles.
+  into the empty-rubric state. Templates are one-shot actions, not toggles.
 - Rename step 1 "Edit".
-- Use Runs and Results in Guided display.
-- When no evaluator field changed, name the save "Re-run the check" and say
-  what it does: it creates the next version with the same definition and
-  checks it against the current Protected examples (D4). "Changed" means
+- Name the scopes in cases and assessments: "New cases only" and "Existing
+  assessments unchanged" (ADR-0015).
+- When no evaluator field changed, name the save "Re-run the regression
+  check" and say what it does: it creates the next version with the same
+  definition and checks it against the current golden set (D4). "Changed" means
   against the base version, as the digest does; C13's fix keeps the editor
   from adding a change the owner did not make.
 
-### C10. The Check page mixes tabs, metrics, and navigation
+### C10. The evaluator page mixes tabs, metrics, and navigation
 
 Sev 2 · CURRENT · *fix* · medium
 
@@ -598,7 +608,7 @@ Proposal:
 
 - Use `Tabs` (*add*; its Radix package is already installed), with the tab in
   `?tab=`.
-- Label the rail "Check".
+- Label the rail "Evaluator".
 - Show agreement as a stat with a separate "View history" link.
 - Render Markdown headings from `h3` down, as S3 proposed.
 
@@ -634,17 +644,20 @@ proposal and O9
 
   The editor is titled "Edit the evaluator", sits under the crumb "Skill"
   (S1), and has the Back link "Back to skill".
-- **Scanner drift.** Over the seven Check-page files, the contract's glossary
-  finds drift toward:
+- **Scanner drift.** Over the seven evaluator-page files, the onboarding
+  contract's words find drift toward:
   - "judge" 23×;
   - "Skill" 9×;
   - "trace" 7×;
   - "verdict" 5×;
   - "golden" or "Golden set" 4×.
 
-  It found no generic labels, filler copy, or banned error words.
+  It found no generic labels, filler copy, or banned error words. Against
+  ADR-0015's vocabulary, "judge", "Skill", and "verdict" are still drift;
+  "golden set" is the chosen term, and "trace" is right where it names the
+  imported source.
 - **Status words come from legacy version status:**
-  - "Approved 4/30/2026" on the Check page (`screens/skill.tsx:165`) and
+  - "Approved 4/30/2026" on the evaluator page (`screens/skill.tsx:165`) and
     "Approved 4/30/2026, 8:00:00 PM" on the version page
     (`screens/skill-versions.tsx:385`);
   - the status chips "approved", "validated", and "draft · held"
@@ -661,18 +674,18 @@ Context:
   approved" (ADR-0010:187-188). Other lineages keep their compatibility
   behavior (ADR-0010:193-195).
 
-ASSUMPTION: BOJ governs first run (BOJ:7-8). Some of these labels sit on
-first-run surfaces, the setup ledger and the first Result, and lead into this
-editor. D6 applies BOJ's names and status rule to the Check pages as a design
-decision; BOJ itself is unchanged.
+ADR-0015 (Proposed) would replace the onboarding contract's beginner names
+with the glossary's terms in every display mode. BOJ:316-317's rule on
+assurance copy stays.
 
 Proposal:
 
-- Use one label for the way in: "Edit the Review guide" for owners and "View
-  the Review guide" for others. Match it in the title and the Back link.
-  Round 2's T6 keeps "Open the Review guide" for the queue banner, which opens
-  the guide beside the queue.
-- Apply round 1's Guided names (Check, Run, Result, Protected examples).
+- Use one label for the way in: "Edit evaluator" for owners, the label the
+  evaluator page already uses, and "View evaluator" for others. Match it in
+  the title and the Back link. Round 2's T6 keeps "Open rubric alongside" for
+  the queue banner, which opens the rubric beside the queue.
+- Apply ADR-0015's vocabulary: evaluator, rubric, case, assessment, and golden
+  set.
 - Map the status words and the date line as D6 sets out.
 
 ### C13. Opening the editor swaps an unavailable provider without asking
@@ -694,7 +707,7 @@ Sev 3 · CURRENT · *fix* · medium
   OpenAI, OpenRouter, or custom provider key in Settings…". It does not say
   the stored binding was replaced.
 - **What it risks.** In code, when another provider is available, an owner
-  who edits only the Review guide saves a version bound to a provider and
+  who edits only the rubric saves a version bound to a provider and
   model they never chose. When only the mock remains, Postgres mode refuses
   the save: "The mock judge is only available in local demo mode"
   (`apps/api/src/routes/skill-administration.ts:400-402`).
@@ -720,123 +733,127 @@ Proposal:
 
 ## Page blueprints
 
-### Check page (`/skill`)
+### Evaluator page (`/skill`)
 
 Desktop:
 
 ```text
-Project / Review guide                                                [+ Import trace]
-Support Answer Quality  (h1)  [Current · v1.2.0]   View history  [ Edit the Review guide ]
-What this Check judges, in one line. Starter or evidence status in one line.
-[ Review guide | Judge instructions | Execution binding | Result format ]   (tabs, ?tab=)
-┌ Review guide ────────────────────────────────────────┐ ┌ Evidence ─────────────────────┐
-│ The guide, with Markdown headings from h3 down       │ │ Protected examples: 2         │
-│                                                      │ │ Agreement 86% · 5 strict · 2  │
-│                                                      │ │ lenient     View history ›    │
+Project / Evaluator                                                   [+ Import trace]
+Support Answer Quality  (h1)  [Current · v1.2.0]          View history  [ Edit evaluator ]
+The criterion this evaluator assesses, in one line. Starter or evidence status.
+[ Rubric | Prompt | Execution binding | Output contract ]                    (tabs, ?tab=)
+┌ Rubric ──────────────────────────────────────────────┐ ┌ Evidence ─────────────────────┐
+│ The rubric, with Markdown headings from h3 down      │ │ Golden cases: 2               │
+│                                                      │ │ Golden-set agreement 86%      │
+│                                                      │ │ 5 too strict · 2 too lenient  │
+│                                                      │ │ View history ›                │
 │                                                      │ │ Owner · Product Lead          │
 └──────────────────────────────────────────────────────┘ └───────────────────────────────┘
-Every save creates a new version. Passing is not a quality or release decision.
+Every save creates a new version. Passing the regression check is not a release decision.
 ```
 
 Narrow: title, status, and the primary; then the tabs as a scrolling
-`TabsList`; then the guide; then the Evidence block.
+`TabsList`; then the rubric; then the Evidence block.
 
 | Zone | Contents | Why |
 |---|---|---|
-| Header | The Check's name, status chip (C1 states), history link, one primary for owners | S1, S3; C3 |
-| Tabs | Review guide, judge instructions, binding, result format; the tab is kept in the URL | C10 |
-| Main | The Review guide first | C4, C10 |
-| Evidence | Protected examples, agreement, and ownership, as stats with links | C10; C12 names |
+| Header | The evaluator's name, status chip (C1 states), history link, one primary for owners | S1, S3; C3 |
+| Tabs | Rubric, prompt, execution binding, output contract; the tab is kept in the URL | C10; ADR-0015 |
+| Main | The rubric first | C4, C10 |
+| Evidence | Golden cases, golden-set agreement, and ownership, as stats with links | C10; ADR-0015 |
 
 ### Editor (`/skill/edit`)
 
 Desktop, edit state:
 
 ```text
-Project / Review guide / Edit                                         [+ Import trace]
-Edit the Review guide  (h1)   from v1.2.0            Start from a template… ▾   Reset…
-┌ Review guide ────────────────────────────────────────────────────────────────────────┐
+Project / Evaluator / Edit                                            [+ Import trace]
+Edit evaluator  (h1)   from v1.2.0                   Start from a template… ▾   Reset…
+┌ Rubric ──────────────────────────────────────────────────────────────────────────────┐
 │ [ Edit | Preview ]                                                                   │
 │ # Support Answer Quality …                                                           │
 └──────────────────────────────────────────────────────────────────────────────────────┘
-▸ Judge instructions (advanced)         ▸ Execution binding         ▸ Apply to: new Runs
-Before saving: 2 Protected examples are re-checked; a regression needs review.
-Review changes: Review guide changed (12 → 14 lines) ▸ exact comparison
-Cancel                                                       [ Create version ] (filled)
+▸ Prompt       ▸ Execution binding       ▸ Output contract       ▸ Apply to: new cases
+Before saving: the regression check re-runs 2 golden cases; a regression needs review.
+Review changes: rubric changed (12 → 14 lines) ▸ exact comparison
+Cancel                                                     [ Create version ] (filled)
 ```
 
 The step strip appears once the save starts.
 
 | State | Heading | Primary | Secondary | Notes |
 |---|---|---|---|---|
-| Editing, unchanged | Edit the Review guide | Re-run the check (creates the next version) | Cancel | C9, D4 |
-| Stored provider unavailable | Edit the Review guide, with the binding marked unavailable | Create version (disabled until a provider is chosen) | Open Settings | C13 |
-| Editing, changed | Edit the Review guide | Create version | Cancel (asks before discarding) | C2 |
-| Member | The Review guide (read-only) | — | "Ask Product Lead" | C3 |
-| Running | Checking 2 Protected examples · started 1 min ago | View history | — | C6 |
-| Passed | v1.3.0 is current | View the Check | Compare with v1.2.0 | C8 |
-| Blocked | 1 Protected example would regress | Revise the edit | Record an override… (owners) | C8, C4 |
-| Check failed | v1.3.0 was saved; its check did not finish | Back to edit, or Open Settings when the provider is unavailable | View history | C8, D3 |
+| Editing, unchanged | Edit evaluator | Re-run the regression check (creates the next version) | Cancel | C9, D4 |
+| Stored provider unavailable | Edit evaluator, with the binding marked unavailable | Create version (disabled until a provider is chosen) | Open Settings | C13 |
+| Editing, changed | Edit evaluator | Create version | Cancel (asks before discarding) | C2 |
+| Member | View evaluator (read-only) | — | "Ask Product Lead" | C3 |
+| Running | Regression check running on 2 golden cases · started 1 min ago | View history | — | C6 |
+| Passed | v1.3.0 is current | View evaluator | Compare with v1.2.0 | C8 |
+| Blocked | 1 golden case would regress | Revise the edit | Record an override… (owners) | C8, C4 |
+| Regression check incomplete | v1.3.0 was saved; its regression check did not finish | Back to edit, or Open Settings when the provider is unavailable | View history | C8, D3 |
 
 ### Version page (`/skill/versions/:id`)
 
 ```text
-Project / Review guide / Versions / v1.2.0                                    [+ Import trace]
-Version 1.2.0 (h1) [Current] [no recorded check]    Compare with current [ Start from v1.2.0 ]
-Saved Apr 30, 2026 · anthropic/claude-sonnet-4-6 · 2 known limitations
+Project / Evaluator / Versions / v1.2.0                                       [+ Import trace]
+Version 1.2.0 (h1)                                 Compare with current  [ Start from v1.2.0 ]
+[Current] [No recorded regression check] · anthropic/claude-sonnet-4-6 · 2 known limitations
 ┌ What changed from v1.1.0 ──────────────────────────────────────────────────────────────────┐
-│ No evaluator field changed: same guide, instructions, binding, and format                  │
+│ No evaluator field changed: same rubric, prompt, execution binding, and output contract    │
 └────────────────────────────────────────────────────────────────────────────────────────────┘
-┌ Review guide ────────────────────────────────┐ ┌ Known-failure check ──────────────────────┐
-│ …                                            │ │ No recorded run for this version          │
+┌ Rubric ──────────────────────────────────────┐ ┌ Regression check ─────────────────────────┐
+│ …                                            │ │ No recorded regression check              │
 └──────────────────────────────────────────────┘ └───────────────────────────────────────────┘
-▸ Technical evidence: Judge Card, κ, self-consistency, binding, schema (open in Technical)
+Evidence: Judge Card, κ, self-consistency, execution binding, output contract
 ```
 
 | Zone | Contents | Why |
 |---|---|---|
 | Header | The version as the title, one status chip, compare link, owner primary | C5, C1 |
 | Change | What changed from the previous version | C5 |
-| Main | The Review guide, then the known-failure check with an explicit "no recorded run" | C1, C5 |
-| Technical | Judge Card, κ, self-consistency, binding, schema; collapsed in Guided | C5 |
+| Main | The rubric, then the regression check, with "No recorded regression check" when there is none | C1, C5 |
+| Evidence | Judge Card, κ, self-consistency, execution binding, output contract; open in both display modes, explained in Beginner mode | C5, D1 |
 
 | Zone | Empty | Loading | Error |
 |---|---|---|---|
 | Version page | — | `Skeleton` (*add*) in the page's shape | `EmptyShell` (*Rubrist*): "Couldn't load this version" with Retry; "Version not found" only on a 404 |
-| Version page sections (Judge Card, convergence, self-consistency) | Each section's own empty copy, with no API instructions | `Skeleton` in the section | "Couldn't load the Judge Card" in the section, with Retry; the page keeps working |
+| Version page sections (Judge Card, convergence, self-consistency) | Each section's own empty copy; self-consistency keeps its API instruction and says what it measures (C5) | `Skeleton` in the section | "Couldn't load the Judge Card" in the section, with Retry; the page keeps working |
 | Compare | "Save a second version to compare." | `Skeleton` rows (*add*); tiles show "—"; never the empty state | `EmptyShell` with Retry; a failed run read says so in its row |
-| Running check | — | "Started N min ago"; past a set time, "taking longer than usual" | Poll errors keep the last state and say when it was last checked |
+| Running regression check | — | "Started N min ago"; past a set time, "taking longer than usual" | Poll errors keep the last state and say when it was last checked |
 
 ## Decisions
 
-Decided 2026-09-26: the founder asked to take the recommended options. These
-are design decisions for implementing this audit, not product authority.
-`PRODUCT.md`, the accepted ADRs, and the onboarding contract are unchanged.
+Decided 2026-09-26: the founder asked to take the recommended options. Later
+the same day, the founder chose one vocabulary and two display modes
+([ADR-0015](../decisions/0015-one-vocabulary-and-two-display-modes.md),
+Proposed), so D1 and D6 follow that ADR instead of the earlier Guided and
+Technical split. These are design decisions for implementing this audit, not
+product authority. `PRODUCT.md`, the accepted ADRs, and the onboarding
+contract are unchanged.
 
-1. **Guided content of the version page (C5).** Guided display shows the
-   header, what changed, the Review guide, and the known-failure check, with
-   "no recorded check" when there is none. The Judge Card, κ,
-   self-consistency, binding, and schema sit in a "Technical evidence"
-   section: collapsed in Guided display, open in Technical display. Guided
-   display's CURRENT promise to hide technical details
-   (`lib/display-mode.ts:15`) already requires this; D6 settles BOJ:68.
+1. **Content of the version page (C5).** Both display modes show the same
+   page: the header, what changed, the rubric, and the regression check, with
+   "No recorded regression check" when there is none. The Judge Card, κ,
+   self-consistency, execution binding, and output contract follow in an
+   "Evidence" section, open in both modes. Beginner mode adds a one-line
+   explanation to each.
 2. **Override prominence (C8).** Revising is the default. "Revise the edit"
    is the filled button, and the override moves into a "Record an override…"
    disclosure for owners, which keeps its reason field. An override records an
    exception to the gate (ARCH:214-216), so it should not be the easiest path.
-3. **Retrying a failed check (C8).** There is no re-run for an existing
-   version. The check already retries provider failures up to five times with
-   backoff (`apps/api/src/routes/skill-administration.ts:437-444`,
+3. **Retrying an incomplete regression check (C8).** There is no re-run for an
+   existing version. The check already retries provider failures up to five
+   times with backoff (`apps/api/src/routes/skill-administration.ts:437-444`,
    `apps/api/src/workers/gate.ts:8-35`), and each version keeps one terminal
-   check record. After a failed check, the primary is "Back to edit", where
-   saving the unchanged form re-runs the check as the next version (D4). When
-   the version's provider is unavailable, the primary is "Open Settings",
-   because retrying cannot work.
+   check record. After an incomplete check, the primary is "Back to edit",
+   where saving the unchanged form re-runs the regression check as the next
+   version (D4). When the version's provider is unavailable, the primary is
+   "Open Settings", because retrying cannot work.
 4. **Identical saves (C9).** Allow them, and name them for what they do. When
-   no evaluator field changed, the save button reads "Re-run the check", and
-   the change review says: "No evaluator field changed. Saving creates v1.3.0
-   with the same definition and checks it against the current Protected
-   examples." A save pins the current known-failure revision
+   no evaluator field changed, the save button reads "Re-run the regression
+   check", and the change review says: "No evaluator field changed. Saving
+   creates v1.3.0 with the same definition and checks it against the current
+   golden set." A save pins the current golden-set revision
    (`components/skill-edit-flow.tsx:179-180`), and that set can change after a
    version's check (`apps/api/src/lib/judge-card.ts:75`). An unchanged
    definition can therefore be re-checked only as a new version.
@@ -846,33 +863,32 @@ are design decisions for implementing this audit, not product authority.
    (`:736`). The change review still compares with the current version and
    names the starting point ("Started from v1.1.0"). `?version=` stays
    reserved for resuming a queued version (`screens/skill-edit.tsx:73,280-314`).
-6. **Status vocabulary and the onboarding contract (C12).** The contract's
-   product language applies to Guided display on these pages. That includes
-   its rule that assurance copy derives from evidence rather than legacy
-   version status (BOJ:316-317). BOJ:7-8 still scopes the contract to first
-   run, so claims that rest on it here stay ASSUMPTION until that line
-   changes. Status words map as follows:
+6. **Status vocabulary (C12).** Each status gets one label in both display
+   modes, and its raw value stays available in a tooltip. BOJ:316-317's rule
+   still applies: assurance copy derives from evidence, not legacy version
+   status.
 
-   | Status and its CURRENT meaning | Guided | Technical |
-   |---|---|---|
-   | `production`: the current version | Current | current |
-   | `approved` after a passing check | Check passed | approved · check passed |
-   | `approved` after an override | Override recorded | approved · overridden |
-   | `approved` with no Protected examples to compare (`apps/api/src/repository.pg/skill-lifecycle-repository.ts:714-725`) | No Protected examples to check | approved · advisory only |
-   | `approved` by a starter sign-off, recorded as `skill_version.signoff` (`:253-275`) | Signed off | approved · signed off |
-   | `approved` with no recorded check, such as a version saved before the gate | No recorded check | approved · no recorded check |
-   | `validated`: no code path sets it | Saved | validated (legacy) |
-   | `calibrating` | Check running | calibrating |
-   | `regressing` | Blocked by a regression | regressing |
-   | `failed` | Check didn't finish | failed |
-   | `needs_review` | Needs review | needs review |
-   | `draft` | Draft | draft |
-   | `deprecated` | Replaced | deprecated |
+   | Status and its CURRENT meaning | Label |
+   |---|---|
+   | `production`: the current version | Current |
+   | `approved` after a passing check | Regression check passed |
+   | `approved` after an override | Override recorded |
+   | `approved` with no golden cases to compare (`apps/api/src/repository.pg/skill-lifecycle-repository.ts:714-725`) | No golden cases to check |
+   | `approved` by a starter sign-off, recorded as `skill_version.signoff` (`:253-275`) | Signed off |
+   | `approved` with no recorded check, such as a version saved before the gate | No recorded regression check |
+   | `validated`: no code path sets it | Legacy status (validated) |
+   | `calibrating` | Regression check running |
+   | `regressing` | Blocked by a regression |
+   | `failed` | Regression check incomplete |
+   | `needs_review` | Needs review |
+   | `draft` | Draft |
+   | `deprecated` | Superseded |
 
-   The "Approved <date>" line becomes the basis and its date, for example
-   "Check passed Apr 30, 2026 · 2 Protected examples" or "Saved Mar 15, 2026 ·
-   no recorded check". No status reads "approved" or "validated" in Guided
-   display, in line with BOJ:272.
+   "Incomplete" follows the glossary: missing or failed evidence is not a
+   failed candidate (`docs/glossary.md:77-78`). The "Approved <date>" line
+   becomes the basis and its date, for example "Regression check passed Apr
+   30, 2026 · 2 golden cases" or "Saved Mar 15, 2026 · no recorded regression
+   check". No label reads "approved", in line with BOJ:272.
 
 ## Next rounds
 
