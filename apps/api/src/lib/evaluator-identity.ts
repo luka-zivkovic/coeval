@@ -1,4 +1,5 @@
 import {
+  EVALUATOR_IDENTITY_BASIS,
   EvaluatorDefinitionSchema,
   EvaluatorIdentitySchema,
   SkillDigestInputSchema,
@@ -6,6 +7,7 @@ import {
   type EvaluatorDefinition,
   type EvaluatorIdentity,
   type SkillDigestInput,
+  type SkillVersion,
   type TypedQuestion
 } from "@rubrist/shared";
 import { createHash } from "node:crypto";
@@ -27,6 +29,30 @@ function parseExactly<T>(schema: ZodType<T>, value: unknown, what: string): T {
 /** SHA-256 of the canonical evaluator definition (ADR-0014 section 1). */
 export function evaluatorDefinitionDigest(definition: EvaluatorDefinition): string {
   return sha256Digest(parseExactly(EvaluatorDefinitionSchema, definition, "evaluator definition"));
+}
+
+/**
+ * The identity of a saved evaluator version (ADR-0014 section 1): its
+ * prompted definition and its execution binding. It is parsed with the
+ * identity's rules, so a version they refuse throws instead of yielding
+ * evidence. Typed-question definitions arrive in Batch 8E.
+ */
+export function evaluatorIdentityFor(
+  version: Pick<SkillVersion, "rubricMarkdown" | "prompt" | "verdictKind" | "outputSchema" | "scalarRange" | "categoricalChoiceScores" | "executionBinding">
+): EvaluatorIdentity {
+  return parseExactly(EvaluatorIdentitySchema, {
+    basis: EVALUATOR_IDENTITY_BASIS,
+    definition: {
+      kind: "prompted",
+      rubricMarkdown: version.rubricMarkdown,
+      prompt: version.prompt,
+      verdictKind: version.verdictKind,
+      outputSchema: version.outputSchema,
+      scalarRange: version.scalarRange,
+      categoricalChoiceScores: version.categoricalChoiceScores
+    },
+    executionBinding: version.executionBinding
+  }, "evaluator identity");
 }
 
 /**

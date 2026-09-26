@@ -49,6 +49,13 @@ export interface VerdictExecutionInput {
   spec: VerdictSpec;
   timeoutMs?: number;
   fetch?: ExecutionFetch;
+  /**
+   * Runs once every check before the call has passed and just before the one
+   * physical call is sent, so a durable call-start record never precedes a
+   * refusal. If it throws, nothing is sent and its error propagates as is.
+   * The mock makes no physical call, so it never runs there.
+   */
+  beforeDispatch?: () => Promise<void>;
 }
 
 export interface VerdictExecutionResult {
@@ -153,6 +160,7 @@ export async function executeVerdict(input: VerdictExecutionInput): Promise<Verd
   const apiKey = input.apiKey;
   assertCredential(binding.provider, apiKey);
   const send = input.fetch ?? ((url, init) => fetch(url, init));
+  await input.beforeDispatch?.();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), input.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   const failedInTransit = (error: unknown, observed: ObservedProvenance): EvaluatorCallError => {

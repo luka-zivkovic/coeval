@@ -495,6 +495,30 @@ describe("calls that never leave Rubrist", () => {
       .toMatchObject({ failureKind: "internal", physicalCall: false });
     expect(http.sent).toHaveLength(0);
   });
+
+  it("runs the dispatch hook only once every check has passed, just before the call", async () => {
+    const order: string[] = [];
+    const http = stub(() => {
+      order.push("sent");
+      return json(chatText(JSON.stringify(VERDICT)));
+    });
+    const beforeDispatch = async () => { order.push("dispatch"); };
+    await run(OPENAI, http, { beforeDispatch });
+    expect(order).toEqual(["dispatch", "sent"]);
+
+    order.length = 0;
+    expect(await failure(run(OPENAI, http, { apiKey: null, beforeDispatch }))).toMatchObject({ physicalCall: false });
+    expect(await failure(run({ ...OPENROUTER, routing: null }, http, { beforeDispatch }))).toMatchObject({ physicalCall: false });
+    expect(await failure(run(CUSTOM, http, { customBaseUrl: "https://elsewhere.example/v1", beforeDispatch }))).toMatchObject({ physicalCall: false });
+    expect(order).toEqual([]);
+  });
+
+  it("sends nothing when the dispatch hook fails, and passes its error through", async () => {
+    const http = stub(() => json(chatText(JSON.stringify(VERDICT))));
+    const hookError = new Error("the call-start record could not be written");
+    await expect(run(OPENAI, http, { beforeDispatch: async () => { throw hookError; } })).rejects.toBe(hookError);
+    expect(http.sent).toHaveLength(0);
+  });
 });
 
 describe("review hardening", () => {

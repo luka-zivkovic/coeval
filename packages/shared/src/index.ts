@@ -735,8 +735,9 @@ export type SkillVersionTimeScope = z.infer<typeof SkillVersionTimeScopeSchema>;
 export const CreateSkillVersionInputSchema = z
   .object({
     criterionVersionId: z.string().min(1).optional(),
-    rubricMarkdown: z.string().min(1),
-    prompt: z.string().min(1),
+    // The evaluator definition's limits (ADR-0014 section 1).
+    rubricMarkdown: z.string().min(1).max(100_000),
+    prompt: z.string().min(1).max(100_000),
     executionBinding: ExecutionBindingInputSchema,
     outputSchema: JsonSchemaSchema.default(MinimumVerdictOutputSchema),
     verdictKind: VerdictKindSchema.default("binary"),

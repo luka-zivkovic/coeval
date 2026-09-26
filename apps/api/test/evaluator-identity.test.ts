@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CreateSkillVersionInputSchema,
   EVALUATOR_IDENTITY_BASIS,
   EvaluatorDefinitionSchema,
   EvaluatorIdentitySchema,
@@ -15,6 +16,7 @@ import {
 } from "@rubrist/shared";
 import {
   evaluatorDefinitionDigest,
+  evaluatorIdentityFor,
   skillDigestInput,
   skillDigestV2,
   skillDigestV2FromInput,
@@ -270,6 +272,35 @@ describe("skillDigest v2 (ADR-0014 section 1 and decision 5)", () => {
       + `"outputSchema":{"type":"object","__proto__":{"x":1}},"scalarRange":null,"categoricalChoiceScores":null},"executionBinding":${JSON.stringify(SONNET_46)}}`);
     expect(Object.keys(withProto.definition.outputSchema)).toContain("__proto__");
     expect(() => skillDigestV2(withProto)).toThrow();
+  });
+});
+
+describe("a saved version's identity", () => {
+  const version = {
+    rubricMarkdown: PROMPTED_DEFINITION.rubricMarkdown,
+    prompt: PROMPTED_DEFINITION.prompt,
+    verdictKind: "binary" as const,
+    outputSchema: { type: "object" },
+    scalarRange: null,
+    categoricalChoiceScores: null,
+    executionBinding: SONNET_46
+  };
+
+  it("is its prompted definition and execution binding", () => {
+    expect(evaluatorIdentityFor(version)).toEqual(PROMPTED);
+    expect(skillDigestV2(evaluatorIdentityFor(version))).toBe(skillDigestV2(PROMPTED));
+  });
+
+  it("refuses a version the identity rules refuse", () => {
+    expect(() => evaluatorIdentityFor({ ...version, rubricMarkdown: "x".repeat(100_001) })).toThrow();
+    expect(() => evaluatorIdentityFor({ ...version, executionBinding: { ...SONNET_46, provider: "typesafe", verdictProtocol: "typed-question/v1", reasoning: null, outputTokenLimit: null } })).toThrow();
+    expect(() => evaluatorIdentityFor({ ...version, verdictKind: "scalar" })).toThrow();
+  });
+
+  it("can always be built from a version the create input accepts", () => {
+    const input = { rubricMarkdown: "x".repeat(100_001), prompt: "Judge.", executionBinding: { ...SONNET_46, endpoint: { kind: "managed" } } };
+    expect(CreateSkillVersionInputSchema.safeParse(input).success).toBe(false);
+    expect(CreateSkillVersionInputSchema.safeParse({ ...input, rubricMarkdown: "x".repeat(100_000) }).success).toBe(true);
   });
 });
 
