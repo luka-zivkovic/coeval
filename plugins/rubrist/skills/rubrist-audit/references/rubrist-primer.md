@@ -15,7 +15,7 @@ categorical, depending on the schema). Skill versions and verdicts are
 must not submit throwaway sample data to a real project.
 
 **Naming disambiguation:** rubrist's portable judging-skill format
-(SkillFormat v1, `spec/skill-format-v1.md` in the rubrist repo) defines the
+(skill-format/v2, `contracts/skill-format-v2.md` in the rubrist repo) defines the
 *judge* artifact and is unrelated to the Claude Code / Agent Skills
 folder-with-SKILL.md format that this `rubrist-audit` skill itself is written
 in — same word, two different specifications.

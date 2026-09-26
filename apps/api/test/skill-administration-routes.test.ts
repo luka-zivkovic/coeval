@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import { JudgeCardSchema, SkillFormatV1Schema } from "@rubrist/shared";
+import { JudgeCardSchema, type SkillFormatV2Example } from "@rubrist/shared";
+import { verifySkillFormatV2 } from "../src/lib/skill-format-v2.js";
+import { evaluatorIdentityFor, skillDigestV2 } from "../src/lib/evaluator-identity.js";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 import { createRequestServices, type AppVariables } from "../src/request-services/index.js";
@@ -339,24 +341,25 @@ describe("Judge Card (M1 E5)", () => {
   });
 });
 
-describe("SkillFormat v1 export (M4 C3)", () => {
-  it("exports a version as a conforming document with real golden examples (redacted input/output)", async () => {
+describe("skill-format/v2 export", () => {
+  it("exports a version as a verified document with its identity and real golden examples (redacted input/output)", async () => {
     const repository = new DemoRepository(undefined, { seedVerdicts: true });
     const localApp = createApp(repository);
     const response = await localApp.request("/api/skills/skill_support_quality/versions/skillv_1_2_0/skill-format");
     expect(response.status).toBe(200);
-    const doc = SkillFormatV1Schema.parse(await response.json());
+    const version = (await repository.getSkillVersion("proj_langsmith_support", "skillv_1_2_0"))!;
+    // An importer recomputes every digest and can require the identity it expected.
+    const doc = verifySkillFormatV2(await response.json(), { skillDigest: skillDigestV2(evaluatorIdentityFor(version)) });
 
-    // Every top-level spec field sourced from skill + version (never fabricated).
-    expect(doc.formatVersion).toBe("skill-format/v1");
+    // Every top-level field sourced from the skill and version (never fabricated).
+    expect(doc.formatVersion).toBe("skill-format/v2");
     expect(doc.name.length).toBeGreaterThan(0);
     expect(doc.owner.length).toBeGreaterThan(0);
     expect(doc.version).toBe("1.2.0");
     expect(doc.status).toBe("production");
-    expect(doc.modelBinding.provider).toBe("anthropic");
-    expect(doc.rubricMarkdown.length).toBeGreaterThan(0);
-    expect(Object.keys(doc.outputSchema).length).toBeGreaterThan(0);
-    expect(doc.basis.some((note) => note.includes("no value is fabricated"))).toBe(true);
+    expect(doc.evaluator.identity).toEqual(evaluatorIdentityFor(version));
+    expect(doc.evaluator.question).toBeNull();
+    expect(doc.notes.some((note) => note.includes("no value is fabricated"))).toBe(true);
 
     // The seeded demo has a golden set → at least one example with NON-NULL
     // input+output from the redacted trace (not hollowed to null).
@@ -367,17 +370,122 @@ describe("SkillFormat v1 export (M4 C3)", () => {
     expect(withPayload!.reason.length).toBeGreaterThan(0);
   });
 
-  it("empty golden set → zero examples with an explicit basis note, never fabricated", async () => {
-    const repository = new DemoRepository(); // no seeded verdicts/golden promotions beyond the fixture
-    const localApp = createApp(repository);
-    const doc = SkillFormatV1Schema.parse(await (await localApp.request("/api/skills/skill_support_quality/versions/skillv_1_2_0/skill-format")).json());
-    // The fixture golden set may be non-empty; assert the basis note logic
-    // instead: when examples is empty, the note is present; when not, the
-    // fabrication-free note is always present.
-    if (doc.examples.length === 0) {
-      expect(doc.basis.some((note) => note.includes("golden set is empty"))).toBe(true);
+  it("notes an empty golden set and the example cap, and leaves out only the examples the format can't carry", async () => {
+    class ExamplesRepository extends DemoRepository {
+      constructor(private readonly examples: SkillFormatV2Example[]) { super(); }
+      override async getSkillFormatExamples(): Promise<SkillFormatV2Example[]> { return this.examples; }
     }
-    expect(doc.basis.some((note) => note.includes("no value is fabricated"))).toBe(true);
+    const exportWith = async (examples: SkillFormatV2Example[]) => {
+      const response = await createApp(new ExamplesRepository(examples)).request("/api/skills/skill_support_quality/versions/skillv_1_2_0/skill-format");
+      expect(response.status).toBe(200);
+      return verifySkillFormatV2(await response.json());
+    };
+    const example = (id: string, input: unknown = { question: id }): SkillFormatV2Example =>
+      ({ id, label: "pass", input: input as SkillFormatV2Example["input"], output: { answer: id }, reason: "grounded", metadata: null });
+    // An example's input sits three levels below the document root, which nests at most 64 deep.
+    const nested = (levels: number): unknown => Array.from({ length: levels }).reduce<unknown>((inner) => ({ inner }), "leaf");
+
+    const empty = await exportWith([]);
+    expect(empty.examples).toEqual([]);
+    expect(empty.notes.some((note) => note.includes("golden set is empty"))).toBe(true);
+    expect(empty.notes.some((note) => note.includes("no value is fabricated"))).toBe(true);
+
+    const full = await exportWith(Array.from({ length: 50 }, (_, index) => example(`golden_${index}`)));
+    expect(full.examples).toHaveLength(50);
+    expect(full.notes.some((note) => note.includes("capped at 50"))).toBe(true);
+
+    const mixed = await exportWith([
+      example("portable"),
+      example("deepest", nested(62)),
+      example("too_deep", nested(63)),
+      example("proto", JSON.parse('{"nested":{"__proto__":{"polluted":true}}}')),
+      example("surrogate", { question: "\uD800" })
+    ]);
+    expect(mixed.examples.map((kept) => kept.id)).toEqual(["portable", "deepest"]);
+    expect(mixed.notes.some((note) => note.startsWith("examples: 3 of the golden set left out"))).toBe(true);
+    expect(mixed.notes.some((note) => note.includes("golden set is empty") || note.includes("capped"))).toBe(false);
+  });
+
+  it("cuts an owner's display name to the format's limit with a note, never splitting a character", async () => {
+    class LongOwnerRepository extends DemoRepository {
+      override async getCurrentSkillForCriterion(projectId: string, criterionId: string) {
+        const skill = await super.getCurrentSkillForCriterion(projectId, criterionId);
+        return { ...skill, ownerName: `${"a".repeat(199)}\u{1F600}${"b".repeat(50)}` };
+      }
+    }
+    const response = await createApp(new LongOwnerRepository()).request("/api/skills/skill_support_quality/versions/skillv_1_2_0/skill-format");
+    expect(response.status).toBe(200);
+    const doc = verifySkillFormatV2(await response.json());
+    expect(doc.owner).toBe("a".repeat(199));
+    expect(doc.notes).toContain("owner: the owner's display name is cut to 200 characters.");
+  });
+
+  it("refuses a version with no evaluator identity (409) and a document the format refuses (422)", async () => {
+    class BrokenIdentityRepository extends DemoRepository {
+      override async getSkillVersion(projectId: string, versionId: string) {
+        const version = await super.getSkillVersion(projectId, versionId);
+        return version && { ...version, executionBinding: { ...version.executionBinding, modelId: "" } };
+      }
+    }
+    const noIdentity = await createApp(new BrokenIdentityRepository()).request("/api/skills/skill_support_quality/versions/skillv_1_2_0/skill-format");
+    expect(noIdentity.status).toBe(409);
+
+    class LoneSurrogateRepository extends DemoRepository {
+      override async getCurrentSkillForCriterion(projectId: string, criterionId: string) {
+        return { ...await super.getCurrentSkillForCriterion(projectId, criterionId), name: "Support \uD800 quality" };
+      }
+    }
+    const refused = await createApp(new LoneSurrogateRepository()).request("/api/skills/skill_support_quality/versions/skillv_1_2_0/skill-format");
+    expect(refused.status).toBe(422);
+    expect(await refused.json()).toEqual({
+      error: "This evaluator version can't be exported as skill-format/v2: skill-format documents must not contain lone UTF-16 surrogates"
+    });
+  });
+
+  it("refuses at save an output schema the format can't carry, so every saved version exports", async () => {
+    const localApp = createApp(new DemoRepository());
+    // A definition's outputSchema sits four levels below the document root, which nests at most 64 deep.
+    const nested = (levels: number): Record<string, unknown> =>
+      Array.from({ length: levels - 1 }).reduce<Record<string, unknown>>((inner) => ({ inner }), { type: "string" });
+    const save = (outputSchema: unknown) => localApp.request("/api/skills/skill_support_quality/versions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ rubricMarkdown: "Pass grounded answers.", prompt: "Judge the answer.", executionBinding: bindingInput(MOCK_BINDING), outputSchema })
+    });
+
+    expect((await save({ type: "object", properties: { nested: JSON.parse('{"__proto__":{"type":"string"}}') } })).status).toBe(400);
+    expect((await save(JSON.parse('{"__proto__":{"type":"string"},"type":"object"}'))).status).toBe(400);
+    expect((await save(nested(62))).status).toBe(400);
+    const deepest = await save(nested(61));
+    expect(deepest.status).toBe(201);
+    const versionId = (await deepest.json() as { version: { id: string } }).version.id;
+    expect((await localApp.request(`/api/skills/skill_support_quality/versions/${versionId}/skill-format`)).status).toBe(200);
+  });
+
+  it("withholds a custom endpoint's URL, naming it by digest with a note for the importer", async () => {
+    const localApp = createApp(new DemoRepository());
+    const url = "https://llm.example/v1";
+    const created = await localApp.request("/api/skills/skill_support_quality/versions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        rubricMarkdown: "Pass grounded answers.",
+        prompt: "Judge the answer.",
+        executionBinding: bindingInput(SEEDED_BINDING, {
+          provider: "custom",
+          endpoint: { kind: "custom", baseUrl: url },
+          reasoning: null,
+          verdictProtocol: "openai.forced-function/v1"
+        })
+      })
+    });
+    expect(created.status).toBe(201);
+    const versionId = (await created.json() as { version: { id: string } }).version.id;
+    const body = await (await localApp.request(`/api/skills/skill_support_quality/versions/${versionId}/skill-format`)).text();
+    expect(body).not.toContain(url);
+    const doc = verifySkillFormatV2(JSON.parse(body), { endpointBaseUrl: url });
+    expect(doc.notes.some((note) => note.includes("custom endpoint named only by its digest"))).toBe(true);
+    expect(() => verifySkillFormatV2(JSON.parse(body), { endpointBaseUrl: "https://other.example/v1" })).toThrow();
   });
 
   it("?download=1 attaches a static-stem json file; 404s for a missing version", async () => {

@@ -27,7 +27,8 @@ const GOLDEN_CLASS_METHODS = [
   "loadCaseDetail",
   ...GOLDEN_PORT_METHODS.slice(5, 7),
   "getGoldenSetTraces",
-  "loadGoldenSetTraces"
+  "loadGoldenSetTraces",
+  "loadRedactedPayloads"
 ] as const;
 
 const CASE_PORT_METHODS = [
@@ -314,7 +315,8 @@ describe("PostgreSQL golden and case evidence repository slices", () => {
       ts.getModifiers(method)?.some((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword)
     ).map((method) => method.name.getText(goldenSource))).toEqual([
       "loadCaseDetail",
-      "loadGoldenSetTraces"
+      "loadGoldenSetTraces",
+      "loadRedactedPayloads"
     ]);
     expect(cases.members.filter(ts.isMethodDeclaration).filter((method) =>
       ts.getModifiers(method)?.some((modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword)

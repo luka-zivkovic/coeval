@@ -591,7 +591,7 @@ function JudgeCardPanel({ card, skillId, versionId }: { card: JudgeCard; skillId
       setExportError(true);
     }
   }, [skillId, versionId]);
-  // SkillFormat v1 JSON export — same project-scoped blob download.
+  // skill-format/v2 JSON export, the same project-scoped blob download.
   const exportSkillFormat = useCallback(async () => {
     setExportError(false);
     try {

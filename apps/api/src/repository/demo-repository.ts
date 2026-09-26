@@ -71,7 +71,7 @@ import {
   Skill,
   JudgeKeyProvider,
   JudgeProviderKey,
-  SkillFormatExample,
+  SkillFormatV2Example,
   SkillVersion,
   TraceTestDetail,
   TraceTestSummary,
@@ -311,7 +311,7 @@ export class DemoRepository implements RubristRepository {
     projectId: string,
     cap: number,
     criterionVersionId?: string | undefined
-  ): Promise<SkillFormatExample[]> {
+  ): Promise<SkillFormatV2Example[]> {
     return this.goldenEvidenceRepository.getSkillFormatExamples(projectId, cap, criterionVersionId);
   }
 

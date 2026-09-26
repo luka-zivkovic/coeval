@@ -267,6 +267,24 @@ runPgSmoke("PgRepository smoke", () => {
       expect((example.input as Record<string, unknown>).api_key).toBe(REDACTED_VALUE);
       expect((example.input as Record<string, unknown>).question).toBe("Ship it?");
 
+      // A trace without an output exports null, never its whole payload.
+      const inputOnly = await repo.importTrace("proj_test", "manual", {
+        sourceTraceId: "skillfmt_input_only",
+        input: { question: "Anything?" },
+        output: undefined,
+        metadata: {}
+      }, { ingestionPurpose: "analysis_eligible_manual" });
+      await pool.query(
+        `insert into golden_set_entries
+         (id, project_id, case_id, trace_id, agreed_label, reason, promoted_by, source_skill_version_id,
+          criterion_version_id)
+         values ('gold_input_only', 'proj_test', $1, $2, 'fail', 'No answer.', 'Smoke Reviewer', 'skillv_test',
+                 'criterionv_test')`,
+        [inputOnly.caseId, inputOnly.rawTraceId]
+      );
+      const both = await repo.getSkillFormatExamples("proj_test", 50);
+      expect(both.find((entry) => entry.id === "gold_input_only")).toMatchObject({ input: { question: "Anything?" }, output: null });
+
       // Cap is honoured against the real query path.
       const capped = await repo.getSkillFormatExamples("proj_test", 0);
       expect(capped.length).toBe(0);

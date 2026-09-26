@@ -114,9 +114,8 @@ export class LegacyEvidenceUnsupportedError extends Error {
 }
 
 /**
- * TEMPORARY (Batch 8D): the v1 model binding that v1 receipts and
- * skill-format exports still record, derived from the v2 binding. `null`
- * when v1 can't state it: an unset temperature (the mock, which takes no
+ * TEMPORARY (Batch 8D): the v1 model binding that v1 receipts still record,
+ * derived from the v2 binding. `null` when v1 can't state it: an unset temperature (the mock, which takes no
  * sampling, keeps v1's recorded 0), a typed-question provider, or an OpenAI
  * binding on a recorded override endpoint.
  *

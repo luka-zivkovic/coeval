@@ -70,7 +70,7 @@ import type {
   RunComparison,
   SelfConsistencyReport,
   Skill,
-  SkillFormatExample,
+  SkillFormatV2Example,
   SkillVersion,
   TraceTestDetail,
   TraceTestSummary,
@@ -252,7 +252,7 @@ export interface GoldenEvidenceRepositoryPort {
     projectId: string,
     cap: number,
     criterionVersionId?: string | undefined
-  ): Promise<SkillFormatExample[]>;
+  ): Promise<SkillFormatV2Example[]>;
   getGoldenSetHealth(projectId: string, criterionVersionId?: string | undefined): Promise<GoldenSetHealthSummary>;
   getExceptionDetail(projectId: string, caseId: string, skillVersionId?: string | undefined): Promise<ExceptionDetail>;
   // generic case detail (any verdict). Null when the case has no judge

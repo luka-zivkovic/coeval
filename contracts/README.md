@@ -33,7 +33,7 @@ normative rules are in
 ## Skill format v2
 
 `skill-format-v2.schema.json` is the portable export of one evaluator version,
-replacing the informal `spec/skill-format-v1.md`. It carries the full
+which replaced the informal skill-format/v1. It carries the full
 definition, the execution binding, and a typed question's text, with the
 digests an importer recomputes and compares with the identity it expected.
 The normative rules are in [`skill-format-v2.md`](skill-format-v2.md).

@@ -40,8 +40,8 @@ import {
   type RegressionRunResult,
   RegressionRunResultSchema,
   type Skill,
-  type SkillFormatV1,
-  SkillFormatV1Schema,
+  type SkillFormatV2,
+  SkillFormatV2Schema,
   SkillSchema,
   type SkillVersion,
   SkillVersionSchema,
@@ -316,12 +316,12 @@ export async function fetchJudgeCardMarkdown(skillId: string, versionId: string)
 }
 
 
-// portable SkillFormat v1 export (JSON). Project-scoped via apiFetch,
+// Portable skill-format/v2 export (JSON). Project-scoped via apiFetch,
 // same as the Judge Card export.
-export async function fetchSkillFormat(skillId: string, versionId: string): Promise<SkillFormatV1> {
+export async function fetchSkillFormat(skillId: string, versionId: string): Promise<SkillFormatV2> {
   const response = await apiFetch(`${API_BASE}/api/skills/${skillId}/versions/${versionId}/skill-format`, { credentials: "include" });
   if (!response.ok) throw await apiErrorFromResponse(response, "SkillFormat export failed");
-  return SkillFormatV1Schema.parse(await response.json());
+  return SkillFormatV2Schema.parse(await response.json());
 }
 
 export function buildVerdictExportUrl(opts?: {

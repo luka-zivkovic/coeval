@@ -6,11 +6,16 @@ import {
   CONVERGENCE_CASE_PAGE_MAX_LIMIT,
   CreateOnboardingCheckInputSchema,
   CreateSkillVersionInputSchema,
-  SKILL_FORMAT_EXAMPLES_CAP,
-  type SkillFormatV1
+  SKILL_FORMAT_V2_EXAMPLES_CAP,
+  SKILL_FORMAT_V2_OWNER_MAX,
+  isPortableSkillFormatV2Example,
+  type EvaluatorIdentity,
+  type SkillFormatV2
 } from "@rubrist/shared";
 import { z } from "zod";
-import { executionBindingInputProblem, legacyModelBinding } from "../lib/execution-binding.js";
+import { executionBindingInputProblem } from "../lib/execution-binding.js";
+import { evaluatorIdentityFor } from "../lib/evaluator-identity.js";
+import { buildSkillFormatV2 } from "../lib/skill-format-v2.js";
 import { sha256Digest } from "../lib/canonical-json.js";
 import { userProjectRole } from "../lib/auth.js";
 import { buildJudgeCard, renderJudgeCardMarkdown } from "../lib/judge-card.js";
@@ -190,10 +195,11 @@ export function registerSkillAdministrationRoutes(
     return c.json(card);
   });
 
-  // portable SkillFormat v1 export — a skill version as the
-  // implementation-independent document (spec/skill-format-v1.md). Mapping
-  // only: everything from Skill + SkillVersion + the golden set (examples).
-  // Session + member-authed like /card. `?download=1` streams a .json file.
+  // Portable skill-format/v2 export (contracts/skill-format-v2.md): the
+  // evaluator version's full definition and execution binding, with the
+  // digests an importer recomputes. Mapping only: everything comes from the
+  // skill, the version, and the golden set (examples). Session +
+  // member-authed like /card. `?download=1` streams a .json file.
   app.get("/api/skills/:skillId/versions/:versionId/skill-format", async (c) => {
     const projectId = c.get("projectId");
     const skillId = c.req.param("skillId");
@@ -206,37 +212,56 @@ export function registerSkillAdministrationRoutes(
     if (!criterionVersion) return c.json({ error: "Evaluator criterion binding not found" }, 409);
     const skill = await repository.getCurrentSkillForCriterion(projectId, criterionVersion.criterionId);
 
-    const examples = await repository.getSkillFormatExamples(
+    let identity: EvaluatorIdentity;
+    try {
+      identity = evaluatorIdentityFor(version);
+    } catch {
+      return c.json({ error: "This evaluator version has no valid evaluator identity to export." }, 409);
+    }
+    const golden = await repository.getSkillFormatExamples(
       projectId,
-      SKILL_FORMAT_EXAMPLES_CAP,
+      SKILL_FORMAT_V2_EXAMPLES_CAP,
       criterionVersion.id
     );
-    const basis: string[] = [];
-    if (examples.length === 0) {
-      basis.push("examples: the golden set is empty — promote reviewed cases to seed few-shot examples.");
-    } else if (examples.length === SKILL_FORMAT_EXAMPLES_CAP) {
-      basis.push(`examples: capped at ${SKILL_FORMAT_EXAMPLES_CAP} of the golden set.`);
+    // An example the format can't carry is left out, never the whole export.
+    const examples = golden.filter(isPortableSkillFormatV2Example);
+    const notes: string[] = [];
+    if (golden.length === 0) {
+      notes.push("examples: the golden set is empty; promote reviewed cases to seed few-shot examples.");
+    } else if (golden.length === SKILL_FORMAT_V2_EXAMPLES_CAP) {
+      notes.push(`examples: capped at ${SKILL_FORMAT_V2_EXAMPLES_CAP} of the golden set.`);
     }
-    basis.push("This document is a mapping of recorded skill + golden-set data — no value is fabricated.");
+    if (examples.length < golden.length) {
+      notes.push(`examples: ${golden.length - examples.length} of the golden set left out because the format can't carry them (nested too deep, a __proto__ key, or a lone UTF-16 surrogate).`);
+    }
+    const owner = cutToLength(skill.ownerName, SKILL_FORMAT_V2_OWNER_MAX);
+    if (owner !== skill.ownerName) notes.push(`owner: the owner's display name is cut to ${SKILL_FORMAT_V2_OWNER_MAX} characters.`);
+    if (identity.executionBinding.endpoint.kind === "custom") {
+      notes.push("The evaluator calls a custom endpoint named only by its digest; an importer supplies the base URL, which must match that digest.");
+    }
+    notes.push("This document is a mapping of recorded evaluator and golden-set data; no value is fabricated.");
 
-    // skill-format/v1 records a v1 binding; skill-format/v2 replaces it in Batch 8D.
-    const legacyBinding = legacyModelBinding(version);
-    if (legacyBinding === null) {
-      return c.json({ error: "skill-format/v1 can't state this version's execution binding (it needs an explicit temperature)." }, 409);
+    let doc: SkillFormatV2;
+    try {
+      doc = buildSkillFormatV2({
+        name: skill.name,
+        description: skill.description,
+        owner,
+        version: version.version,
+        status: version.status,
+        identity,
+        // Typed-question evaluators, which carry their question text, arrive in Batch 8E.
+        question: null,
+        examples,
+        notes
+      });
+    } catch (error) {
+      // A document the format refuses is the version's; anything else is a bug.
+      if (!(error instanceof z.ZodError)) throw error;
+      const issue = error.issues[0];
+      const where = issue && issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
+      return c.json({ error: `This evaluator version can't be exported as skill-format/v2: ${where}${issue?.message ?? "invalid document"}` }, 422);
     }
-    const doc: SkillFormatV1 = {
-      formatVersion: "skill-format/v1",
-      name: skill.name,
-      description: skill.description,
-      owner: skill.ownerName,
-      version: version.version,
-      status: version.status,
-      modelBinding: legacyBinding,
-      rubricMarkdown: version.rubricMarkdown,
-      examples,
-      outputSchema: (version.outputSchema ?? {}) as SkillFormatV1["outputSchema"],
-      basis
-    };
 
     if (c.req.query("download") === "1") {
       const stamp = new Date().toISOString().slice(0, 10);
@@ -511,4 +536,11 @@ export function registerSkillAdministrationRoutes(
     const status = result.regressionRun.status === "blocked" ? 409 : 201;
     return c.json({ ...result, ...(backfill ? { backfill } : {}) }, status);
   });
+}
+
+/** At most `max` UTF-16 units, never splitting a surrogate pair. */
+function cutToLength(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
 }

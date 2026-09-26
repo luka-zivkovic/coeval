@@ -13,10 +13,11 @@ import {
 // of one evaluator version. Unlike evidence, it carries the full definition,
 // the execution binding, and a typed question's text, because an export exists
 // to move an evaluator; its digests let an importer confirm the identity it
-// received. It replaces skill-format/v1 (spec/skill-format-v1.md).
+// received. It replaced the informal skill-format/v1.
 
 export const SKILL_FORMAT_V2 = "skill-format/v2" as const;
 export const SKILL_FORMAT_V2_EXAMPLES_CAP = 50;
+export const SKILL_FORMAT_V2_OWNER_MAX = 200;
 
 const Sha256DigestSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 // Example payloads are arbitrary JSON; their depth is bounded before the
@@ -38,7 +39,7 @@ const SkillFormatV2ObjectSchema = z.object({
   formatVersion: z.literal(SKILL_FORMAT_V2),
   name: z.string().min(1).max(200),
   description: z.string().max(20_000),
-  owner: z.string().max(200),
+  owner: z.string().max(SKILL_FORMAT_V2_OWNER_MAX),
   version: z.string().min(1).max(100),
   status: SkillStatusSchema,
   evaluator: z.object({
@@ -59,6 +60,18 @@ const SkillFormatV2ObjectSchema = z.object({
   // Honest notes about anything the export could not source; never a fabricated value.
   notes: z.array(z.string().min(1).max(2_000)).max(20)
 }).strict();
+
+/**
+ * Whether one golden example can travel in a skill-format/v2 document: the
+ * document's rules, applied to an example two levels below its root, so an
+ * exporter leaves out that example instead of refusing the whole export.
+ */
+export function isPortableSkillFormatV2Example(example: unknown): boolean {
+  return !exceedsJsonDepth(example, SKILL_FORMAT_V2_MAX_JSON_DEPTH - 2) &&
+    !containsOwnProtoKey(example) &&
+    !containsLoneUtf16Surrogate(example) &&
+    SkillFormatV2ExampleSchema.safeParse(example).success;
+}
 
 /** The raw document is checked first: no `__proto__` key and no lone surrogate anywhere. */
 export const SkillFormatV2Schema = z.unknown().superRefine((raw, ctx) => {

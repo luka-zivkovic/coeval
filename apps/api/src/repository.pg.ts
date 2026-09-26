@@ -56,7 +56,7 @@ import type {
   RunComparison,
   JudgeKeyProvider,
   JudgeProviderKey,
-  SkillFormatExample,
+  SkillFormatV2Example,
   Skill,
   SkillVersion,
   CaseSource,
@@ -412,7 +412,7 @@ export class PgRepository implements RubristRepository {
     projectId: string,
     cap: number,
     criterionVersionId?: string | undefined
-  ): Promise<SkillFormatExample[]> {
+  ): Promise<SkillFormatV2Example[]> {
     return this.goldenEvidenceRepository.getSkillFormatExamples(projectId, cap, criterionVersionId);
   }
 
