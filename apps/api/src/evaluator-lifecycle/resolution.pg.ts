@@ -17,7 +17,7 @@ import { sha256Digest } from "../lib/canonical-json.js";
 
 type Db = Pool | PoolClient;
 
-export type ResolutionTriggerKind = "candidate_creation" | "activation" | "binary_calibration" | "binary_calibration_run" | "on_demand";
+export type ResolutionTriggerKind = "candidate_creation" | "activation" | "binary_calibration" | "binary_calibration_run" | "on_demand" | "version_save";
 
 export interface ResolutionAttemptInput {
   projectId: string;

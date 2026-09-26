@@ -2,13 +2,20 @@ import type { ExecutionFetch } from "@rubrist/audit/runtime";
 import type { ExecutionBinding } from "@rubrist/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  CAPABILITY_CHECK_BUDGET_MS,
   bindingResolutionServices,
+  checkBindingCapabilities,
   governedGateRefusal,
   recheckGovernedBinding,
   resolutionNeeded,
   resolveGovernedBinding,
+  resolveSavedBinding,
   type GovernedBinding
 } from "../src/lib/binding-resolution.js";
+import { savedVersionResolver } from "../src/evaluator-lifecycle/routes.js";
+import type { EvaluatorLifecycleRepository } from "../src/evaluator-lifecycle/repository.js";
+import { ExecutionBindingInputError } from "../src/lib/execution-binding.js";
+import { CapabilityCheckInputSchema, REASONING_DEFAULTS_VERSION, documentedReasoningDefault, type ResolutionRecord } from "@rubrist/shared";
 import { CAPABILITY_PROBE_INPUT, TYPED_QUESTION_PROBE, governedGateProblems } from "../src/lib/evaluator-resolution.js";
 import { SEEDED_BINDING, resolvedRecordFor, temperatureRejectingRecordFor } from "./fixtures/execution-binding.js";
 
@@ -51,6 +58,17 @@ afterEach(() => {
 });
 
 describe("the credential a gate probes with", () => {
+  it("never falls back to a platform key for a custom endpoint", async () => {
+    const previous = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = "sk-platform";
+    try {
+      await expect(bindingResolutionServices(async () => null).credential("project", "custom")).resolves.toEqual({ apiKey: null, source: null });
+    } finally {
+      if (previous === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = previous;
+    }
+  });
+
   it("is the project's key, then the platform's, and the mock needs none", async () => {
     process.env.ANTHROPIC_API_KEY = "sk-platform";
     expect(await bindingResolutionServices(async () => "sk-project").credential("p", "anthropic")).toEqual({ apiKey: "sk-project", source: "project" });
@@ -210,3 +228,212 @@ describe("a typed-question binding (ADR-0014 section 5)", () => {
     expect((await resolveGovernedBinding(services(unavailable).services, governed(JEV))).status).toBe("unresolved");
   });
 });
+
+describe("the capability check before save (ADR-0014 section 4)", () => {
+  const base = { provider: "anthropic" as const, endpoint: { kind: "managed" as const }, modelId: "claude-opus-5-5", modelVersion: "claude-opus-5-5", outputTokenLimit: 1_200, routing: null };
+
+  it("finds the protocol, then probes temperature with the documented default reasoning, then both reasoning settings", async () => {
+    const { sent, services: check } = services((body) => "temperature" in body ? rejected("`temperature` is deprecated for this model.") : accepted());
+    const report = await checkBindingCapabilities(check, "project", base);
+    expect(report).toMatchObject({
+      credentialSource: "project",
+      protocol: "anthropic.structured-output/v1",
+      temperatureSupport: "parameter_rejected",
+      reasoningSupport: "accepted",
+      probedReasoning: documentedReasoningDefault("anthropic", "claude-opus-5-5")!.reasoning,
+      documentedDefault: documentedReasoningDefault("anthropic", "claude-opus-5-5")!.reasoning,
+      published: null,
+      reasoningDefaultsVersion: REASONING_DEFAULTS_VERSION,
+      interrupted: false,
+      checkedAt: "2026-09-26T00:00:00.000Z"
+    });
+    expect(report.probes.map((probe) => [probe.stage, probe.purpose, probe.outcome])).toEqual([
+      ["capability_check", "protocol", "accepted"],
+      ["capability_check", "temperature", "rejected"],
+      ["capability_check", "reasoning", "accepted"],
+      ["capability_check", "reasoning", "accepted"]
+    ]);
+    expect(sent).toHaveLength(4);
+  });
+
+  it("checks OpenAI at the platform's base-URL override, as saving records it", async () => {
+    const urls: string[] = [];
+    const check = bindingResolutionServices(async () => "sk-openai", {
+      fetch: async (url) => {
+        urls.push(url);
+        return new Response(JSON.stringify({ model: "gpt-x", choices: [{ message: { content: JSON.stringify(VERDICT) }, finish_reason: "stop" }], usage: { prompt_tokens: 1, completion_tokens: 1 } }));
+      },
+      now: () => new Date("2026-09-26T00:00:00.000Z")
+    });
+    const previous = process.env.OPENAI_BASE_URL;
+    process.env.OPENAI_BASE_URL = "https://gateway.example/v1";
+    try {
+      const report = await checkBindingCapabilities(check, "project", { ...base, provider: "openai", modelId: "gpt-x", modelVersion: "gpt-x", outputTokenLimit: null });
+      expect(urls.length).toBeGreaterThan(0);
+      expect(urls.every((url) => url.startsWith("https://gateway.example/v1/"))).toBe(true);
+      expect(report.protocol).toBe("openai.structured-output/v1");
+    } finally {
+      if (previous === undefined) delete process.env.OPENAI_BASE_URL;
+      else process.env.OPENAI_BASE_URL = previous;
+    }
+  });
+
+  it("never sends a key to a URL only the custom provider may name", async () => {
+    const urls: string[] = [];
+    const check = bindingResolutionServices(async () => "sk-openai", {
+      fetch: async (url) => {
+        urls.push(url);
+        return new Response("{}");
+      }
+    });
+    const elsewhere = { ...base, provider: "openai" as const, endpoint: { kind: "custom" as const, baseUrl: "https://attacker.example/v1" }, modelId: "gpt-x", modelVersion: "gpt-x", outputTokenLimit: null };
+    expect(CapabilityCheckInputSchema.safeParse(elsewhere).success).toBe(false);
+    await expect(checkBindingCapabilities(check, "project", elsewhere)).rejects.toBeInstanceOf(ExecutionBindingInputError);
+    expect(urls).toEqual([]);
+  });
+
+  it("refuses every input no saved binding could have", () => {
+    const refused = [
+      { ...base, provider: "custom" as const },
+      { ...base, routing: { requireParameters: true, allowFallbacks: false } as const },
+      { ...base, outputTokenLimit: null },
+      { ...base, provider: "typesafe" as const, modelId: "jev-1.13.0", modelVersion: "jev-1.13.0" }
+    ];
+    for (const input of refused) expect(CapabilityCheckInputSchema.safeParse(input).success).toBe(false);
+    expect(CapabilityCheckInputSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("checks a custom provider at the URL its author names", async () => {
+    const urls: string[] = [];
+    const check = bindingResolutionServices(async () => "sk-custom", {
+      fetch: async (url) => {
+        urls.push(url);
+        return new Response(JSON.stringify({ model: "local", choices: [{ message: { content: JSON.stringify(VERDICT) }, finish_reason: "stop" }], usage: { prompt_tokens: 1, completion_tokens: 1 } }));
+      }
+    });
+    const report = await checkBindingCapabilities(check, "project", {
+      ...base, provider: "custom", endpoint: { kind: "custom", baseUrl: "https://judge.example/v1" }, modelId: "local", modelVersion: "local", outputTokenLimit: null
+    });
+    expect(urls.length).toBeGreaterThan(0);
+    expect(urls.every((url) => url.startsWith("https://judge.example/v1/"))).toBe(true);
+    expect(report.credentialSource).toBe("project");
+  });
+
+  it("reports what the provider publishes about the model", async () => {
+    const check = bindingResolutionServices(async () => "sk-project", {
+      fetch: async () => accepted(),
+      capabilityFetch: async () => new Response(JSON.stringify({
+        id: "claude-opus-5-5",
+        capabilities: {
+          effort: { supported: true, low: { supported: true }, medium: { supported: true }, high: { supported: false } },
+          structured_outputs: { supported: true },
+          thinking: { supported: true, types: { adaptive: { supported: true }, enabled: { supported: false } } }
+        }
+      }))
+    });
+    const report = await checkBindingCapabilities(check, "project", base);
+    expect(report.published).toEqual({ temperature: null, topP: null, reasoning: true, thinkingTypes: ["adaptive"], effortLevels: ["low", "medium"] });
+  });
+
+  it("never reports the key, even when the provider echoes it", async () => {
+    const { services: check } = services(() => rejected("Invalid key sk-project for this model."));
+    const report = await checkBindingCapabilities(check, "project", base);
+    expect(JSON.stringify(report)).not.toContain("sk-project");
+    expect(JSON.stringify(report)).toContain("[redacted]");
+  });
+
+  it("ends a check out of time with what it learned, and says it was interrupted", async () => {
+    let tick = 0;
+    const sent: unknown[] = [];
+    const check = bindingResolutionServices(async () => "sk-project", {
+      fetch: async (_url, init) => {
+        sent.push(init.body);
+        return accepted();
+      },
+      capabilityFetch: async () => new Response("{}", { status: 404 }),
+      // Each reading of the clock is 25 seconds later, so the third probe can't start.
+      now: () => new Date(Date.UTC(2026, 8, 26) + (tick++) * (CAPABILITY_CHECK_BUDGET_MS * 5 / 12))
+    });
+    const report = await checkBindingCapabilities(check, "project", base);
+    expect(sent).toHaveLength(2);
+    expect(report.interrupted).toBe(true);
+    expect(report.probes.slice(0, 2).map((probe) => probe.outcome)).toEqual(["accepted", "accepted"]);
+  });
+
+  it("checks a TypeSafe model with its one protocol and no setting probes", async () => {
+    const { sent, services: check } = services(() => new Response(JSON.stringify({
+      model: "jev-1.13.0", answers: { verdict: { type: "noul", noul: 0.97 } }, usage: { input_tokens: 4, output_tokens: 1 }
+    })));
+    const report = await checkBindingCapabilities(check, "project", { ...base, provider: "typesafe", modelId: "jev-1.13.0", modelVersion: "jev-1.13.0", outputTokenLimit: null });
+    expect(report).toMatchObject({ protocol: "typed-question/v1", temperatureSupport: null, reasoningSupport: null, probedReasoning: null, documentedDefault: null });
+    expect(sent).toHaveLength(1);
+  });
+});
+
+describe("resolution after save (ADR-0014 section 4)", () => {
+  it("confirms the saved request and probes an unset temperature, never reasoning", async () => {
+    const { sent, services: save } = services(() => accepted());
+    const record = await resolveSavedBinding(save, governed({ ...OPUS, reasoning: null }));
+    expect(record.status).toBe("resolved");
+    expect(record.probes.map((probe) => probe.purpose)).toEqual(["confirm", "temperature"]);
+    expect(sent).toHaveLength(2);
+  });
+
+  it("is recorded against the save, only where a binding needs it and a call could be made", async () => {
+    const recorded: unknown[] = [];
+    const repository = (binding: ExecutionBinding, record: Awaited<ReturnType<typeof resolveSavedBinding>> | null = null) => ({
+      getGovernedBinding: async () => ({ binding: governed(binding), record }),
+      recordResolution: async (attempt: unknown, stored: unknown) => {
+        recorded.push(attempt);
+        return stored;
+      }
+    }) as unknown as EvaluatorLifecycleRepository;
+    const { services: save } = services(() => accepted());
+    await savedVersionResolver(repository(SEEDED_BINDING), save)({ projectId: "project", skillVersionId: "version" });
+    expect(recorded).toEqual([expect.objectContaining({
+      skillVersionId: "version", kind: "resolution", triggerKind: "version_save", triggerRef: "version-save:version", outcome: "resolved"
+    })]);
+    recorded.length = 0;
+    await savedVersionResolver(repository({ ...SEEDED_BINDING, provider: "mock", verdictProtocol: "mock/v1", reasoning: null, outputTokenLimit: null, sampling: { temperature: null, topP: null } }), save)({ projectId: "project", skillVersionId: "version" });
+    await savedVersionResolver(repository({ ...SEEDED_BINDING, modelId: "claude-latest" }), save)({ projectId: "project", skillVersionId: "version" });
+    await savedVersionResolver(repository(SEEDED_BINDING, await resolvedRecordFor(SEEDED_BINDING)), save)({ projectId: "project", skillVersionId: "version" });
+    expect(recorded).toEqual([]);
+  });
+
+  it("resolves once: a stored record, even one lacking an answer only a gate needs, isn't probed again", async () => {
+    let stored: ResolutionRecord | null = null;
+    const repository = {
+      getGovernedBinding: async () => ({ binding: governed({ ...OPUS, reasoning: null }), record: stored }),
+      recordResolution: async (_attempt: unknown, record: ResolutionRecord | null) => {
+        stored = record;
+        return record;
+      }
+    } as unknown as EvaluatorLifecycleRepository;
+    const { sent, services: save } = services(() => accepted());
+    const resolve = savedVersionResolver(repository, save);
+    await resolve({ projectId: "project", skillVersionId: "version" });
+    expect(stored).toMatchObject({ status: "resolved", reasoningSupport: null });
+    expect(resolutionNeeded({ ...OPUS, reasoning: null }, stored)).toBe(true);
+    const calls = sent.length;
+    await resolve({ projectId: "project", skillVersionId: "version" });
+    expect(sent).toHaveLength(calls);
+  });
+
+  it("retries an unresolved record, and leaves a failed one for a new version", async () => {
+    const recorded: unknown[] = [];
+    const repository = (record: ResolutionRecord) => ({
+      getGovernedBinding: async () => ({ binding: governed(SEEDED_BINDING), record }),
+      recordResolution: async (attempt: unknown, stored: unknown) => {
+        recorded.push(attempt);
+        return stored;
+      }
+    }) as unknown as EvaluatorLifecycleRepository;
+    const resolved = await resolvedRecordFor(SEEDED_BINDING);
+    const { services: save } = services(() => accepted());
+    await savedVersionResolver(repository({ ...resolved, status: "failed" }), save)({ projectId: "project", skillVersionId: "version" });
+    expect(recorded).toEqual([]);
+    await savedVersionResolver(repository({ ...resolved, status: "unresolved" }), save)({ projectId: "project", skillVersionId: "version" });
+    expect(recorded).toEqual([expect.objectContaining({ triggerKind: "version_save", outcome: "resolved" })]);
+  });
+});
+

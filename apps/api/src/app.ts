@@ -726,7 +726,8 @@ export function createApp(repository: RubristRepository = new DemoRepository(), 
     repository,
     ...(options.pool ? { pool: options.pool } : {}),
     requestServices,
-    publicApiBaseUrl
+    publicApiBaseUrl,
+    bindingResolution
   });
 
   registerSkillAdministrationRoutes(app, {

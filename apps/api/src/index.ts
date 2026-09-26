@@ -7,7 +7,7 @@ import { PgBinaryCalibrationRepository } from "./binary-calibration/repository.p
 import { registerBinaryCalibrationWorker } from "./binary-calibration/worker.js";
 import { PgAnalysisStudyRepository, registerAnalysisStudyDeadlineCloser } from "./analysis-study/index.js";
 import { PgAnalysisPromotionRepository } from "./analysis-promotion/index.js";
-import { PgEvaluatorLifecycleRepository } from "./evaluator-lifecycle/index.js";
+import { PgEvaluatorLifecycleRepository, savedVersionResolver } from "./evaluator-lifecycle/index.js";
 import { PgAnalysisMeasurementRepository } from "./analysis-measurement/index.js";
 import { createAuth } from "./lib/auth.js";
 import { PgProductionDecisionRecordRepository } from "./production-calibration/repository.pg.js";
@@ -70,7 +70,14 @@ if (queue) {
   await registerEvalRunWorkers(queue, repository, createStrictJudgeProvider);
   // The gate worker needs no strict factory: runRegressionGateForVersion has
   // its own mock-degradation refusal (the original gate guard).
-  await registerGateRunWorker(queue, repository);
+  await registerGateRunWorker(queue, repository, evaluatorLifecycleRepository ? {
+    // Resolution after save (ADR-0014 section 4): the gate worker confirms a
+    // saved binding before its regression gate.
+    resolveSaved: savedVersionResolver(
+      evaluatorLifecycleRepository,
+      bindingResolutionServices((projectId, provider) => repository.getJudgeProviderCredential(projectId, provider))
+    )
+  } : {});
   await registerLangSmithImportWorker(queue, repository);
   await registerLangfuseImportWorker(queue, repository);
   await registerIronsideImportWorker(queue, repository);

@@ -2,6 +2,7 @@ import type { Pool } from "pg";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import {
+  CapabilityCheckInputSchema,
   DeleteProjectInputSchema,
   JudgeProviderIdSchema,
   OnboardingEvidenceInventorySchema,
@@ -24,12 +25,16 @@ import {
   resolveJudgeProviderApiKey
 } from "../lib/judge-provider.js";
 import { fetchJudgeModelCatalog, JudgeModelCatalogError } from "../lib/judge-models.js";
+import { checkBindingCapabilities, type BindingResolutionServices } from "../lib/binding-resolution.js";
 import {
   AmbiguousProjectSkillError,
   NoCurrentSkillError,
   type RubristRepository
 } from "../repository.js";
-import type { AppVariables, RequestServices } from "../request-services/index.js";
+import { CAPABILITY_CHECKS_PER_MINUTE, type AppVariables, type RequestServices } from "../request-services/index.js";
+
+/** Capability checks a project may have in flight at once. */
+export const CAPABILITY_CHECKS_IN_FLIGHT = 2;
 
 // Owner setup and POST /api/projects import the same first-key identity so
 // onboarding copy and the Settings list cannot drift apart.
@@ -61,6 +66,8 @@ export interface ProjectAdministrationRouteOptions {
   pool?: Pool | undefined;
   requestServices: RequestServices;
   publicApiBaseUrl(c: Context<{ Variables: AppVariables }>): string;
+  /** The credential and transport capability checks probe with. */
+  bindingResolution: BindingResolutionServices;
 }
 
 // Registration stays on the parent app so the global body-limit, API-key,
@@ -70,6 +77,9 @@ export function registerProjectAdministrationRoutes(
   options: ProjectAdministrationRouteOptions
 ): void {
   const { repository, pool, requestServices } = options;
+  // createApp registers these routes once, so one app counts its projects'
+  // running capability checks here.
+  const checksInFlight = new Map<string, number>();
 
   app.get("/api/projects", async (c) => {
     return c.json({ projects: await repository.listProjects(c.get("user")?.id) });
@@ -227,6 +237,40 @@ export function registerProjectAdministrationRoutes(
         return c.json({ error: error.message }, error.kind === "unconfigured" ? 409 : 502);
       }
       throw error;
+    }
+  });
+
+  // The capability check before save (ADR-0014 section 4): it probes a model
+  // so the author can choose only settings the model takes. Owner-only,
+  // since each check spends up to 6 provider calls; it records nothing.
+  app.post("/api/judge/capability-check", async (c) => {
+    const denied = await requestServices.requireOwner(c, "check a model's capabilities");
+    if (denied) return denied;
+    const body = await c.req.json().catch(() => null);
+    const parsed = CapabilityCheckInputSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "Invalid capability check input", details: z.treeifyError(parsed.error) }, 400);
+    }
+    const projectId = c.get("projectId");
+    if (parsed.data.provider === "mock") {
+      // The demo's deterministic mock has nothing to probe outside demo mode.
+      if (pool) return c.json({ error: "The mock provider has no capabilities to check." }, 400);
+    } else if ((await options.bindingResolution.credential(projectId, parsed.data.provider)).apiKey === null) {
+      return c.json({ error: `Configure a key for ${parsed.data.provider} before checking its models.` }, 409);
+    }
+    if ((checksInFlight.get(projectId) ?? 0) >= CAPABILITY_CHECKS_IN_FLIGHT) {
+      return c.json({ error: "A capability check for this project is already running. Retry when it finishes." }, 429);
+    }
+    if (!requestServices.takeCapabilityCheck(`${projectId}:${c.get("user")?.id ?? "demo"}`)) {
+      return c.json({ error: `Rate limit exceeded: ${CAPABILITY_CHECKS_PER_MINUTE} capability checks/minute.` }, 429);
+    }
+    checksInFlight.set(projectId, (checksInFlight.get(projectId) ?? 0) + 1);
+    try {
+      return c.json({ report: await checkBindingCapabilities(options.bindingResolution, projectId, parsed.data) });
+    } finally {
+      const remaining = (checksInFlight.get(projectId) ?? 1) - 1;
+      if (remaining > 0) checksInFlight.set(projectId, remaining);
+      else checksInFlight.delete(projectId);
     }
   });
 

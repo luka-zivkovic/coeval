@@ -1,9 +1,14 @@
-import type { ExecutionFetch, VerdictSpec } from "@rubrist/audit/runtime";
+import { EvaluatorCallError, type ExecutionFetch, type VerdictSpec } from "@rubrist/audit/runtime";
 import {
+  CapabilityCheckReportSchema,
+  REASONING_DEFAULTS_VERSION,
+  defaultVerdictProtocol,
   documentedReasoningDefault,
   reasoningFamilyFor,
   takesSamplingSettings,
   verdictProtocolsFor,
+  type CapabilityCheckInput,
+  type CapabilityCheckReport,
   type CapabilityProbe,
   type ExecutionBinding,
   type ExecutionProviderId,
@@ -12,12 +17,14 @@ import {
 } from "@rubrist/shared";
 import { fetchPublishedCapabilities, type CapabilityFetch } from "./evaluator-capability.js";
 import {
+  PROBE_TIMEOUT_MS,
   governedGateProblems,
   recheckExecutionBinding,
   resolveExecutionBinding,
+  runCapabilityCheck,
   bindingProbeExecutor
 } from "./evaluator-resolution.js";
-import { endpointUrlFor } from "./execution-binding.js";
+import { endpointUrlFor, executionBindingFromInput } from "./execution-binding.js";
 import { judgeProviderEnvironmentKey } from "./judge-provider.js";
 
 // Resolution and re-check as the governed gates and runs use them (ADR-0014
@@ -93,10 +100,23 @@ async function probeContext(services: BindingResolutionServices, governed: Gover
 
 /** Resolution at a governed gate: the confirming probe and, where unset, up to two setting probes. */
 export async function resolveGovernedBinding(services: BindingResolutionServices, governed: GovernedBinding): Promise<ResolutionRecord> {
+  return resolveBinding(services, governed, "gate");
+}
+
+/**
+ * Resolution after save (ADR-0014 section 4): the confirming probe and, where
+ * temperature is unset, a temperature probe, so at most 2 calls. It confirms
+ * the saved binding and never changes it.
+ */
+export async function resolveSavedBinding(services: BindingResolutionServices, governed: GovernedBinding): Promise<ResolutionRecord> {
+  return resolveBinding(services, governed, "save");
+}
+
+async function resolveBinding(services: BindingResolutionServices, governed: GovernedBinding, trigger: "save" | "gate"): Promise<ResolutionRecord> {
   const context = await probeContext(services, governed);
   return resolveExecutionBinding({
     binding: governed.executionBinding,
-    trigger: "gate",
+    trigger,
     check: null,
     published: context.published,
     documentedDefault: context.documentedDefault,
@@ -207,4 +227,104 @@ export function governedGateRefusal(binding: ExecutionBinding, record: Resolutio
     providerMessage: rejected?.providerMessage ?? null,
     suggestion
   };
+}
+
+/** A capability check probes as a binary evaluator: the output mechanism, not the verdict kind, decides acceptance. */
+const CHECK_SPEC: VerdictSpec = { verdictKind: "binary", scalarRange: null, categoricalChoiceScores: null };
+
+/**
+ * How long one capability check may take while its author waits: the probes
+ * that fit run, and a check out of time ends with what it learned.
+ */
+export const CAPABILITY_CHECK_BUDGET_MS = 60_000;
+
+/**
+ * The capability check before save (ADR-0014 section 4), probing exactly
+ * what a saved binding would send: the endpoint and credential are derived as
+ * saving derives them (only the custom provider names its own URL; OpenAI on
+ * the managed endpoint uses the platform's base-URL override), so a check can
+ * never send a key anywhere a saved binding couldn't. At most 6 probes in
+ * sequence over the fixed probe input, within CAPABILITY_CHECK_BUDGET_MS; it
+ * records nothing. An input no binding could have is an
+ * ExecutionBindingInputError.
+ */
+export async function checkBindingCapabilities(
+  services: BindingResolutionServices,
+  projectId: string,
+  input: CapabilityCheckInput
+): Promise<CapabilityCheckReport> {
+  const { executionBinding: saved, customEndpointUrl } = executionBindingFromInput({
+    ...input,
+    sampling: { temperature: null, topP: null },
+    reasoning: null,
+    verdictProtocol: defaultVerdictProtocol(input.provider)
+  }, undefined, { typedQuestion: input.provider === "typesafe" });
+  const customBaseUrl = endpointUrlFor({ executionBinding: saved, customEndpointUrl });
+  const credential = input.provider === "mock"
+    ? { apiKey: null, source: "built_in" as const }
+    : await services.credential(projectId, input.provider);
+  const published = await fetchPublishedCapabilities({
+    provider: input.provider,
+    modelId: input.modelId,
+    apiKey: credential.apiKey,
+    ...(services.capabilityFetch ? { fetch: services.capabilityFetch } : {})
+  });
+  const documentedDefault = documentedReasoningDefault(input.provider, input.modelId)?.reasoning ?? null;
+  const clock = () => (services.now?.() ?? new Date()).getTime();
+  const deadline = clock() + CAPABILITY_CHECK_BUDGET_MS;
+  // Whether a probe couldn't be sent (out of time, or refused before the call).
+  let unsent = false;
+  const check = await runCapabilityCheck({
+    base: {
+      provider: saved.provider,
+      endpoint: saved.endpoint,
+      modelId: saved.modelId,
+      modelVersion: saved.modelVersion,
+      outputTokenLimit: saved.outputTokenLimit,
+      routing: saved.routing
+    },
+    credentialSource: credential.source,
+    published,
+    documentedDefault,
+    // Each probe gets what is left of the budget; one that can't start ends the check.
+    execute: async (binding) => {
+      const remaining = deadline - clock();
+      try {
+        if (remaining <= 0) {
+          throw new EvaluatorCallError("provider_timeout", "the capability check ran out of time", { physicalCall: false });
+        }
+        return await bindingProbeExecutor({
+          apiKey: credential.apiKey,
+          customBaseUrl,
+          spec: CHECK_SPEC,
+          timeoutMs: Math.min(PROBE_TIMEOUT_MS, remaining),
+          ...(services.fetch ? { fetch: services.fetch } : {})
+        })(binding);
+      } catch (error) {
+        if (error instanceof EvaluatorCallError && !error.physicalCall) unsent = true;
+        throw error;
+      }
+    }
+  });
+  const last = check.probes.at(-1);
+  return CapabilityCheckReportSchema.parse({
+    credentialSource: credential.source,
+    protocol: check.protocol,
+    probes: check.probes,
+    temperatureSupport: check.temperatureSupport,
+    reasoningSupport: check.reasoningSupport,
+    probedReasoning: check.probedReasoning,
+    documentedDefault,
+    reasoningDefaultsVersion: REASONING_DEFAULTS_VERSION,
+    // The check ended early: a probe couldn't be sent, or the last one ended on a transient error.
+    interrupted: unsent || last?.outcome === "error",
+    published: published === null ? null : {
+      temperature: published.temperature,
+      topP: published.topP,
+      reasoning: published.reasoning,
+      thinkingTypes: published.thinkingTypes === null ? null : [...published.thinkingTypes],
+      effortLevels: published.effortLevels === null ? null : [...published.effortLevels]
+    },
+    checkedAt: new Date(clock()).toISOString()
+  });
 }

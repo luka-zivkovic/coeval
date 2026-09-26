@@ -11,7 +11,8 @@ import {
   EvaluatorLifecycleTransitionResultSchema,
   type EvaluatorCandidateCreateInput,
   type EvaluatorCandidateCreateResult,
-  type ResolutionRecord
+  type ResolutionRecord,
+  mutableModelAlias
 } from "@rubrist/shared";
 import { canonicalJson, sha256Digest } from "../lib/canonical-json.js";
 import {
@@ -29,6 +30,7 @@ import { ExecutionBindingInputError, executionBindingFromInput } from "../lib/ex
 import {
   resolutionNeeded,
   resolveGovernedBinding,
+  resolveSavedBinding,
   type BindingResolutionServices,
   type GovernedBinding
 } from "../lib/binding-resolution.js";
@@ -223,7 +225,34 @@ async function resolveCandidateBinding(
 }
 
 /**
- * Resolves a saved version's binding when the gate needs it (no record, an
+ * Resolution after save (ADR-0014 section 4), for the gate worker: a
+ * just-saved version's binding is resolved when it has no record or only an
+ * unresolved one, and the attempt is recorded against the save. A resolved
+ * record that lacks an answer only a gate needs is left to the gate, since
+ * resolution after save never probes reasoning; a failed one is fixed only by
+ * a new version. The mock makes no call, and a mutable alias is refused at
+ * every governed gate, so neither is probed.
+ */
+export function savedVersionResolver(
+  repository: EvaluatorLifecycleRepository,
+  services: BindingResolutionServices
+): (job: { projectId: string; skillVersionId: string }) => Promise<void> {
+  return async ({ projectId, skillVersionId }) => {
+    const governed = await repository.getGovernedBinding({ projectId }, skillVersionId);
+    if (!governed) return;
+    const binding = governed.binding.executionBinding;
+    if (binding.provider === "mock" || mutableModelAlias(binding.modelId) !== null) return;
+    if (governed.record !== null && governed.record.status !== "unresolved") return;
+    const record = await resolveSavedBinding(services, governed.binding);
+    await repository.recordResolution({
+      projectId, skillVersionId, executionBinding: binding, kind: "resolution",
+      triggerKind: "version_save", triggerRef: `version-save:${skillVersionId}`, outcome: record.status, probes: record.probes
+    }, record);
+  };
+}
+
+/**
+ * Resolves a saved version's binding when a gate needs it (no record, an
  * unresolved one, or a resolved one missing an answer a gate needs) and
  * stores the result. A failed binding is fixed only by a new evaluator
  * version. Returns the latest record, or `undefined` when the version isn't

@@ -10691,7 +10691,7 @@ CREATE TABLE evaluator_resolution_attempts (
     CONSTRAINT evaluator_resolution_attempts_kind_check CHECK ((kind = ANY (ARRAY['resolution'::text, 'recheck'::text]))),
     CONSTRAINT evaluator_resolution_attempts_outcome_check CHECK ((((kind = 'resolution'::text) AND (outcome = ANY (ARRAY['resolved'::text, 'unresolved'::text, 'failed'::text]))) OR ((kind = 'recheck'::text) AND (outcome = ANY (ARRAY['holds'::text, 'no_longer_holds'::text, 'unknown'::text]))))),
     CONSTRAINT evaluator_resolution_attempts_probes_check CHECK ((jsonb_typeof(probes) = 'array'::text)),
-    CONSTRAINT evaluator_resolution_attempts_trigger_kind_check CHECK ((trigger_kind = ANY (ARRAY['candidate_creation'::text, 'activation'::text, 'binary_calibration'::text, 'binary_calibration_run'::text, 'on_demand'::text]))),
+    CONSTRAINT evaluator_resolution_attempts_trigger_kind_check CHECK ((trigger_kind = ANY (ARRAY['candidate_creation'::text, 'activation'::text, 'binary_calibration'::text, 'binary_calibration_run'::text, 'on_demand'::text, 'version_save'::text]))),
     CONSTRAINT evaluator_resolution_attempts_trigger_ref_check CHECK (((char_length(trigger_ref) >= 1) AND (char_length(trigger_ref) <= 4096)))
 );
 

@@ -583,3 +583,61 @@ export const ResolutionRecordSchema = z.object({
   }
 });
 export type ResolutionRecord = z.infer<typeof ResolutionRecordSchema>;
+
+/**
+ * What a capability check probes (ADR-0014 section 4): a model at an
+ * endpoint, before its sampling, reasoning, and verdict protocol are chosen.
+ * The check finds those, so the author can choose them.
+ */
+export const CapabilityCheckInputSchema = ExecutionBindingInputSchema.pick({
+  provider: true,
+  endpoint: true,
+  modelId: true,
+  modelVersion: true,
+  outputTokenLimit: true,
+  routing: true
+}).strict().superRefine((input, ctx) => {
+  // The binding rules a check's input can break, as a saved binding's would.
+  if ((input.provider === "custom") !== (input.endpoint.kind === "custom")) {
+    ctx.addIssue({ code: "custom", path: ["endpoint"], message: "only the custom provider names its own endpoint, and it must" });
+  }
+  if ((input.provider === "openrouter") !== (input.routing !== null)) {
+    ctx.addIssue({ code: "custom", path: ["routing"], message: "OpenRouter states its routing requirements; others have none" });
+  }
+  if (input.provider === "anthropic" && input.outputTokenLimit === null) {
+    ctx.addIssue({ code: "custom", path: ["outputTokenLimit"], message: "Anthropic requires an output token limit" });
+  }
+  if (!takesSamplingSettings(input.provider) && input.outputTokenLimit !== null) {
+    ctx.addIssue({ code: "custom", path: ["outputTokenLimit"], message: `${input.provider} takes no output token limit` });
+  }
+});
+export type CapabilityCheckInput = z.infer<typeof CapabilityCheckInputSchema>;
+
+/**
+ * What a capability check found, for the model picker: the first protocol a
+ * probe accepted, how temperature (with the reasoning it was probed with) and
+ * reasoning fared, the documented default reasoning to pre-fill, and what the
+ * provider publishes about the model. `null` means unknown, never absent.
+ */
+export const CapabilityCheckReportSchema = z.object({
+  credentialSource: JudgeProviderCredentialSourceSchema.nullable(),
+  protocol: VerdictProtocolIdSchema.nullable(),
+  probes: z.array(CapabilityProbeSchema),
+  temperatureSupport: SettingSupportSchema.nullable(),
+  reasoningSupport: SettingSupportSchema.nullable(),
+  probedReasoning: ReasoningSettingsSchema.nullable(),
+  documentedDefault: ReasoningSettingsSchema.nullable(),
+  /** The dated reasoning-defaults table the documented default comes from. */
+  reasoningDefaultsVersion: z.string(),
+  /** Whether the check ended early: a probe couldn't be sent, or ended on a transient error. */
+  interrupted: z.boolean(),
+  published: z.object({
+    temperature: z.boolean().nullable(),
+    topP: z.boolean().nullable(),
+    reasoning: z.boolean().nullable(),
+    thinkingTypes: z.array(z.enum(["enabled", "adaptive"])).nullable(),
+    effortLevels: z.array(z.enum(["low", "medium", "high", "xhigh", "max"])).nullable()
+  }).strict().nullable(),
+  checkedAt: z.string()
+}).strict();
+export type CapabilityCheckReport = z.infer<typeof CapabilityCheckReportSchema>;
