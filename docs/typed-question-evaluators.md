@@ -100,8 +100,23 @@ trace-length gate; one waits until an effect is measured.
 
 ## Saving one
 
-Authoring in the web app arrives in Batch 8F. Until then, a project owner
-saves a version through the API:
+In the web app, a project owner edits the evaluator and chooses **TypeSafe**
+as the provider. That needs a TypeSafe key, from the project or the platform.
+The review guide and judge instructions then give way to the typed question:
+
+- the question;
+- what makes its answer true, and what makes it false;
+- the decision threshold, which has no default.
+
+Enter the model by name, such as `jev-1.13.0`. TypeSafe takes no sampling,
+reasoning or token-limit settings, so the binding shows only its one
+protocol. The version page and the skill page show a typed version's
+question, criteria and threshold in place of a guide and instructions.
+
+The first-project setup works from prompted starter templates, so it doesn't
+offer TypeSafe; author a typed question from the evaluator editor afterwards.
+
+A project owner can also save a version through the API:
 
 ```http
 POST /api/skills/{skillId}/versions

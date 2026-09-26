@@ -34,14 +34,18 @@ describe("resolveJudgeProviderSelection", () => {
     });
   });
 
-  it("never chooses TypeSafe for a prompted evaluator, even when it is the only keyed provider", () => {
+  it("keeps TypeSafe only for a typed version, and never falls back to it", () => {
     const typesafeOnly: JudgeProviderAvailabilityItem[] = [
       { provider: "anthropic", label: "Anthropic", available: false, credentialSource: null, modelSelection: "catalog" },
       { provider: "typesafe", label: "TypeSafe", available: true, credentialSource: "project", modelSelection: "custom" },
       { provider: "mock", label: "Mock (local testing)", available: false, credentialSource: "built_in", modelSelection: "catalog" }
     ];
+    // A prompted version never moves onto TypeSafe, even when it is the only keyed provider.
     expect(resolveJudgeProviderSelection("anthropic", typesafeOnly)).toEqual({ provider: "mock", preservesBinding: false });
-    expect(resolveJudgeProviderSelection("typesafe", typesafeOnly)).toEqual({ provider: "mock", preservesBinding: false });
+    // A typed version keeps TypeSafe in the editor, which offers every provider...
+    expect(resolveJudgeProviderSelection("typesafe", typesafeOnly)).toEqual({ provider: "typesafe", preservesBinding: true });
+    // ...but not in a flow that offers only prompted providers.
+    expect(resolveJudgeProviderSelection("typesafe", promptedProviderOptions(typesafeOnly))).toEqual({ provider: "mock", preservesBinding: false });
     expect(promptedProviderOptions(typesafeOnly).map((option) => option.provider)).toEqual(["anthropic", "mock"]);
   });
 });

@@ -39,6 +39,8 @@ export function skillVersionChangeLabels(current: SkillVersion, previous?: Skill
   const labels: string[] = [];
   if (current.rubricMarkdown !== previous.rubricMarkdown) labels.push("review guide");
   if (current.prompt !== previous.prompt) labels.push("judge instructions");
+  if (JSON.stringify(current.typedQuestion) !== JSON.stringify(previous.typedQuestion)) labels.push("typed question");
+  if (current.decisionThreshold !== previous.decisionThreshold) labels.push("decision threshold");
   if (!sameExecutionBinding(current, previous)) labels.push("execution binding");
   if (
     current.verdictKind !== previous.verdictKind ||
