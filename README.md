@@ -392,9 +392,9 @@ separate aggregate-only `rubrist/binary-calibration/v2` contract (ADR-0009, as
 ADR-0014 revises it). The current Postgres runtime executes one trial per
 governed sealed binary item through the evaluator's exact execution binding
 and mints that separate artifact; it is not added to the receipt.
-Dailies independently verifies the frozen calibration contract and corpus and
-consumes explicitly configured local artifacts through config v6, policy v2,
-report v6, runner, and CLI paths. It performs no network or latest-artifact
+Dailies independently verifies calibration v1 and consumes explicitly
+configured local artifacts through config v6, policy v2, report v6, runner,
+and CLI paths; it moves to v2 evidence with Rubrist's receipt v2. It performs no network or latest-artifact
 lookup. Other uncertainty transport remains unresolved. Current receipts are
 derived once at terminalization and persisted as exact canonical bytes in
 append-only PostgreSQL artifacts. Historical terminal v1 runs freeze once on
@@ -483,10 +483,12 @@ Later development exposure can revoke current admissibility without rewriting
 the historical artifact.
 
 The frozen contract supports repeated-trial evidence, but the current Rubrist
-runtime does not execute it. Dailies currently vends and verifies the same
-contract and conformance corpus, consumes explicitly configured local
-artifacts, and emits calibration-aware release reports. It never fetches a
-latest artifact or Rubrist status, and it has no access to the private ledger.
+runtime does not execute it. Dailies consumes explicitly configured local
+calibration artifacts and emits calibration-aware release reports, but it
+still verifies calibration v1: it switches to v2 evidence in the same window
+as Rubrist's receipt v2 (Dailies ADR-0008), and until then its reports can't
+consume the v2 artifacts Rubrist now mints. It never fetches a latest
+artifact or Rubrist status, and it has no access to the private ledger.
 
 See the [binary-calibration contract](contracts/binary-calibration-v2.md),
 [ADR-0009](docs/decisions/0009-binary-calibration-artifact-contract.md), and

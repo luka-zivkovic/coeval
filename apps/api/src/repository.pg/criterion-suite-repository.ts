@@ -311,12 +311,16 @@ export class PgCriterionSuiteRepository implements CriterionSuiteRepositoryPort 
             `Suite member ${position} must bind a criterion version to its exact evaluator version in this project.`
           );
         }
+        const evaluator = suiteMemberEvaluator(rowToSkillVersion(row));
+        if (evaluator === null) {
+          throw new EvaluatorSuiteBindingError(`Suite member ${position} binds an evaluator version without a valid v2 identity.`);
+        }
         memberInputs.push({
           criterionId: String(row.criterion_id),
           criterionVersionId: String(row.bound_criterion_version_id),
           criterionName: String(row.criterion_name),
           criterionDefinition: String(row.criterion_definition),
-          ...suiteMemberEvaluator(rowToSkillVersion(row), position)
+          ...evaluator
         });
       }
       if (new Set(memberInputs.map((member) => member.criterionId)).size !== memberInputs.length) {

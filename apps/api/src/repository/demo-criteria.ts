@@ -228,12 +228,16 @@ export class DemoCriterionSuiteRepository implements CriterionSuiteRepositoryPor
           `Suite member ${position} must bind a criterion version to its exact evaluator version in this project.`
         );
       }
+      const evaluator = suiteMemberEvaluator(skillVersion);
+      if (evaluator === null) {
+        throw new EvaluatorSuiteBindingError(`Suite member ${position} binds an evaluator version without a valid v2 identity.`);
+      }
       return {
         criterionId: criterionVersion.criterionId,
         criterionVersionId: criterionVersion.id,
         criterionName: criterionVersion.name,
         criterionDefinition: criterionVersion.definition,
-        ...suiteMemberEvaluator(skillVersion, position)
+        ...evaluator
       };
     });
     if (new Set(memberInputs.map((member) => member.criterionId)).size !== memberInputs.length) {

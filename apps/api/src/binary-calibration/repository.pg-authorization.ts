@@ -4,6 +4,9 @@ import {
   ExecutionBindingSchema,
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   mutableModelAlias,
+  VerdictKindSchema,
+  reasoningFamilyFor,
+  takesSamplingSettings,
   type BinaryCalibrationV2CompletionEligibilityReason,
   type EvaluatorIdentity
 } from "@rubrist/shared";
@@ -98,8 +101,18 @@ export async function deriveRunIdentity(
   let identity: EvaluatorIdentity;
   try {
     identity = evaluatorIdentityFor(skillVersion);
-  } catch {
-    throw repoError("unsupported", "sealed calibration requires an evaluator version with a valid v2 identity");
+  } catch (error) {
+    throw repoError("unsupported", `sealed calibration requires an evaluator version with a valid v2 identity (${identityProblem(error)})`);
+  }
+  // Governed gate (ADR-0014 section 2): sealed calibration states its
+  // temperature and reasoning. A resolution record can show the model
+  // rejecting the parameter itself, which lets it stay unset; those records
+  // arrive in Batch 8D-3, so until then an unset setting is refused.
+  if (takesSamplingSettings(binding.provider) && binding.sampling.temperature === null) {
+    throw repoError("ineligible", "sealed calibration requires an explicit temperature until resolution can show the model rejects the parameter (Batch 8D-3)");
+  }
+  if (reasoningFamilyFor(binding.provider) !== null && binding.reasoning === null) {
+    throw repoError("ineligible", "sealed calibration requires explicit reasoning until resolution can show the model rejects the parameter (Batch 8D-3)");
   }
   if (mutableModelAlias(binding.modelId) !== null) {
     throw repoError(
@@ -613,13 +626,56 @@ export async function loadExposureCheck(db: Db, checkId: string): Promise<{
   return { id: String(row.id), snapshotDigest: String(row.snapshot_digest), recordedAt: toIso(row.recorded_at) };
 }
 
+/** A short, text-free reason an evaluator version has no valid identity. */
+function identityProblem(error: unknown): string {
+  const issues = (error as { issues?: Array<{ path: PropertyKey[]; message: string }> }).issues;
+  if (Array.isArray(issues) && issues.length > 0) {
+    return issues.slice(0, 3).map((issue) => `${issue.path.map(String).join(".") || "identity"}: ${issue.message}`).join("; ");
+  }
+  return error instanceof Error ? error.message.slice(0, 200) : "invalid identity";
+}
+
+/**
+ * Whether the evaluator version still holds the identity its run pinned: the
+ * execution binding and the definition digest. Versions are immutable, so a
+ * difference means the stored version changed out of band.
+ */
+export function evaluatorVersionHoldsPin(run: Record<string, unknown>, versionRow: Record<string, unknown>): boolean {
+  try {
+    const identity = evaluatorIdentityFor({
+      rubricMarkdown: String(versionRow.rubric_markdown),
+      prompt: String(versionRow.prompt),
+      verdictKind: VerdictKindSchema.parse(versionRow.verdict_kind),
+      outputSchema: parseJson(versionRow.output_schema) as Record<string, unknown>,
+      scalarRange: versionRow.scalar_range == null ? null : parseJson(versionRow.scalar_range) as [number, number],
+      categoricalChoiceScores: versionRow.categorical_choice_scores == null
+        ? null : parseJson(versionRow.categorical_choice_scores) as Record<string, number>,
+      executionBinding: ExecutionBindingSchema.parse(parseJson(versionRow.execution_binding))
+    });
+    return canonicalJson(identity.executionBinding) === canonicalJson(parseJson(run.execution_binding)) &&
+      sha256Digest(identity.executionBinding) === String(run.requested_binding_digest) &&
+      skillDigestInput(identity).definitionDigest === String(run.definition_digest);
+  } catch {
+    return false;
+  }
+}
+
+export async function loadPinnedVersionRow(db: Db, run: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+  return (await db.query(
+    `select rubric_markdown,prompt,verdict_kind,output_schema,scalar_range,categorical_choice_scores,execution_binding
+     from skill_versions where id=$1 and project_id=$2`,
+    [run.skill_version_id, run.project_id]
+  )).rows[0] ?? null;
+}
+
 export async function loadAuthorizedRun(
   db: Db,
   claim: BinaryCalibrationExecutionClaim,
   knownRun?: RunRow
 ): Promise<BinaryCalibrationAuthorizedRun> {
   const result = await db.query(
-    `select run.*,version.rubric_markdown,version.prompt,
+    `select run.*,version.rubric_markdown,version.prompt,version.verdict_kind,version.output_schema,
+            version.scalar_range,version.categorical_choice_scores,
             version.execution_binding as version_execution_binding,version.custom_endpoint_url,
             auth_check.snapshot_digest,auth_check.recorded_at
      from binary_calibration_runs run
@@ -633,11 +689,11 @@ export async function loadAuthorizedRun(
   );
   const row = result.rows[0] ?? knownRun;
   if (!result.rows[0] || !row) throw repoError("state_conflict", "binary calibration authorization claim is stale");
-  // The run pins the binding; the version must still hold exactly it.
+  // The run pins the evaluator's identity; the version must still hold it,
+  // since its rubric and prompt are what each call sends.
   const executionBinding = ExecutionBindingSchema.parse(parseJson(row.execution_binding));
-  if (canonicalJson(executionBinding) !== canonicalJson(parseJson(row.version_execution_binding)) ||
-      sha256Digest(executionBinding) !== String(row.requested_binding_digest)) {
-    throw repoError("state_conflict", "binary calibration execution binding no longer matches its evaluator version");
+  if (!evaluatorVersionHoldsPin(row, { ...row, execution_binding: row.version_execution_binding })) {
+    throw repoError("state_conflict", "binary calibration evaluator version no longer holds the identity its run pinned");
   }
   return {
     claim: {

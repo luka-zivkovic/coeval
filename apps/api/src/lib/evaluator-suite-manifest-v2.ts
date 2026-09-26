@@ -12,7 +12,6 @@ import {
 import { canonicalJson, sha256Digest } from "./canonical-json.js";
 import { criterionVersionDigest } from "./criterion-digest.js";
 import { evaluatorIdentityFor, evaluatorOutputContractDigestV2, skillDigestV2 } from "./evaluator-identity.js";
-import { EvaluatorSuiteBindingError } from "../repository/errors.js";
 
 // Evaluator suite manifest v2 (Rubrist ADR-0014 section 7;
 // contracts/evaluator-suite-manifest-v2.md). Members carry the v2 skillDigest
@@ -57,15 +56,14 @@ export function evaluatorSuiteManifestV2Digest(
   return sha256Digest(unsigned);
 }
 
-/** A member's evaluator: its ids and identity, or a binding error for a version without a valid identity. */
+/** A member's evaluator: its ids and identity, or `null` for a version without a valid identity. */
 export function suiteMemberEvaluator(
-  version: SkillVersion,
-  position: number
-): Pick<EvaluatorSuiteManifestV2MemberInput, "skillId" | "skillVersionId" | "identity"> {
+  version: SkillVersion
+): Pick<EvaluatorSuiteManifestV2MemberInput, "skillId" | "skillVersionId" | "identity"> | null {
   try {
     return { skillId: version.skillId, skillVersionId: version.id, identity: evaluatorIdentityFor(version) };
   } catch {
-    throw new EvaluatorSuiteBindingError(`Suite member ${position} binds an evaluator version without a valid v2 identity.`);
+    return null;
   }
 }
 

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
-import { EvaluatorSuiteManifestV2Schema, type EvaluatorSuiteManifestV2 } from "@rubrist/shared";
+import { EvaluatorSuiteManifestV2Schema, type EvaluatorSuiteManifestV2, type SkillVersion } from "@rubrist/shared";
 import { canonicalJson } from "../src/lib/canonical-json.js";
 import { evaluatorOutputContractDigestV2, skillDigestV2 } from "../src/lib/evaluator-identity.js";
 import {
@@ -11,10 +11,12 @@ import {
   evaluatorSuiteCriterionDigestV2,
   evaluatorSuiteManifestV2Digest,
   parseCanonicalEvaluatorSuiteManifestV2Bytes,
+  suiteMemberEvaluator,
   verifyEvaluatorSuiteManifestV2,
   type ExpectedEvaluatorSuiteManifestV2
 } from "../src/lib/evaluator-suite-manifest-v2.js";
 import { BINDINGS, DEFINITIONS } from "./fixtures/evaluator-v2-vectors.js";
+import { SEEDED_BINDING } from "./fixtures/execution-binding.js";
 
 type Mutation =
   | { op: "add"; path: string; value: unknown }
@@ -213,5 +215,23 @@ describe("evaluator suite manifest v2 contract (ADR-0014 section 7)", () => {
     const candidate = structuredClone(fixture());
     candidate.members[0]!.criterionName = "Factual\ud800";
     expect(EvaluatorSuiteManifestV2Schema.safeParse(candidate).success).toBe(false);
+  });
+});
+
+describe("suite member evaluators", () => {
+  const version = {
+    id: "skv_member", skillId: "skill_member", rubricMarkdown: "Pass grounded answers.", prompt: "Judge {{rubric_markdown}}.",
+    verdictKind: "binary", outputSchema: { type: "object" }, scalarRange: null, categoricalChoiceScores: null,
+    executionBinding: SEEDED_BINDING
+  } as unknown as SkillVersion;
+
+  it("names a member by its version's v2 identity, and refuses a version without one", () => {
+    const member = suiteMemberEvaluator(version);
+    expect(member).toMatchObject({ skillId: "skill_member", skillVersionId: "skv_member", identity: { executionBinding: SEEDED_BINDING } });
+    expect(suiteMemberEvaluator({ ...version, rubricMarkdown: "x".repeat(100_001) } as SkillVersion)).toBeNull();
+    expect(suiteMemberEvaluator({
+      ...version,
+      executionBinding: { ...SEEDED_BINDING, provider: "typesafe", verdictProtocol: "typed-question/v1", sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null }
+    } as SkillVersion)).toBeNull();
   });
 });

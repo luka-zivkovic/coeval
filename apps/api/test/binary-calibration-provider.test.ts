@@ -1,4 +1,4 @@
-import type { ExecutionFetch } from "@rubrist/audit/runtime";
+import { buildVerdictHttpRequest, buildVerdictProtocolRequest, type ExecutionFetch, type PromptedExecutionBinding } from "@rubrist/audit/runtime";
 import type { ExecutionBinding } from "@rubrist/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -121,8 +121,15 @@ describe("sealed binary calibration provider execution", () => {
     expect(order).toEqual(["call-start", "sent"]);
     expect(http.sent).toHaveLength(1);
     expect(http.sent[0]!.url).toBe("https://api.anthropic.com/v1/messages");
-    const body = JSON.parse(http.sent[0]!.body) as Record<string, unknown>;
-    expect(body).toMatchObject({ model: "claude-sonnet-4-6", temperature: 0, max_tokens: 1200, thinking: { type: "disabled" } });
+    // Exactly what the pinned binding and its protocol send, nothing added or dropped.
+    const binding = SEEDED_BINDING as PromptedExecutionBinding;
+    const expected = buildVerdictHttpRequest(binding, buildVerdictProtocolRequest(binding.verdictProtocol, {
+      rubricMarkdown: "Never persist PROMPT_CANARY.",
+      prompt: "Judge against {{rubric_markdown}}.",
+      trace: { id: "sealed-observation", input: { question: "INPUT_CANARY" }, output: { answer: "OUTPUT_CANARY" } },
+      spec: { verdictKind: "binary", scalarRange: null, categoricalChoiceScores: null }
+    }), null);
+    expect(JSON.parse(http.sent[0]!.body)).toEqual(expected.body);
     expect(http.sent[0]!.body).toContain("PROMPT_CANARY");
     expect(http.sent[0]!.body).toContain("INPUT_CANARY");
     // The ledger result carries no rationale, request id, or prompt.
@@ -241,6 +248,12 @@ describe("sealed binary calibration provider execution", () => {
     const limited = stub(() => new Response("{}", { status: 429 }));
     expect(await providerError(executor(limited.fetch).execute({ authorizedRun: authorizedRun(), attempt: ATTEMPT, beforePhysicalCall: async () => {} })))
       .toMatchObject({ code: "provider_rate_limit", physicalCall: true });
+
+    const upstreamError = stub(() => new Response(JSON.stringify({
+      error: { code: 400, message: "Provider returned error", metadata: { provider_name: "Anthropic", raw: "{}" } }
+    }), { status: 400 }));
+    const failed = await providerError(executor(upstreamError.fetch).execute({ authorizedRun: authorizedRun({ executionBinding: OPENROUTER }), attempt: ATTEMPT, beforePhysicalCall: async () => {} }));
+    expect(failed).toMatchObject({ code: "provider_rejected_request", physicalCall: true, observed: { upstreamProvider: "Anthropic" } });
 
     const routed = stub(() => new Response(JSON.stringify({
       id: "c", model: "anthropic/claude-sonnet-4.6", provider: "Anthropic",

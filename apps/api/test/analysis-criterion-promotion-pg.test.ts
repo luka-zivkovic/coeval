@@ -1196,7 +1196,7 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
           provider: "openai",
           modelId: "gpt-4o-mini",
           modelVersion: "2024-07-18",
-          reasoning: null,
+          reasoning: { family: "openai", effort: "low" },
           outputTokenLimit: null,
           verdictProtocol: "openai.structured-output/v1"
         }),
@@ -1291,7 +1291,7 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
           provider: "openai",
           modelId: "gpt-4o-mini",
           modelVersion: "2024-07-18",
-          reasoning: null,
+          reasoning: { family: "openai", effort: "low" },
           outputTokenLimit: null,
           verdictProtocol: "openai.structured-output/v1"
         }),

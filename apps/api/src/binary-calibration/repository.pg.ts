@@ -39,9 +39,11 @@ import type {
 import {
   deriveRunIdentity,
   evaluateEligibility,
+  evaluatorVersionHoldsPin,
   insertExposureCheck,
   loadAuthorizedRun,
   loadExposureCheck,
+  loadPinnedVersionRow,
   requireActiveRevisionLease,
   requireClaim,
   snapshotRecord
@@ -305,6 +307,21 @@ export class PgBinaryCalibrationRepository implements
       if (run.authorization_check_id) {
         await requireActiveRevisionLease(client, run);
         return { run, rejected: false };
+      }
+
+      // Before any lease or exposure: the version must still hold the
+      // identity the run pinned, or the run is rejected and nothing is exposed.
+      const version = await loadPinnedVersionRow(client, run);
+      if (version === null || !evaluatorVersionHoldsPin(run, version)) {
+        const rejectedAt = await databaseClock(client);
+        await client.query(
+          `update binary_calibration_runs
+           set state='rejected',rejection_reason='evaluator_version_changed',completed_at=$2::timestamptz,
+               claim_worker_id=null,claim_token=null,claim_expires_at=null
+           where id=$1`,
+          [run.id, rejectedAt]
+        );
+        return { run, rejected: true };
       }
 
       const eligibility = await evaluateEligibility(client, run, "authorization");

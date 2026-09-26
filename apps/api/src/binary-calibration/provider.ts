@@ -110,7 +110,12 @@ export function createBinaryCalibrationProviderExecutor(input: {
       if (error instanceof EvaluatorCallError) {
         throw new BinaryCalibrationProviderError(error.failureKind, "The calibration provider call failed.", {
           physicalCall: error.physicalCall,
-          observed: error.observed
+          observed: {
+            model: error.observed?.model ?? null,
+            systemFingerprint: error.observed?.systemFingerprint ?? null,
+            // An OpenRouter error names the upstream that answered in its body.
+            upstreamProvider: error.observed?.upstreamProvider ?? error.providerError?.upstreamProvider ?? null
+          }
         });
       }
       throw new BinaryCalibrationProviderError("internal", "The calibration provider call failed.", { physicalCall: dispatched });
@@ -123,14 +128,17 @@ export function createBinaryCalibrationProviderExecutor(input: {
  * a request left Rubrist; the observation keeps only what the provider
  * returned before the failure.
  */
+/** What the ledger keeps of a call's observed provenance. */
+export type CalibrationObservation = Pick<ObservedProvenance, "model" | "systemFingerprint" | "upstreamProvider">;
+
 export class BinaryCalibrationProviderError extends Error {
   readonly physicalCall: boolean;
-  readonly observed: ObservedProvenance | null;
+  readonly observed: CalibrationObservation | null;
 
   constructor(
     public readonly code: BinaryCalibrationV2ErrorCode,
     message: string,
-    options: { physicalCall: boolean; observed?: ObservedProvenance | null }
+    options: { physicalCall: boolean; observed?: CalibrationObservation | null }
   ) {
     super(message);
     this.name = "BinaryCalibrationProviderError";
@@ -142,7 +150,7 @@ export class BinaryCalibrationProviderError extends Error {
 /** The ledger observation of a call: the requested provider and what the provider returned. */
 export function providerObservationFor(
   binding: ExecutionBinding,
-  observed: ObservedProvenance | null
+  observed: CalibrationObservation | null
 ): BinaryCalibrationV2PrivateProviderObservation {
   const observedModel = boundedOrNull(observed?.model);
   return {

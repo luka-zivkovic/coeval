@@ -212,8 +212,25 @@ run("PgBinaryCalibrationRepository", () => {
         await pool.query(`update skill_versions set execution_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(binding)]);
         await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({ code: "unsupported" });
       }
+      // Governed gate: temperature and reasoning are stated (ADR-0014 section 2).
+      for (const [binding, setting] of [
+        [{ ...SEEDED_BINDING, sampling: { temperature: null, topP: null } }, "temperature"],
+        [{ ...SEEDED_BINDING, reasoning: null }, "reasoning"]
+      ] as const) {
+        await pool.query(`update skill_versions set execution_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(binding)]);
+        await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({
+          code: "ineligible",
+          message: expect.stringContaining(`explicit ${setting}`)
+        });
+      }
+      // A version whose text the definition's limits refuse has no identity.
+      await pool.query(`update skill_versions set execution_binding = $2::jsonb, rubric_markdown = repeat('x', 100001) where id=$1`, [skillVersionId, JSON.stringify(storedBinding)]);
+      await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({
+        code: "unsupported",
+        message: expect.stringContaining("rubricMarkdown")
+      });
     } finally {
-      await pool.query(`update skill_versions set execution_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(storedBinding)]);
+      await pool.query(`update skill_versions set execution_binding = $2::jsonb, rubric_markdown = '# Binary rubric' where id=$1`, [skillVersionId, JSON.stringify(storedBinding)]);
     }
     const created = await repository.createRun(OWNER, input);
     expect(created).toMatchObject({ state: "queued", plannedObservations: 2, accountedObservations: 0 });
@@ -357,6 +374,30 @@ run("PgBinaryCalibrationRepository", () => {
     }
     const rerunArtifact = await repository.finalizeRun(sameClaim!);
     expect(rerunArtifact.artifact.status).toBe("incomplete");
+
+    // A version that no longer holds the identity its run pinned is refused
+    // at authorization, before any lease or exposure.
+    const pinnedRun = await repository.createRun(OWNER, {
+      datasetRevisionId: revisionId,
+      skillVersionId,
+      positiveClass: "pass",
+      trialPlan: { kind: "single", trialsPerItem: 1 },
+      suiteBinding: null,
+      idempotencyKey: "cal-run-pin-changed"
+    });
+    const exposuresBefore = Number((await pool.query(`select count(*)::int as count from dataset_exposure_events where revision_id=$1`, [revisionId])).rows[0].count);
+    await pool.query(`update skill_versions set rubric_markdown = '# Changed out of band' where id=$1`, [skillVersionId]);
+    try {
+      const pinnedClaim = await repository.claimRun(pinnedRun.runId, "cal-worker-pin", 60_000);
+      await expect(repository.authorizeRun(pinnedClaim!)).rejects.toMatchObject({ code: "ineligible" });
+    } finally {
+      await pool.query(`update skill_versions set rubric_markdown = '# Binary rubric' where id=$1`, [skillVersionId]);
+    }
+    expect((await pool.query(`select state,rejection_reason from binary_calibration_runs where id=$1`, [pinnedRun.runId])).rows[0])
+      .toEqual({ state: "rejected", rejection_reason: "evaluator_version_changed" });
+    expect(Number((await pool.query(`select count(*)::int as count from dataset_exposure_events where revision_id=$1`, [revisionId])).rows[0].count))
+      .toBe(exposuresBefore);
+    expect((await pool.query(`select 1 from binary_calibration_revision_leases where run_id=$1`, [pinnedRun.runId])).rows).toHaveLength(0);
 
     const later = await platform.createSkillVersionPending(
       "cal_skill",

@@ -135,8 +135,10 @@ The frozen contract and conformance corpus cover repeated-trial artifacts, but
 the current producer runtime accepts only
 `{ kind: "single", trialsPerItem: 1 }`. Dailies has an independent local
 contract verifier and consumes explicitly configured artifacts through its
-config v6, policy v2, report v6, runner, and CLI. It does not perform a network
-or latest-status lookup.
+config v6, policy v2, report v6, runner, and CLI. It still verifies
+calibration v1 and moves to v2 evidence with Rubrist's receipt v2 (Dailies
+ADR-0008), so until then it can't consume the v2 artifacts Rubrist mints. It
+does not perform a network or latest-status lookup.
 
 ### Governed Analyze populations and coding studies
 
