@@ -120,6 +120,19 @@ export function judgeProviderAvailability(
 }
 
 /**
+ * The providers with a credential that could run an evaluator in place of
+ * `unavailable`'s: TypeSafe runs only typed-question evaluators, and every
+ * other provider only prompted ones. It answers "which provider can I save
+ * with instead?", so it never offers one that can't run the same evaluator.
+ */
+export function runnableInstead(availability: ReadonlyArray<JudgeProviderAvailabilityItem>, unavailable: string): JudgeProviderId[] {
+  const typed = unavailable === "typesafe";
+  return availability
+    .filter((option) => option.available && (option.provider === "typesafe") === typed)
+    .map((option) => option.provider);
+}
+
+/**
  * A provider backed by the v2 executor. It judges with the version's own
  * rubric and prompt, which the pinned protocol renders; the JudgePrompt the
  * worker builds is that same rendering (an API test holds them equal), kept

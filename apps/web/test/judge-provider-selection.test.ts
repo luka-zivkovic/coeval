@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { JudgeProviderAvailabilityItem } from "@rubrist/shared";
-import { resolveJudgeProviderSelection } from "../src/lib/judge-provider-selection.js";
+import { promptedProviderOptions, resolveJudgeProviderSelection } from "../src/lib/judge-provider-selection.js";
 
 const providers: JudgeProviderAvailabilityItem[] = [
   {
@@ -32,5 +32,16 @@ describe("resolveJudgeProviderSelection", () => {
       provider: "anthropic",
       preservesBinding: false
     });
+  });
+
+  it("never chooses TypeSafe for a prompted evaluator, even when it is the only keyed provider", () => {
+    const typesafeOnly: JudgeProviderAvailabilityItem[] = [
+      { provider: "anthropic", label: "Anthropic", available: false, credentialSource: null, modelSelection: "catalog" },
+      { provider: "typesafe", label: "TypeSafe", available: true, credentialSource: "project", modelSelection: "custom" },
+      { provider: "mock", label: "Mock (local testing)", available: false, credentialSource: "built_in", modelSelection: "catalog" }
+    ];
+    expect(resolveJudgeProviderSelection("anthropic", typesafeOnly)).toEqual({ provider: "mock", preservesBinding: false });
+    expect(resolveJudgeProviderSelection("typesafe", typesafeOnly)).toEqual({ provider: "mock", preservesBinding: false });
+    expect(promptedProviderOptions(typesafeOnly).map((option) => option.provider)).toEqual(["anthropic", "mock"]);
   });
 });

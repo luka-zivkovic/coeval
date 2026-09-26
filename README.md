@@ -112,6 +112,7 @@ RUBRIST_BOOTSTRAP_TOKEN=
 ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
 OPENROUTER_API_KEY=
+# Runs typed-question evaluators (Jev) only; prompted judging still needs one of the keys above.
 TYPESAFE_API_KEY=
 ```
 

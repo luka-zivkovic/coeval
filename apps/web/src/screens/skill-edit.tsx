@@ -24,7 +24,7 @@ import { useDashboard } from "@/lib/dashboard-context";
 import { useCriterion } from "@/lib/criterion-context";
 import { skillCriterionVersionId } from "@/lib/criterion-scope";
 import { executionBindingFields, executionBindingInputFromFields } from "@/lib/execution-binding-draft";
-import { resolveJudgeProviderSelection } from "@/lib/judge-provider-selection";
+import { promptedProviderOptions, resolveJudgeProviderSelection } from "@/lib/judge-provider-selection";
 import { firstResultPath, isBench, markSetupReceipt } from "@/lib/journey";
 import {
   clearOnboardingCheckDraft,
@@ -259,9 +259,8 @@ export function SkillEditScreen() {
       setOnboardingEvidenceInventory(evidenceInventory);
       const v = s.currentVersion;
       setBaseVersion(v);
-      // This editor authors prompted evaluators; TypeSafe runs only typed
-      // questions, whose authoring arrives in Batch 8F.
-      const promptedProviders = availability.providers.filter((option) => option.provider !== "typesafe");
+      // This editor authors prompted evaluators.
+      const promptedProviders = promptedProviderOptions(availability.providers);
       setProviderOptions(promptedProviders);
       applyBindingFields(v, promptedProviders);
 
