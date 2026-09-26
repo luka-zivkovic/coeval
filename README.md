@@ -516,7 +516,7 @@ artifact that orders criterion definitions and binds each one to an exact
 evaluator version, its v2 `skillDigest`, output contract, applicability rule,
 and optional independent-trial plan. The manifest contains no release roles,
 weights, thresholds, aggregate score, or ship decision. Each criterion is
-still assessed through a separate, unchanged receipt-v1 artifact; Dailies or
+still assessed through a separate assessment receipt; Dailies or
 another release layer applies customer policy to that evidence.
 
 ## Analyze workflow status

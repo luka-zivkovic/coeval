@@ -57,6 +57,19 @@ minted. Two rules keep that from happening:
 A failed item records its failure kind and observation, or that it was never
 attempted, and a pending item of a run that ended is not attempted.
 
+An outcome is the verdict's label, as Rubrist labels every verdict: a binary
+verdict passes, fails, or abstains, and a scalar or categorical verdict is
+labelled by where its comparable score falls, passing at two thirds or above,
+failing at one third or below, and abstaining between. Receipt v1 recorded the
+same labels.
+
+A recorded observation holds only what a receipt can carry: bounded text with
+no lone surrogate, and an upstream provider only for an OpenRouter binding.
+The executor records an upstream from an OpenRouter response or error body;
+another provider's error metadata stays diagnostic detail and never becomes
+evidence. So recording a call can never leave a run unable to mint its
+receipt.
+
 ## State machine
 
 ```text

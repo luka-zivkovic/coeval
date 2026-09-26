@@ -563,6 +563,19 @@ describe("review hardening", () => {
     const http = stub(() => json({ error: { code: 400, message: "Provider returned error", metadata: { raw: "{\"error\":\"temperature is not supported\"}", provider_name: "Anthropic" } } }, 400));
     const error = await failure(run(OPENROUTER, http));
     expect(error.providerError).toMatchObject({ message: "Provider returned error", raw: "{\"error\":\"temperature is not supported\"}", upstreamProvider: "Anthropic" });
+    expect(error.observed?.upstreamProvider).toBe("Anthropic");
+  });
+
+  it("observes an upstream only for an OpenRouter binding, and only as text a receipt can carry", async () => {
+    const named = (provider_name: string) => stub(() => json({ error: { code: 400, message: "Provider returned error", metadata: { provider_name } } }, 400));
+    // A custom gateway answering in OpenRouter's error shape names an upstream only as diagnostic detail.
+    const gateway = await failure(run(CUSTOM, named("Azure")));
+    expect(gateway.providerError?.upstreamProvider).toBe("Azure");
+    expect(gateway.observed?.upstreamProvider).toBeNull();
+    const embedded = stub(() => json({ id: "gen", choices: [{ message: { content: "" }, finish_reason: "error", error: { code: 502, message: "down", metadata: { provider_name: "Azure" } } }] }));
+    expect((await failure(run(OPENAI, embedded))).observed?.upstreamProvider).toBeNull();
+    expect((await failure(run(OPENROUTER, embedded))).observed?.upstreamProvider).toBe("Azure");
+    expect((await failure(run(OPENROUTER, named("bad \ud800 name")))).observed?.upstreamProvider).toBeNull();
   });
 
   it("never lets the credential reach an error, even when a server echoes it", async () => {

@@ -456,14 +456,19 @@ describe("Demo evaluation and assessment-receipt repository slice", () => {
     const store = repositoryStore(repository);
     const storedRun = store.evalRuns.find((candidate) => candidate.id === run.id)!;
     const storedItem = store.evalRunItems.find((candidate) => candidate.evalRunId === run.id)!;
+    const claim = { projectId: demoProject.id, evalRunId: run.id, evalRunItemId: storedItem.id, executionToken: "token_mint" };
+    expect(await repository.claimEvalRunItemExecution(claim)).toMatchObject({ state: "claimed" });
     repository.rejectSkillLookup = true;
     await expect(repository.completeEvalRunItem({
       projectId: demoProject.id,
       evalRunId: run.id,
       evalRunItemId: storedItem.id,
+      executionToken: claim.executionToken,
       verdictId: mintVerdict.id,
       resultLabel: "pass"
     })).rejects.toThrow("Eval run skill version not found");
+    // The rollback keeps the item's claim, as PG's does.
+    expect(store.evalRunItemExecutions.get(storedItem.id)?.executionToken).toBe(claim.executionToken);
     expect(store.evalRuns.find((candidate) => candidate.id === run.id)).toBe(storedRun);
     expect(store.evalRunItems.find((candidate) => candidate.id === storedItem.id)).toBe(storedItem);
     expect(storedRun).toMatchObject({
@@ -485,6 +490,7 @@ describe("Demo evaluation and assessment-receipt repository slice", () => {
       projectId: demoProject.id,
       evalRunId: run.id,
       evalRunItemId: storedItem.id,
+      executionToken: claim.executionToken,
       verdictId: mintVerdict.id,
       resultLabel: "pass"
     })).resolves.toEqual({ runFinished: true });

@@ -187,7 +187,8 @@ export class PgAssessmentReceiptRepository implements AssessmentReceiptRepositor
       if (
         receipt.schemaVersion !== rootReceipt.schemaVersion ||
         receipt.skillId !== rootReceipt.skillId ||
-        receipt.skillVersionId !== rootReceipt.skillVersionId
+        receipt.skillVersionId !== rootReceipt.skillVersionId ||
+        receipt.skillDigest !== rootReceipt.skillDigest
       ) {
         throw new AssessmentReceiptIntegrityError("Correction cannot change the receipt contract or evaluator identity");
       }

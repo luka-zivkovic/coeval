@@ -3,6 +3,7 @@ import { AssessmentReceiptV2Schema, type AssessmentReceiptV2, type VerdictLabel 
 import { createApp } from "../src/app.js";
 import { canonicalJson, contentDigest } from "../src/lib/canonical-json.js";
 import { evidenceDigestForReceiptV2, parseCanonicalReceiptV2Bytes, receiptArtifactDigest } from "../src/lib/assessment-receipt-v2.js";
+import { skillDigestV2FromInput } from "../src/lib/evaluator-identity.js";
 import {
   AssessmentReceiptIntegrityError,
   AssessmentReceiptUnavailableError,
@@ -215,6 +216,19 @@ describe("immutable assessment receipt artifacts", () => {
       receipt: rootReceipt,
       reason: "Cannot reuse the root receipt id."
     })).rejects.toBeInstanceOf(AssessmentReceiptIntegrityError);
+
+    // A correction can't restate the evaluator, even with a recomputed skillDigest.
+    const otherEvaluator = resigned(rootReceipt, (draft) => {
+      draft.receiptId = `${rootReceipt.receiptId}_other_evaluator`;
+      draft.evaluator.executionBinding.modelId = "another-model";
+      draft.skillDigest = skillDigestV2FromInput(draft.evaluator);
+    });
+    await expect(repo.createAssessmentReceiptCorrection({
+      projectId: PROJECT,
+      evalRunId: run.id,
+      receipt: otherEvaluator,
+      reason: "Cannot swap the evaluator."
+    })).rejects.toThrow(/cannot change the receipt contract or evaluator identity/);
   });
 
   it("records exact matching and divergent consumer copies without replacing the root", async () => {

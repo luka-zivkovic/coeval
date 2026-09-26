@@ -579,6 +579,7 @@ export class DemoEvaluationRepository implements
     ) return { runFinished: this.isRunFinished(run) };
     const runBefore = structuredClone(run);
     const itemBefore = structuredClone(item);
+    const executionBefore = this.store.evalRunItemExecutions.get(item.id);
     try {
       item.status = "completed";
       item.verdictId = input.verdictId;
@@ -603,8 +604,10 @@ export class DemoEvaluationRepository implements
       this.store.evalRunItemDeliveryDeadlines.delete(item.id);
       return { runFinished };
     } catch (error) {
+      // Parity with PG's rollback: the item keeps its execution claim.
       Object.assign(run, runBefore);
       Object.assign(item, itemBefore);
+      if (executionBefore) this.store.evalRunItemExecutions.set(item.id, executionBefore);
       throw error;
     }
   }
@@ -626,6 +629,7 @@ export class DemoEvaluationRepository implements
     ) return { runFinished: this.isRunFinished(run) };
     const runBefore = structuredClone(run);
     const itemBefore = structuredClone(item);
+    const executionBefore = this.store.evalRunItemExecutions.get(item.id);
     try {
       item.status = "failed";
       item.error = input.error;
@@ -645,8 +649,10 @@ export class DemoEvaluationRepository implements
       this.store.evalRunItemDeliveryDeadlines.delete(item.id);
       return { runFinished };
     } catch (error) {
+      // Parity with PG's rollback: the item keeps its execution claim.
       Object.assign(run, runBefore);
       Object.assign(item, itemBefore);
+      if (executionBefore) this.store.evalRunItemExecutions.set(item.id, executionBefore);
       throw error;
     }
   }
@@ -772,7 +778,8 @@ export class DemoEvaluationRepository implements
     if (
       receipt.schemaVersion !== rootReceipt.schemaVersion ||
       receipt.skillId !== rootReceipt.skillId ||
-      receipt.skillVersionId !== rootReceipt.skillVersionId
+      receipt.skillVersionId !== rootReceipt.skillVersionId ||
+      receipt.skillDigest !== rootReceipt.skillDigest
     ) {
       throw new AssessmentReceiptIntegrityError("Correction cannot change the receipt contract or evaluator identity");
     }

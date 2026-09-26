@@ -9,7 +9,7 @@ import {
 } from "../src/lib/assessment-receipt-v2.js";
 import { evaluatorIdentityFor, skillDigestInput, skillDigestV2 } from "../src/lib/evaluator-identity.js";
 import { CaseNotFoundError, DemoRepository } from "../src/repository.js";
-import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
+import { MOCK_BINDING, SEEDED_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 // Assessment receipt v2 (ADR-0014 sections 6 and 7): built from a terminal
 // release-evidence run, each outcome carrying its verdict's score and what its
@@ -87,7 +87,10 @@ function verdictsFor(run: EvalRunDetail): Map<string, VerdictRecord> {
   return new Map(run.items.flatMap((item) => item.verdictId ? [[item.verdictId, verdict(item.verdictId)] as const] : []));
 }
 
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 describe("assessment receipt v2 evidence", () => {
   it("canonicalizes object keys recursively while retaining array order", () => {
@@ -333,6 +336,63 @@ describe("release_evidence batch and receipt routes", () => {
     expect(receipt.items[0]!.observed?.model).toBe("mock-heuristic-v1");
   });
 
+  it("finishes a run whose gateway names an upstream in an error, with no upstream in the receipt", async () => {
+    class KeyedRepository extends DemoRepository {
+      override async getJudgeProviderCredential(projectId: string, provider: string): Promise<string | null> {
+        return provider === "custom" ? "sk-gateway" : super.getJudgeProviderCredential(projectId, provider);
+      }
+    }
+    const repo = new KeyedRepository();
+    const app = createApp(repo);
+    const created = await app.request("/api/skills/skill_support_quality/versions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        rubricMarkdown: "Pass grounded answers.",
+        prompt: "Judge the answer.",
+        executionBinding: bindingInput(SEEDED_BINDING, {
+          provider: "custom",
+          endpoint: { kind: "custom", baseUrl: "https://models.example.test/v1" },
+          reasoning: null,
+          verdictProtocol: "openai.forced-function/v1"
+        })
+      })
+    });
+    expect(created.status).toBe(201);
+    let calls = 0;
+    vi.stubGlobal("fetch", async () => {
+      calls += 1;
+      if (calls === 1) {
+        // An OpenRouter-shaped error from a gateway that isn't OpenRouter.
+        return new Response(JSON.stringify({ error: { code: 400, message: "Provider returned error", metadata: { provider_name: "Azure" } } }), { status: 400 });
+      }
+      return new Response(JSON.stringify({
+        id: "c",
+        model: "llama-observed",
+        choices: [{ message: { tool_calls: [{ type: "function", function: { name: "submit_verdict", arguments: JSON.stringify({ label: "pass", score: 0.9, rationale: "ok" }) } }] }, finish_reason: "tool_calls" }]
+      }));
+    });
+    const key = await mintKey(app);
+    const submitted = await app.request("/api/v1/judge/batch", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+      body: JSON.stringify({ purpose: "release_evidence", items: [
+        { clientItemId: "first", input: { q: 1 }, output: { a: 1 }, metadata: {} },
+        { clientItemId: "second", input: { q: 2 }, output: { a: 2 }, metadata: {} }
+      ] })
+    });
+    const { evalRunId } = await submitted.json() as { evalRunId: string };
+    expect(calls).toBe(2);
+    const response = await app.request(`/api/v1/eval-runs/${evalRunId}/assessment-receipt`, { headers: { authorization: `Bearer ${key}` } });
+    expect(response.status).toBe(200);
+    const receipt = AssessmentReceiptV2Schema.parse(await response.json());
+    expect(receipt.status).toBe("incomplete");
+    expect(receipt.items.map((item) => [item.clientItemId, item.result, item.observed?.upstreamProvider ?? null])).toEqual([
+      ["first", { state: "failure", failureKind: "provider_rejected_request" }, null],
+      ["second", { state: "outcome", outcome: "pass" }, null]
+    ]);
+  });
+
   it("refuses a version without an evaluator identity before importing anything", async () => {
     class BrokenIdentityRepository extends DemoRepository {
       override async getSkillVersion(projectId: string, versionId: string) {
@@ -350,6 +410,7 @@ describe("release_evidence batch and receipt routes", () => {
       body: JSON.stringify({ purpose: "release_evidence", items: [{ clientItemId: "one", input: { q: 1 }, output: { a: 1 }, metadata: {} }] })
     });
     expect(refused.status).toBe(409);
+    expect(await refused.json()).toMatchObject({ code: "evaluator_identity_invalid" });
     expect(await repo.listCaseIdsForProject(PROJECT)).toEqual(before);
   });
 

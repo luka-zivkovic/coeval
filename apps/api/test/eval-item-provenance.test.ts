@@ -152,13 +152,19 @@ describe("a failed item's classification", () => {
     expect(item.error).toMatch(/judge call failed \(provider_rejected_request\)/);
   });
 
-  it("keeps the upstream an OpenRouter error names", async () => {
-    const item = await runWith(throwing(new EvaluatorCallError("provider_unavailable", "upstream down", {
+  it("records only what the executor observed, never an error's own detail, as text a receipt can carry", async () => {
+    const upstreamInBody = await runWith(throwing(new EvaluatorCallError("provider_unavailable", "upstream down", {
       physicalCall: true,
       status: 502,
       providerError: { type: null, code: "502", param: null, message: "upstream down", raw: null, upstreamProvider: "Fireworks" }
     })));
-    expect(item).toMatchObject({ failureKind: "provider_unavailable", observed: { ...NOTHING, upstreamProvider: "Fireworks" } });
+    expect(upstreamInBody).toMatchObject({ failureKind: "provider_unavailable", observed: NOTHING });
+    const unsafe = await runWith(throwing(new EvaluatorCallError("provider_rejected_request", "rejected", {
+      physicalCall: true,
+      status: 400,
+      observed: { ...NOTHING, model: "bad \ud800 model", requestId: "req_ok" }
+    })));
+    expect(unsafe.observed).toEqual({ ...NOTHING, requestId: "req_ok" });
   });
 
   it("records outcome unknown when a dispatched call fails without a known kind", async () => {

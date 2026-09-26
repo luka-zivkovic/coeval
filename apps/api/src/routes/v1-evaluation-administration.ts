@@ -198,7 +198,10 @@ export function registerV1EvaluationAdministrationRoutes(
       try {
         if (version) evaluatorIdentityFor(version);
       } catch {
-        return c.json({ error: "This evaluator version has no valid evaluator identity for an assessment receipt." }, 409);
+        return c.json({
+          error: "This evaluator version has no valid evaluator identity for an assessment receipt.",
+          code: "evaluator_identity_invalid"
+        }, 409);
       }
     }
 

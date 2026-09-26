@@ -21,6 +21,7 @@ import {
   EvaluatorCallError,
   UNOBSERVED,
   failureKindForStatus,
+  observedUpstream,
   providerErrorDetail,
   type ObservedProvenance,
   type TokenUsage
@@ -220,7 +221,7 @@ export async function executeVerdict(input: VerdictExecutionInput): Promise<Verd
     throw new EvaluatorCallError(
       failureKindForStatus(status),
       `the provider answered ${status}${providerError.message ? `: ${providerError.message}` : ""}`,
-      { physicalCall: true, status, providerError, observed: headerOnly }
+      { physicalCall: true, status, providerError, observed: { ...headerOnly, upstreamProvider: observedUpstream(binding, providerError) } }
     );
   }
   if (json === undefined) {
