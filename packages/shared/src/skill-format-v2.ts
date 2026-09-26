@@ -13,7 +13,7 @@ import {
 // of one evaluator version. Unlike evidence, it carries the full definition,
 // the execution binding, and a typed question's text, because an export exists
 // to move an evaluator; its digests let an importer confirm the identity it
-// received. It replaces skill-format/v1 (spec/skill-format-v1.md).
+// received. It replaced the informal skill-format/v1.
 
 export const SKILL_FORMAT_V2 = "skill-format/v2" as const;
 export const SKILL_FORMAT_V2_EXAMPLES_CAP = 50;

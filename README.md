@@ -313,7 +313,7 @@ Rubrist complements tracing platforms rather than replacing them. It can import 
 - Native Ironside project verification, settled trace-version import, cursor recovery, and criterion-specific assessment writeback.
 - Agent-trajectory evaluation with ordered steps and expected failing-step labels.
 - Per-project Anthropic or OpenAI judge keys encrypted at rest.
-- Judge Cards and portable [SkillFormat v1](spec/skill-format-v1.md) exports.
+- Judge Cards and portable [skill-format/v2](contracts/skill-format-v2.md) exports.
 - A small CI gate client in [`tools/ci/gate.mjs`](tools/ci/gate.mjs).
 
 </details>

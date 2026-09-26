@@ -114,8 +114,7 @@ export const ModelBindingSchema = z.object({
   // Honest limitation: no supported provider catalog exposes an immutable
   // snapshot id separate from the model id, so every pin path today stores
   // modelVersion = modelId. The field records WHAT was requested, not a dated
-  // snapshot — an upstream silent model revision is not detectable through it
-  // (see spec/skill-format-v1.md § Model binding).
+  // snapshot — an upstream silent model revision is not detectable through it.
   modelVersion: z.string(),
   temperature: z.number(),
   topP: z.number().optional(),

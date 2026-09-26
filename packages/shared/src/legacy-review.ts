@@ -550,41 +550,6 @@ export const JudgeCardSchema = z.object({
 });
 export type JudgeCard = z.infer<typeof JudgeCardSchema>;
 
-// portable SkillFormat v1 export — a skill version rendered as the
-// implementation-independent document defined in spec/skill-format-v1.md. A
-// mapping, not a spec change: everything comes from Skill + SkillVersion +
-// the golden set (examples), nothing fabricated.
-export const SKILL_FORMAT_EXAMPLES_CAP = 50;
-
-export const SkillFormatExampleSchema = z.object({
-  id: z.string(),
-  label: VerdictLabelSchema, // pass | fail | ambiguous
-  // Redacted trace input/output for the golden case (same redaction as every
-  // trace surface). Null only when the case's payload is genuinely absent.
-  input: z.unknown(),
-  output: z.unknown(),
-  reason: z.string(),
-  metadata: z.record(z.string(), z.unknown()).optional()
-});
-export type SkillFormatExample = z.infer<typeof SkillFormatExampleSchema>;
-
-export const SkillFormatV1Schema = z.object({
-  formatVersion: z.literal("skill-format/v1"),
-  name: z.string(),
-  description: z.string(),
-  owner: z.string(),
-  version: z.string(),
-  status: SkillStatusSchema,
-  modelBinding: ModelBindingSchema,
-  rubricMarkdown: z.string(),
-  examples: z.array(SkillFormatExampleSchema),
-  outputSchema: JsonSchemaSchema,
-  // Honest notes about anything the export could not source (e.g. an empty
-  // golden set → no examples) — never a fabricated value.
-  basis: z.array(z.string())
-});
-export type SkillFormatV1 = z.infer<typeof SkillFormatV1Schema>;
-
 // Pure interpretation band from a κ value (Landis & Koch 1977).
 export function interpretKappa(kappa: number): KappaInterpretation {
   if (kappa < 0) return "poor";

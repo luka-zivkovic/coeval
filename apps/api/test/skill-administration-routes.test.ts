@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import { JudgeCardSchema, SkillFormatV1Schema } from "@rubrist/shared";
+import { JudgeCardSchema } from "@rubrist/shared";
+import { verifySkillFormatV2 } from "../src/lib/skill-format-v2.js";
+import { evaluatorIdentityFor, skillDigestV2 } from "../src/lib/evaluator-identity.js";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 import { createRequestServices, type AppVariables } from "../src/request-services/index.js";
@@ -339,24 +341,25 @@ describe("Judge Card (M1 E5)", () => {
   });
 });
 
-describe("SkillFormat v1 export (M4 C3)", () => {
-  it("exports a version as a conforming document with real golden examples (redacted input/output)", async () => {
+describe("skill-format/v2 export", () => {
+  it("exports a version as a verified document with its identity and real golden examples (redacted input/output)", async () => {
     const repository = new DemoRepository(undefined, { seedVerdicts: true });
     const localApp = createApp(repository);
     const response = await localApp.request("/api/skills/skill_support_quality/versions/skillv_1_2_0/skill-format");
     expect(response.status).toBe(200);
-    const doc = SkillFormatV1Schema.parse(await response.json());
+    const version = (await repository.getSkillVersion("proj_langsmith_support", "skillv_1_2_0"))!;
+    // An importer recomputes every digest and can require the identity it expected.
+    const doc = verifySkillFormatV2(await response.json(), { skillDigest: skillDigestV2(evaluatorIdentityFor(version)) });
 
-    // Every top-level spec field sourced from skill + version (never fabricated).
-    expect(doc.formatVersion).toBe("skill-format/v1");
+    // Every top-level field sourced from the skill and version (never fabricated).
+    expect(doc.formatVersion).toBe("skill-format/v2");
     expect(doc.name.length).toBeGreaterThan(0);
     expect(doc.owner.length).toBeGreaterThan(0);
     expect(doc.version).toBe("1.2.0");
     expect(doc.status).toBe("production");
-    expect(doc.modelBinding.provider).toBe("anthropic");
-    expect(doc.rubricMarkdown.length).toBeGreaterThan(0);
-    expect(Object.keys(doc.outputSchema).length).toBeGreaterThan(0);
-    expect(doc.basis.some((note) => note.includes("no value is fabricated"))).toBe(true);
+    expect(doc.evaluator.identity).toEqual(evaluatorIdentityFor(version));
+    expect(doc.evaluator.question).toBeNull();
+    expect(doc.notes.some((note) => note.includes("no value is fabricated"))).toBe(true);
 
     // The seeded demo has a golden set → at least one example with NON-NULL
     // input+output from the redacted trace (not hollowed to null).
@@ -367,17 +370,43 @@ describe("SkillFormat v1 export (M4 C3)", () => {
     expect(withPayload!.reason.length).toBeGreaterThan(0);
   });
 
-  it("empty golden set → zero examples with an explicit basis note, never fabricated", async () => {
+  it("empty golden set → zero examples with an explicit note, never fabricated", async () => {
     const repository = new DemoRepository(); // no seeded verdicts/golden promotions beyond the fixture
     const localApp = createApp(repository);
-    const doc = SkillFormatV1Schema.parse(await (await localApp.request("/api/skills/skill_support_quality/versions/skillv_1_2_0/skill-format")).json());
-    // The fixture golden set may be non-empty; assert the basis note logic
+    const doc = verifySkillFormatV2(await (await localApp.request("/api/skills/skill_support_quality/versions/skillv_1_2_0/skill-format")).json());
+    // The fixture golden set may be non-empty; assert the note logic
     // instead: when examples is empty, the note is present; when not, the
     // fabrication-free note is always present.
     if (doc.examples.length === 0) {
-      expect(doc.basis.some((note) => note.includes("golden set is empty"))).toBe(true);
+      expect(doc.notes.some((note) => note.includes("golden set is empty"))).toBe(true);
     }
-    expect(doc.basis.some((note) => note.includes("no value is fabricated"))).toBe(true);
+    expect(doc.notes.some((note) => note.includes("no value is fabricated"))).toBe(true);
+  });
+
+  it("withholds a custom endpoint's URL, naming it by digest with a note for the importer", async () => {
+    const localApp = createApp(new DemoRepository());
+    const url = "https://llm.example/v1";
+    const created = await localApp.request("/api/skills/skill_support_quality/versions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        rubricMarkdown: "Pass grounded answers.",
+        prompt: "Judge the answer.",
+        executionBinding: bindingInput(SEEDED_BINDING, {
+          provider: "custom",
+          endpoint: { kind: "custom", baseUrl: url },
+          reasoning: null,
+          verdictProtocol: "openai.forced-function/v1"
+        })
+      })
+    });
+    expect(created.status).toBe(201);
+    const versionId = (await created.json() as { version: { id: string } }).version.id;
+    const body = await (await localApp.request(`/api/skills/skill_support_quality/versions/${versionId}/skill-format`)).text();
+    expect(body).not.toContain(url);
+    const doc = verifySkillFormatV2(JSON.parse(body), { endpointBaseUrl: url });
+    expect(doc.notes.some((note) => note.includes("custom endpoint named only by its digest"))).toBe(true);
+    expect(() => verifySkillFormatV2(JSON.parse(body), { endpointBaseUrl: "https://other.example/v1" })).toThrow();
   });
 
   it("?download=1 attaches a static-stem json file; 404s for a missing version", async () => {

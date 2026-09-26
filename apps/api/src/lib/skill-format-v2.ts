@@ -15,8 +15,8 @@ import {
   typedQuestionDigest
 } from "./evaluator-identity.js";
 
-// skill-format/v2 (contracts/skill-format-v2.md). The export route moves here
-// in 8D, when the skill-format/v1 export is removed.
+// skill-format/v2 (contracts/skill-format-v2.md): the portable export of one
+// evaluator version, built and verified here.
 
 export interface BuildSkillFormatV2Input {
   name: string;

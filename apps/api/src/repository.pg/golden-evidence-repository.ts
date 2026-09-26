@@ -5,7 +5,7 @@ import {
   type ExceptionDetail,
   type GoldenSetEntry,
   type GoldenSetHealthSummary,
-  type SkillFormatExample,
+  type SkillFormatV2Example,
   type VerdictRecord
 } from "@rubrist/shared";
 import type { Pool } from "pg";
@@ -68,7 +68,7 @@ export class PgGoldenEvidenceRepository implements GoldenEvidenceRepositoryPort 
     projectId: string,
     cap: number,
     criterionVersionId?: string | undefined
-  ): Promise<SkillFormatExample[]> {
+  ): Promise<SkillFormatV2Example[]> {
     const golden = (await this.listGoldenSet(projectId, criterionVersionId)).slice(0, cap);
     if (golden.length === 0) return [];
     const traces = await this.loadGoldenSetTraces(golden);
@@ -78,10 +78,10 @@ export class PgGoldenEvidenceRepository implements GoldenEvidenceRepositoryPort 
       return {
         id: entry.id,
         label: entry.agreedLabel,
-        input: trace?.input ?? null,
-        output: trace?.output ?? null,
+        input: (trace?.input ?? null) as SkillFormatV2Example["input"],
+        output: (trace?.output ?? null) as SkillFormatV2Example["output"],
         reason: entry.reason,
-        ...(metadata && Object.keys(metadata).length > 0 ? { metadata } : {})
+        metadata: metadata && Object.keys(metadata).length > 0 ? metadata as SkillFormatV2Example["metadata"] : null
       };
     });
   }

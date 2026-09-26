@@ -167,8 +167,7 @@ async function fetchJudgeModelCatalogUncached(input: {
         label: stringValue(row?.display_name) ?? id,
         // Anthropic's catalog exposes no snapshot id separate from the model
         // id, so version = id: the resulting modelVersion pin records what
-        // was requested, not a dated snapshot (documented on
-        // ModelBindingSchema and in spec/skill-format-v1.md).
+        // was requested, not a dated snapshot.
         version: id,
         createdAt: stringValue(row?.created_at)
       }];
