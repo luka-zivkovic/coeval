@@ -86,14 +86,6 @@ export const UnicodeScalarValueSchema = z.string().refine((value) => !containsLo
   message: "Text must not contain an unpaired UTF-16 surrogate"
 });
 
-// Canonicalize raw provider identifiers at explicit input or protocol-check
-// boundaries. Persisted bindings use StoredModelBindingSchema and are already
-// canonical.
-export function normalizeJudgeProviderId(value: string): JudgeProviderId | null {
-  const parsed = JudgeProviderIdSchema.safeParse(value.trim().toLowerCase());
-  return parsed.success ? parsed.data : null;
-}
-
 /** Where a judge credential comes from: built in (the mock), the project, or the platform environment. */
 export const JudgeProviderCredentialSourceSchema = z.enum(["built_in", "project", "environment"]);
 export type JudgeProviderCredentialSource = z.infer<typeof JudgeProviderCredentialSourceSchema>;
@@ -104,25 +96,6 @@ export const HttpUrlSchema = z
   .trim()
   .url()
   .refine((value) => /^https?:\/\//i.test(value), { message: "baseUrl must use http or https" });
-
-// TEMPORARY (Batch 8D-5d deletes it): the v1 model binding shape, whose
-// provider and sampling values are not restricted to Rubrist's current runtime
-// provider catalog.
-export const ModelBindingSchema = z.object({
-  provider: z.string(),
-  modelId: z.string(),
-  // Honest limitation: no supported provider catalog exposes an immutable
-  // snapshot id separate from the model id, so every pin path today stores
-  // modelVersion = modelId. The field records WHAT was requested, not a dated
-  // snapshot — an upstream silent model revision is not detectable through it.
-  modelVersion: z.string(),
-  temperature: z.number(),
-  topP: z.number().optional(),
-  baseUrl: z.string().optional()
-});
-export type ModelBinding = z.infer<typeof ModelBindingSchema>;
-
-
 
 // Calibration evidence only describes the exact model that produced it, so a
 // model id the provider can repoint underneath Rubrist cannot become a

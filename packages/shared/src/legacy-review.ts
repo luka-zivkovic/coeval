@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
   JsonSchemaSchema,
-  ModelBindingSchema,
   RubricProvenanceSchema,
   SkillStatusSchema,
   VerdictKindSchema,
