@@ -206,9 +206,9 @@ Sev 3 · CURRENT · *fix*
   (`components/trace-detail.tsx:686-714`).
 - In the player, the decision view has no filled button until a form is
   opened. After that, the next bullet applies there too. The done view fills
-  "Back to overview" (`screens/review.tsx:177`). When overrides were recorded,
-  it also fills "Draft rubric edit from these cases" (`variant="signal"`,
-  `screens/review.tsx:168`).
+  "Back to overview" (`screens/review.tsx:177`). When the session recorded two
+  or more overrides (`screens/review.tsx:163`), it also fills "Draft rubric edit
+  from these cases" (`variant="signal"`, `screens/review.tsx:168`).
 - Opening a form fills both its opener and its submit button:
   - Choosing promotion makes "Add to golden set" filled
     (`components/trace-detail.tsx:702`), next to a filled "Add regression
