@@ -206,6 +206,9 @@ export function registerProjectAdministrationRoutes(
     if (parsed.data === "custom") {
       return c.json({ error: "Custom OpenAI-compatible models are entered manually" }, 400);
     }
+    if (parsed.data === "typesafe") {
+      return c.json({ error: "TypeSafe models are entered by name" }, 400);
+    }
     const projectKey = parsed.data === "mock"
       ? null
       : await repository.getJudgeProviderCredential(c.get("projectId"), parsed.data);

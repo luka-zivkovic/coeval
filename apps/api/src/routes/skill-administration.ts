@@ -19,6 +19,7 @@ import { buildSkillFormatV2 } from "../lib/skill-format-v2.js";
 import { sha256Digest } from "../lib/canonical-json.js";
 import { userProjectRole } from "../lib/auth.js";
 import { buildJudgeCard, renderJudgeCardMarkdown } from "../lib/judge-card.js";
+import { runnableInstead } from "../lib/judge-provider.js";
 import {
   AmbiguousProjectSkillError,
   DatasetRevisionConflictError,
@@ -399,9 +400,7 @@ export function registerSkillAdministrationRoutes(
         return c.json({
           error: error.message,
           unavailableProvider: error.provider,
-          availableProviders: (await listJudgeProviders(projectId))
-            .filter((provider) => provider.available)
-            .map((provider) => provider.provider)
+          availableProviders: runnableInstead(await listJudgeProviders(projectId), error.provider)
         }, 503);
       }
       throw error;
@@ -449,7 +448,7 @@ export function registerSkillAdministrationRoutes(
           return c.json({
             error: error.message,
             unavailableProvider: error.provider,
-            availableProviders: (await listJudgeProviders(c.get("projectId"))).filter((p) => p.available).map((p) => p.provider)
+            availableProviders: runnableInstead(await listJudgeProviders(c.get("projectId")), error.provider)
           }, 503);
         }
         throw error;
@@ -488,7 +487,7 @@ export function registerSkillAdministrationRoutes(
         return c.json({
           error: error.message,
           unavailableProvider: error.provider,
-          availableProviders: (await listJudgeProviders(c.get("projectId"))).filter((p) => p.available).map((p) => p.provider)
+          availableProviders: runnableInstead(await listJudgeProviders(c.get("projectId")), error.provider)
         }, 503);
       }
       if (error instanceof RegressionGateJudgeError) return c.json({ error: error.message }, 502);

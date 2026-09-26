@@ -24,7 +24,7 @@ import { useDashboard } from "@/lib/dashboard-context";
 import { useCriterion } from "@/lib/criterion-context";
 import { skillCriterionVersionId } from "@/lib/criterion-scope";
 import { executionBindingFields, executionBindingInputFromFields } from "@/lib/execution-binding-draft";
-import { resolveJudgeProviderSelection } from "@/lib/judge-provider-selection";
+import { promptedProviderOptions, resolveJudgeProviderSelection } from "@/lib/judge-provider-selection";
 import { firstResultPath, isBench, markSetupReceipt } from "@/lib/journey";
 import {
   clearOnboardingCheckDraft,
@@ -259,8 +259,10 @@ export function SkillEditScreen() {
       setOnboardingEvidenceInventory(evidenceInventory);
       const v = s.currentVersion;
       setBaseVersion(v);
-      setProviderOptions(availability.providers);
-      applyBindingFields(v, availability.providers);
+      // This editor authors prompted evaluators.
+      const promptedProviders = promptedProviderOptions(availability.providers);
+      setProviderOptions(promptedProviders);
+      applyBindingFields(v, promptedProviders);
 
       if (firstRun) {
         const savedDraft = loadOnboardingCheckDraft(s.projectId, s.id);

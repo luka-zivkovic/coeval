@@ -443,7 +443,7 @@ export function SkillVersionEditor({
         <MarginNote tone="neutral" who="Requested model" className="mb-5">
           {availableProviderOptions.some((option) => option.provider === "mock")
             ? "Only the local mock is available."
-            : "No judge provider key is configured."}{" "}
+            : "No key for a prompted judge provider is configured."}{" "}
           Add an Anthropic, OpenAI, OpenRouter, or custom provider key in{" "}
           <button type="button" className="underline cursor-pointer" onClick={() => navigate("/settings")}>Settings</button>{" "}
           to load its model catalog.

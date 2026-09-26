@@ -1,7 +1,15 @@
 import type { ExecutionBinding } from "@rubrist/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { endpointBaseUrlDigest } from "../src/lib/evaluator-identity.js";
-import { createJudgeProvider, createStrictJudgeProvider, judgeProviderAvailability, JudgeProviderUnavailableError, structuredVerdictToLegacy } from "../src/lib/judge-provider.js";
+import {
+  createJudgeProvider,
+  createStrictJudgeProvider,
+  judgeProviderAvailability,
+  JudgeProviderUnavailableError,
+  resolveJudgeProviderApiKey,
+  runnableInstead,
+  structuredVerdictToLegacy
+} from "../src/lib/judge-provider.js";
 import { MOCK_BINDING, SEEDED_BINDING, runtimeVersion } from "./fixtures/execution-binding.js";
 
 const CUSTOM_URL = "https://models.example.test/v1";
@@ -26,6 +34,7 @@ const OPENROUTER: ExecutionBinding = {
 describe("judge provider registry", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     delete process.env.OPENAI_BASE_URL;
   });
 
@@ -81,6 +90,32 @@ describe("judge provider registry", () => {
       credentialSource: "built_in"
     });
     expect(judgeProviderAvailability(undefined, false).find((item) => item.provider === "mock")?.available).toBe(false);
+  });
+
+  it("reads a TypeSafe credential from a project key or TYPESAFE_API_KEY, and has its model named by the author", () => {
+    vi.stubEnv("TYPESAFE_API_KEY", "");
+    expect(judgeProviderAvailability().find((item) => item.provider === "typesafe")).toEqual({
+      provider: "typesafe", label: "TypeSafe", available: false, credentialSource: null, modelSelection: "custom"
+    });
+    expect(judgeProviderAvailability(new Set(["typesafe"])).find((item) => item.provider === "typesafe"))
+      .toMatchObject({ available: true, credentialSource: "project" });
+    vi.stubEnv("TYPESAFE_API_KEY", "typesafe-environment-key");
+    const withEnvironment = judgeProviderAvailability();
+    expect(withEnvironment.find((item) => item.provider === "typesafe"))
+      .toMatchObject({ available: true, credentialSource: "environment" });
+    expect(JSON.stringify(withEnvironment)).not.toContain("typesafe-environment-key");
+    // A project key is authoritative over the platform key.
+    expect(judgeProviderAvailability(new Set(["typesafe"])).find((item) => item.provider === "typesafe"))
+      .toMatchObject({ credentialSource: "project" });
+    expect(resolveJudgeProviderApiKey("typesafe")).toBe("typesafe-environment-key");
+    expect(resolveJudgeProviderApiKey("typesafe", "typesafe-project-key")).toBe("typesafe-project-key");
+  });
+
+  it("offers instead only providers that can run the same kind of evaluator", () => {
+    const availability = judgeProviderAvailability(new Set(["openrouter", "typesafe"]), false);
+    expect(runnableInstead(availability, "anthropic")).toEqual(["openrouter"]);
+    expect(runnableInstead(availability, "typesafe")).toEqual(["typesafe"]);
+    expect(runnableInstead(judgeProviderAvailability(new Set(["typesafe"]), false), "anthropic")).toEqual([]);
   });
 
   it("keeps an explicit mock valid on strict paths", () => {

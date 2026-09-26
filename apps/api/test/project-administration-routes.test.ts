@@ -152,8 +152,14 @@ describe("project administration routes", () => {
       "custom",
       "mock",
       "openai",
-      "openrouter"
+      "openrouter",
+      "typesafe"
     ]);
+
+    // TypeSafe has no model catalog: a typed-question model is named exactly.
+    const typesafeModels = await app.request("/api/judge/providers/typesafe/models");
+    expect(typesafeModels.status).toBe(400);
+    await expect(typesafeModels.json()).resolves.toEqual({ error: "TypeSafe models are entered by name" });
 
     const models = await app.request("/api/judge/providers/mock/models");
     expect(models.status).toBe(200);

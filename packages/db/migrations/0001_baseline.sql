@@ -11598,7 +11598,7 @@ CREATE TABLE judge_provider_keys (
     encrypted_credentials text NOT NULL,
     key_display text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT judge_provider_keys_provider_check CHECK ((provider = ANY (ARRAY['anthropic'::text, 'openai'::text, 'openrouter'::text, 'custom'::text])))
+    CONSTRAINT judge_provider_keys_provider_check CHECK ((provider = ANY (ARRAY['anthropic'::text, 'openai'::text, 'openrouter'::text, 'custom'::text, 'typesafe'::text])))
 );
 
 

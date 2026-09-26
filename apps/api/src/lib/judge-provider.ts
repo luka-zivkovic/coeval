@@ -67,6 +67,7 @@ const PROVIDER_LABELS: Record<JudgeProviderId, string> = {
   openai: "OpenAI",
   openrouter: "OpenRouter",
   custom: "Custom OpenAI-compatible",
+  typesafe: "TypeSafe",
   mock: "Mock (local testing)"
 };
 
@@ -74,6 +75,7 @@ export function judgeProviderEnvironmentKey(provider: ExecutionProviderId): stri
   if (provider === "anthropic") return process.env.ANTHROPIC_API_KEY;
   if (provider === "openai") return process.env.OPENAI_API_KEY;
   if (provider === "openrouter") return process.env.OPENROUTER_API_KEY;
+  if (provider === "typesafe") return process.env.TYPESAFE_API_KEY;
   return undefined;
 }
 
@@ -93,7 +95,7 @@ export function judgeProviderAvailability(
   projectKeyProviders?: ReadonlySet<string>,
   allowMock = true
 ): JudgeProviderAvailabilityItem[] {
-  const providers: JudgeProviderId[] = ["anthropic", "openai", "openrouter", "custom", "mock"];
+  const providers: JudgeProviderId[] = ["anthropic", "openai", "openrouter", "custom", "typesafe", "mock"];
   return providers.map((provider) => {
     if (provider === "mock") {
       return {
@@ -111,9 +113,23 @@ export function judgeProviderAvailability(
       label: PROVIDER_LABELS[provider],
       available: hasProjectKey || hasEnvironmentKey,
       credentialSource: hasProjectKey ? "project" as const : hasEnvironmentKey ? "environment" as const : null,
-      modelSelection: provider === "custom" ? "custom" as const : "catalog" as const
+      // Custom and TypeSafe models are named by the author; the rest come from a catalog.
+      modelSelection: provider === "custom" || provider === "typesafe" ? "custom" as const : "catalog" as const
     };
   });
+}
+
+/**
+ * The providers with a credential that could run an evaluator in place of
+ * `unavailable`'s: TypeSafe runs only typed-question evaluators, and every
+ * other provider only prompted ones. It answers "which provider can I save
+ * with instead?", so it never offers one that can't run the same evaluator.
+ */
+export function runnableInstead(availability: ReadonlyArray<JudgeProviderAvailabilityItem>, unavailable: string): JudgeProviderId[] {
+  const typed = unavailable === "typesafe";
+  return availability
+    .filter((option) => option.available && (option.provider === "typesafe") === typed)
+    .map((option) => option.provider);
 }
 
 /**

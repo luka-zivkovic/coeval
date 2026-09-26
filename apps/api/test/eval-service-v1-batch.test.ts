@@ -498,7 +498,7 @@ describe("POST /api/v1/judge/batch — fire-and-poll", () => {
     const delAgain = await app.request("/api/judge-keys/anthropic", { method: "DELETE" });
     expect(delAgain.status).toBe(404);
 
-    for (const provider of ["openrouter", "custom"] as const) {
+    for (const provider of ["openrouter", "custom", "typesafe"] as const) {
       const save = await app.request(`/api/judge-keys/${provider}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
@@ -506,6 +506,8 @@ describe("POST /api/v1/judge/batch — fire-and-poll", () => {
       });
       expect(save.status).toBe(201);
     }
+    const availability = await (await app.request("/api/judge/providers")).json() as { providers: Array<{ provider: string; available: boolean; credentialSource: string | null }> };
+    expect(availability.providers.find((option) => option.provider === "typesafe")).toMatchObject({ available: true, credentialSource: "project" });
   });
 
   it("S1: resolution order — the project key is handed to the factory; no project key falls back to env behavior", async () => {

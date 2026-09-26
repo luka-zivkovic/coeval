@@ -11,7 +11,8 @@ import { contentDigest, sha256Digest } from "../lib/canonical-json.js";
 import {
   createStrictJudgeProvider,
   isJudgeAuthError,
-  JudgeProviderUnavailableError
+  JudgeProviderUnavailableError,
+  runnableInstead
 } from "../lib/judge-provider.js";
 import {
   AssessmentReceiptIntegrityError,
@@ -142,7 +143,7 @@ export function registerV1EvaluationAdministrationRoutes(
         return c.json({
           error: error.message,
           unavailableProvider: error.provider,
-          availableProviders: (await listJudgeProviders(c.get("projectId"))).filter((p) => p.available).map((p) => p.provider)
+          availableProviders: runnableInstead(await listJudgeProviders(c.get("projectId")), error.provider)
         }, 503);
       }
       // the provider rejected the credential — with a BYO project key
