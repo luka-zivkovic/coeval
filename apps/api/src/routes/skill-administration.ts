@@ -330,7 +330,9 @@ export function registerSkillAdministrationRoutes(
     if (options.pool && parsed.data.evaluator.executionBinding.provider === "mock") {
       return c.json({ error: "The mock judge is only available in local demo mode. Configure a real judge provider first." }, 400);
     }
-    const onboardingBindingProblem = executionBindingInputProblem(parsed.data.evaluator.executionBinding);
+    const onboardingBindingProblem = executionBindingInputProblem(parsed.data.evaluator.executionBinding, {
+      typedQuestion: parsed.data.evaluator.typedQuestion !== undefined
+    });
     if (onboardingBindingProblem !== null) return c.json({ error: onboardingBindingProblem }, 400);
 
     const projectId = c.get("projectId");
@@ -424,7 +426,9 @@ export function registerSkillAdministrationRoutes(
     if (options.pool && parsed.data.executionBinding.provider === "mock") {
       return c.json({ error: "The mock judge is only available in local demo mode. Configure a real judge provider first." }, 400);
     }
-    const versionBindingProblem = executionBindingInputProblem(parsed.data.executionBinding);
+    const versionBindingProblem = executionBindingInputProblem(parsed.data.executionBinding, {
+      typedQuestion: parsed.data.typedQuestion !== undefined
+    });
     if (versionBindingProblem !== null) return c.json({ error: versionBindingProblem }, 400);
 
     const projectId = c.get("projectId");

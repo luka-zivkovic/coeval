@@ -3,6 +3,7 @@ import {
   documentedReasoningDefault,
   reasoningFamilyFor,
   takesSamplingSettings,
+  verdictProtocolsFor,
   type CapabilityProbe,
   type ExecutionBinding,
   type ExecutionProviderId,
@@ -14,7 +15,7 @@ import {
   governedGateProblems,
   recheckExecutionBinding,
   resolveExecutionBinding,
-  verdictProbeExecutor
+  bindingProbeExecutor
 } from "./evaluator-resolution.js";
 import { endpointUrlFor } from "./execution-binding.js";
 import { judgeProviderEnvironmentKey } from "./judge-provider.js";
@@ -49,7 +50,6 @@ export function bindingResolutionServices(
     ...overrides,
     credential: async (projectId, provider) => {
       if (provider === "mock") return { apiKey: null, source: "built_in" };
-      if (provider === "typesafe") return { apiKey: null, source: null };
       const project = await projectCredential(projectId, provider);
       if (project) return { apiKey: project, source: "project" };
       const platform = judgeProviderEnvironmentKey(provider);
@@ -77,7 +77,7 @@ async function probeContext(services: BindingResolutionServices, governed: Gover
     apiKey: credential.apiKey,
     ...(services.capabilityFetch ? { fetch: services.capabilityFetch } : {})
   });
-  const execute = verdictProbeExecutor({
+  const execute = bindingProbeExecutor({
     apiKey: credential.apiKey,
     customBaseUrl: endpointUrlFor(governed),
     spec: governed.spec,
@@ -188,7 +188,10 @@ export function governedGateRefusal(binding: ExecutionBinding, record: Resolutio
   } else if (rejected?.rejection === "value" && rejected.rejectedParameter !== null) {
     suggestion = `Save a new evaluator version with another ${rejected.rejectedParameter} value.`;
   } else if (rejected?.rejection === "mechanism") {
-    suggestion = "Save a new evaluator version with another verdict protocol.";
+    // A provider with one protocol (TypeSafe's typed-question/v1) has no other to choose.
+    suggestion = verdictProtocolsFor(binding.provider).length > 1
+      ? "Save a new evaluator version with another verdict protocol."
+      : `${binding.provider}'s response broke its only verdict protocol; try again later, or choose another model.`;
   } else if (record?.status === "failed") {
     suggestion = "Save a new evaluator version with settings the model accepts.";
   } else if (record?.status !== "resolved") {

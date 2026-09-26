@@ -69,10 +69,14 @@ export function executionBindingFromInput(
   return { executionBinding: parsed.data, customEndpointUrl };
 }
 
-/** Why a submitted binding can't be saved, for a 400; `null` when it can. */
-export function executionBindingInputProblem(input: ExecutionBindingInput): string | null {
+/**
+ * Why a submitted binding can't be saved, for a 400; `null` when it can. As
+ * for executionBindingFromInput, a typed-question binding is saved only with
+ * a typed-question definition (`typedQuestion`).
+ */
+export function executionBindingInputProblem(input: ExecutionBindingInput, options: { typedQuestion?: boolean } = {}): string | null {
   try {
-    executionBindingFromInput(input);
+    executionBindingFromInput(input, undefined, options);
     return null;
   } catch (error) {
     if (error instanceof ExecutionBindingInputError) return `Invalid execution binding: ${error.message}`;

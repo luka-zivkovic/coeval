@@ -17,6 +17,7 @@ import {
   regressionDirectionCounts
 } from "@rubrist/shared";
 import { criterionVersionDigest } from "../lib/criterion-digest.js";
+import { typedQuestionStandIn } from "../lib/judge-provider.js";
 import type { CreateSkillVersionContext } from "./contracts.js";
 import type { DemoRepositoryStore } from "./demo-store.js";
 import {
@@ -403,7 +404,11 @@ export class DemoSkillLifecycleRepository implements SkillLifecycleRepositoryPor
       traces,
       overrideReason: job.overrideReason,
       actorUserId: job.actorUserId,
-      judgeProvider: this.judgeProvider,
+      // A typed-question version keeps its shape in the demo: pass or fail on
+      // its threshold, with no rationale.
+      judgeProvider: version.typedQuestion !== null && version.decisionThreshold !== null
+        ? typedQuestionStandIn({ question: version.typedQuestion, threshold: version.decisionThreshold }, this.judgeProvider)
+        : this.judgeProvider,
       previousVerdicts
     });
     const regression: RegressionRunResult = { ...computedRegression, datasetRevisionId };

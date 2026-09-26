@@ -1,4 +1,12 @@
-import { EvaluatorCallError, executeVerdict, type ExecutionFetch, type TokenUsage, type VerdictSpec } from "@rubrist/audit/runtime";
+import {
+  EvaluatorCallError,
+  executeTypedQuestion,
+  executeVerdict,
+  type ExecutionFetch,
+  type TokenUsage,
+  type TypedQuestionEvaluator,
+  type VerdictSpec
+} from "@rubrist/audit/runtime";
 import {
   CapabilityProbeSchema,
   REASONING_DEFAULTS_VERSION,
@@ -46,8 +54,26 @@ export const PROBE_TEMPERATURE = 1;
 /** Probes run in sequence while an author waits, so each is short. */
 export const PROBE_TIMEOUT_MS = 30_000;
 
-/** A probe executor over executeVerdict, judging the fixed input with the evaluator's verdict kind. */
-export function verdictProbeExecutor(input: {
+/**
+ * The fixed question a typed-question probe asks about the fixed trace: no
+ * project data, and no question of the author's. Resolution confirms the
+ * binding, so the question and threshold are the probe's own.
+ */
+export const TYPED_QUESTION_PROBE: Readonly<TypedQuestionEvaluator> = Object.freeze({
+  question: Object.freeze({
+    type: "noul" as const,
+    instructions: "Does the answer state the correct sum?",
+    criteria: Object.freeze({ true: "The answer states the correct sum.", false: "The answer states a wrong sum or none." })
+  }),
+  threshold: 0.5
+});
+
+/**
+ * A probe executor over the executor each probed binding's protocol runs:
+ * a prompted protocol judges the fixed input with the evaluator's verdict
+ * kind, and typed-question/v1 asks the fixed question about the same trace.
+ */
+export function bindingProbeExecutor(input: {
   apiKey: string | null;
   customBaseUrl: string | null;
   spec: VerdictSpec;
@@ -55,6 +81,17 @@ export function verdictProbeExecutor(input: {
   timeoutMs?: number;
 }): ProbeExecutor {
   return async (binding) => {
+    if (binding.verdictProtocol === "typed-question/v1") {
+      const result = await executeTypedQuestion({
+        binding,
+        apiKey: input.apiKey,
+        evaluator: TYPED_QUESTION_PROBE,
+        trace: CAPABILITY_PROBE_INPUT.trace,
+        timeoutMs: input.timeoutMs ?? PROBE_TIMEOUT_MS,
+        ...(input.fetch ? { fetch: input.fetch } : {})
+      });
+      return { usage: result.usage };
+    }
     const result = await executeVerdict({
       binding,
       apiKey: input.apiKey,
