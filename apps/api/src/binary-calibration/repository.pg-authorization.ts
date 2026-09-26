@@ -104,18 +104,18 @@ export async function deriveRunIdentity(
   } catch (error) {
     throw repoError("unsupported", `sealed calibration requires an evaluator version with a valid v2 identity (${identityProblem(error)})`);
   }
-  // Governed gate (ADR-0014 section 2): a resolved binding that states its
-  // temperature and reasoning, unless its resolution shows the model
-  // rejecting the parameter itself.
-  const refusal = governedGateRefusal(binding, await loadResolutionRecord(client, projectId, skillVersion.id));
-  if (refusal !== null) {
-    throw repoError("ineligible", `${refusal.message}. ${refusal.suggestion}${refusal.providerMessage ? ` The provider said: ${refusal.providerMessage}` : ""}`);
-  }
   if (mutableModelAlias(binding.modelId) !== null) {
     throw repoError(
       "ineligible",
       `sealed calibration requires a pinned model id; "${binding.modelId}" is a mutable alias under ${MUTABLE_MODEL_ALIAS_RULE_VERSION}`
     );
+  }
+  // Governed gate (ADR-0014 section 2): a resolved binding that states its
+  // temperature and reasoning, unless its resolution shows the model
+  // rejecting the parameter itself.
+  const refusal = governedGateRefusal(binding, await loadResolutionRecord(client, projectId, skillVersion.id, binding));
+  if (refusal !== null) {
+    throw repoError("ineligible", `${refusal.message}. ${refusal.suggestion}${refusal.providerMessage ? ` The provider said: ${refusal.providerMessage}` : ""}`);
   }
   const evaluatorDigests = {
     definitionDigest: skillDigestInput(identity).definitionDigest,

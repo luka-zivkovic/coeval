@@ -11,8 +11,8 @@ import {
 import type { GovernedBinding } from "../lib/binding-resolution.js";
 import {
   appendResolutionAttempt,
-  latestUnknownRecheckAt,
   loadGovernedBinding,
+  msSinceUnknownRecheck,
   loadResolutionRecord,
   saveResolutionRecord,
   type ResolutionAttemptInput
@@ -171,13 +171,15 @@ export class PgBinaryCalibrationRepository implements
   ): Promise<{ binding: GovernedBinding; record: ResolutionRecord | null } | null> {
     const binding = await loadGovernedBinding(this.pool, access.projectId, skillVersionId);
     if (!binding) return null;
-    return { binding, record: await loadResolutionRecord(this.pool, access.projectId, skillVersionId) };
+    return { binding, record: await loadResolutionRecord(this.pool, access.projectId, skillVersionId, binding.executionBinding) };
   }
 
-  async recordResolution(attempt: ResolutionAttemptInput, record: ResolutionRecord): Promise<void> {
-    await this.transaction(async (client) => {
+  async recordResolution(attempt: ResolutionAttemptInput, record: ResolutionRecord): Promise<ResolutionRecord | null> {
+    return this.transaction(async (client) => {
       await appendResolutionAttempt(client, attempt);
-      if (attempt.skillVersionId !== null) await saveResolutionRecord(client, attempt.projectId, attempt.skillVersionId, record);
+      return attempt.skillVersionId === null
+        ? record
+        : saveResolutionRecord(client, attempt.projectId, attempt.skillVersionId, attempt.executionBinding, record);
     });
   }
 
@@ -185,12 +187,11 @@ export class PgBinaryCalibrationRepository implements
     const run = await requireClaim(this.pool, claim, false);
     const binding = await loadGovernedBinding(this.pool, String(run.project_id), String(run.skill_version_id));
     if (!binding) throw repoError("state_conflict", "binary calibration evaluator version is unavailable");
-    const lastUnknown = await latestUnknownRecheckAt(this.pool, String(run.project_id), String(run.id));
     return {
       // The run pins its binding; the re-check probes exactly it.
       binding: { ...binding, executionBinding: ExecutionBindingSchema.parse(parseJson(run.execution_binding)) },
       authorized: run.authorization_check_id !== null && run.authorization_check_id !== undefined,
-      lastUnknownRecheckAt: lastUnknown === null ? null : lastUnknown.toISOString()
+      msSinceUnknownRecheck: await msSinceUnknownRecheck(this.pool, String(run.project_id), String(run.id))
     };
   }
 

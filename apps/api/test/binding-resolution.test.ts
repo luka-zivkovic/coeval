@@ -5,6 +5,7 @@ import {
   bindingResolutionServices,
   governedGateRefusal,
   recheckGovernedBinding,
+  resolutionNeeded,
   resolveGovernedBinding,
   type GovernedBinding
 } from "../src/lib/binding-resolution.js";
@@ -96,7 +97,10 @@ describe("a gate refusal", () => {
     const resolved = await resolvedRecordFor(SEEDED_BINDING);
     expect(governedGateRefusal(SEEDED_BINDING, resolved)).toBeNull();
     expect(governedGateRefusal(SEEDED_BINDING, null)).toMatchObject({ suggestion: expect.stringContaining("reachable") });
-    expect(governedGateRefusal(OPUS, resolved)).toMatchObject({
+    // The model accepts temperature, so it must be stated.
+    const accepting = await resolveGovernedBinding(services(() => accepted()).services, governed(OPUS));
+    expect(accepting.temperatureSupport).toBe("accepted");
+    expect(governedGateRefusal(OPUS, accepting)).toMatchObject({
       problems: [expect.stringContaining("temperature must be explicit")],
       suggestion: expect.stringContaining("states its temperature")
     });
@@ -110,5 +114,43 @@ describe("a gate refusal", () => {
     const refusal = governedGateRefusal(SEEDED_BINDING, value);
     expect(refusal?.suggestion).toMatch(/another temperature value|settings the model accepts/);
     expect(governedGateRefusal(OPUS, await temperatureRejectingRecordFor(OPUS))).toBeNull();
+  });
+});
+
+describe("a transient error on a setting probe never fails a binding", () => {
+  it("leaves a setting unanswered, so the gate resolves again and suggests retrying", async () => {
+    const { services: s } = services((body) => "temperature" in body ? new Response("{}", { status: 529 }) : accepted());
+    const record = await resolveGovernedBinding(s, governed(OPUS));
+    expect(record).toMatchObject({ status: "resolved", temperatureSupport: null });
+    expect(resolutionNeeded(OPUS, record)).toBe(true);
+    expect(governedGateRefusal(OPUS, record)?.suggestion).toContain("Try again");
+
+    expect(resolutionNeeded(OPUS, await temperatureRejectingRecordFor(OPUS))).toBe(false);
+    expect(resolutionNeeded(SEEDED_BINDING, await resolvedRecordFor(SEEDED_BINDING))).toBe(false);
+    expect(resolutionNeeded(SEEDED_BINDING, { ...(await resolvedRecordFor(SEEDED_BINDING)), status: "failed" })).toBe(false);
+    expect(resolutionNeeded(SEEDED_BINDING, null)).toBe(true);
+  });
+
+  it("keeps a re-check unknown when a rejection is unattributed only because capabilities couldn't be read", async () => {
+    const OPENROUTER: ExecutionBinding = {
+      ...SEEDED_BINDING, provider: "openrouter", modelId: "anthropic/claude-sonnet-4.6", modelVersion: "anthropic/claude-sonnet-4.6",
+      sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null,
+      verdictProtocol: "openai.forced-function/v1", routing: { requireParameters: true, allowFallbacks: false }
+    };
+    const chat = () => new Response(JSON.stringify({
+      id: "c", model: "anthropic/claude-sonnet-4.6",
+      choices: [{ message: { tool_calls: [{ type: "function", function: { name: "submit_verdict", arguments: JSON.stringify(VERDICT) } }] }, finish_reason: "tool_calls" }]
+    }));
+    const opaque = () => new Response(JSON.stringify({ error: { code: 400, message: "Provider returned error" } }), { status: 400 });
+    const { services: s } = services((body) => "temperature" in body || "reasoning" in body ? opaque() : chat());
+    expect((await recheckGovernedBinding(s, governed(OPENROUTER))).outcome).toBe("unknown");
+  });
+
+  it("no longer holds once a setting has a definite answer, even when another probe errored", async () => {
+    const { services: s } = services((body) => "thinking" in body && (body.thinking as { type: string }).type !== "disabled"
+      ? new Response("{}", { status: 503 })
+      : accepted());
+    const unsetBoth: ExecutionBinding = { ...OPUS, reasoning: null };
+    expect((await recheckGovernedBinding(s, governed(unsetBoth))).outcome).toBe("no_longer_holds");
   });
 });

@@ -16,7 +16,7 @@ import { PgGovernedReviewRepository, type GovernedReviewActor } from "../src/gov
 import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 import { MOCK_BINDING, SEEDED_BINDING, bindingInput, resolvedRecordFor, temperatureRejectingRecordFor } from "./fixtures/execution-binding.js";
-import { saveResolutionRecord } from "../src/evaluator-lifecycle/resolution.pg.js";
+import { loadResolutionRecord, saveResolutionRecord } from "../src/evaluator-lifecycle/resolution.pg.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {
@@ -116,7 +116,7 @@ run("PgBinaryCalibrationRepository", () => {
     // is saved on the mock (its regression gate needs no key) and then bound
     // to the seeded Anthropic binding, which the executor stub below never calls.
     await pool.query(`update skill_versions set execution_binding=$2::jsonb where id=$1`, [skillVersionId, JSON.stringify(SEEDED_BINDING)]);
-    await saveResolutionRecord(pool, PROJECT_ID, skillVersionId, await resolvedRecordFor(SEEDED_BINDING));
+    await saveResolutionRecord(pool, PROJECT_ID, skillVersionId, SEEDED_BINDING, await resolvedRecordFor(SEEDED_BINDING));
 
     const instruction = await governed.createInstruction(OWNER, {
       criterionVersionId: version.criterionVersionId,
@@ -228,14 +228,33 @@ run("PgBinaryCalibrationRepository", () => {
       }
       const opus = { ...SEEDED_BINDING, modelId: "claude-opus-5-5", modelVersion: "claude-opus-5-5", sampling: { temperature: null, topP: null } };
       await pool.query(`update skill_versions set execution_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(opus)]);
-      await saveResolutionRecord(pool, PROJECT_ID, skillVersionId, await temperatureRejectingRecordFor(opus));
+      await saveResolutionRecord(pool, PROJECT_ID, skillVersionId, opus, await temperatureRejectingRecordFor(opus));
       const opusRun = await repository.createRun(OWNER, { ...input, idempotencyKey: "cal-run-opus" });
       expect(opusRun).toMatchObject({ state: "queued" });
       await pool.query(`update binary_calibration_runs set state='rejected',rejection_reason='test_cleanup',completed_at=clock_timestamp() where id=$1`, [opusRun.runId]);
       await pool.query(`delete from evaluator_resolution_records where skill_version_id=$1`, [skillVersionId]);
       await pool.query(`update skill_versions set execution_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(storedBinding)]);
       await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({ code: "ineligible", message: expect.stringContaining("unresolved") });
-      await saveResolutionRecord(pool, PROJECT_ID, skillVersionId, await resolvedRecordFor(SEEDED_BINDING));
+
+      // A failed record stays failed for its binding, even under a concurrent
+      // resolution; a record resolved for another binding is no record; and a
+      // record can't be filed under another project.
+      const failed = await temperatureRejectingRecordFor(SEEDED_BINDING);
+      expect(failed.status).toBe("failed");
+      await saveResolutionRecord(pool, PROJECT_ID, skillVersionId, SEEDED_BINDING, failed);
+      expect(await saveResolutionRecord(pool, PROJECT_ID, skillVersionId, SEEDED_BINDING, await resolvedRecordFor(SEEDED_BINDING)))
+        .toMatchObject({ status: "failed" });
+      await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({ code: "ineligible", message: expect.stringContaining("failed") });
+      expect(await loadResolutionRecord(pool, PROJECT_ID, skillVersionId, { ...SEEDED_BINDING, modelVersion: "claude-sonnet-4-6-20270101" })).toBeNull();
+      await pool.query(`insert into projects (id,organization_id,name,trace_provider) values ('proj_binary_records','org_binary_calibration','Records','manual')`);
+      await expect(saveResolutionRecord(pool, "proj_binary_records", skillVersionId, SEEDED_BINDING, await resolvedRecordFor(SEEDED_BINDING)))
+        .rejects.toThrow("another project");
+      await pool.query(`delete from evaluator_resolution_records where skill_version_id=$1`, [skillVersionId]);
+      await expect(saveResolutionRecord(pool, "proj_binary_records", skillVersionId, SEEDED_BINDING, await resolvedRecordFor(SEEDED_BINDING)))
+        .rejects.toMatchObject({ code: "23503" });
+      await pool.query(`delete from projects where id='proj_binary_records'`);
+      await pool.query(`delete from evaluator_resolution_records where skill_version_id=$1`, [skillVersionId]);
+      await saveResolutionRecord(pool, PROJECT_ID, skillVersionId, SEEDED_BINDING, await resolvedRecordFor(SEEDED_BINDING));
       // A version whose text the definition's limits refuse has no identity.
       await pool.query(`update skill_versions set execution_binding = $2::jsonb, rubric_markdown = repeat('x', 100001) where id=$1`, [skillVersionId, JSON.stringify(storedBinding)]);
       await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({
@@ -425,11 +444,11 @@ run("PgBinaryCalibrationRepository", () => {
     const recheckClaim = await repository.claimRun(recheckRun.runId, "cal-worker-recheck", 60_000);
     expect(await repository.getRecheckTarget(recheckClaim!)).toMatchObject({
       authorized: false,
-      lastUnknownRecheckAt: null,
+      msSinceUnknownRecheck: null,
       binding: { executionBinding: SEEDED_BINDING, customEndpointUrl: null }
     });
     await repository.recordRecheck(recheckClaim!, { outcome: "unknown", probes: [] });
-    expect((await repository.getRecheckTarget(recheckClaim!)).lastUnknownRecheckAt).not.toBeNull();
+    expect((await repository.getRecheckTarget(recheckClaim!)).msSinceUnknownRecheck).toBeGreaterThanOrEqual(0);
     await repository.rejectBeforeAuthorization(recheckClaim!, "resolution_no_longer_holds");
     expect((await pool.query(`select state,rejection_reason,authorization_check_id from binary_calibration_runs where id=$1`, [recheckRun.runId])).rows[0])
       .toEqual({ state: "rejected", rejection_reason: "resolution_no_longer_holds", authorization_check_id: null });
@@ -451,7 +470,7 @@ run("PgBinaryCalibrationRepository", () => {
       { projectId: PROJECT_ID, actorUserId: DEVELOPER.userId }
     );
     await pool.query(`update skill_versions set execution_binding=$2::jsonb where id=$1`, [later.id, JSON.stringify(SEEDED_BINDING)]);
-    await saveResolutionRecord(pool, PROJECT_ID, later.id, await resolvedRecordFor(SEEDED_BINDING));
+    await saveResolutionRecord(pool, PROJECT_ID, later.id, SEEDED_BINDING, await resolvedRecordFor(SEEDED_BINDING));
     const laterRun = await repository.createRun(OWNER, {
       datasetRevisionId: revisionId,
       skillVersionId: later.id,

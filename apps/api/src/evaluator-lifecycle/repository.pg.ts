@@ -30,6 +30,7 @@ import {
 } from "@rubrist/shared";
 import { ExecutionBindingInputError, executionBindingFromInput } from "../lib/execution-binding.js";
 import { governedGateRefusal, type GovernedBinding } from "../lib/binding-resolution.js";
+import { sha256Digest } from "../lib/canonical-json.js";
 import {
   appendResolutionAttempt,
   loadGovernedBinding,
@@ -54,7 +55,8 @@ import {
   type EvaluatorExecutionAuthorizationInput,
   type EvaluatorLifecycleAccess,
   type EvaluatorLifecyclePageInput,
-  type EvaluatorLifecycleRepository
+  type EvaluatorLifecycleRepository,
+  type ResolvedBinding
 } from "./repository.js";
 
 interface CandidateContextRow extends Record<string, unknown> {
@@ -88,18 +90,19 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
   ): Promise<{ binding: GovernedBinding; record: ResolutionRecord | null } | null> {
     const binding = await loadGovernedBinding(this.pool, access.projectId, skillVersionId);
     if (!binding) return null;
-    return { binding, record: await loadResolutionRecord(this.pool, access.projectId, skillVersionId) };
+    return { binding, record: await loadResolutionRecord(this.pool, access.projectId, skillVersionId, binding.executionBinding) };
   }
 
-  async recordResolution(attempt: ResolutionAttemptInput, record: ResolutionRecord | null): Promise<void> {
+  async recordResolution(attempt: ResolutionAttemptInput, record: ResolutionRecord | null): Promise<ResolutionRecord | null> {
     const client = await this.pool.connect();
     try {
       await client.query("begin");
       await appendResolutionAttempt(client, attempt);
-      if (record !== null && attempt.skillVersionId !== null) {
-        await saveResolutionRecord(client, attempt.projectId, attempt.skillVersionId, record);
-      }
+      const stored = record !== null && attempt.skillVersionId !== null
+        ? await saveResolutionRecord(client, attempt.projectId, attempt.skillVersionId, attempt.executionBinding, record)
+        : record;
       await client.query("commit");
+      return stored;
     } catch (error) {
       await client.query("rollback");
       throw mapError(error);
@@ -111,7 +114,7 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
   async createCandidate(
     actor: EvaluatorLifecycleAccess,
     input: EvaluatorCandidateCreateInput,
-    resolution: ResolutionRecord | null = null
+    resolution: ResolvedBinding | null = null
   ): Promise<EvaluatorCandidateCreateResult> {
     requireOwner(actor);
     let stored: ReturnType<typeof executionBindingFromInput>;
@@ -158,7 +161,9 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
       // Checked after replay, like the other candidate rules, so a committed
       // candidate always replays identically.
       rejectMutableModelAlias(stored.executionBinding.modelId, "become a candidate");
-      rejectUngovernedBinding(stored.executionBinding, resolution);
+      // The record must be the one resolved for exactly this binding.
+      const record = resolution !== null && resolution.bindingDigest === sha256Digest(stored.executionBinding) ? resolution.record : null;
+      rejectUngovernedBinding(stored.executionBinding, record);
       const subjectId = await ensureOwnerSubject(client, actor);
       const context = await loadCandidateContext(client, actor.projectId, input);
       assertCandidateContext(context, input);
@@ -270,7 +275,7 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
           JSON.stringify(input.outputSchema ?? MinimumVerdictOutputSchema), JSON.stringify(stored.executionBinding),
           regressionRevisionId, input.criterionVersionId, actor.userId, subjectId, stored.customEndpointUrl]
       );
-      await saveResolutionRecord(client, actor.projectId, skillVersionId, resolution!);
+      await saveResolutionRecord(client, actor.projectId, skillVersionId, stored.executionBinding, record!);
 
       const developerExposureEventId = `dse_${randomUUID()}`;
       await client.query(
@@ -530,7 +535,7 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
         if (!binding) throw repoError("not_found", "Evaluator version not found");
         const executionBinding = ExecutionBindingSchema.parse(parseJson(binding.execution_binding));
         rejectMutableModelAlias(executionBinding.modelId, "be activated");
-        rejectUngovernedBinding(executionBinding, await loadResolutionRecord(client, actor.projectId, skillVersionId));
+        rejectUngovernedBinding(executionBinding, await loadResolutionRecord(client, actor.projectId, skillVersionId, executionBinding));
         const active = (await client.query(
           `select other.*,other_head.id as head_id,other_head.sequence as head_sequence,
                   other_head.content_digest as head_digest,other_head.state as head_state

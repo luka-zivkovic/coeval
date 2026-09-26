@@ -165,7 +165,7 @@ class FakeExecutionRepository implements BinaryCalibrationExecutionRepository {
   }
 
   authorized = false;
-  lastUnknownRecheckAt: string | null = null;
+  msSinceUnknownRecheck: number | null = null;
   rechecks: string[] = [];
   rejections: string[] = [];
   authorizeCalls = 0;
@@ -180,7 +180,7 @@ class FakeExecutionRepository implements BinaryCalibrationExecutionRepository {
         spec: { verdictKind: "binary", scalarRange: null, categoricalChoiceScores: null }
       },
       authorized: this.authorized,
-      lastUnknownRecheckAt: this.lastUnknownRecheckAt
+      msSinceUnknownRecheck: this.msSinceUnknownRecheck
     };
   }
 
@@ -544,19 +544,31 @@ describe("sealed binary calibration worker", () => {
       expect(repository.rejections).toEqual([]);
       expect(repository.authorizeCalls).toBe(0);
 
-      repository.lastUnknownRecheckAt = "2026-09-26T10:00:00.000Z";
+      repository.msSinceUnknownRecheck = 4 * 60_000;
       await expect(processBinaryCalibrationRun({
-        repository, executeProvider: provider.executeProvider, runId: "cal_run_1", workerId: "worker_1", recheck,
-        now: () => new Date("2026-09-26T10:04:00.000Z")
+        repository, executeProvider: provider.executeProvider, runId: "cal_run_1", workerId: "worker_1", recheck
       })).resolves.toBeNull();
       expect(probes).toBe(1);
       expect(repository.recoveryMarks).toBe(2);
 
+      repository.msSinceUnknownRecheck = 6 * 60_000;
       await processBinaryCalibrationRun({
-        repository, executeProvider: provider.executeProvider, runId: "cal_run_1", workerId: "worker_1", recheck,
-        now: () => new Date("2026-09-26T10:06:00.000Z")
+        repository, executeProvider: provider.executeProvider, runId: "cal_run_1", workerId: "worker_1", recheck
       });
       expect(probes).toBe(2);
+      expect(provider.calls()).toBe(0);
+    });
+
+    it("treats a re-check that throws as unknown, recording it so the back-off applies", async () => {
+      const repository = new FakeExecutionRepository();
+      const provider = counting();
+      await expect(processBinaryCalibrationRun({
+        repository, executeProvider: provider.executeProvider, runId: "cal_run_1", workerId: "worker_1",
+        recheck: async () => { throw new Error("capability read crashed"); }
+      })).resolves.toBeNull();
+      expect(repository.rechecks).toEqual(["unknown"]);
+      expect(repository.recoveryMarks).toBe(1);
+      expect(repository.authorizeCalls).toBe(0);
       expect(provider.calls()).toBe(0);
     });
 

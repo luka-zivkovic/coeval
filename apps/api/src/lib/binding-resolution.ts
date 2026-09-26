@@ -1,6 +1,8 @@
 import type { ExecutionFetch, VerdictSpec } from "@rubrist/audit/runtime";
 import {
   documentedReasoningDefault,
+  reasoningFamilyFor,
+  takesSamplingSettings,
   type CapabilityProbe,
   type ExecutionBinding,
   type ExecutionProviderId,
@@ -124,8 +126,42 @@ export async function recheckGovernedBinding(services: BindingResolutionServices
     execute: context.execute
   });
   if (result.holds) return { outcome: "holds", probes: result.probes };
-  const unknown = result.probes.length === 0 || result.probes.some((probe) => probe.outcome === "error");
-  return { outcome: unknown ? "unknown" : "no_longer_holds", probes: result.probes };
+  const [confirm, ...settings] = result.probes;
+  if (!confirm || confirm.outcome === "error") return { outcome: "unknown", probes: result.probes };
+  if (confirm.outcome === "rejected") return { outcome: "no_longer_holds", probes: result.probes };
+  // The saved request is still accepted. The resolution no longer holds once
+  // any unset setting has a definite answer other than "the parameter is
+  // rejected". A rejection Rubrist couldn't attribute only because the
+  // provider's published capabilities couldn't be read is no such answer.
+  const publishes = governed.executionBinding.provider === "anthropic" || governed.executionBinding.provider === "openrouter";
+  const metadataMissing = publishes && context.published === null;
+  const definite = settings.some((probe) => probe.outcome === "accepted" ||
+    (probe.outcome === "rejected" && probe.rejection !== "parameter" && !(probe.rejection === "unattributed" && metadataMissing)));
+  return { outcome: definite ? "no_longer_holds" : "unknown", probes: result.probes };
+}
+
+/**
+ * Whether a gate should resolve the binding (again): no record yet, the
+ * latest left it unresolved, or it resolved without an answer for a setting
+ * the gate needs, because that probe failed transiently or was never sent. A
+ * failed binding is fixed only by a new evaluator version.
+ */
+export function resolutionNeeded(binding: ExecutionBinding, record: ResolutionRecord | null): boolean {
+  if (record === null || record.status === "unresolved") return true;
+  if (record.status === "failed") return false;
+  return unansweredSettings(binding, record).length > 0;
+}
+
+/** Unset settings the gate needs an answer for that the record doesn't have. */
+function unansweredSettings(binding: ExecutionBinding, record: ResolutionRecord): Array<"temperature" | "reasoning"> {
+  const unanswered: Array<"temperature" | "reasoning"> = [];
+  if (takesSamplingSettings(binding.provider) && binding.sampling.temperature === null && record.temperatureSupport === null) {
+    unanswered.push("temperature");
+  }
+  if (reasoningFamilyFor(binding.provider) !== null && binding.reasoning === null && record.reasoningSupport === null) {
+    unanswered.push("reasoning");
+  }
+  return unanswered;
 }
 
 export interface GovernedGateRefusal {
@@ -157,6 +193,8 @@ export function governedGateRefusal(binding: ExecutionBinding, record: Resolutio
     suggestion = "Save a new evaluator version with settings the model accepts.";
   } else if (record?.status !== "resolved") {
     suggestion = "Try again once the provider is reachable with a working credential.";
+  } else if (unansweredSettings(binding, record).length > 0) {
+    suggestion = `Try again: the model's answer about ${unansweredSettings(binding, record).join(" and ")} wasn't recorded, because its probe failed.`;
   } else {
     suggestion = "Save a new evaluator version that states its temperature and reasoning explicitly.";
   }

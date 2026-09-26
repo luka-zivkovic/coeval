@@ -145,7 +145,6 @@ export async function processBinaryCalibrationRun(input: {
   claimTtlMs?: number;
   recheck?: BinaryCalibrationRecheck;
   recheckBackoffMs?: number;
-  now?: () => Date;
 }): Promise<BinaryCalibrationMintResult | null> {
   const claimTtlMs = input.claimTtlMs ?? DEFAULT_CLAIM_TTL_MS;
   validatePositiveInteger(claimTtlMs, "claimTtlMs");
@@ -165,13 +164,13 @@ export async function processBinaryCalibrationRun(input: {
       // sealed item, and never change the resolution record.
       const target = await input.repository.getRecheckTarget(claim);
       if (!target.authorized) {
-        const now = (input.now?.() ?? new Date()).getTime();
         const backoffMs = input.recheckBackoffMs ?? DEFAULT_RECHECK_BACKOFF_MS;
-        if (target.lastUnknownRecheckAt !== null && now - Date.parse(target.lastUnknownRecheckAt) < backoffMs) {
+        if (target.msSinceUnknownRecheck !== null && target.msSinceUnknownRecheck < backoffMs) {
           await input.repository.markRecoveryRequired(claim);
           return null;
         }
-        const result = await input.recheck(target.binding);
+        // A re-check that throws is as unknown as a transient error.
+        const result = await input.recheck(target.binding).catch(() => ({ outcome: "unknown" as const, probes: [] }));
         await input.repository.recordRecheck(claim, result);
         if (result.outcome === "unknown") {
           // A transient error delays the run; it never fails the binding.

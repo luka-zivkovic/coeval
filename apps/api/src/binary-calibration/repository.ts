@@ -129,8 +129,8 @@ export interface BinaryCalibrationControlRepository {
     access: BinaryCalibrationProjectAccess,
     skillVersionId: string
   ): Promise<{ binding: GovernedBinding; record: ResolutionRecord | null } | null>;
-  /** Appends a resolution attempt and stores it as the version's latest record. */
-  recordResolution(attempt: ResolutionAttemptInput, record: ResolutionRecord): Promise<void>;
+  /** Appends a resolution attempt and stores it as the version's latest record (a failed one is kept). */
+  recordResolution(attempt: ResolutionAttemptInput, record: ResolutionRecord): Promise<ResolutionRecord | null>;
 }
 
 /** What the re-check before authorization reads (ADR-0014 section 4). */
@@ -138,8 +138,8 @@ export interface BinaryCalibrationRecheckTarget {
   binding: GovernedBinding;
   /** Whether the run already passed authorization; only the first authorization is re-checked. */
   authorized: boolean;
-  /** When the run's latest re-check ended unknown, so a transient error backs off. */
-  lastUnknownRecheckAt: string | null;
+  /** How long ago, by the database clock, the run's latest re-check ended unknown, so a transient error backs off. */
+  msSinceUnknownRecheck: number | null;
 }
 
 export interface BinaryCalibrationExecutionClaim {

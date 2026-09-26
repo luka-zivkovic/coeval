@@ -32,26 +32,55 @@ export interface ResolutionAttemptInput {
 
 const parseJson = (value: unknown): unknown => typeof value === "string" ? JSON.parse(value) : value;
 
-export async function loadResolutionRecord(db: Db, projectId: string, skillVersionId: string): Promise<ResolutionRecord | null> {
+/**
+ * A version's resolution record, only if it was resolved for exactly this
+ * binding: a record for another binding (the version's binding changed out of
+ * band) is no record at all.
+ */
+export async function loadResolutionRecord(
+  db: Db,
+  projectId: string,
+  skillVersionId: string,
+  binding: ExecutionBinding
+): Promise<ResolutionRecord | null> {
   const row = (await db.query(
-    `select record from evaluator_resolution_records where project_id=$1 and skill_version_id=$2`,
+    `select record,binding_digest from evaluator_resolution_records where project_id=$1 and skill_version_id=$2`,
     [projectId, skillVersionId]
   )).rows[0];
-  return row ? ResolutionRecordSchema.parse(parseJson(row.record)) : null;
+  if (!row || String(row.binding_digest) !== sha256Digest(binding)) return null;
+  return ResolutionRecordSchema.parse(parseJson(row.record));
 }
 
-/** Stores a version's latest resolution record, replacing the one before it. */
-export async function saveResolutionRecord(db: Db, projectId: string, skillVersionId: string, record: ResolutionRecord): Promise<void> {
+/**
+ * Stores a version's latest resolution record and returns the one stored. A
+ * failed record for the same binding is never replaced (only a new evaluator
+ * version fixes it), so a concurrent resolution can't turn failed into
+ * resolved; the stored failed record is returned instead.
+ */
+export async function saveResolutionRecord(
+  db: Db,
+  projectId: string,
+  skillVersionId: string,
+  binding: ExecutionBinding,
+  record: ResolutionRecord
+): Promise<ResolutionRecord | null> {
   const parsed = ResolutionRecordSchema.parse(record);
   await db.query(
-    `insert into evaluator_resolution_records (skill_version_id,project_id,status,record)
-     values ($1,$2,$3,$4::jsonb)
+    `insert into evaluator_resolution_records (skill_version_id,project_id,binding_digest,status,record)
+     values ($1,$2,$3,$4,$5::jsonb)
      on conflict (skill_version_id) do update
-       set status=excluded.status,record=excluded.record,
+       set binding_digest=excluded.binding_digest,status=excluded.status,record=excluded.record,
            recorded_at=date_trunc('milliseconds',clock_timestamp())
-     where evaluator_resolution_records.project_id=excluded.project_id`,
-    [skillVersionId, projectId, parsed.status, JSON.stringify(parsed)]
+     where evaluator_resolution_records.project_id=excluded.project_id
+       and (evaluator_resolution_records.status<>'failed'
+         or evaluator_resolution_records.binding_digest<>excluded.binding_digest)`,
+    [skillVersionId, projectId, sha256Digest(binding), parsed.status, JSON.stringify(parsed)]
   );
+  const owner = (await db.query(`select project_id from evaluator_resolution_records where skill_version_id=$1`, [skillVersionId])).rows[0];
+  if (owner && String(owner.project_id) !== projectId) {
+    throw new Error("The evaluator version's resolution record belongs to another project");
+  }
+  return loadResolutionRecord(db, projectId, skillVersionId, binding);
 }
 
 export async function appendResolutionAttempt(db: Db, input: ResolutionAttemptInput): Promise<void> {
@@ -64,14 +93,18 @@ export async function appendResolutionAttempt(db: Db, input: ResolutionAttemptIn
   );
 }
 
-/** When the latest unknown re-check for a run happened, so a run waiting on a transient error backs off. */
-export async function latestUnknownRecheckAt(db: Db, projectId: string, runId: string): Promise<Date | null> {
+/**
+ * How long ago, by the database clock, a run's latest re-check ended unknown,
+ * so a run waiting on a transient error backs off; `null` when none did.
+ */
+export async function msSinceUnknownRecheck(db: Db, projectId: string, runId: string): Promise<number | null> {
   const row = (await db.query(
-    `select max(recorded_at) as recorded_at from evaluator_resolution_attempts
+    `select floor(extract(epoch from (clock_timestamp()-max(recorded_at)))*1000)::bigint as elapsed
+     from evaluator_resolution_attempts
      where project_id=$1 and trigger_kind='binary_calibration_run' and trigger_ref=$2 and kind='recheck' and outcome='unknown'`,
     [projectId, runId]
   )).rows[0];
-  return row?.recorded_at ? new Date(row.recorded_at) : null;
+  return row?.elapsed == null ? null : Number(row.elapsed);
 }
 
 /** A saved version's binding and verdict shape, as the gates and re-check resolve it; `null` when absent. */

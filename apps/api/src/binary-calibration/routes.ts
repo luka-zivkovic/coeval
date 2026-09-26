@@ -3,7 +3,8 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import { z, type ZodType } from "zod";
 import { parseCanonicalBinaryCalibrationV2ArtifactBytes } from "../lib/binary-calibration-v2.js";
-import { resolveGovernedBinding, type BindingResolutionServices } from "../lib/binding-resolution.js";
+import { mutableModelAlias } from "@rubrist/shared";
+import { resolutionNeeded, resolveGovernedBinding, type BindingResolutionServices } from "../lib/binding-resolution.js";
 import {
   BINARY_CALIBRATION_CONTROL_BODY_BYTES,
   CreateBinaryCalibrationRunRequestSchema
@@ -101,9 +102,13 @@ export function createBinaryCalibrationControlRouter(
     }
     const input = await parseBody(c, CreateBinaryCalibrationRunRequestSchema);
     // An unresolved binding resolves the first time the gate needs it; a
-    // failed one is fixed only by a new evaluator version.
+    // failed one is fixed only by a new evaluator version. A binding the run
+    // would refuse anyway (a mutable alias, the mock, a typed question) isn't
+    // probed.
     const governed = await repository(dependencies).getGovernedBinding(actor, input.skillVersionId);
-    if (dependencies.bindingResolution && governed && (governed.record === null || governed.record.status === "unresolved")) {
+    const probeable = governed !== null && mutableModelAlias(governed.binding.executionBinding.modelId) === null &&
+      governed.binding.executionBinding.provider !== "mock" && governed.binding.executionBinding.provider !== "typesafe";
+    if (dependencies.bindingResolution && governed && probeable && resolutionNeeded(governed.binding.executionBinding, governed.record)) {
       const record = await resolveGovernedBinding(dependencies.bindingResolution, governed.binding);
       await repository(dependencies).recordResolution({
         projectId: actor.projectId,

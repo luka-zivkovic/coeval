@@ -34,6 +34,12 @@ export interface EvaluatorExecutionAuthorizationInput {
   idempotencyKey: string;
 }
 
+/** A resolution record together with the digest of the binding it resolved. */
+export interface ResolvedBinding {
+  bindingDigest: string;
+  record: ResolutionRecord;
+}
+
 export interface EvaluatorLifecycleRepository {
   /**
    * Creates a candidate. The governed gate (ADR-0014 section 2) needs the
@@ -43,7 +49,7 @@ export interface EvaluatorLifecycleRepository {
   createCandidate(
     actor: EvaluatorLifecycleAccess,
     input: EvaluatorCandidateCreateInput,
-    resolution?: ResolutionRecord | null
+    resolution?: ResolvedBinding | null
   ): Promise<EvaluatorCandidateCreateResult>;
   /** Whether this idempotency key already created a candidate, so its replay skips resolution. */
   candidateExists(actor: EvaluatorLifecycleAccess, idempotencyKey: string): Promise<boolean>;
@@ -52,8 +58,11 @@ export interface EvaluatorLifecycleRepository {
     access: Pick<EvaluatorLifecycleAccess, "projectId">,
     skillVersionId: string
   ): Promise<{ binding: GovernedBinding; record: ResolutionRecord | null } | null>;
-  /** Appends a resolution attempt and, for an existing version, stores it as the latest record. */
-  recordResolution(attempt: ResolutionAttemptInput, record: ResolutionRecord | null): Promise<void>;
+  /**
+   * Appends a resolution attempt and, for an existing version, stores it as
+   * the latest record; returns the record stored (a failed one is kept).
+   */
+  recordResolution(attempt: ResolutionAttemptInput, record: ResolutionRecord | null): Promise<ResolutionRecord | null>;
   getLifecycle(
     access: Pick<EvaluatorLifecycleAccess, "projectId">,
     skillVersionId: string

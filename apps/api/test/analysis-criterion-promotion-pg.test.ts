@@ -33,6 +33,7 @@ import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 import { MOCK_BINDING, SEEDED_BINDING, bindingInput, resolvedRecordFor } from "./fixtures/execution-binding.js";
 import { executionBindingFromInput } from "../src/lib/execution-binding.js";
+import { sha256Digest } from "../src/lib/canonical-json.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {
@@ -1216,7 +1217,15 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
       await expect(lifecycle.createCandidate(actor, { ...candidateInput, idempotencyKey: "promotion-repository-unresolved" }))
         .rejects.toMatchObject({ code: "execution_binding_unresolved", details: { suggestion: expect.stringContaining("reachable") } });
       const candidateBinding = executionBindingFromInput(candidateInput.executionBinding, { openAIBaseUrl: null }).executionBinding;
-      const candidate = await lifecycle.createCandidate(actor, candidateInput, await resolvedRecordFor(candidateBinding));
+      // A record resolved for another binding is no record for this one.
+      await expect(lifecycle.createCandidate(actor, { ...candidateInput, idempotencyKey: "promotion-repository-other-binding" }, {
+        bindingDigest: sha256Digest({ ...candidateBinding, modelVersion: "2024-07-19" }),
+        record: await resolvedRecordFor(candidateBinding)
+      })).rejects.toMatchObject({ code: "execution_binding_unresolved" });
+      const candidate = await lifecycle.createCandidate(actor, candidateInput, {
+        bindingDigest: sha256Digest(candidateBinding),
+        record: await resolvedRecordFor(candidateBinding)
+      });
       expect(candidate).toMatchObject({
         replayed: false,
         projection: {

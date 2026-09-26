@@ -90,7 +90,9 @@ class AppCalibrationRepository implements BinaryCalibrationControlRepository {
     return null;
   }
 
-  async recordResolution(): Promise<void> {}
+  async recordResolution(): Promise<null> {
+    return null;
+  }
 
   async getArtifactStatus(
     access: BinaryCalibrationProjectAccess,

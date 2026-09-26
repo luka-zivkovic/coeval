@@ -18,7 +18,7 @@ function repository(): EvaluatorLifecycleRepository {
     authorizeExecution: vi.fn(),
     candidateExists: vi.fn(async () => false),
     getGovernedBinding: vi.fn(async () => null),
-    recordResolution: vi.fn()
+    recordResolution: vi.fn(async (_attempt, record) => record)
   };
 }
 
@@ -257,8 +257,11 @@ describe("evaluator lifecycle API boundary", () => {
         projectId: "project", skillVersionId: null, kind: "resolution",
         triggerKind: "candidate_creation", triggerRef: "candidate-key", outcome: "resolved"
       }), null);
-      const [, , record] = vi.mocked(repo.createCandidate).mock.calls[0]!;
-      expect(record).toMatchObject({ status: "resolved", probes: [{ stage: "resolution", purpose: "confirm", outcome: "accepted" }] });
+      const [, , resolution] = vi.mocked(repo.createCandidate).mock.calls[0]!;
+      expect(resolution).toMatchObject({
+        bindingDigest: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+        record: { status: "resolved", probes: [{ stage: "resolution", purpose: "confirm", outcome: "accepted" }] }
+      });
 
       vi.mocked(repo.candidateExists).mockResolvedValue(true);
       vi.mocked(repo.createCandidate).mockResolvedValue(candidateResult(true));

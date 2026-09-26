@@ -10694,9 +10694,11 @@ CREATE TABLE evaluator_resolution_attempts (
 CREATE TABLE evaluator_resolution_records (
     skill_version_id text NOT NULL,
     project_id text NOT NULL,
+    binding_digest text NOT NULL,
     status text NOT NULL,
     record jsonb NOT NULL,
     recorded_at timestamp with time zone DEFAULT date_trunc('milliseconds'::text, clock_timestamp()) NOT NULL,
+    CONSTRAINT evaluator_resolution_records_binding_digest_check CHECK ((binding_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
     CONSTRAINT evaluator_resolution_records_status_check CHECK (((status = ANY (ARRAY['resolved'::text, 'unresolved'::text, 'failed'::text])) AND (status = (record ->> 'status'::text))))
 );
 
@@ -14145,6 +14147,14 @@ ALTER TABLE ONLY session
 
 ALTER TABLE ONLY skill_versions
     ADD CONSTRAINT skill_versions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: skill_versions skill_versions_project_id_id_key; Type: CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY skill_versions
+    ADD CONSTRAINT skill_versions_project_id_id_key UNIQUE (project_id, id);
 
 
 --
@@ -18336,7 +18346,7 @@ ALTER TABLE ONLY evaluator_resolution_attempts
 --
 
 ALTER TABLE ONLY evaluator_resolution_attempts
-    ADD CONSTRAINT evaluator_resolution_attempts_skill_version_id_fkey FOREIGN KEY (skill_version_id) REFERENCES skill_versions(id) ON DELETE CASCADE;
+    ADD CONSTRAINT evaluator_resolution_attempts_skill_version_id_fkey FOREIGN KEY (project_id, skill_version_id) REFERENCES skill_versions(project_id, id) ON DELETE CASCADE;
 
 
 --
@@ -18352,7 +18362,7 @@ ALTER TABLE ONLY evaluator_resolution_records
 --
 
 ALTER TABLE ONLY evaluator_resolution_records
-    ADD CONSTRAINT evaluator_resolution_records_skill_version_id_fkey FOREIGN KEY (skill_version_id) REFERENCES skill_versions(id) ON DELETE CASCADE;
+    ADD CONSTRAINT evaluator_resolution_records_skill_version_id_fkey FOREIGN KEY (project_id, skill_version_id) REFERENCES skill_versions(project_id, id) ON DELETE CASCADE;
 
 
 --

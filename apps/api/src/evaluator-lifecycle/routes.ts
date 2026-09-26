@@ -13,18 +13,25 @@ import {
   type EvaluatorCandidateCreateResult,
   type ResolutionRecord
 } from "@rubrist/shared";
+import { sha256Digest } from "../lib/canonical-json.js";
 import {
   EvaluatorLifecycleRepositoryError,
   type EvaluatorLifecycleAccess,
   type EvaluatorLifecycleProjectRole,
-  type EvaluatorLifecycleRepository
+  type EvaluatorLifecycleRepository,
+  type ResolvedBinding
 } from "./repository.js";
 import {
   evaluatorCandidateRequestDigest,
   evaluatorLifecycleDigest
 } from "../lib/evaluator-lifecycle.js";
 import { ExecutionBindingInputError, executionBindingFromInput } from "../lib/execution-binding.js";
-import { resolveGovernedBinding, type BindingResolutionServices, type GovernedBinding } from "../lib/binding-resolution.js";
+import {
+  resolutionNeeded,
+  resolveGovernedBinding,
+  type BindingResolutionServices,
+  type GovernedBinding
+} from "../lib/binding-resolution.js";
 
 const BODY_LIMIT = 512 * 1024;
 const ResourceIdSchema = z.string().trim().min(1).max(240);
@@ -69,7 +76,7 @@ export function createEvaluatorLifecycleRouter(options: CreateEvaluatorLifecycle
     const parsed = EvaluatorCandidateCreateInputSchema.safeParse(body);
     if (!parsed.success) return invalid(c,"candidate",parsed.error);
     // The governed gate needs the binding resolved; a replay needs nothing.
-    let resolution: ResolutionRecord | null = null;
+    let resolution: ResolvedBinding | null = null;
     if (!(await options.repository!.candidateExists(actor,parsed.data.idempotencyKey))) {
       const resolved = await resolveCandidateBinding(c,options,actor.projectId,parsed.data);
       if (resolved instanceof Response) return resolved;
@@ -191,7 +198,7 @@ async function resolveCandidateBinding(
   options: CreateEvaluatorLifecycleRouterOptions,
   projectId: string,
   input: EvaluatorCandidateCreateInput
-): Promise<ResolutionRecord | null | Response> {
+): Promise<ResolvedBinding | null | Response> {
   if (!options.bindingResolution) return null;
   let stored: ReturnType<typeof executionBindingFromInput>;
   try {
@@ -212,14 +219,15 @@ async function resolveCandidateBinding(
     projectId, skillVersionId: null, executionBinding: stored.executionBinding, kind: "resolution",
     triggerKind: "candidate_creation", triggerRef: input.idempotencyKey, outcome: record.status, probes: record.probes
   },null);
-  return record;
+  return { bindingDigest: sha256Digest(stored.executionBinding), record };
 }
 
 /**
- * Resolves a saved version's binding when no resolution exists or the latest
- * left it unresolved, and stores the result. A failed binding is fixed only
- * by a new evaluator version. Returns the latest record, or `undefined` when
- * the version isn't in the project.
+ * Resolves a saved version's binding when the gate needs it (no record, an
+ * unresolved one, or a resolved one missing an answer a gate needs) and
+ * stores the result. A failed binding is fixed only by a new evaluator
+ * version. Returns the latest record, or `undefined` when the version isn't
+ * in the project.
  */
 async function resolveWhenUnresolved(
   options: CreateEvaluatorLifecycleRouterOptions,
@@ -230,13 +238,12 @@ async function resolveWhenUnresolved(
 ): Promise<ResolutionRecord | null | undefined> {
   const governed = await options.repository!.getGovernedBinding({ projectId },skillVersionId);
   if (!governed) return undefined;
-  if (!options.bindingResolution || (governed.record !== null && governed.record.status !== "unresolved")) return governed.record;
+  if (!options.bindingResolution || !resolutionNeeded(governed.binding.executionBinding,governed.record)) return governed.record;
   const record = await resolveGovernedBinding(options.bindingResolution,governed.binding);
-  await options.repository!.recordResolution({
+  return options.repository!.recordResolution({
     projectId, skillVersionId, executionBinding: governed.binding.executionBinding, kind: "resolution",
     triggerKind, triggerRef, outcome: record.status, probes: record.probes
   },record);
-  return record;
 }
 
 async function resolveAccess(
