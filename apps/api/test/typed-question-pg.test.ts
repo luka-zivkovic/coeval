@@ -3,7 +3,10 @@ import { runMigrations } from "@rubrist/db";
 import type { Queue, QueueJob, QueueName, QueueSendOptions } from "@rubrist/queue";
 import { TypedQuestionOutputSchema, type GateRunJob, type SkillVersion } from "@rubrist/shared";
 import { createApp, type RubristApi } from "../src/app.js";
+import { PgEvaluatorLifecycleRepository, savedVersionResolver } from "../src/evaluator-lifecycle/index.js";
 import { createAuth } from "../src/lib/auth.js";
+import { bindingResolutionServices } from "../src/lib/binding-resolution.js";
+import { TYPED_QUESTION_PROBE } from "../src/lib/evaluator-resolution.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { processGateRunJob } from "../src/workers/gate.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
@@ -93,11 +96,20 @@ runPgSmoke("typed-question evaluators on PostgreSQL", () => {
       expect(replay.status).toBe(202);
       expect(((await replay.json()) as { version: SkillVersion }).version.id).toBe(version.id);
 
-      // The gate worker judges the regression revision with the typed evaluator.
+      // The gate worker resolves the saved binding (ADR-0014 section 4), then
+      // judges the regression revision with the typed evaluator.
       const gateJob = queue.jobs.find((job) => job.name === "gate.run");
       expect(gateJob).toBeDefined();
-      await processGateRunJob(repository, gateJob!.data as GateRunJob, queue);
+      const beforeGate = sent.length;
+      await processGateRunJob(repository, gateJob!.data as GateRunJob, queue, savedVersionResolver(
+        new PgEvaluatorLifecycleRepository(pool),
+        bindingResolutionServices((project, provider) => repository.getJudgeProviderCredential(project, provider))
+      ));
       expect((await repository.getSkillVersion(projectId, version.id))?.status).not.toBe("calibrating");
+      expect(sent.slice(beforeGate)[0]).toMatchObject({ questions: { verdict: TYPED_QUESTION_PROBE.question } });
+      expect((await pool.query(
+        `select trigger_kind, outcome from evaluator_resolution_attempts where skill_version_id=$1`, [version.id]
+      )).rows).toEqual([{ trigger_kind: "version_save", outcome: "resolved" }]);
 
       // A later version through the version route.
       const later = { criterionVersionId: version.criterionVersionId, typedQuestion: QUESTION, executionBinding: JEV };
@@ -105,14 +117,15 @@ runPgSmoke("typed-question evaluators on PostgreSQL", () => {
       expect(second.status).toBe(202);
       expect(((await second.json()) as { version: SkillVersion }).version).toMatchObject({ decisionThreshold: 0.7, typedQuestion: QUESTION });
 
-      // On-demand resolution confirms the binding with one probe and the platform key.
+      // The save's resolution is the version's record: one confirming probe
+      // with the platform key, so on-demand resolution sends nothing more.
       const before = sent.length;
       const resolution = await post(`/api/evaluator-lifecycles/${version.id}/resolution`, {});
       expect(resolution.status).toBe(200);
       await expect(resolution.json()).resolves.toMatchObject({
         record: { status: "resolved", credentialSource: "environment", probes: [{ stage: "resolution", purpose: "confirm", outcome: "accepted" }] }
       });
-      expect(sent.length - before).toBe(1);
+      expect(sent.length - before).toBe(0);
 
       // Without a key the version route refuses, naming only TypeSafe as a way forward, and saves nothing.
       vi.stubEnv("TYPESAFE_API_KEY", "");

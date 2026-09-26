@@ -11,7 +11,8 @@ import {
   EvaluatorLifecycleTransitionResultSchema,
   type EvaluatorCandidateCreateInput,
   type EvaluatorCandidateCreateResult,
-  type ResolutionRecord
+  type ResolutionRecord,
+  mutableModelAlias
 } from "@rubrist/shared";
 import { canonicalJson, sha256Digest } from "../lib/canonical-json.js";
 import {
@@ -29,6 +30,7 @@ import { ExecutionBindingInputError, executionBindingFromInput } from "../lib/ex
 import {
   resolutionNeeded,
   resolveGovernedBinding,
+  resolveSavedBinding,
   type BindingResolutionServices,
   type GovernedBinding
 } from "../lib/binding-resolution.js";
@@ -229,6 +231,30 @@ async function resolveCandidateBinding(
  * version. Returns the latest record, or `undefined` when the version isn't
  * in the project.
  */
+/**
+ * Resolution after save (ADR-0014 section 4), for the gate worker: a
+ * just-saved version's binding is resolved when it has no current record, and
+ * the attempt is recorded against the save. The mock makes no call, and a
+ * mutable alias is refused at every governed gate, so neither is probed.
+ */
+export function savedVersionResolver(
+  repository: EvaluatorLifecycleRepository,
+  services: BindingResolutionServices
+): (job: { projectId: string; skillVersionId: string }) => Promise<void> {
+  return async ({ projectId, skillVersionId }) => {
+    const governed = await repository.getGovernedBinding({ projectId }, skillVersionId);
+    if (!governed) return;
+    const binding = governed.binding.executionBinding;
+    if (binding.provider === "mock" || mutableModelAlias(binding.modelId) !== null) return;
+    if (!resolutionNeeded(binding, governed.record)) return;
+    const record = await resolveSavedBinding(services, governed.binding);
+    await repository.recordResolution({
+      projectId, skillVersionId, executionBinding: binding, kind: "resolution",
+      triggerKind: "version_save", triggerRef: `version-save:${skillVersionId}`, outcome: record.status, probes: record.probes
+    }, record);
+  };
+}
+
 async function resolveWhenUnresolved(
   options: CreateEvaluatorLifecycleRouterOptions,
   projectId: string,

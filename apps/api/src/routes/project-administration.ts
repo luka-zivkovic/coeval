@@ -2,6 +2,7 @@ import type { Pool } from "pg";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import {
+  CapabilityCheckInputSchema,
   DeleteProjectInputSchema,
   JudgeProviderIdSchema,
   OnboardingEvidenceInventorySchema,
@@ -24,6 +25,7 @@ import {
   resolveJudgeProviderApiKey
 } from "../lib/judge-provider.js";
 import { fetchJudgeModelCatalog, JudgeModelCatalogError } from "../lib/judge-models.js";
+import { checkBindingCapabilities, type BindingResolutionServices } from "../lib/binding-resolution.js";
 import {
   AmbiguousProjectSkillError,
   NoCurrentSkillError,
@@ -61,6 +63,8 @@ export interface ProjectAdministrationRouteOptions {
   pool?: Pool | undefined;
   requestServices: RequestServices;
   publicApiBaseUrl(c: Context<{ Variables: AppVariables }>): string;
+  /** The credential and transport capability checks probe with. */
+  bindingResolution: BindingResolutionServices;
 }
 
 // Registration stays on the parent app so the global body-limit, API-key,
@@ -228,6 +232,24 @@ export function registerProjectAdministrationRoutes(
       }
       throw error;
     }
+  });
+
+  // The capability check before save (ADR-0014 section 4): it probes a model
+  // so the author can choose only settings the model takes. Owner-only,
+  // since each check spends up to 6 provider calls; it records nothing.
+  app.post("/api/judge/capability-check", async (c) => {
+    const denied = await requestServices.requireOwner(c, "check a model's capabilities");
+    if (denied) return denied;
+    const body = await c.req.json().catch(() => null);
+    const parsed = CapabilityCheckInputSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "Invalid capability check input", details: z.treeifyError(parsed.error) }, 400);
+    }
+    const projectId = c.get("projectId");
+    if (parsed.data.provider !== "mock" && (await options.bindingResolution.credential(projectId, parsed.data.provider)).apiKey === null) {
+      return c.json({ error: `Configure a key for ${parsed.data.provider} before checking its models.` }, 409);
+    }
+    return c.json({ report: await checkBindingCapabilities(options.bindingResolution, projectId, parsed.data) });
   });
 
   app.get("/api/project/settings", async (c) => {

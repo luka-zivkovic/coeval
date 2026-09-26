@@ -583,3 +583,43 @@ export const ResolutionRecordSchema = z.object({
   }
 });
 export type ResolutionRecord = z.infer<typeof ResolutionRecordSchema>;
+
+/**
+ * What a capability check probes (ADR-0014 section 4): a model at an
+ * endpoint, before its sampling, reasoning, and verdict protocol are chosen.
+ * The check finds those, so the author can choose them.
+ */
+export const CapabilityCheckInputSchema = ExecutionBindingInputSchema.pick({
+  provider: true,
+  endpoint: true,
+  modelId: true,
+  modelVersion: true,
+  outputTokenLimit: true,
+  routing: true
+}).strict();
+export type CapabilityCheckInput = z.infer<typeof CapabilityCheckInputSchema>;
+
+/**
+ * What a capability check found, for the model picker: the first protocol a
+ * probe accepted, how temperature (with the reasoning it was probed with) and
+ * reasoning fared, the documented default reasoning to pre-fill, and what the
+ * provider publishes about the model. `null` means unknown, never absent.
+ */
+export const CapabilityCheckReportSchema = z.object({
+  credentialSource: JudgeProviderCredentialSourceSchema.nullable(),
+  protocol: VerdictProtocolIdSchema.nullable(),
+  probes: z.array(CapabilityProbeSchema),
+  temperatureSupport: SettingSupportSchema.nullable(),
+  reasoningSupport: SettingSupportSchema.nullable(),
+  probedReasoning: ReasoningSettingsSchema.nullable(),
+  documentedDefault: ReasoningSettingsSchema.nullable(),
+  published: z.object({
+    temperature: z.boolean().nullable(),
+    topP: z.boolean().nullable(),
+    reasoning: z.boolean().nullable(),
+    thinkingTypes: z.array(z.enum(["enabled", "adaptive"])).nullable(),
+    effortLevels: z.array(z.enum(["low", "medium", "high", "xhigh", "max"])).nullable()
+  }).strict().nullable(),
+  checkedAt: z.string()
+}).strict();
+export type CapabilityCheckReport = z.infer<typeof CapabilityCheckReportSchema>;

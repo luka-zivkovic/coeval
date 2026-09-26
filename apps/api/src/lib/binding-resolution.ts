@@ -1,9 +1,12 @@
 import type { ExecutionFetch, VerdictSpec } from "@rubrist/audit/runtime";
 import {
+  CapabilityCheckReportSchema,
   documentedReasoningDefault,
   reasoningFamilyFor,
   takesSamplingSettings,
   verdictProtocolsFor,
+  type CapabilityCheckInput,
+  type CapabilityCheckReport,
   type CapabilityProbe,
   type ExecutionBinding,
   type ExecutionProviderId,
@@ -15,9 +18,11 @@ import {
   governedGateProblems,
   recheckExecutionBinding,
   resolveExecutionBinding,
+  runCapabilityCheck,
   bindingProbeExecutor
 } from "./evaluator-resolution.js";
-import { endpointUrlFor } from "./execution-binding.js";
+import { endpointBaseUrlDigest } from "./evaluator-identity.js";
+import { endpointUrlFor, platformOpenAIBaseUrl } from "./execution-binding.js";
 import { judgeProviderEnvironmentKey } from "./judge-provider.js";
 
 // Resolution and re-check as the governed gates and runs use them (ADR-0014
@@ -93,10 +98,23 @@ async function probeContext(services: BindingResolutionServices, governed: Gover
 
 /** Resolution at a governed gate: the confirming probe and, where unset, up to two setting probes. */
 export async function resolveGovernedBinding(services: BindingResolutionServices, governed: GovernedBinding): Promise<ResolutionRecord> {
+  return resolveBinding(services, governed, "gate");
+}
+
+/**
+ * Resolution after save (ADR-0014 section 4): the confirming probe and, where
+ * temperature is unset, a temperature probe, so at most 2 calls. It confirms
+ * the saved binding and never changes it.
+ */
+export async function resolveSavedBinding(services: BindingResolutionServices, governed: GovernedBinding): Promise<ResolutionRecord> {
+  return resolveBinding(services, governed, "save");
+}
+
+async function resolveBinding(services: BindingResolutionServices, governed: GovernedBinding, trigger: "save" | "gate"): Promise<ResolutionRecord> {
   const context = await probeContext(services, governed);
   return resolveExecutionBinding({
     binding: governed.executionBinding,
-    trigger: "gate",
+    trigger,
     check: null,
     published: context.published,
     documentedDefault: context.documentedDefault,
@@ -207,4 +225,69 @@ export function governedGateRefusal(binding: ExecutionBinding, record: Resolutio
     providerMessage: rejected?.providerMessage ?? null,
     suggestion
   };
+}
+
+/** A capability check probes as a binary evaluator: the output mechanism, not the verdict kind, decides acceptance. */
+const CHECK_SPEC: VerdictSpec = { verdictKind: "binary", scalarRange: null, categoricalChoiceScores: null };
+
+/**
+ * The capability check before save (ADR-0014 section 4), with the credential
+ * and endpoint a saved binding would use: the project's key, else the
+ * platform's, and for OpenAI on the managed endpoint the platform's base-URL
+ * override, as saving records it. At most 6 probes, in sequence, over the
+ * fixed probe input; it records nothing.
+ */
+export async function checkBindingCapabilities(
+  services: BindingResolutionServices,
+  projectId: string,
+  input: CapabilityCheckInput
+): Promise<CapabilityCheckReport> {
+  const override = input.provider === "openai" && input.endpoint.kind === "managed" ? platformOpenAIBaseUrl() : null;
+  const customBaseUrl = input.endpoint.kind === "custom" ? input.endpoint.baseUrl : override;
+  const credential = input.provider === "mock"
+    ? { apiKey: null, source: "built_in" as const }
+    : await services.credential(projectId, input.provider);
+  const published = await fetchPublishedCapabilities({
+    provider: input.provider,
+    modelId: input.modelId,
+    apiKey: credential.apiKey,
+    ...(services.capabilityFetch ? { fetch: services.capabilityFetch } : {})
+  });
+  const documentedDefault = documentedReasoningDefault(input.provider, input.modelId)?.reasoning ?? null;
+  const check = await runCapabilityCheck({
+    base: {
+      provider: input.provider,
+      endpoint: customBaseUrl === null ? { kind: "managed" } : { kind: "custom", baseUrlDigest: endpointBaseUrlDigest(customBaseUrl) },
+      modelId: input.modelId,
+      modelVersion: input.modelVersion,
+      outputTokenLimit: input.outputTokenLimit,
+      routing: input.routing
+    },
+    credentialSource: credential.source,
+    published,
+    documentedDefault,
+    execute: bindingProbeExecutor({
+      apiKey: credential.apiKey,
+      customBaseUrl,
+      spec: CHECK_SPEC,
+      ...(services.fetch ? { fetch: services.fetch } : {})
+    })
+  });
+  return CapabilityCheckReportSchema.parse({
+    credentialSource: credential.source,
+    protocol: check.protocol,
+    probes: check.probes,
+    temperatureSupport: check.temperatureSupport,
+    reasoningSupport: check.reasoningSupport,
+    probedReasoning: check.probedReasoning,
+    documentedDefault,
+    published: published === null ? null : {
+      temperature: published.temperature,
+      topP: published.topP,
+      reasoning: published.reasoning,
+      thinkingTypes: published.thinkingTypes === null ? null : [...published.thinkingTypes],
+      effortLevels: published.effortLevels === null ? null : [...published.effortLevels]
+    },
+    checkedAt: (services.now?.() ?? new Date()).toISOString()
+  });
 }

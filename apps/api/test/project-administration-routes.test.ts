@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { createApp, agentSetupPairingClaimExpiresAt, agentSetupPairingStatus } from "../src/app.js";
 import type { AgentSetupPairingRecord } from "../src/lib/auth.js";
+import { bindingResolutionServices } from "../src/lib/binding-resolution.js";
 import { DemoRepository } from "../src/repository.js";
 import { createRequestServices, type AppVariables } from "../src/request-services/index.js";
 import { registerProjectAdministrationRoutes } from "../src/routes/project-administration.js";
@@ -18,7 +19,8 @@ describe("project administration routes", () => {
         rateLimitPerMinute: 60,
         batchMaxItems: 100
       }),
-      publicApiBaseUrl: () => "https://rubrist.example"
+      publicApiBaseUrl: () => "https://rubrist.example",
+      bindingResolution: bindingResolutionServices(async () => null)
     });
 
     expect(app.routes.map(({ method, path }) => `${method} ${path}`)).toEqual([
@@ -29,6 +31,7 @@ describe("project administration routes", () => {
       "DELETE /api/agent-setup/pairings/:pairingId",
       "GET /api/judge/providers",
       "GET /api/judge/providers/:provider/models",
+      "POST /api/judge/capability-check",
       "GET /api/project/settings",
       "PATCH /api/project/settings",
       "POST /api/project/retention/prune",
@@ -36,6 +39,26 @@ describe("project administration routes", () => {
       "GET /api/dashboard",
       "GET /api/onboarding/evidence-inventory"
     ]);
+  });
+
+  it("checks a model's capabilities before save, refusing without a key", async () => {
+    const previous = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      const app = createApp(new DemoRepository(), { bindingResolution: bindingResolutionServices(async () => null) });
+      const check = (body: unknown) => app.request("/api/judge/capability-check", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body)
+      });
+      const mock = await check({ provider: "mock", endpoint: { kind: "managed" }, modelId: "mock-heuristic-v1", modelVersion: "mock-heuristic-v1", outputTokenLimit: null, routing: null });
+      expect(mock.status).toBe(200);
+      await expect(mock.json()).resolves.toMatchObject({ report: { credentialSource: "built_in", protocol: "mock/v1", probes: [{ purpose: "protocol", outcome: "accepted" }] } });
+      const keyless = await check({ provider: "anthropic", endpoint: { kind: "managed" }, modelId: "claude-opus-5-5", modelVersion: "claude-opus-5-5", outputTokenLimit: 1_200, routing: null });
+      expect(keyless.status).toBe(409);
+      await expect(keyless.json()).resolves.toEqual({ error: "Configure a key for anthropic before checking its models." });
+      expect((await check({ provider: "anthropic", modelId: "claude-opus-5-5" })).status).toBe(400);
+    } finally {
+      if (previous !== undefined) process.env.ANTHROPIC_API_KEY = previous;
+    }
   });
 
   it("reports the exact saved Run fields available to beginner setup", async () => {

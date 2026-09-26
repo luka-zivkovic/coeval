@@ -122,6 +122,17 @@ after a back-off; it never fails the binding. Every resolution attempt and
 re-check is appended against the gate, request, or run that triggered it. The
 latest resolution is the version's record, which is not identity.
 
+Resolution also runs after save: the gate worker confirms a newly saved
+version's binding before its regression gate, with the confirming probe and,
+where temperature is unset, a temperature probe (ADR-0014 section 4). It never
+blocks the gate; an attempt that can't finish leaves the binding unresolved
+until a governed gate needs it. Before save, an owner can run the capability
+check (`POST /api/judge/capability-check`): up to 6 probes over the same fixed
+input, with the credential and endpoint the saved binding would use. It
+reports which protocol, temperature, and reasoning the model takes, the
+documented default reasoning, and what the provider publishes, and records
+nothing.
+
 Binary provider output is pass, fail, or ambiguous. Pass and fail are the two
 classification outcomes; ambiguous is an explicit evaluator abstention. The
 ordinary path routes it to needs-review/exception surfaces, while sealed

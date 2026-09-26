@@ -5,14 +5,25 @@ import type { Queue } from "@rubrist/queue";
 import { GateRunBindingMismatchError, type RubristRepository } from "../repository.js";
 import { runEvalRunInline } from "./eval-run.js";
 
+/**
+ * Resolves a just-saved version's binding (ADR-0014 section 4), recording the
+ * attempt and its record. The gate worker runs it before the regression gate,
+ * outside any transaction.
+ */
+export type ResolveSavedVersion = (job: Pick<GateRunJob, "projectId" | "skillVersionId">) => Promise<void>;
+
 // gate.run (M0 C5a): executes the golden-set regression gate for a pending
 // (calibrating) skill version. Provider failures (RegressionGateJudgeError /
 // RegressionGateUnavailableError) retry while budget remains. Permanent and
 // exhausted failures are persisted as a failed version + error run.
-export async function registerGateRunWorker(queue: Queue, repository: RubristRepository): Promise<void> {
+export async function registerGateRunWorker(
+  queue: Queue,
+  repository: RubristRepository,
+  options: { resolveSaved?: ResolveSavedVersion } = {}
+): Promise<void> {
   await queue.work<GateRunJob>("gate.run", async ({ id, data, retryCount, retryLimit }) => {
     try {
-      await processGateRunJob(repository, data, queue);
+      await processGateRunJob(repository, data, queue, options.resolveSaved);
     } catch (error) {
       const parsed = GateRunJobSchema.safeParse(data);
       if (!parsed.success && error instanceof z.ZodError) {
@@ -40,9 +51,20 @@ export async function registerGateRunWorker(queue: Queue, repository: RubristRep
 export async function processGateRunJob(
   repository: RubristRepository,
   job: GateRunJob,
-  queue?: Queue | undefined
+  queue?: Queue | undefined,
+  resolveSaved?: ResolveSavedVersion | undefined
 ): Promise<void> {
   const parsed = GateRunJobSchema.parse(job);
+  // Resolution after save informs the author and later gates; it never blocks
+  // the regression gate, and a failure to resolve leaves the binding
+  // unresolved, to be resolved when a governed gate needs it.
+  if (resolveSaved) {
+    try {
+      await resolveSaved(parsed);
+    } catch (error) {
+      console.error(`gate.run could not resolve ${parsed.skillVersionId}'s binding after save:`, error);
+    }
+  }
   const { version, regressionRun } = await repository.runRegressionGateForVersion(parsed);
 
   // PR #56 time-scoped backfill, moved behind the gate outcome: existing
