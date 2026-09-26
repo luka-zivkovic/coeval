@@ -59,21 +59,21 @@ export const PROBE_TIMEOUT_MS = 30_000;
  * project data, and no question of the author's. Resolution confirms the
  * binding, so the question and threshold are the probe's own.
  */
-export const TYPED_QUESTION_PROBE: TypedQuestionEvaluator = {
-  question: {
-    type: "noul",
+export const TYPED_QUESTION_PROBE: Readonly<TypedQuestionEvaluator> = Object.freeze({
+  question: Object.freeze({
+    type: "noul" as const,
     instructions: "Does the answer state the correct sum?",
-    criteria: { true: "The answer states the correct sum.", false: "The answer states a wrong sum or none." }
-  },
+    criteria: Object.freeze({ true: "The answer states the correct sum.", false: "The answer states a wrong sum or none." })
+  }),
   threshold: 0.5
-};
+});
 
 /**
  * A probe executor over the executor each probed binding's protocol runs:
  * a prompted protocol judges the fixed input with the evaluator's verdict
  * kind, and typed-question/v1 asks the fixed question about the same trace.
  */
-export function verdictProbeExecutor(input: {
+export function bindingProbeExecutor(input: {
   apiKey: string | null;
   customBaseUrl: string | null;
   spec: VerdictSpec;

@@ -187,6 +187,22 @@ describe("a typed-question binding (ADR-0014 section 5)", () => {
     expect(governedGateProblems(JEV, record)).toEqual([]);
   });
 
+  it("is re-checked with the confirming probe alone, and never probed without a credential", async () => {
+    const { sent, services: gate } = services(() => answer(0.97));
+    expect(await recheckGovernedBinding(gate, governed(JEV))).toMatchObject({ outcome: "holds", probes: [{ purpose: "confirm", outcome: "accepted" }] });
+    expect(sent).toHaveLength(1);
+    const keyless = bindingResolutionServices(async () => null, { fetch: async () => { throw new Error("must not send"); } });
+    const record = await resolveGovernedBinding(keyless, governed(JEV));
+    expect(record).toMatchObject({ status: "unresolved", credentialSource: null, probes: [] });
+  });
+
+  it("suggests another model, not another protocol, when TypeSafe's response breaks its only protocol", async () => {
+    const broken = () => new Response(JSON.stringify({ model: "jev-1.13.0", usage: { input_tokens: 1, output_tokens: 1 } }), { status: 200 });
+    const record = await resolveGovernedBinding(services(broken).services, governed(JEV));
+    expect(record.status).toBe("failed");
+    expect(governedGateRefusal(JEV, record)?.suggestion).toMatch(/only verdict protocol; try again later, or choose another model/);
+  });
+
   it("fails when TypeSafe rejects the request, and stays unresolved on a transient error", async () => {
     const rejectedBody = () => new Response(JSON.stringify({ detail: "Unknown model: jev-0" }), { status: 400 });
     expect((await resolveGovernedBinding(services(rejectedBody).services, governed(JEV))).status).toBe("failed");

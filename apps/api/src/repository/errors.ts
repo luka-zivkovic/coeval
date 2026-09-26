@@ -114,7 +114,10 @@ export class AgentSetupEligibilityError extends Error {
 export class RegressionGateUnavailableError extends Error {
   constructor(readonly provider: string) {
     super(
-      `Regression gate cannot run: skill version pins provider "${provider}" but no usable credentials are configured (the judge would fall back to the mock). Set the provider API key or pin provider "mock" explicitly.`
+      `Regression gate cannot run: skill version pins provider "${provider}" but no usable credentials are configured (the judge would fall back to the mock). ` +
+      (provider === "typesafe"
+        ? "Set a TypeSafe key for the project or TYPESAFE_API_KEY on the server."
+        : `Set the provider API key or pin provider "mock" explicitly.`)
     );
     this.name = "RegressionGateUnavailableError";
   }

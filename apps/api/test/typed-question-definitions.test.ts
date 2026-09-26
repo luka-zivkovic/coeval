@@ -163,8 +163,14 @@ describe("a saved typed-question version", () => {
     const response = await createApp(repository).request("/api/skills/skill_support_quality/versions", {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(TYPED_INPUT)
     });
-    expect(response.status).toBeLessThan(300);
-    const { version } = await response.json() as { version: SkillVersion };
+    expect(response.status).toBe(201);
+    const { version, regressionRun } = await response.json() as { version: SkillVersion; regressionRun: { cases: Array<{ newLabel: string; rationale: string | null }> } };
+    // The demo gate judges it as a typed-question evaluator too: pass or fail, and no rationale.
+    expect(regressionRun.cases.length).toBeGreaterThan(0);
+    for (const regressionCase of regressionRun.cases) {
+      expect(regressionCase.rationale).toBeNull();
+      expect(["pass", "fail"]).toContain(regressionCase.newLabel);
+    }
     expect(version).toMatchObject({
       rubricMarkdown: null, prompt: null, typedQuestion: QUESTION, decisionThreshold: THRESHOLD,
       executionBinding: JEV, outputSchema: TypedQuestionOutputSchema, verdictKind: "binary"
@@ -187,6 +193,9 @@ describe("a saved typed-question version", () => {
         evaluator: mixed
       })
     ];
-    for (const response of responses) expect(response.status).toBe(400);
+    for (const response of responses) {
+      expect(response.status).toBe(400);
+      expect(JSON.stringify(await response.json())).toContain("has no rubric");
+    }
   });
 });

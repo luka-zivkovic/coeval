@@ -247,24 +247,31 @@ export function createJudgeProvider(version: EvaluatorRuntimeVersion, opts?: Jud
     warnOnce(provider, `${provider} has no API key; judge falling back to MockJudgeProvider.`);
     const typedQuestion = typedQuestionEvaluator(version);
     return typedQuestion !== null && version.executionBinding.verdictProtocol === "typed-question/v1"
-      ? new TypedQuestionMockProvider(typedQuestion)
+      ? typedQuestionStandIn(typedQuestion)
       : new MockJudgeProvider();
   }
   return new ExecutionBindingJudgeProvider(version, apiKey);
 }
 
 /**
- * The demo fallback for a typed-question version without a TypeSafe key: the
- * mock heuristic's score read as P(pass), so the verdict keeps the
- * typed-question shape (pass or fail on the threshold, no rationale). Like
- * the prompted mock, it observes no call, so it never counts as evidence.
+ * A demo stand-in for a typed-question version: a heuristic's score (the
+ * mock's, unless the demo injected another) read as P(pass), so the verdict
+ * keeps the typed-question shape (pass or fail on the threshold, no
+ * rationale). Like the prompted mock, it observes no call, so it never
+ * counts as evidence.
  */
+export function typedQuestionStandIn(
+  evaluator: TypedQuestionEvaluator,
+  heuristic: Pick<JudgeProvider, "judge"> = new MockJudgeProvider()
+): JudgeProvider {
+  return new TypedQuestionMockProvider(evaluator, heuristic);
+}
+
 class TypedQuestionMockProvider implements JudgeProvider {
   readonly name = "mock";
   readonly modelName = "mock-heuristic-v1";
-  private readonly heuristic = new MockJudgeProvider();
 
-  constructor(private readonly evaluator: TypedQuestionEvaluator) {}
+  constructor(private readonly evaluator: TypedQuestionEvaluator, private readonly heuristic: Pick<JudgeProvider, "judge">) {}
 
   async judge(input: { prompt: JudgePrompt; trace: Trace; outputSchema: object }): Promise<JudgeVerdict> {
     return structuredVerdictToLegacy((await this.judgeStructured({ ...input, spec: { verdictKind: "binary", scalarRange: null, categoricalChoiceScores: null } })).verdict);

@@ -11,7 +11,7 @@ import {
   recheckExecutionBinding,
   resolveExecutionBinding,
   runCapabilityCheck,
-  verdictProbeExecutor,
+  bindingProbeExecutor,
   type CapabilityCheckResult,
   type ProbeExecutor
 } from "../src/lib/evaluator-resolution.js";
@@ -378,7 +378,7 @@ describe("probe input", () => {
         usage: { input_tokens: 70, output_tokens: 9 }
       }));
     };
-    const execute = verdictProbeExecutor({
+    const execute = bindingProbeExecutor({
       apiKey: "k", customBaseUrl: null, fetch: fetchStub,
       spec: { verdictKind: "categorical", scalarRange: null, categoricalChoiceScores: { good: 1, bad: 0 } }
     });
@@ -390,7 +390,7 @@ describe("probe input", () => {
   });
 
   it("runs the mock locally", async () => {
-    const execute = verdictProbeExecutor({ apiKey: null, customBaseUrl: null, spec: { verdictKind: "binary", scalarRange: null, categoricalChoiceScores: null } });
+    const execute = bindingProbeExecutor({ apiKey: null, customBaseUrl: null, spec: { verdictKind: "binary", scalarRange: null, categoricalChoiceScores: null } });
     await expect(execute({
       provider: "mock", endpoint: { kind: "managed" }, modelId: "mock-heuristic-v1", modelVersion: "mock-heuristic-v1",
       sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null, verdictProtocol: "mock/v1", routing: null
