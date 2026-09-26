@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   ExecutionBindingInputSchema,
-  ModelBindingSchema,
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   mutableModelAlias,
   normalizeJudgeProviderId,
@@ -12,8 +11,7 @@ import {
   ExecutionBindingInputError,
   endpointUrlFor,
   executionBindingFromInput,
-  executionBindingInputProblem,
-  legacyModelBinding
+  executionBindingInputProblem
 } from "../src/lib/execution-binding.js";
 import { MOCK_BINDING, SEEDED_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
@@ -35,20 +33,6 @@ describe("mutable model alias rule", () => {
 
   it("names its rule version", () => {
     expect(MUTABLE_MODEL_ALIAS_RULE_VERSION).toBe("rubrist-mutable-model-alias/v1");
-  });
-});
-
-describe("frozen v1 model binding contract", () => {
-  it("stays permissive for the v1 artifacts that still record it", () => {
-    const outOfRuntimeContractBinding = {
-      provider: "Anthropic",
-      modelId: "claude-sonnet-4-6",
-      modelVersion: "pinned-before-production",
-      temperature: 2.5,
-      topP: 1.5,
-      baseUrl: "not-a-url"
-    };
-    expect(ModelBindingSchema.parse(outOfRuntimeContractBinding)).toEqual(outOfRuntimeContractBinding);
   });
 });
 
@@ -128,12 +112,6 @@ describe("evaluator version binding invariants", () => {
     const custom = { ...SEEDED_BINDING, provider: "custom", endpoint: { kind: "custom", baseUrlDigest: endpointBaseUrlDigest(CUSTOM_URL) }, reasoning: null, verdictProtocol: "openai.forced-function/v1" };
     expect(SkillVersionSchema.safeParse({ ...VERSION, executionBinding: custom }).success).toBe(false);
     expect(SkillVersionSchema.safeParse({ ...VERSION, executionBinding: custom, customEndpointUrl: CUSTOM_URL }).success).toBe(true);
-  });
-
-  it("derives the temporary v1 view only where v1 can state the binding", () => {
-    expect(legacyModelBinding(VERSION as never)).toEqual({ provider: "anthropic", modelId: "claude-sonnet-4-6", modelVersion: "claude-sonnet-4-6", temperature: 0 });
-    expect(legacyModelBinding({ ...VERSION, executionBinding: { ...SEEDED_BINDING, sampling: { temperature: null, topP: null } } } as never)).toBeNull();
-    expect(legacyModelBinding({ ...VERSION, executionBinding: MOCK_BINDING } as never)).toMatchObject({ provider: "mock", temperature: 0 });
   });
 });
 

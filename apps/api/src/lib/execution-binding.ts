@@ -3,7 +3,6 @@ import {
   ExecutionBindingSchema,
   type ExecutionBinding,
   type ExecutionBindingInput,
-  type ModelBinding,
   type SkillVersion
 } from "@rubrist/shared";
 import { endpointBaseUrlDigest } from "./evaluator-identity.js";
@@ -101,39 +100,4 @@ export function verifiedEndpointUrl(
   return baseUrl !== null && endpointBaseUrlDigest(baseUrl) === binding.endpoint.baseUrlDigest
     ? { ok: true, baseUrl }
     : { ok: false };
-}
-
-/** v1 evidence can't state this version's binding (Batch 8D). */
-export class LegacyEvidenceUnsupportedError extends Error {
-  readonly code = "v1_evidence_unsupported_binding";
-
-  constructor(what: string) {
-    super(`${what} can't state this evaluator's execution binding; it needs an explicit temperature and a v1-expressible endpoint until v2 evidence replaces v1 (Batch 8D)`);
-    this.name = "LegacyEvidenceUnsupportedError";
-  }
-}
-
-/**
- * TEMPORARY (Batch 8D): the v1 model binding that v1 receipts still record,
- * derived from the v2 binding. `null` when v1 can't state it: an unset temperature (the mock, which takes no
- * sampling, keeps v1's recorded 0), a typed-question provider, or an OpenAI
- * binding on a recorded override endpoint.
- *
- * It is lossy: v1 has no protocol, reasoning, output token limit, or
- * routing, so distinct v2 bindings can share a v1 view and a v1 skillDigest.
- * v2 evidence, which carries the whole binding, replaces it in 8D-5.
- */
-export function legacyModelBinding(version: Pick<SkillVersion, "executionBinding" | "customEndpointUrl">): ModelBinding | null {
-  const binding = version.executionBinding;
-  const temperature = binding.provider === "mock" ? 0 : binding.sampling.temperature;
-  if (temperature === null || binding.provider === "typesafe") return null;
-  if (binding.provider === "openai" && binding.endpoint.kind === "custom") return null;
-  return {
-    provider: binding.provider,
-    modelId: binding.modelId,
-    modelVersion: binding.modelVersion,
-    temperature,
-    ...(binding.sampling.topP !== null ? { topP: binding.sampling.topP } : {}),
-    ...(binding.provider === "custom" && version.customEndpointUrl !== null ? { baseUrl: version.customEndpointUrl } : {})
-  };
 }

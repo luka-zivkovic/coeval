@@ -5,10 +5,8 @@ import { createApp } from "../src/app.js";
 import { endpointBaseUrlDigest } from "../src/lib/evaluator-identity.js";
 import {
   ExecutionBindingInputError,
-  LegacyEvidenceUnsupportedError,
   executionBindingFromInput,
   executionBindingInputProblem,
-  legacyModelBinding,
   verifiedEndpointUrl
 } from "../src/lib/execution-binding.js";
 import { createJudgeProvider, createStrictJudgeProvider } from "../src/lib/judge-provider.js";
@@ -17,8 +15,8 @@ import { recoverStaleEvalRunItemExecutions } from "../src/workers/eval-run.js";
 import { isPermanentError } from "../src/workers/judge.js";
 import { MOCK_BINDING, SEEDED_BINDING, bindingInput, runtimeVersion } from "./fixtures/execution-binding.js";
 
-// The v2 binding switch (Batch 8D-2) and the temporary v1 evidence view that
-// lasts until v2 evidence replaces it.
+// The v2 binding switch (Batch 8D-2): bindings at the API boundary, the
+// provider's refusals, and release evidence on any binding.
 
 const PROJECT = "proj_langsmith_support";
 const UNSET_TEMPERATURE: ExecutionBinding = { ...SEEDED_BINDING, sampling: { temperature: null, topP: null } };
@@ -50,15 +48,6 @@ async function mintKey(app: ReturnType<typeof createApp>): Promise<string> {
   });
   return (await response.json() as { key: string }).key;
 }
-
-describe("the temporary v1 evidence view", () => {
-  it("states only bindings v1 can express, and says why it can't otherwise", () => {
-    expect(legacyModelBinding(view(SEEDED_BINDING))).toEqual({ provider: "anthropic", modelId: "claude-sonnet-4-6", modelVersion: "claude-sonnet-4-6", temperature: 0 });
-    expect(legacyModelBinding(view(MOCK_BINDING))).toMatchObject({ provider: "mock", temperature: 0 });
-    expect(legacyModelBinding(view(UNSET_TEMPERATURE))).toBeNull();
-    expect(legacyModelBinding(view(OPENAI_OVERRIDE))).toBeNull();
-  });
-});
 
 describe("release evidence on any binding", () => {
   it("states a binding v1 couldn't, exactly, in the release receipt", async () => {
@@ -99,7 +88,7 @@ describe("stale eval item recovery", () => {
     const repository = {
       listStaleEvalRunItemExecutions: async () => [execution("poisoned"), execution("healthy")],
       failEvalRunItem: async (input: { evalRunItemId: string }) => {
-        if (input.evalRunItemId === "poisoned") throw new LegacyEvidenceUnsupportedError("An assessment receipt v1");
+        if (input.evalRunItemId === "poisoned") throw new Error("this item can't be recorded");
         failed.push(input.evalRunItemId);
       }
     };

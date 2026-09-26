@@ -703,8 +703,6 @@
     "ManualTraceImportResult",
     "ManualTraceImportResultSchema",
     "MinimumVerdictOutputSchema",
-    "ModelBinding",
-    "ModelBindingSchema",
     "ObservedCall",
     "ObservedCallSchema",
     "OnboardingEvidenceInventory",

@@ -386,7 +386,6 @@
     "ManualTraceImportInputSchema",
     "ManualTraceImportResultSchema",
     "MinimumVerdictOutputSchema",
-    "ModelBindingSchema",
     "ObservedCallSchema",
     "OnboardingEvidenceInventorySchema",
     "OpenRouterRoutingSchema",
