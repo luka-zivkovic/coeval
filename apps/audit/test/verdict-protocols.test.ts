@@ -51,7 +51,7 @@ describe("verdict protocol versions pin their material", () => {
       .toEqual({ added: [], changed: [], removed: [] });
   });
 
-  it("lists the six prompted protocols (typed-question/v1 arrives with its provider)", () => {
+  it("lists the six prompted protocols (typed-question/v1 has its own module)", () => {
     expect([...PROMPTED_VERDICT_PROTOCOLS].sort()).toEqual([
       "anthropic.forced-tool/v1",
       "anthropic.structured-output/v1",
