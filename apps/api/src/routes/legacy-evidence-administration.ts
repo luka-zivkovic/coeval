@@ -780,6 +780,8 @@ function verdictsToCsv(verdicts: import("@rubrist/shared").VerdictRecord[]): str
     "verdict_kind",
     "verdict_value",
     "rationale",
+    // "not_provided" when the evaluator states no rationale, so it isn't read as an empty one.
+    "rationale_status",
     "scalar_range_min",
     "scalar_range_max",
     "categorical_choice_scores_json",
@@ -813,6 +815,7 @@ function verdictsToCsv(verdicts: import("@rubrist/shared").VerdictRecord[]): str
       verdictKind,
       verdictValue,
       payloadRationale(payload) ?? "",
+      "rationaleStatus" in payload ? payload.rationaleStatus : "provided",
       scalarMin,
       scalarMax,
       categoricalChoices,

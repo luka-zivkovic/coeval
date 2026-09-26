@@ -298,7 +298,7 @@ function DecisionHistory({
                     {humanButLowerPriority ? <Chip>does not override owner ruling</Chip> : null}
                   </div>
                   <div className="mt-1.5 text-[12px] leading-[1.5] text-ink-2">
-                    {payloadRationale(verdict.payload) || "No rationale recorded."}
+                    {(payloadRationale(verdict.payload) ?? "This evaluator states no rationale.") || "No rationale recorded."}
                   </div>
                   <div className="mt-1 font-mono text-[10.5px] text-ink-3">
                     {verdictActor(verdict)} · {new Date(verdict.createdAt).toLocaleString()}
@@ -644,7 +644,9 @@ export function TraceDetail({ detail, onChanged, shortcuts }: TraceDetailProps) 
               <div>
                 <Eyebrow>Reasoning</Eyebrow>
                 <div className="mt-1.5 text-[13px] leading-[1.55] text-ink-2">
-                  {judgeRun.reasoning || <span className="text-ink-3">No rationale recorded.</span>}
+                  {judgeRun.reasoning === null
+                    ? <span className="text-ink-3">This evaluator states no rationale.</span>
+                    : judgeRun.reasoning || <span className="text-ink-3">No rationale recorded.</span>}
                 </div>
               </div>
 

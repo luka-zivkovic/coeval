@@ -164,16 +164,18 @@ class ExecutionBindingJudgeProvider implements JudgeProvider {
   constructor(private readonly version: EvaluatorRuntimeVersion, private readonly apiKey: string | null) {
     this.name = version.executionBinding.provider;
     this.modelName = version.executionBinding.modelId;
-    // Whatever the executor would refuse before sending is refused here, at
-    // construction, before any call-start marker, so the item is recorded as
-    // never attempted rather than as a call with an unknown outcome.
+    // The binding, the definition it runs, and the credential are refused
+    // here, at construction, before any call-start marker, so the item is
+    // recorded as never attempted rather than as a call with an unknown
+    // outcome. The executors refuse anything else before sending, too.
     const binding = version.executionBinding;
     this.typedQuestion = typedQuestionEvaluator(version);
-    if (binding.verdictProtocol === "typed-question/v1") {
+    const typed = binding.verdictProtocol === "typed-question/v1";
+    if (typed !== (this.typedQuestion !== null)) {
+      throw new EvaluatorCallError("internal", "a version asks a typed question exactly when it runs typed-question/v1", { physicalCall: false });
+    }
+    if (typed) {
       assertTypedQuestionBinding(binding);
-      if (this.typedQuestion === null) {
-        throw new EvaluatorCallError("internal", "a typed-question version holds its question and threshold", { physicalCall: false });
-      }
       assertCredential(binding.provider, apiKey);
       return;
     }
@@ -243,9 +245,43 @@ export function createJudgeProvider(version: EvaluatorRuntimeVersion, opts?: Jud
   const apiKey = resolveJudgeProviderApiKey(provider, opts?.apiKey);
   if (!apiKey) {
     warnOnce(provider, `${provider} has no API key; judge falling back to MockJudgeProvider.`);
-    return new MockJudgeProvider();
+    const typedQuestion = typedQuestionEvaluator(version);
+    return typedQuestion !== null && version.executionBinding.verdictProtocol === "typed-question/v1"
+      ? new TypedQuestionMockProvider(typedQuestion)
+      : new MockJudgeProvider();
   }
   return new ExecutionBindingJudgeProvider(version, apiKey);
+}
+
+/**
+ * The demo fallback for a typed-question version without a TypeSafe key: the
+ * mock heuristic's score read as P(pass), so the verdict keeps the
+ * typed-question shape (pass or fail on the threshold, no rationale). Like
+ * the prompted mock, it observes no call, so it never counts as evidence.
+ */
+class TypedQuestionMockProvider implements JudgeProvider {
+  readonly name = "mock";
+  readonly modelName = "mock-heuristic-v1";
+  private readonly heuristic = new MockJudgeProvider();
+
+  constructor(private readonly evaluator: TypedQuestionEvaluator) {}
+
+  async judge(input: { prompt: JudgePrompt; trace: Trace; outputSchema: object }): Promise<JudgeVerdict> {
+    return structuredVerdictToLegacy((await this.judgeStructured({ ...input, spec: { verdictKind: "binary", scalarRange: null, categoricalChoiceScores: null } })).verdict);
+  }
+
+  async judgeStructured(input: { prompt: JudgePrompt; trace: Trace; spec: VerdictSpec }): Promise<StructuredJudgeResult> {
+    const { score: probability } = await this.heuristic.judge({ prompt: input.prompt, trace: input.trace, outputSchema: {} });
+    return {
+      verdict: {
+        kind: "typed-question",
+        label: probability >= this.evaluator.threshold ? "pass" : "fail",
+        probability,
+        threshold: this.evaluator.threshold,
+        rationaleStatus: "not_provided"
+      }
+    };
+  }
 }
 
 // is this error the provider rejecting the CREDENTIAL (as opposed to a

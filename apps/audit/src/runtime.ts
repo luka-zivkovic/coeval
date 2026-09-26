@@ -62,6 +62,7 @@ export {
   TypedQuestionStateError,
   parseTypedQuestionResponse,
   typedQuestionRequestText,
-  typedQuestionStateText
+  typedQuestionStateText,
+  typedQuestionText
 } from "./protocols/typed-question.js";
 export type { TypedQuestion, TypedQuestionEvaluator, TypedQuestionVerdict } from "./protocols/typed-question.js";

@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { runMigrations } from "@rubrist/db";
 import { PgRepository } from "../src/repository.pg.js";
+import { processFeedbackSyncJob } from "../src/workers/feedback-sync.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
 import { runPgSmoke, seedSkill } from "./pg-smoke-support.js";
 
@@ -129,6 +130,36 @@ runPgSmoke("eval item provenance storage", () => {
         `insert into verdicts (id,project_id,case_id,source,skill_version_id,verdict_kind,payload) values ('v_person','proj_test',$1,'human','skillv_test','binary',$2::jsonb)`,
         [caseId, JSON.stringify(payload)]
       )).rejects.toMatchObject({ code: "23514", constraint: "verdicts_rationale_status_check" });
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("sends no feedback comment for a judge run that states no reason, and shows it as none", async () => {
+    const { pool, cleanup } = await openPostgresTestDatabase("pg_smoke");
+    try {
+      await runMigrations(pool);
+      const repo = new PgRepository(pool);
+      await pool.query(`insert into organizations (id, name) values ('org_test', 'Test Org')`);
+      await pool.query(`insert into projects (id, organization_id, name, trace_provider) values ('proj_test', 'org_test', 'Test Project', 'langsmith')`);
+      await seedSkill(pool);
+      const integration = await repo.createLangSmithIntegration("proj_test", { apiKey: "ls_test_key", projectName: "Support Agent" });
+      const { caseId } = await repo.importTrace("proj_test", "langsmith", {
+        sourceTraceId: "ls_run_typed", input: { q: "Refund?" }, output: { a: "yes" }, metadata: {}
+      }, { ingestionPurpose: "analysis_eligible_langsmith", sourceIntegrationId: integration.id });
+      const run = await repo.recordJudgeRun({
+        projectId: "proj_test", caseId, skillVersionId: "skillv_test", verdict: { label: "fail", score: 0.31, confidence: 0.69 }
+      });
+
+      const job = await repo.createFeedbackSyncJob({ projectId: "proj_test", judgeRunId: run.id, provider: "langsmith" });
+      let sent: { comment: string | null } | undefined;
+      await processFeedbackSyncJob(repo, { projectId: "proj_test", feedbackSyncJobId: job!.id }, () => ({
+        async createFeedback(input) {
+          sent = input;
+        }
+      }));
+      expect(sent).toMatchObject({ value: "fail", comment: null });
+      expect((await repo.getCaseDetail("proj_test", caseId))?.judgeRun).toMatchObject({ id: run.id, reasoning: null });
     } finally {
       await cleanup();
     }

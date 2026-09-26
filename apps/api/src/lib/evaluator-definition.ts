@@ -1,3 +1,4 @@
+import { typedQuestionText } from "@rubrist/audit/runtime";
 import { renderJudgePromptContent, type SkillVersion } from "@rubrist/shared";
 
 // An evaluator version's definition text (ADR-0014 section 1). A prompted
@@ -14,9 +15,9 @@ export function promptedText(version: Pick<SkillVersion, "rubricMarkdown" | "pro
 
 /**
  * What a judge request records as its prompt: a prompted version's rendered
- * prompt, or a typed-question version's question, which is what that model
- * is asked about the trace.
+ * prompt, or a typed-question version's question exactly as typed-question/v1
+ * sends it, which is what that model is asked about the trace.
  */
 export function judgePromptContent(version: Pick<SkillVersion, "rubricMarkdown" | "prompt" | "typedQuestion">): string {
-  return version.typedQuestion !== null ? JSON.stringify(version.typedQuestion) : renderJudgePromptContent(promptedText(version));
+  return version.typedQuestion !== null ? typedQuestionText(version.typedQuestion) : renderJudgePromptContent(promptedText(version));
 }

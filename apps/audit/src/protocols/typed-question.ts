@@ -104,12 +104,16 @@ export function typedQuestionStateText(trace: unknown): string {
   return `{${fields.join(",")}}`;
 }
 
+/** The question as typed-question/v1 sends it, as its pinned JSON text. */
+export function typedQuestionText(question: TypedQuestion): string {
+  return `{"type":"noul","instructions":${JSON.stringify(question.instructions)},` +
+    `"criteria":{"true":${JSON.stringify(question.criteria.true)},"false":${JSON.stringify(question.criteria.false)}}}`;
+}
+
 /** The exact request body typed-question/v1 sends for one judgment. */
 export function typedQuestionRequestText(modelId: string, evaluator: TypedQuestionEvaluator, trace: unknown): string {
-  const { question } = evaluator;
-  const questionText = `{"type":"noul","instructions":${JSON.stringify(question.instructions)},` +
-    `"criteria":{"true":${JSON.stringify(question.criteria.true)},"false":${JSON.stringify(question.criteria.false)}}}`;
-  return `{"state":${typedQuestionStateText(trace)},"questions":{"${TYPED_QUESTION_KEY}":${questionText}},"model":${JSON.stringify(modelId)}}`;
+  return `{"state":${typedQuestionStateText(trace)},"questions":{"${TYPED_QUESTION_KEY}":${typedQuestionText(evaluator.question)}},` +
+    `"model":${JSON.stringify(modelId)}}`;
 }
 
 /**

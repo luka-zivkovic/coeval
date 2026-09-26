@@ -98,6 +98,20 @@ describe("LangSmith client", () => {
     })).resolves.toBeUndefined();
   });
 
+  it("sends no comment for a verdict that states no rationale", async () => {
+    let body: Record<string, unknown> | undefined;
+    const client = new LangSmithClient({
+      apiKey: "ls_test_key",
+      fetchImpl: (async (_input: string | URL | Request, init?: RequestInit) => {
+        body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        return new Response("{}", { status: 200 });
+      }) as typeof fetch
+    });
+    await client.createFeedback({ feedbackId: "fsync_typed", runId: "run_123", key: "rubrist_verdict", score: 0.31, value: "fail", comment: null });
+    expect(body).not.toHaveProperty("comment");
+    expect(body).toMatchObject({ value: "fail", score: 0.31 });
+  });
+
   it("carries HTTP status on failed LangSmith requests", async () => {
     const client = new LangSmithClient({
       apiKey: "ls_test_key",
