@@ -1072,7 +1072,6 @@
     "isVerdictLabel",
     "joinProductionDecisionRecords",
     "mutableModelAlias",
-    "normalizeJudgeProviderId",
     "parseTraceDeepLink",
     "planQueueAssignments",
     "productionBooleanCalibration",

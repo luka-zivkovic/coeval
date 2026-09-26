@@ -569,12 +569,15 @@ baseline restarts every versioned identifier at v1. Every slice gets an
 independent review against its exact diff, and each review's correctness
 findings are resolved before merge.
 
-- 8A (#125–#130), 8B (#132, #133), and 8C (#134) are merged.
+- 8A (#125, #127–#130), 8B (#132, #133), and 8C (#134) are merged; #126
+  amended ADR-0014.
 - 8D is merged:
   - 8D-1 to 8D-4 (#135–#139): v2 bindings, the executor, resolution records,
-    governed gates, and calibration v2;
-  - 8D-5 (#141–#143, and the legacy binding view's removal): per-item
-    provenance, `skill-format/v2`, and assessment receipt v2, with v1 removed.
+    governed gates, and calibration and suite manifest v2, with their v1
+    contracts removed;
+  - 8D-5 (#141–#144): per-item provenance, `skill-format/v2`, assessment
+    receipt v2 with receipt v1 removed, and removal of the legacy v1 binding
+    view.
 - Dailies switched every report to v2 in the same window (dailies#18,
   Dailies ADR-0008). Its ADR-0009 records the founder's 2026-09-26 decision
   that an abstained outcome counts as not passing.

@@ -86,14 +86,6 @@ export const UnicodeScalarValueSchema = z.string().refine((value) => !containsLo
   message: "Text must not contain an unpaired UTF-16 surrogate"
 });
 
-// Canonicalize raw provider identifiers at explicit input or protocol-check
-// boundaries. Persisted bindings use ExecutionBindingSchema and are already
-// canonical.
-export function normalizeJudgeProviderId(value: string): JudgeProviderId | null {
-  const parsed = JudgeProviderIdSchema.safeParse(value.trim().toLowerCase());
-  return parsed.success ? parsed.data : null;
-}
-
 /** Where a judge credential comes from: built in (the mock), the project, or the platform environment. */
 export const JudgeProviderCredentialSourceSchema = z.enum(["built_in", "project", "environment"]);
 export type JudgeProviderCredentialSource = z.infer<typeof JudgeProviderCredentialSourceSchema>;

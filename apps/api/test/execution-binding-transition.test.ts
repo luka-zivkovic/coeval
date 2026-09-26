@@ -15,8 +15,9 @@ import { recoverStaleEvalRunItemExecutions } from "../src/workers/eval-run.js";
 import { isPermanentError } from "../src/workers/judge.js";
 import { MOCK_BINDING, SEEDED_BINDING, bindingInput, runtimeVersion } from "./fixtures/execution-binding.js";
 
-// The v2 binding switch (Batch 8D-2): bindings at the API boundary, the
-// provider's refusals, and release evidence on any binding.
+// Execution bindings in use (ADR-0014 section 2): bindings at the API boundary,
+// release evidence on any binding, stale eval item recovery, executor failures
+// in the workers, and the provider's refusals.
 
 const PROJECT = "proj_langsmith_support";
 const UNSET_TEMPERATURE: ExecutionBinding = { ...SEEDED_BINDING, sampling: { temperature: null, topP: null } };
@@ -50,7 +51,7 @@ async function mintKey(app: ReturnType<typeof createApp>): Promise<string> {
 }
 
 describe("release evidence on any binding", () => {
-  it("states a binding v1 couldn't, exactly, in the release receipt", async () => {
+  it("states an unset-temperature binding exactly in the release receipt", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", undefined);
     const repository = new DemoRepository();
     const app = createApp(repository);

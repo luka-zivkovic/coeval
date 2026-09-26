@@ -16,7 +16,6 @@ import {
   defaultJudgePromptTemplate,
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   mutableModelAlias,
-  normalizeJudgeProviderId,
   promptReferencesRubric,
   renderJudgePromptContent,
   verdictOutputSchema
@@ -129,7 +128,6 @@ export {
   defaultJudgePromptTemplate,
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   mutableModelAlias,
-  normalizeJudgeProviderId,
   promptReferencesRubric,
   renderJudgePromptContent,
   verdictOutputSchema

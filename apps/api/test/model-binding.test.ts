@@ -3,7 +3,6 @@ import {
   ExecutionBindingInputSchema,
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   mutableModelAlias,
-  normalizeJudgeProviderId,
   SkillVersionSchema
 } from "@rubrist/shared";
 import { endpointBaseUrlDigest } from "../src/lib/evaluator-identity.js";
@@ -13,7 +12,7 @@ import {
   executionBindingFromInput,
   executionBindingInputProblem
 } from "../src/lib/execution-binding.js";
-import { MOCK_BINDING, SEEDED_BINDING, bindingInput } from "./fixtures/execution-binding.js";
+import { SEEDED_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 describe("mutable model alias rule", () => {
   it.each([
@@ -112,14 +111,5 @@ describe("evaluator version binding invariants", () => {
     const custom = { ...SEEDED_BINDING, provider: "custom", endpoint: { kind: "custom", baseUrlDigest: endpointBaseUrlDigest(CUSTOM_URL) }, reasoning: null, verdictProtocol: "openai.forced-function/v1" };
     expect(SkillVersionSchema.safeParse({ ...VERSION, executionBinding: custom }).success).toBe(false);
     expect(SkillVersionSchema.safeParse({ ...VERSION, executionBinding: custom, customEndpointUrl: CUSTOM_URL }).success).toBe(true);
-  });
-});
-
-describe("normalizeJudgeProviderId", () => {
-  it("normalizes human-entered strings and maps unknowns to null", () => {
-    expect(normalizeJudgeProviderId(" Anthropic ")).toBe("anthropic");
-    expect(normalizeJudgeProviderId("OPENROUTER")).toBe("openrouter");
-    expect(normalizeJudgeProviderId("mock")).toBe("mock");
-    expect(normalizeJudgeProviderId("bedrock")).toBeNull();
   });
 });
