@@ -3,14 +3,22 @@ import { VerdictProtocolError } from "./verdict-protocols.js";
 // typed-question/v1 (Rubrist ADR-0014 section 5): one binary `noul` question,
 // answered by a typed-question model with the probability that its answer is
 // true. Like every verdict protocol, a released version never changes; it
-// pins:
+// pins the exact request bytes and how the answer is read:
 //
-// - the question's key in the request, `verdict`;
-// - the state the model is shown: the trace's input and output, and its steps
-//   when it has any, as a JSON object, which is what the #101 spike measured
-//   (founder decision 2026-09-26). Trace id, metadata, and step metadata are
-//   not sent;
-// - the request body, `{ state, questions, model }`, with the binding's model;
+// - the body is `{"state":…,"questions":{"verdict":…},"model":…}`, in that
+//   key order, with the binding's model;
+// - the question is `{"type":"noul","instructions":…,"criteria":{"true":…,
+//   "false":…}}`, in that key order;
+// - the state is the trace's input and output, and its steps when it has any,
+//   as a JSON object in the order `input`, `output`, `steps`, each step as
+//   `name` (when it has one), `input`, `output`. This is what the #101 spike
+//   measured (founder decision 2026-09-26). The trace id, trace metadata, and
+//   step metadata are not sent;
+// - every value taken from the trace is canonical JSON: object keys sorted by
+//   UTF-16 code unit at every depth, array order kept, an undefined member
+//   left out and an undefined array entry sent as null. A non-finite number, a
+//   cycle, or a value JSON can't hold is refused before any call, so the same
+//   trace always shows the model the same bytes;
 // - the parse rule: the answer is `{ type: "noul", noul: p }` with p a finite
 //   number from 0 to 1;
 // - the decision: polarity `true_is_pass`, so p is P(pass), and the item
@@ -44,41 +52,64 @@ export interface TypedQuestionVerdict {
   rationaleStatus: "not_provided";
 }
 
+/** A trace typed-question/v1 can't send exactly. Its message names no trace content. */
+export class TypedQuestionStateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TypedQuestionStateError";
+  }
+}
+
 const isObject = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-/** The pinned state projection: input, output, and the steps' input and output (and name) when there are any. */
-export function typedQuestionState(trace: unknown): Record<string, unknown> {
-  const source = isObject(trace) ? trace : {};
-  const steps = Array.isArray(source.steps) ? source.steps.filter(isObject) : [];
-  return {
-    input: source.input ?? null,
-    output: source.output ?? null,
-    ...(steps.length > 0
-      ? {
-          steps: steps.map((step) => ({
-            ...(typeof step.name === "string" ? { name: step.name } : {}),
-            input: step.input ?? null,
-            output: step.output ?? null
-          }))
-        }
-      : {})
-  };
+const byCodeUnit = (left: string, right: string) => left < right ? -1 : left > right ? 1 : 0;
+
+/** Canonical JSON of one value taken from the trace. */
+function canonicalTraceValue(value: unknown, ancestors: ReadonlySet<object>): string {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new TypedQuestionStateError("the trace holds a number JSON can't represent");
+    return JSON.stringify(value);
+  }
+  if (typeof value !== "object") throw new TypedQuestionStateError(`the trace holds a ${typeof value}, which JSON can't represent`);
+  if (ancestors.has(value)) throw new TypedQuestionStateError("the trace contains a cycle");
+  const next = new Set(ancestors).add(value);
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => entry === undefined ? "null" : canonicalTraceValue(entry, next)).join(",")}]`;
+  }
+  const object = value as Record<string, unknown>;
+  const keys = Object.keys(object).filter((key) => object[key] !== undefined).sort(byCodeUnit);
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalTraceValue(object[key], next)}`).join(",")}}`;
 }
 
-/** The request body typed-question/v1 sends for one judgment. */
-export function typedQuestionRequestBody(modelId: string, evaluator: TypedQuestionEvaluator, trace: unknown): Record<string, unknown> {
-  return {
-    state: typedQuestionState(trace),
-    questions: {
-      [TYPED_QUESTION_KEY]: {
-        type: "noul",
-        instructions: evaluator.question.instructions,
-        criteria: { true: evaluator.question.criteria.true, false: evaluator.question.criteria.false }
-      }
-    },
-    model: modelId
-  };
+const traceValue = (value: unknown) => canonicalTraceValue(value === undefined ? null : value, new Set());
+
+/** The state the model is shown, as its pinned JSON text. */
+export function typedQuestionStateText(trace: unknown): string {
+  if (!isObject(trace)) throw new TypedQuestionStateError("a typed-question trace is a JSON object");
+  const fields = [`"input":${traceValue(trace.input)}`, `"output":${traceValue(trace.output)}`];
+  if (trace.steps !== undefined) {
+    if (!Array.isArray(trace.steps) || !trace.steps.every(isObject)) {
+      throw new TypedQuestionStateError("a trace's steps are a list of objects");
+    }
+    if (trace.steps.length > 0) {
+      const steps = trace.steps.map((step) => {
+        const name = typeof step.name === "string" ? `"name":${JSON.stringify(step.name)},` : "";
+        return `{${name}"input":${traceValue(step.input)},"output":${traceValue(step.output)}}`;
+      });
+      fields.push(`"steps":[${steps.join(",")}]`);
+    }
+  }
+  return `{${fields.join(",")}}`;
+}
+
+/** The exact request body typed-question/v1 sends for one judgment. */
+export function typedQuestionRequestText(modelId: string, evaluator: TypedQuestionEvaluator, trace: unknown): string {
+  const { question } = evaluator;
+  const questionText = `{"type":"noul","instructions":${JSON.stringify(question.instructions)},` +
+    `"criteria":{"true":${JSON.stringify(question.criteria.true)},"false":${JSON.stringify(question.criteria.false)}}}`;
+  return `{"state":${typedQuestionStateText(trace)},"questions":{"${TYPED_QUESTION_KEY}":${questionText}},"model":${JSON.stringify(modelId)}}`;
 }
 
 /**
@@ -100,7 +131,8 @@ export function parseTypedQuestionResponse(body: unknown, evaluator: TypedQuesti
   return {
     kind: "typed-question",
     label: probability >= evaluator.threshold ? "pass" : "fail",
-    probability,
+    // -0 and 0 are the same probability; record one of them.
+    probability: probability === 0 ? 0 : probability,
     threshold: evaluator.threshold,
     rationaleStatus: "not_provided"
   };

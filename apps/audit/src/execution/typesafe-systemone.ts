@@ -44,7 +44,8 @@ export function readTypesafeResponse(body: unknown, meta: { requestId: string | 
 /**
  * The error fields a TypeSafe error body carries, with the credential
  * redacted. A validation list echoes the request, trace content included, so
- * only its messages and locations are kept; the raw body never is.
+ * only its messages and locations are kept, each location cut after `state`
+ * since what follows it names the trace; the raw body never is.
  */
 export function typesafeErrorDetail(body: unknown, secret: string | null): ProviderErrorDetail {
   const detail = isObject(body) ? body.detail : undefined;
@@ -58,10 +59,11 @@ export function typesafeErrorDetail(body: unknown, secret: string | null): Provi
     message = text(detail.message);
   } else if (Array.isArray(detail)) {
     const issues = detail.filter(isObject).map((issue) => {
-      const location = Array.isArray(issue.loc) ? issue.loc.filter((part) => typeof part === "string" || typeof part === "number").join(".") : "";
+      const parts = Array.isArray(issue.loc) ? issue.loc.filter((part) => typeof part === "string" || typeof part === "number") : [];
+      const stateAt = parts.indexOf("state");
+      const location = (stateAt === -1 ? parts : parts.slice(0, stateAt + 1)).join(".");
       return `${location ? `${location}: ` : ""}${typeof issue.msg === "string" ? issue.msg : "invalid"}`;
     });
-    type = "validation_error";
     message = issues.length > 0 ? text(issues.join("; ")) : null;
   }
   return { type, code: null, param: null, message, raw: null, upstreamProvider: null };

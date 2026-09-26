@@ -4,8 +4,9 @@ import { executeTypedQuestion, type ExecutionFetch, type TypedQuestionExecutionI
 import { EvaluatorCallError } from "../src/execution/failure.js";
 import {
   TYPED_QUESTION_KEY,
+  TypedQuestionStateError,
   parseTypedQuestionResponse,
-  typedQuestionRequestBody,
+  typedQuestionRequestText,
   type TypedQuestionEvaluator
 } from "../src/protocols/typed-question.js";
 import { VerdictProtocolError } from "../src/protocols/verdict-protocols.js";
@@ -42,18 +43,19 @@ const TRACE = {
   metadata: { tenant: "acme" }
 };
 
-const QUESTIONS = {
-  [TYPED_QUESTION_KEY]: {
-    type: "noul",
-    instructions: "Is the answer grounded in the refund policy?",
-    criteria: { true: "The answer follows the policy.", false: "The answer contradicts or ignores the policy." }
-  }
-};
+const QUESTIONS =
+  '"questions":{"verdict":{"type":"noul","instructions":"Is the answer grounded in the refund policy?",' +
+  '"criteria":{"true":"The answer follows the policy.","false":"The answer contradicts or ignores the policy."}}}';
+
+const TRACE_BODY =
+  '{"state":{"input":{"question":"Can I get a refund?"},"output":{"answer":"Yes, within 30 days."}},' +
+  `${QUESTIONS},"model":"jev-1.13.0"}`;
 
 interface Sent {
   url: string;
   headers: Record<string, string>;
-  body: Record<string, unknown>;
+  /** The exact bytes sent. */
+  body: string;
   redirect: string;
 }
 
@@ -62,7 +64,7 @@ function stub(respond: (sent: Sent) => Response | Promise<Response>): { fetch: E
   return {
     sent,
     fetch: async (url, init) => {
-      const entry = { url, headers: init.headers, body: JSON.parse(init.body) as Record<string, unknown>, redirect: init.redirect };
+      const entry = { url, headers: init.headers, body: init.body, redirect: init.redirect };
       sent.push(entry);
       return respond(entry);
     }
@@ -95,11 +97,7 @@ async function failure(promise: Promise<unknown>): Promise<EvaluatorCallError> {
 
 describe("typed-question/v1 pins its request", () => {
   it("shows the model the trace's input and output, with its model, and nothing else", () => {
-    expect(typedQuestionRequestBody("jev-1.13.0", EVALUATOR, TRACE)).toEqual({
-      state: { input: { question: "Can I get a refund?" }, output: { answer: "Yes, within 30 days." } },
-      questions: QUESTIONS,
-      model: "jev-1.13.0"
-    });
+    expect(typedQuestionRequestText("jev-1.13.0", EVALUATOR, TRACE)).toBe(TRACE_BODY);
   });
 
   it("adds the steps' names, inputs, and outputs when the trace has steps, never their metadata", () => {
@@ -110,16 +108,58 @@ describe("typed-question/v1 pins its request", () => {
         { input: "reply", output: "sent" }
       ]
     };
-    expect(typedQuestionRequestBody("jev-1.13.0", EVALUATOR, withSteps).state).toEqual({
-      input: { question: "Can I get a refund?" },
-      output: { answer: "Yes, within 30 days." },
-      steps: [
-        { name: "lookup_policy", input: { id: "refunds" }, output: { days: 30 } },
-        { input: "reply", output: "sent" }
-      ]
-    });
-    expect(typedQuestionRequestBody("jev-1.13.0", EVALUATOR, { ...TRACE, steps: [] }).state).not.toHaveProperty("steps");
-    expect(typedQuestionRequestBody("jev-1.13.0", EVALUATOR, { id: "bare" }).state).toEqual({ input: null, output: null });
+    const state = (trace: unknown) => typedQuestionRequestText("jev-1.13.0", EVALUATOR, trace).split(`,${QUESTIONS}`)[0];
+    expect(state(withSteps)).toBe(
+      '{"state":{"input":{"question":"Can I get a refund?"},"output":{"answer":"Yes, within 30 days."},' +
+      '"steps":[{"name":"lookup_policy","input":{"id":"refunds"},"output":{"days":30}},{"input":"reply","output":"sent"}]}'
+    );
+    expect(state({ ...TRACE, steps: [] })).toBe('{"state":{"input":{"question":"Can I get a refund?"},"output":{"answer":"Yes, within 30 days."}}');
+    expect(state({ id: "bare" })).toBe('{"state":{"input":null,"output":null}');
+  });
+
+  it("sends every trace value as canonical JSON, so the same trace is always the same bytes", () => {
+    const shuffled = {
+      output: "naïve ✓ 日本",
+      input: { zeta: 1, alpha: { b: [3, undefined, "é"], a: -0 }, gone: undefined, Z: true },
+      steps: [{ output: { y: 2, x: 1 }, input: [], name: "step" }]
+    };
+    const expected =
+      '{"state":{"input":{"Z":true,"alpha":{"a":0,"b":[3,null,"é"]},"zeta":1},"output":"naïve ✓ 日本",' +
+      '"steps":[{"name":"step","input":[],"output":{"x":1,"y":2}}]},' +
+      `${QUESTIONS},"model":"jev-1.13.0"}`;
+    expect(typedQuestionRequestText("jev-1.13.0", EVALUATOR, shuffled)).toBe(expected);
+    const reordered = { steps: shuffled.steps, input: { Z: true, zeta: 1, alpha: { a: 0, b: [3, null, "é"] } }, output: shuffled.output };
+    expect(typedQuestionRequestText("jev-1.13.0", EVALUATOR, reordered)).toBe(expected);
+  });
+
+  it("refuses a trace JSON can't hold exactly, naming none of its content", () => {
+    const cycle: Record<string, unknown> = { secret: "do-not-echo" };
+    cycle.self = cycle;
+    const refused: Array<[string, unknown]> = [
+      ["a string trace", "do-not-echo"],
+      ["an array trace", ["do-not-echo"]],
+      ["a null trace", null],
+      ["steps that aren't a list", { input: "do-not-echo", steps: { name: "do-not-echo" } }],
+      ["a step that isn't an object", { input: "do-not-echo", steps: ["do-not-echo"] }],
+      ["NaN", { input: { secret: "do-not-echo", score: Number.NaN } }],
+      ["Infinity", { output: [Number.POSITIVE_INFINITY] }],
+      ["a cycle", { input: cycle }],
+      ["a bigint", { input: { count: 1n } }],
+      ["a function", { output: { run: () => "do-not-echo" } }]
+    ];
+    for (const [name, trace] of refused) {
+      let error: unknown = null;
+      try {
+        typedQuestionRequestText("jev-1.13.0", EVALUATOR, trace);
+      } catch (caught) {
+        error = caught;
+      }
+      expect(error, name).toBeInstanceOf(TypedQuestionStateError);
+      expect((error as Error).message, name).not.toContain("do-not-echo");
+    }
+    // A value repeated without a cycle is not one.
+    const shared = { a: 1 };
+    expect(typedQuestionRequestText("jev-1.13.0", EVALUATOR, { input: [shared, shared] })).toContain('"input":[{"a":1},{"a":1}]');
   });
 });
 
@@ -155,14 +195,13 @@ describe("the TypeSafe adapter", () => {
     let dispatched = 0;
     const result = await run(JEV, http, { beforeDispatch: async () => { dispatched += 1; } });
     expect(dispatched).toBe(1);
+    // No sampling, reasoning, or token-limit field reaches the provider.
     expect(http.sent).toEqual([{
       url: "https://api.typesafe.ai/v1/systemone",
       headers: { authorization: "Bearer test-key", "content-type": "application/json", accept: "application/json" },
-      body: typedQuestionRequestBody("jev-1.13.0", EVALUATOR, TRACE),
+      body: TRACE_BODY,
       redirect: "manual"
     }]);
-    // No sampling, reasoning, or token-limit field reaches the provider.
-    expect(Object.keys(http.sent[0]!.body).sort()).toEqual(["model", "questions", "state"]);
     expect(result).toEqual({
       verdict: { kind: "typed-question", label: "pass", probability: 0.83, threshold: 0.6, rationaleStatus: "not_provided" },
       observed: {
@@ -176,29 +215,39 @@ describe("the TypeSafe adapter", () => {
   it("records the model that served the call, which an alias can hide", async () => {
     const http = stub(() => json(answer(0.2)));
     const result = await run({ ...JEV, modelId: "jev-latest", modelVersion: "jev-latest" }, http);
-    expect(http.sent[0]!.body.model).toBe("jev-latest");
+    expect(http.sent[0]!.body.endsWith(',"model":"jev-latest"}')).toBe(true);
     expect(result.observed.model).toBe("jev-1.13.0");
   });
 
-  it("refuses a binding it can't send exactly, and an evaluator without a usable question or threshold, before any call", async () => {
+  it("refuses a binding it can't send exactly, an evaluator without a usable question or threshold, and an unsendable trace, before any call", async () => {
     const http = stub(() => json(answer(0.5)));
+    let dispatched = 0;
+    const question = EVALUATOR.question;
     const refusals: Array<[string, Partial<TypedQuestionExecutionInput>]> = [
       ["a prompted binding", { binding: { ...JEV, provider: "anthropic", verdictProtocol: "anthropic.structured-output/v1" } }],
       ["another protocol", { binding: { ...JEV, verdictProtocol: "mock/v1" } }],
       ["a custom endpoint", { binding: { ...JEV, endpoint: { kind: "custom", baseUrlDigest: `sha256:${"a".repeat(64)}` } } }],
       ["a temperature", { binding: { ...JEV, sampling: { temperature: 0, topP: null } } }],
+      ["a top-p", { binding: { ...JEV, sampling: { temperature: null, topP: 0.9 } } }],
       ["reasoning", { binding: { ...JEV, reasoning: { family: "openai", effort: "low" } } }],
       ["a token limit", { binding: { ...JEV, outputTokenLimit: 100 } }],
       ["routing", { binding: { ...JEV, routing: { requireParameters: true, allowFallbacks: false } } }],
       ["threshold 0", { evaluator: { ...EVALUATOR, threshold: 0 } }],
       ["threshold 1", { evaluator: { ...EVALUATOR, threshold: 1 } }],
-      ["no instructions", { evaluator: { ...EVALUATOR, question: { ...EVALUATOR.question, instructions: "" } } }]
+      ["threshold NaN", { evaluator: { ...EVALUATOR, threshold: Number.NaN } }],
+      ["a threshold that isn't a number", { evaluator: { ...EVALUATOR, threshold: "0.5" as unknown as number } }],
+      ["no instructions", { evaluator: { ...EVALUATOR, question: { ...question, instructions: "" } } }],
+      ["an empty criterion", { evaluator: { ...EVALUATOR, question: { ...question, criteria: { true: "", false: "No." } } } }],
+      ["a question that isn't noul", { evaluator: { ...EVALUATOR, question: { ...question, type: "choice" as "noul" } } }],
+      ["a trace that isn't an object", { trace: "Can I get a refund?" }],
+      ["a trace holding NaN", { trace: { input: Number.NaN } }]
     ];
     for (const [name, overrides] of refusals) {
-      const error = await failure(run(JEV, http, overrides));
+      const error = await failure(run(JEV, http, { beforeDispatch: async () => { dispatched += 1; }, ...overrides }));
       expect({ name, kind: error.failureKind, physicalCall: error.physicalCall }).toEqual({ name, kind: "internal", physicalCall: false });
     }
     expect(http.sent).toHaveLength(0);
+    expect(dispatched).toBe(0);
   });
 
   it("makes no call without a credential", async () => {
@@ -214,6 +263,7 @@ describe("the TypeSafe adapter", () => {
     const cases: Array<[Response, string, RegExp | null]> = [
       [json({ detail: { error_type: "authentication_error", message: "Must supply an API key!" } }, 403), "provider_authentication", /Must supply an API key!/],
       [json({ detail: "Out of credits" }, 402), "provider_authentication", /Out of credits/],
+      [json({ detail: { error_type: "authentication_error", message: "Key test-key is revoked" } }, 401), "provider_authentication", /^Key \[redacted\] is revoked$/],
       [json({ detail: "Slow down" }, 429), "provider_rate_limit", /Slow down/],
       [json({ detail: "Noul question must have criteria or instructions: verdict" }, 400), "provider_rejected_request", /Noul question must have/],
       [json({ detail: "upstream failure" }, 503), "provider_unavailable", /upstream failure/],
@@ -227,12 +277,18 @@ describe("the TypeSafe adapter", () => {
     }
 
     const echo = stub(() => json({
-      detail: [{ type: "missing", loc: ["body", "model"], msg: "Field required", input: { state: TRACE, secret: "test-key" } }]
+      detail: [
+        { type: "missing", loc: ["body", "model"], msg: "Field required", input: { state: TRACE, secret: "test-key" } },
+        { type: "string_type", loc: ["body", "state", "input", "Can I get a refund?"], msg: "Input should be a valid string", input: 1 }
+      ]
     }, 422, { "x-typesafe-request-id": "req_422" }));
     const rejected = await failure(run(JEV, echo));
     expect(rejected).toMatchObject({ failureKind: "provider_rejected_request", observed: { requestId: "req_422" } });
+    // A location stops at `state`: what follows it names the trace.
     expect(rejected.providerError).toEqual({
-      type: "validation_error", code: null, param: null, message: "body.model: Field required", raw: null, upstreamProvider: null
+      type: null, code: null, param: null,
+      message: "body.model: Field required; body.state: Input should be a valid string",
+      raw: null, upstreamProvider: null
     });
     const everything = JSON.stringify({ message: rejected.message, detail: rejected.providerError, observed: rejected.observed });
     expect(everything).not.toContain("Can I get a refund?");

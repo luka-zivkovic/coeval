@@ -2,8 +2,9 @@ import type { StructuredVerdict, VerdictSpec } from "../llm/verdict-spec.js";
 import { MockJudgeProvider } from "../llm/mock.js";
 import type { Trace } from "../schema.js";
 import {
+  TypedQuestionStateError,
   parseTypedQuestionResponse,
-  typedQuestionRequestBody,
+  typedQuestionRequestText,
   type TypedQuestionEvaluator,
   type TypedQuestionVerdict
 } from "../protocols/typed-question.js";
@@ -323,18 +324,27 @@ export async function executeTypedQuestion(input: TypedQuestionExecutionInput): 
   const binding = input.binding;
   assertTypedQuestionBinding(binding);
   const { threshold, question } = input.evaluator;
-  if (!(threshold > 0 && threshold < 1)) {
+  if (typeof threshold !== "number" || !(threshold > 0 && threshold < 1)) {
     throw new EvaluatorCallError("internal", "a typed-question threshold lies strictly between 0 and 1", { physicalCall: false });
   }
   if (question.type !== "noul" || !question.instructions || !question.criteria.true || !question.criteria.false) {
     throw new EvaluatorCallError("internal", "a typed-question question is a noul question with instructions and both criteria", { physicalCall: false });
+  }
+  let body: string;
+  try {
+    body = typedQuestionRequestText(binding.modelId, input.evaluator, input.trace);
+  } catch (error) {
+    if (error instanceof TypedQuestionStateError) {
+      throw new EvaluatorCallError("internal", `typed-question/v1 can't send this trace: ${error.message}`, { physicalCall: false });
+    }
+    throw error;
   }
   const apiKey = input.apiKey;
   assertCredential(binding.provider, apiKey);
   const { status, json, requestId } = await callProviderOnce({
     url: `${MANAGED_BASE_URLS.typesafe}${TYPESAFE_PATH}`,
     headers: typesafeHeaders(apiKey),
-    body: JSON.stringify(typedQuestionRequestBody(binding.modelId, input.evaluator, input.trace)),
+    body,
     requestIdHeader: TYPESAFE_REQUEST_ID_HEADER,
     errorDetail: (body) => typesafeErrorDetail(body, apiKey),
     upstreamFor: () => null

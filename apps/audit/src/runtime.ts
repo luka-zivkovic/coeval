@@ -59,8 +59,9 @@ export type {
 export {
   TYPED_QUESTION_KEY,
   TYPED_QUESTION_PROTOCOL,
+  TypedQuestionStateError,
   parseTypedQuestionResponse,
-  typedQuestionRequestBody,
-  typedQuestionState
+  typedQuestionRequestText,
+  typedQuestionStateText
 } from "./protocols/typed-question.js";
 export type { TypedQuestion, TypedQuestionEvaluator, TypedQuestionVerdict } from "./protocols/typed-question.js";

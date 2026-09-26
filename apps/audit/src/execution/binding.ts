@@ -5,6 +5,7 @@ import {
   type PromptedProviderId,
   type PromptedVerdictProtocolId
 } from "../protocols/verdict-protocols.js";
+import { TYPED_QUESTION_PROTOCOL } from "../protocols/typed-question.js";
 import { EvaluatorCallError } from "./failure.js";
 
 // The execution binding exactly as Rubrist's shared contract defines it
@@ -13,7 +14,7 @@ import { EvaluatorCallError } from "./failure.js";
 // two equal.
 
 export type ExecutionProviderId = PromptedProviderId | "typesafe";
-export type VerdictProtocolId = PromptedVerdictProtocolId | "typed-question/v1";
+export type VerdictProtocolId = PromptedVerdictProtocolId | typeof TYPED_QUESTION_PROTOCOL;
 
 export type ReasoningSettings =
   | {
@@ -45,7 +46,7 @@ export type PromptedExecutionBinding = ExecutionBinding & {
 /** A binding the typed-question adapter runs: TypeSafe on typed-question/v1. */
 export type TypedQuestionExecutionBinding = ExecutionBinding & {
   provider: "typesafe";
-  verdictProtocol: "typed-question/v1";
+  verdictProtocol: typeof TYPED_QUESTION_PROTOCOL;
 };
 
 /** Managed endpoints, called exactly; nothing in the environment can redirect them. */
@@ -83,7 +84,7 @@ function refuse(message: string): never {
  * repeats the rules that would otherwise produce a different request.
  */
 export function assertPromptedBinding(binding: ExecutionBinding): asserts binding is PromptedExecutionBinding {
-  if (binding.provider === "typesafe" || binding.verdictProtocol === "typed-question/v1") {
+  if (binding.provider === "typesafe" || binding.verdictProtocol === TYPED_QUESTION_PROTOCOL) {
     refuse("typed-question evaluators run through the typed-question adapter, not the prompted ones");
   }
   const protocol = binding.verdictProtocol;
@@ -113,8 +114,8 @@ export function assertPromptedBinding(binding: ExecutionBinding): asserts bindin
  * sampling, reasoning, token limit, or routing, none of which it takes.
  */
 export function assertTypedQuestionBinding(binding: ExecutionBinding): asserts binding is TypedQuestionExecutionBinding {
-  if (binding.provider !== "typesafe" || binding.verdictProtocol !== "typed-question/v1") {
-    refuse("typed-question/v1 runs on the typesafe provider, and the typesafe provider runs only it");
+  if (binding.provider !== "typesafe" || binding.verdictProtocol !== TYPED_QUESTION_PROTOCOL) {
+    refuse(`${TYPED_QUESTION_PROTOCOL} runs on the typesafe provider, and the typesafe provider runs only it`);
   }
   if (binding.endpoint.kind !== "managed") refuse("typesafe bindings call the managed endpoint");
   if (binding.sampling.temperature !== null || binding.sampling.topP !== null) refuse("typesafe takes no sampling settings");
