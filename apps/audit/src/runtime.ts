@@ -35,11 +35,32 @@ export {
   MANAGED_BASE_URLS,
   assertCredential,
   assertPromptedBinding,
+  assertTypedQuestionBinding,
   endpointBaseUrlDigest,
   resolveEndpointBaseUrl
 } from "./execution/binding.js";
-export type { ExecutionBinding, PromptedExecutionBinding, ReasoningSettings } from "./execution/binding.js";
+export type {
+  ExecutionBinding,
+  PromptedExecutionBinding,
+  ReasoningSettings,
+  TypedQuestionExecutionBinding
+} from "./execution/binding.js";
 export { EvaluatorCallError, failureKindForStatus } from "./execution/failure.js";
 export type { EvaluatorFailureKind, ObservedProvenance, ProviderErrorDetail, TokenUsage } from "./execution/failure.js";
-export { buildVerdictHttpRequest, executeVerdict } from "./execution/execute.js";
-export type { ExecutionFetch, VerdictExecutionInput, VerdictExecutionResult, VerdictHttpRequest } from "./execution/execute.js";
+export { buildVerdictHttpRequest, executeTypedQuestion, executeVerdict } from "./execution/execute.js";
+export type {
+  ExecutionFetch,
+  TypedQuestionExecutionInput,
+  TypedQuestionExecutionResult,
+  VerdictExecutionInput,
+  VerdictExecutionResult,
+  VerdictHttpRequest
+} from "./execution/execute.js";
+export {
+  TYPED_QUESTION_KEY,
+  TYPED_QUESTION_PROTOCOL,
+  parseTypedQuestionResponse,
+  typedQuestionRequestBody,
+  typedQuestionState
+} from "./protocols/typed-question.js";
+export type { TypedQuestion, TypedQuestionEvaluator, TypedQuestionVerdict } from "./protocols/typed-question.js";

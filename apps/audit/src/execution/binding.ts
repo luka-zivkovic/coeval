@@ -42,11 +42,18 @@ export type PromptedExecutionBinding = ExecutionBinding & {
   verdictProtocol: PromptedVerdictProtocolId;
 };
 
+/** A binding the typed-question adapter runs: TypeSafe on typed-question/v1. */
+export type TypedQuestionExecutionBinding = ExecutionBinding & {
+  provider: "typesafe";
+  verdictProtocol: "typed-question/v1";
+};
+
 /** Managed endpoints, called exactly; nothing in the environment can redirect them. */
 export const MANAGED_BASE_URLS = {
   anthropic: "https://api.anthropic.com/v1",
   openai: "https://api.openai.com/v1",
-  openrouter: "https://openrouter.ai/api/v1"
+  openrouter: "https://openrouter.ai/api/v1",
+  typesafe: "https://api.typesafe.ai/v1"
 } as const;
 
 /**
@@ -77,7 +84,7 @@ function refuse(message: string): never {
  */
 export function assertPromptedBinding(binding: ExecutionBinding): asserts binding is PromptedExecutionBinding {
   if (binding.provider === "typesafe" || binding.verdictProtocol === "typed-question/v1") {
-    refuse("typed-question evaluators run on the typesafe provider, which the prompted adapters don't cover");
+    refuse("typed-question evaluators run through the typed-question adapter, not the prompted ones");
   }
   const protocol = binding.verdictProtocol;
   if (!(PROMPTED_VERDICT_PROTOCOLS as readonly string[]).includes(protocol) || !verdictProtocolRunsOn(protocol, binding.provider)) {
@@ -98,6 +105,22 @@ export function assertPromptedBinding(binding: ExecutionBinding): asserts bindin
   if (binding.provider === "anthropic" && binding.outputTokenLimit === null) {
     refuse("Anthropic requires an output token limit");
   }
+}
+
+/**
+ * Refuses, before any call, a binding the typed-question adapter can't send
+ * exactly: TypeSafe on typed-question/v1 at its managed endpoint, with no
+ * sampling, reasoning, token limit, or routing, none of which it takes.
+ */
+export function assertTypedQuestionBinding(binding: ExecutionBinding): asserts binding is TypedQuestionExecutionBinding {
+  if (binding.provider !== "typesafe" || binding.verdictProtocol !== "typed-question/v1") {
+    refuse("typed-question/v1 runs on the typesafe provider, and the typesafe provider runs only it");
+  }
+  if (binding.endpoint.kind !== "managed") refuse("typesafe bindings call the managed endpoint");
+  if (binding.sampling.temperature !== null || binding.sampling.topP !== null) refuse("typesafe takes no sampling settings");
+  if (binding.reasoning !== null) refuse("typesafe has no reasoning shape");
+  if (binding.outputTokenLimit !== null) refuse("typesafe takes no output token limit");
+  if (binding.routing !== null) refuse("only OpenRouter bindings have routing");
 }
 
 /**
@@ -134,7 +157,7 @@ export function resolveEndpointBaseUrl(binding: PromptedExecutionBinding, custom
  * Refuses, before sending, a credential that isn't valid header text, so it
  * can't surface in a transport error. The message never quotes it.
  */
-export function assertCredential(provider: PromptedExecutionBinding["provider"], apiKey: string | null): asserts apiKey is string {
+export function assertCredential(provider: ExecutionProviderId, apiKey: string | null): asserts apiKey is string {
   if (apiKey === null || apiKey.length === 0) {
     throw new EvaluatorCallError("provider_unavailable", `no ${provider} credential is available`, { physicalCall: false });
   }

@@ -18,7 +18,7 @@ import {
 // change means a new protocol version and so a new evaluator identity.
 //
 // `typed-question/v1` is not here: it asks a typed-question model a question,
-// not a judge a rubric, and arrives with the typesafe provider (Batch 8E).
+// not a judge a rubric, so it has its own module (typed-question.ts).
 
 export const PROMPTED_VERDICT_PROTOCOLS = [
   "anthropic.structured-output/v1",
