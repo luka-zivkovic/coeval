@@ -26,20 +26,10 @@
       "reason": "This cohesive database-backed suite proves one append-only study, coding, taxonomy, assignment, and closure evidence lifecycle; isolated scenarios reuse one expensive parameterized seeding helper.",
       "revisit": "Revisit if an independent lifecycle enters the suite or common setup can be extracted without obscuring ordering, concurrency, and closure invariants."
     },
-    "contracts/fixtures/binary-calibration-v1.conformance.json": {
-      "classification": "structural_exception",
-      "reason": "This is an exact-byte, digest-pinned interoperability corpus.",
-      "revisit": "Change only through the versioned contract process; never split for source-file size."
-    },
     "apps/api/test/analysis-population-pg.test.ts": {
       "classification": "structural_exception",
       "reason": "This cohesive database-backed suite proves one population freeze, exclusion, immutable revision, and deterministic draw evidence pipeline; isolated scenarios reuse one expensive parameterized seeding helper.",
       "revisit": "Revisit if an independent lifecycle enters the suite or common setup can be extracted without obscuring snapshot, exclusion, and draw invariants."
-    },
-    "apps/api/src/lib/binary-calibration.ts": {
-      "classification": "structural_exception",
-      "reason": "One exact canonical artifact pipeline keeps constants and binary64 primitives, private-ledger verification, artifact construction/parsing/verification, and ordered metric, lineage, and bound checks reviewable in execution order.",
-      "revisit": "Revisit if a second contract version or independent artifact family enters the file; do not split canonical v1 stages unless exact byte, operation-order, behavior, and root-binding invariants remain reviewable."
     },
     "apps/api/test/governed-review-pg.test.ts": {
       "classification": "structural_exception",
@@ -74,7 +64,7 @@
     "apps/api/src/lib/binary-calibration-v2.ts": {
       "classification": "structural_exception",
       "reason": "One exact canonical artifact pipeline keeps constants and binary64 primitives, private-ledger verification, artifact construction/parsing/verification, and ordered metric, lineage, and bound checks reviewable in execution order.",
-      "revisit": "Revisit if a second contract version or independent artifact family enters the file; do not split canonical v1 stages unless exact byte, operation-order, behavior, and root-binding invariants remain reviewable. The v1 module is removed in Batch 8D, when runtime emission moves to v2."
+      "revisit": "Revisit if a second contract version or independent artifact family enters the file; do not split canonical stages unless exact byte, operation-order, behavior, and root-binding invariants remain reviewable."
     },
     "contracts/skill-format-v2.schema.json": {
       "classification": "structural_exception",

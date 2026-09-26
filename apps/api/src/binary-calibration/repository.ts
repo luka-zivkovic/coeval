@@ -1,10 +1,9 @@
-import { createHash } from "node:crypto";
 import type {
-  BinaryCalibrationArtifact,
-  BinaryCalibrationCompletionEligibilityReason,
-  BinaryCalibrationErrorCode,
-  BinaryCalibrationPrivateProviderObservation,
-  ModelBinding
+  BinaryCalibrationV2Artifact,
+  BinaryCalibrationV2CompletionEligibilityReason,
+  BinaryCalibrationV2PrivateProviderObservation,
+  EvaluatorItemState,
+  ExecutionBinding
 } from "@rubrist/shared";
 
 export type BinaryCalibrationProjectRole = "owner" | "member";
@@ -99,17 +98,6 @@ export interface BinaryCalibrationArtifactStatusProjection {
 }
 
 /**
- * Digest basis for a custom endpoint: SHA-256 over the UTF-8 bytes of the
- * domain-separated exact stored URL. Callers must not normalize or resolve it.
- */
-export function binaryCalibrationBaseUrlDigest(baseUrl: string): string {
-  return `sha256:${createHash("sha256")
-    .update("rubrist/binary-calibration-base-url/v1\0", "utf8")
-    .update(baseUrl, "utf8")
-    .digest("hex")}`;
-}
-
-/**
  * HTTP/session-facing persistence. This surface intentionally cannot load a
  * sealed item or the private ledger. Authentication is resolved before calls;
  * every read remains project-scoped to prevent cross-project identifier leaks.
@@ -141,17 +129,6 @@ export interface BinaryCalibrationExecutionClaim {
   claimExpiresAt: string;
 }
 
-export interface BinaryCalibrationRequestedModelBinding {
-  provider: string;
-  modelId: string;
-  modelVersion: string;
-  temperatureDecimal: string;
-  topPDecimal: string | null;
-  endpointKind: "managed" | "custom";
-  baseUrlDigest: string | null;
-  requestedBindingDigest: string;
-}
-
 export interface BinaryCalibrationAuthorizedRun {
   claim: BinaryCalibrationExecutionClaim;
   projectId: string;
@@ -159,14 +136,14 @@ export interface BinaryCalibrationAuthorizedRun {
   revisionDigest: string;
   itemCount: number;
   skillVersionId: string;
-  requestedModelBinding: BinaryCalibrationRequestedModelBinding;
-  /** Exact stored binding used for provider construction; never persisted in public bytes. */
-  executionModelBinding: ModelBinding;
+  /** The execution binding the run pins, which every call sends exactly (ADR-0014 section 2). */
+  executionBinding: ExecutionBinding;
+  /** A custom provider's configured base URL, checked against the binding's digest; never in public bytes. */
+  customEndpointUrl: string | null;
   providerDataHandling: BinaryCalibrationProviderDataHandlingPolicy;
   evaluator: {
     rubricMarkdown: string;
     prompt: string;
-    outputSchema: unknown;
   };
   authorization: {
     snapshotDigest: string;
@@ -185,25 +162,20 @@ export interface BinaryCalibrationAttemptWorkItem {
 }
 
 export interface CompleteBinaryCalibrationAttemptInput {
-  terminalEvaluatorOutcome:
-    | "evaluator_pass"
-    | "evaluator_fail"
-    | "abstained"
-    | "errored"
-    | "unevaluated";
+  /** The shared item result (ADR-0014 section 6). */
+  result: EvaluatorItemState;
   attemptState: "not_started" | "started" | "terminal";
-  errorCode: BinaryCalibrationErrorCode | null;
-  providerObservation: BinaryCalibrationPrivateProviderObservation;
+  providerObservation: BinaryCalibrationV2PrivateProviderObservation;
 }
 
 export interface BinaryCalibrationMintResult {
   run: BinaryCalibrationRunProjection;
-  artifact: BinaryCalibrationArtifact;
+  artifact: BinaryCalibrationV2Artifact;
   artifactCopy: BinaryCalibrationArtifactCopy;
   completion: {
     state: "protected" | "exposed";
     eligibility: "eligible" | "ineligible";
-    reasons: BinaryCalibrationCompletionEligibilityReason[];
+    reasons: BinaryCalibrationV2CompletionEligibilityReason[];
     snapshotDigest: string;
     eventId: string;
     recordedAt: string;

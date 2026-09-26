@@ -1,19 +1,22 @@
+import { createHash } from "node:crypto";
 import {
   EVALUATOR_SUITE_MANIFEST_V2_CONTRACT,
   EvaluatorSuiteManifestV2Schema,
+  type CreateEvaluatorSuiteManifestInput,
   type EvaluatorIdentity,
   type EvaluatorSuiteManifestV2,
   type EvaluatorSuiteManifestV2Member,
-  type EvaluatorSuiteTrialPlan
+  type EvaluatorSuiteTrialPlan,
+  type SkillVersion
 } from "@rubrist/shared";
 import { canonicalJson, sha256Digest } from "./canonical-json.js";
 import { criterionVersionDigest } from "./criterion-digest.js";
-import { evaluatorOutputContractDigestV2, skillDigestV2 } from "./evaluator-identity.js";
+import { evaluatorIdentityFor, evaluatorOutputContractDigestV2, skillDigestV2 } from "./evaluator-identity.js";
+import { EvaluatorSuiteBindingError } from "../repository/errors.js";
 
 // Evaluator suite manifest v2 (Rubrist ADR-0014 section 7;
-// contracts/evaluator-suite-manifest-v2.md). Verification is v1's; members
-// carry the v2 skillDigest and output-contract digest. Runtime emission moves
-// here in 8D, when the v1 module is removed.
+// contracts/evaluator-suite-manifest-v2.md). Members carry the v2 skillDigest
+// and output-contract digest of each evaluator's identity.
 
 export interface EvaluatorSuiteCriterionV2Input {
   criterionId: string;
@@ -52,6 +55,34 @@ export function evaluatorSuiteManifestV2Digest(
 ): string {
   const { manifestDigest: _excluded, ...unsigned } = manifest as EvaluatorSuiteManifestV2;
   return sha256Digest(unsigned);
+}
+
+/** A member's evaluator: its ids and identity, or a binding error for a version without a valid identity. */
+export function suiteMemberEvaluator(
+  version: SkillVersion,
+  position: number
+): Pick<EvaluatorSuiteManifestV2MemberInput, "skillId" | "skillVersionId" | "identity"> {
+  try {
+    return { skillId: version.skillId, skillVersionId: version.id, identity: evaluatorIdentityFor(version) };
+  } catch {
+    throw new EvaluatorSuiteBindingError(`Suite member ${position} binds an evaluator version without a valid v2 identity.`);
+  }
+}
+
+/** SHA-256 over the exact canonical manifest bytes, including manifestDigest. */
+export function evaluatorSuiteArtifactDigest(bytes: Uint8Array): string {
+  return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+}
+
+export function evaluatorSuiteCreateRequestDigest(input: CreateEvaluatorSuiteManifestInput): string {
+  return sha256Digest({
+    suiteId: input.suiteId ?? null,
+    members: input.members.map((member) => ({
+      criterionVersionId: member.criterionVersionId,
+      skillVersionId: member.skillVersionId
+    })),
+    trialPlan: input.trialPlan
+  });
 }
 
 export function buildEvaluatorSuiteManifestV2(input: BuildEvaluatorSuiteManifestV2Input): EvaluatorSuiteManifestV2 {

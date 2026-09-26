@@ -9,7 +9,7 @@ import {
 } from "../src/lib/binary-calibration-api.js";
 
 const fixtureBytes = readFileSync(new URL(
-  "../../../contracts/fixtures/binary-calibration-v1.complete.json",
+  "../../../contracts/fixtures/binary-calibration-v2.complete.json",
   import.meta.url
 ));
 const fixture = JSON.parse(fixtureBytes.toString("utf8")) as {

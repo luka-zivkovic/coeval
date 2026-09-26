@@ -141,7 +141,7 @@ export interface ProductionCalibrationWilsonInterval {
 
 /**
  * Wilson score interval for a binomial proportion. The default z and binary64
- * operation order are pinned by contracts/binary-calibration-v1.md; do not
+ * operation order are pinned by contracts/binary-calibration-v2.md; do not
  * algebraically simplify them. Explicit endpoint bounds avoid rounding away
  * from 0 or 1 and falsely flagging perfectly correct predictions as drift.
  *

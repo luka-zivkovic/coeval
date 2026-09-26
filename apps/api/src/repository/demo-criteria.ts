@@ -10,16 +10,17 @@ import type {
   CreatedCriterion,
   CreateEvaluatorSuiteManifestInput,
   EvaluatorSuite,
-  EvaluatorSuiteManifest,
+  EvaluatorSuiteManifestV2,
   Skill,
   SkillVersion
 } from "@rubrist/shared";
 import {
-  buildEvaluatorSuiteManifest,
-  canonicalEvaluatorSuiteManifestBytes,
+  buildEvaluatorSuiteManifestV2,
+  canonicalEvaluatorSuiteManifestV2Bytes,
   evaluatorSuiteCreateRequestDigest,
-  parseCanonicalEvaluatorSuiteManifestBytes
-} from "../lib/evaluator-suite.js";
+  parseCanonicalEvaluatorSuiteManifestV2Bytes,
+  suiteMemberEvaluator
+} from "../lib/evaluator-suite-manifest-v2.js";
 import { criterionVersionDigest } from "../lib/criterion-digest.js";
 import type { DemoRepositoryStore } from "./demo-store.js";
 import {
@@ -193,7 +194,7 @@ export class DemoCriterionSuiteRepository implements CriterionSuiteRepositoryPor
     projectId: string,
     input: CreateEvaluatorSuiteManifestInput,
     context: { actorUserId?: string | undefined }
-  ): Promise<EvaluatorSuiteManifest> {
+  ): Promise<EvaluatorSuiteManifestV2> {
     if (
       new Set(input.members.map((member) => member.criterionVersionId)).size !== input.members.length ||
       new Set(input.members.map((member) => member.skillVersionId)).size !== input.members.length
@@ -207,7 +208,7 @@ export class DemoCriterionSuiteRepository implements CriterionSuiteRepositoryPor
       if (retried.requestDigest !== evaluatorSuiteCreateRequestDigest(input)) {
         throw new EvaluatorSuiteIdempotencyConflictError(input.idempotencyKey);
       }
-      return parseCanonicalEvaluatorSuiteManifestBytes(retried.canonicalBytes);
+      return parseCanonicalEvaluatorSuiteManifestV2Bytes(retried.canonicalBytes);
     }
     const existingSuite = input.suiteId
       ? this.store.evaluatorSuites.find((suite) => suite.projectId === projectId && suite.id === input.suiteId)
@@ -232,7 +233,7 @@ export class DemoCriterionSuiteRepository implements CriterionSuiteRepositoryPor
         criterionVersionId: criterionVersion.id,
         criterionName: criterionVersion.name,
         criterionDefinition: criterionVersion.definition,
-        skillVersion
+        ...suiteMemberEvaluator(skillVersion, position)
       };
     });
     if (new Set(memberInputs.map((member) => member.criterionId)).size !== memberInputs.length) {
@@ -243,7 +244,7 @@ export class DemoCriterionSuiteRepository implements CriterionSuiteRepositoryPor
     const priorRevisions = this.store.evaluatorSuiteManifests
       .filter((entry) => entry.manifest.projectId === projectId && entry.manifest.suiteId === suiteId)
       .map((entry) => entry.manifest.revision);
-    const manifest = buildEvaluatorSuiteManifest({
+    const manifest = buildEvaluatorSuiteManifestV2({
       manifestId: `manifest_${randomUUID()}`,
       suiteId,
       projectId,
@@ -251,8 +252,8 @@ export class DemoCriterionSuiteRepository implements CriterionSuiteRepositoryPor
       members: memberInputs,
       trialPlan: input.trialPlan
     });
-    const canonicalBytes = canonicalEvaluatorSuiteManifestBytes(manifest);
-    parseCanonicalEvaluatorSuiteManifestBytes(canonicalBytes);
+    const canonicalBytes = canonicalEvaluatorSuiteManifestV2Bytes(manifest);
+    parseCanonicalEvaluatorSuiteManifestV2Bytes(canonicalBytes);
     if (!existingSuite) {
       this.store.evaluatorSuites.push({
         id: suiteId,
@@ -273,7 +274,7 @@ export class DemoCriterionSuiteRepository implements CriterionSuiteRepositoryPor
   async listEvaluatorSuiteManifests(
     projectId: string,
     suiteId?: string | undefined
-  ): Promise<EvaluatorSuiteManifest[]> {
+  ): Promise<EvaluatorSuiteManifestV2[]> {
     return this.store.evaluatorSuiteManifests
       .filter((entry) => entry.manifest.projectId === projectId && (!suiteId || entry.manifest.suiteId === suiteId))
       .sort((left, right) =>
@@ -281,16 +282,16 @@ export class DemoCriterionSuiteRepository implements CriterionSuiteRepositoryPor
         right.manifest.revision - left.manifest.revision ||
         right.manifest.manifestId.localeCompare(left.manifest.manifestId)
       )
-      .map((entry) => parseCanonicalEvaluatorSuiteManifestBytes(entry.canonicalBytes));
+      .map((entry) => parseCanonicalEvaluatorSuiteManifestV2Bytes(entry.canonicalBytes));
   }
 
   async getEvaluatorSuiteManifest(
     projectId: string,
     manifestId: string
-  ): Promise<EvaluatorSuiteManifest | null> {
+  ): Promise<EvaluatorSuiteManifestV2 | null> {
     const entry = this.store.evaluatorSuiteManifests.find((candidate) =>
       candidate.manifest.projectId === projectId && candidate.manifest.manifestId === manifestId
     );
-    return entry ? parseCanonicalEvaluatorSuiteManifestBytes(entry.canonicalBytes) : null;
+    return entry ? parseCanonicalEvaluatorSuiteManifestV2Bytes(entry.canonicalBytes) : null;
   }
 }

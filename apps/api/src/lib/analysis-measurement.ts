@@ -9,7 +9,7 @@ import {
   type AnalysisGovernedDisagreementMeasurement,
   type AnalysisTaxonomyChurn,
   type AnalysisWorkflowMeasurementReport,
-  type BinaryCalibrationArtifact
+  type BinaryCalibrationV2Artifact
 } from "@rubrist/shared";
 import { canonicalGovernedJsonV1 } from "./governed-content-digest.js";
 
@@ -125,7 +125,7 @@ export function exactDurationMilliseconds(start: string, end: string): string {
 }
 
 export function analysisCalibrationTrialMeasurements(
-  artifact: BinaryCalibrationArtifact
+  artifact: BinaryCalibrationV2Artifact
 ): AnalysisCalibrationTrialMeasurement[] {
   return artifact.trials.map((trial) => ({
     trialIndex: trial.trialIndex,
@@ -134,7 +134,7 @@ export function analysisCalibrationTrialMeasurements(
     classified: trial.outcomes.classified,
     abstained: trial.outcomes.abstained,
     errored: trial.outcomes.errored,
-    unevaluated: trial.outcomes.unevaluated,
+    notAttempted: trial.outcomes.notAttempted,
     falsePass: trial.errorDirections.falsePass,
     falseFail: trial.errorDirections.falseFail,
     classifiedCoverage: trial.metrics.classifiedCoverage

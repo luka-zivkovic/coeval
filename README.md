@@ -387,10 +387,11 @@ available. New release integrations submit `purpose: "release_evidence"` to
 `POST /api/v1/judge/batch`, verify the policy-free assessment receipt, and
 apply thresholds or ship/hold policy in the release layer—not in Rubrist.
 Receipt v1 is a closed wire contract with portable schema and interoperability
-fixtures in [`contracts/`](contracts/). Calibration transport is now the
-separate aggregate-only `rubrist/binary-calibration/v1` contract accepted by
-ADR-0009. The current Postgres runtime executes one trial per governed sealed
-binary item and mints that separate artifact; it is not added to receipt v1.
+fixtures in [`contracts/`](contracts/). Calibration transport is the
+separate aggregate-only `rubrist/binary-calibration/v2` contract (ADR-0009, as
+ADR-0014 revises it). The current Postgres runtime executes one trial per
+governed sealed binary item through the evaluator's exact execution binding
+and mints that separate artifact; it is not added to the receipt.
 Dailies independently verifies the frozen calibration contract and corpus and
 consumes explicitly configured local artifacts through config v6, policy v2,
 report v6, runner, and CLI paths. It performs no network or latest-artifact
@@ -457,8 +458,10 @@ In Postgres mode, a project owner can launch an explicit
 `{ kind: "single", trialsPerItem: 1 }` binary calibration from the governed
 human-truth screen. The run binds one exact binary evaluator, criterion,
 governed sealed-validation revision, selection provenance, provider policy,
-and authorization/completion exposure snapshots. The worker records call
-start durably before its one provider dispatch; a stranded started attempt is
+and authorization/completion exposure snapshots. Each attempt is one call that
+sends exactly the pinned execution binding. The worker records call start
+durably just before that dispatch, after every check that can refuse it; a
+stranded started attempt is
 accounted permanently as `outcome_unknown` and is never called again in that
 run. An explicit binary `ambiguous` result is recorded as `abstained`: it is a
 valid terminal outcome that lowers classified coverage and never enters the
@@ -466,7 +469,8 @@ confusion matrix.
 
 The immutable public-contract artifact is aggregate-only. It carries support,
 coverage, confusion-matrix cells, exact metrics and Wilson bounds, error and
-unevaluated counts, and requested/observed provider provenance without item
+not-attempted counts, the evaluator's execution binding and definition digest,
+and requested/observed provider provenance without item
 identity, labels, payloads, rationale, or request/response identifiers. Its
 private salted ledger is used only inside atomic minting and has no HTTP,
 project-key, browser, operator-export, or application read surface.
@@ -484,7 +488,7 @@ contract and conformance corpus, consumes explicitly configured local
 artifacts, and emits calibration-aware release reports. It never fetches a
 latest artifact or Rubrist status, and it has no access to the private ledger.
 
-See the [binary-calibration contract](contracts/binary-calibration-v1.md),
+See the [binary-calibration contract](contracts/binary-calibration-v2.md),
 [ADR-0009](docs/decisions/0009-binary-calibration-artifact-contract.md), and
 the [runtime architecture](docs/architecture.md).
 
@@ -504,9 +508,9 @@ at execution time. Single-criterion routes continue to work for projects with
 one criterion and fail closed when selection would be ambiguous.
 
 An owner can publish an immutable
-[`rubrist/evaluator-suite-manifest/v1`](contracts/evaluator-suite-manifest-v1.md)
+[`rubrist/evaluator-suite-manifest/v2`](contracts/evaluator-suite-manifest-v2.md)
 artifact that orders criterion definitions and binds each one to an exact
-evaluator version, frozen `skillDigest`, output contract, applicability rule,
+evaluator version, its v2 `skillDigest`, output contract, applicability rule,
 and optional independent-trial plan. The manifest contains no release roles,
 weights, thresholds, aggregate score, or ship decision. Each criterion is
 still assessed through a separate, unchanged receipt-v1 artifact; Dailies or

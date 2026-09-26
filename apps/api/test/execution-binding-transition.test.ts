@@ -9,7 +9,6 @@ import {
   LegacyEvidenceUnsupportedError,
   executionBindingFromInput,
   executionBindingInputProblem,
-  legacyCalibrationBinding,
   legacyModelBinding,
   verifiedEndpointUrl
 } from "../src/lib/execution-binding.js";
@@ -59,20 +58,6 @@ describe("the temporary v1 evidence view", () => {
     expect(legacyModelBinding(view(UNSET_TEMPERATURE))).toBeNull();
     expect(legacyModelBinding(view(OPENAI_OVERRIDE))).toBeNull();
     expect(() => skillDigest({ ...view(UNSET_TEMPERATURE) } as SkillVersion)).toThrow(LegacyEvidenceUnsupportedError);
-  });
-
-  it("lets sealed calibration v1 run only a binding the v1 providers send exactly", () => {
-    expect(legacyCalibrationBinding(view(SEEDED_BINDING))).toBeNull();
-    const forcedTool: ExecutionBinding = { ...SEEDED_BINDING, verdictProtocol: "anthropic.forced-tool/v1", reasoning: null };
-    expect(legacyCalibrationBinding(view(forcedTool))).toMatchObject({ provider: "anthropic", temperature: 0 });
-    expect(legacyCalibrationBinding(view({ ...forcedTool, outputTokenLimit: 4_000 }))).toBeNull();
-    expect(legacyCalibrationBinding(view({ ...forcedTool, reasoning: SEEDED_BINDING.reasoning }))).toBeNull();
-    const openRouter: ExecutionBinding = {
-      ...forcedTool, provider: "openrouter", verdictProtocol: "openai.forced-function/v1", outputTokenLimit: null,
-      routing: { requireParameters: true, allowFallbacks: false }
-    };
-    expect(legacyCalibrationBinding(view(openRouter))).toBeNull();
-    expect(legacyCalibrationBinding(view(MOCK_BINDING))).toMatchObject({ provider: "mock" });
   });
 });
 

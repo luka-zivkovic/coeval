@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type {
-  BinaryCalibrationErrorCode,
-  BinaryCalibrationPrivateProviderObservation
+  BinaryCalibrationV2ErrorCode,
+  BinaryCalibrationV2PrivateProviderObservation
 } from "@rubrist/shared";
 import {
   BinaryCalibrationProviderError,
+  createBinaryCalibrationProviderExecutor,
   type BinaryCalibrationProviderExecutor
 } from "../src/binary-calibration/provider.js";
 import type {
@@ -30,22 +31,18 @@ function authorized(claim: BinaryCalibrationExecutionClaim): BinaryCalibrationAu
     revisionDigest: DIGEST,
     itemCount: 1,
     skillVersionId: "skill_version_1",
-    requestedModelBinding: {
+    executionBinding: {
       provider: "openai",
+      endpoint: { kind: "managed" },
       modelId: "gpt-pinned",
       modelVersion: "gpt-pinned",
-      temperatureDecimal: "0",
-      topPDecimal: null,
-      endpointKind: "managed",
-      baseUrlDigest: null,
-      requestedBindingDigest: DIGEST
+      sampling: { temperature: 0, topP: null },
+      reasoning: { family: "openai", effort: "low" },
+      outputTokenLimit: null,
+      verdictProtocol: "openai.structured-output/v1",
+      routing: null
     },
-    executionModelBinding: {
-      provider: "openai",
-      modelId: "gpt-pinned",
-      modelVersion: "gpt-pinned",
-      temperature: 0
-    },
+    customEndpointUrl: null,
     providerDataHandling: {
       executionEnvironment: "external_provider",
       policyId: "policy_1",
@@ -54,8 +51,7 @@ function authorized(claim: BinaryCalibrationExecutionClaim): BinaryCalibrationAu
     },
     evaluator: {
       rubricMarkdown: "PROMPT_CANARY",
-      prompt: "Judge {{rubric_markdown}}",
-      outputSchema: { type: "object" }
+      prompt: "Judge {{rubric_markdown}}"
     },
     authorization: {
       snapshotDigest: DIGEST,
@@ -72,7 +68,7 @@ class FakeExecutionRepository implements BinaryCalibrationExecutionRepository {
   claimAvailableAt = 0;
   attemptState: "not_started" | "started" | "terminal" = "not_started";
   physicalProviderCalls = 0;
-  recoveredError: BinaryCalibrationErrorCode | null = null;
+  recoveredError: BinaryCalibrationV2ErrorCode | null = null;
   completeInputs: CompleteBinaryCalibrationAttemptInput[] = [];
   finalizeCalls = 0;
   recoveryMarks = 0;
@@ -172,12 +168,13 @@ function successfulExecutor(onPhysicalCall: () => void): BinaryCalibrationProvid
     await beforePhysicalCall();
     onPhysicalCall();
     return {
-      terminalEvaluatorOutcome: "evaluator_pass",
+      outcome: "pass",
       providerObservation: {
         provider: "openai",
         observedModel: "gpt-observed",
         observedVersion: null,
-        systemFingerprint: "fp_observed"
+        systemFingerprint: "fp_observed",
+        upstreamProvider: null
       }
     };
   };
@@ -307,7 +304,8 @@ describe("sealed binary calibration worker", () => {
       await beforePhysicalCall();
       throw new BinaryCalibrationProviderError(
         "provider_rate_limit",
-        "safe typed message"
+        "safe typed message",
+        { physicalCall: true }
       );
     };
 
@@ -320,14 +318,14 @@ describe("sealed binary calibration worker", () => {
 
     expect(repository.physicalProviderCalls).toBe(1);
     expect(repository.completeInputs).toEqual([{
-      terminalEvaluatorOutcome: "errored",
+      result: { state: "failure", failureKind: "provider_rate_limit" },
       attemptState: "terminal",
-      errorCode: "provider_rate_limit",
       providerObservation: {
         provider: "openai",
         observedModel: null,
         observedVersion: null,
-        systemFingerprint: null
+        systemFingerprint: null,
+        upstreamProvider: null
       }
     }]);
     const persisted = JSON.stringify(repository.completeInputs);
@@ -348,13 +346,14 @@ describe("sealed binary calibration worker", () => {
       observedModel: "gpt-observed",
       observedVersion: null,
       systemFingerprint: "fp_observed",
+      upstreamProvider: null,
       requestId: "REQUEST_ID_CANARY",
       raw: "RAW_CANARY"
-    } as BinaryCalibrationPrivateProviderObservation;
+    } as BinaryCalibrationV2PrivateProviderObservation;
     const executeProvider: BinaryCalibrationProviderExecutor = async ({ beforePhysicalCall }) => {
       await beforePhysicalCall();
       return {
-        terminalEvaluatorOutcome: "evaluator_fail",
+        outcome: "fail",
         providerObservation: observation
       };
     };
@@ -370,7 +369,8 @@ describe("sealed binary calibration worker", () => {
       provider: "openai",
       observedModel: "gpt-observed",
       observedVersion: null,
-      systemFingerprint: "fp_observed"
+      systemFingerprint: "fp_observed",
+      upstreamProvider: null
     });
   });
 
@@ -379,12 +379,13 @@ describe("sealed binary calibration worker", () => {
     const executeProvider: BinaryCalibrationProviderExecutor = async ({ beforePhysicalCall }) => {
       await beforePhysicalCall();
       return {
-        terminalEvaluatorOutcome: "abstained",
+        outcome: "abstain",
         providerObservation: {
           provider: "openai",
           observedModel: "gpt-observed",
           observedVersion: null,
-          systemFingerprint: null
+          systemFingerprint: null,
+          upstreamProvider: null
         }
       };
     };
@@ -397,15 +398,74 @@ describe("sealed binary calibration worker", () => {
     })).resolves.toBe(MINT);
 
     expect(repository.completeInputs).toEqual([{
-      terminalEvaluatorOutcome: "abstained",
+      result: { state: "outcome", outcome: "abstain" },
       attemptState: "terminal",
-      errorCode: null,
       providerObservation: {
         provider: "openai",
         observedModel: "gpt-observed",
         observedVersion: null,
-        systemFingerprint: null
+        systemFingerprint: null,
+        upstreamProvider: null
       }
     }]);
+  });
+
+  it("keeps what a failed call observed, and nothing for a refusal before the call", async () => {
+    const observed = { model: "gpt-observed", systemFingerprint: "fp_1", requestId: "REQUEST_ID_CANARY", responseId: null, upstreamProvider: null, thinkingReturned: false, reasoningTokens: null };
+    const afterCall = new FakeExecutionRepository();
+    await processBinaryCalibrationRun({
+      repository: afterCall,
+      executeProvider: async ({ beforePhysicalCall }) => {
+        await beforePhysicalCall();
+        throw new BinaryCalibrationProviderError("invalid_evaluator_output", "cut off", { physicalCall: true, observed });
+      },
+      runId: "cal_run_1",
+      workerId: "worker_1"
+    });
+    expect(afterCall.completeInputs[0]).toEqual({
+      result: { state: "failure", failureKind: "invalid_evaluator_output" },
+      attemptState: "terminal",
+      providerObservation: { provider: "openai", observedModel: "gpt-observed", observedVersion: null, systemFingerprint: "fp_1", upstreamProvider: null }
+    });
+
+    const refused = new FakeExecutionRepository();
+    await processBinaryCalibrationRun({
+      repository: refused,
+      executeProvider: async () => {
+        throw new BinaryCalibrationProviderError("provider_unavailable", "no key", { physicalCall: false, observed });
+      },
+      runId: "cal_run_1",
+      workerId: "worker_1"
+    });
+    expect(refused.physicalProviderCalls).toBe(0);
+    expect(refused.completeInputs[0]?.providerObservation).toEqual({
+      provider: "openai", observedModel: null, observedVersion: null, systemFingerprint: null, upstreamProvider: null
+    });
+  });
+
+  it("runs each attempt as one executor call, counted once, with the provider's observation", async () => {
+    const repository = new FakeExecutionRepository();
+    const sent: string[] = [];
+    const executeProvider = createBinaryCalibrationProviderExecutor({
+      resolveProjectCredential: async () => "sk-project",
+      fetch: async (url, init) => {
+        sent.push(url);
+        expect(repository.physicalProviderCalls).toBe(sent.length);
+        expect(JSON.parse(init.body)).toMatchObject({ model: "gpt-pinned", reasoning_effort: "low" });
+        return new Response(JSON.stringify({
+          id: "c", model: "gpt-pinned-2026", system_fingerprint: "fp_2",
+          choices: [{ message: { content: JSON.stringify({ label: "fail", score: 0.1, rationale: "RATIONALE_CANARY" }) }, finish_reason: "stop" }]
+        }));
+      }
+    });
+    await expect(processBinaryCalibrationRun({ repository, executeProvider, runId: "cal_run_1", workerId: "worker_1" })).resolves.toBe(MINT);
+    expect(sent).toEqual(["https://api.openai.com/v1/chat/completions"]);
+    expect(repository.physicalProviderCalls).toBe(1);
+    expect(repository.completeInputs).toEqual([{
+      result: { state: "outcome", outcome: "fail" },
+      attemptState: "terminal",
+      providerObservation: { provider: "openai", observedModel: "gpt-pinned-2026", observedVersion: null, systemFingerprint: "fp_2", upstreamProvider: null }
+    }]);
+    expect(JSON.stringify(repository.completeInputs)).not.toContain("CANARY");
   });
 });

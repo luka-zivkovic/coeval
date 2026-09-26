@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { BinaryCalibrationArtifact, BinaryCalibrationWilsonRate } from "@rubrist/shared";
+import { describeExecutionBinding, type BinaryCalibrationV2Artifact, type BinaryCalibrationV2WilsonRate } from "@rubrist/shared";
 import { Activity, Download, Play, RefreshCcw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -256,7 +256,7 @@ export function RunEvidence({
   );
 }
 
-export function ArtifactEvidence({ artifact }: { artifact: BinaryCalibrationArtifact }) {
+export function ArtifactEvidence({ artifact }: { artifact: BinaryCalibrationV2Artifact }) {
   return (
     <div className="mt-4 grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
       <div className="space-y-3">
@@ -266,7 +266,7 @@ export function ArtifactEvidence({ artifact }: { artifact: BinaryCalibrationArti
         />
         <EvidenceCell
           label="Requested execution"
-          value={`${artifact.evaluator.requestedModelBinding.provider}/${artifact.evaluator.requestedModelBinding.modelId} · ${artifact.execution.providerDataHandling.executionEnvironment} · policy ${artifact.execution.providerDataHandling.policyId}`}
+          value={`${describeExecutionBinding(artifact.evaluator.identity.executionBinding)} · ${artifact.execution.providerDataHandling.executionEnvironment} · policy ${artifact.execution.providerDataHandling.policyId}`}
         />
         <EvidenceCell
           label="Evidence identity"
@@ -279,7 +279,7 @@ export function ArtifactEvidence({ artifact }: { artifact: BinaryCalibrationArti
             <div className="flex flex-wrap justify-between gap-2">
               <div className="font-serif text-[13px] font-medium">Trial {trial.trialIndex + 1} · {trial.status}</div>
               <div className="font-mono text-[9.5px] text-ink-4">
-                classified {trial.outcomes.classified}/{trial.outcomes.planned} · abstained {trial.outcomes.abstained} · errored {trial.outcomes.errored} · unevaluated {trial.outcomes.unevaluated}
+                classified {trial.outcomes.classified}/{trial.outcomes.planned} · abstained {trial.outcomes.abstained} · errored {trial.outcomes.errored} · not attempted {trial.outcomes.notAttempted}
               </div>
             </div>
             <MetricGrid artifact={artifact} trial={trial} />
@@ -288,7 +288,7 @@ export function ArtifactEvidence({ artifact }: { artifact: BinaryCalibrationArti
               <ul className="mt-1 space-y-1 font-mono text-[9.5px] text-ink-3">
                 {trial.providerIdentityGroups.map((group) => (
                   <li key={JSON.stringify(group)}>
-                    {group.observationCount} · {group.provider} · {group.identityStrength} · model {group.observedModel ?? "not observed"} · version {group.observedVersion ?? "not observed"} · fingerprint {group.systemFingerprint ?? "not observed"}
+                    {group.observationCount} · {group.provider} · {group.identityStrength} · model {group.observedModel ?? "not observed"} · version {group.observedVersion ?? "not observed"} · fingerprint {group.systemFingerprint ?? "not observed"}{group.upstreamProvider ? ` · upstream ${group.upstreamProvider}` : ""}
                   </li>
                 ))}
               </ul>
@@ -304,8 +304,8 @@ function MetricGrid({
   artifact,
   trial
 }: {
-  artifact: BinaryCalibrationArtifact;
-  trial: BinaryCalibrationArtifact["trials"][number];
+  artifact: BinaryCalibrationV2Artifact;
+  trial: BinaryCalibrationV2Artifact["trials"][number];
 }) {
   const metrics = [
     ["accuracy", rateText(trial.metrics.accuracy)],
@@ -330,12 +330,12 @@ function MetricGrid({
   );
 }
 
-function rateText(rate: BinaryCalibrationWilsonRate): string {
+function rateText(rate: BinaryCalibrationV2WilsonRate): string {
   if (rate.state === "undefined") return `undefined · ${rate.undefinedReason}`;
   return `${rate.numerator}/${rate.denominator} · Wilson 95% bits [${rate.interval.lowerBinary64}, ${rate.interval.upperBinary64}]`;
 }
 
-function exactRateText(rate: BinaryCalibrationArtifact["trials"][number]["metrics"]["positiveClassF1"]): string {
+function exactRateText(rate: BinaryCalibrationV2Artifact["trials"][number]["metrics"]["positiveClassF1"]): string {
   return rate.state === "defined"
     ? `${rate.numerator}/${rate.denominator} · exact fraction`
     : `undefined · ${rate.undefinedReason} · ${rate.numerator}/${rate.denominator}`;

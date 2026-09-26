@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z, type ZodType } from "zod";
-import { parseCanonicalBinaryCalibrationArtifactBytes } from "../lib/binary-calibration.js";
+import { parseCanonicalBinaryCalibrationV2ArtifactBytes } from "../lib/binary-calibration-v2.js";
 import {
   BINARY_CALIBRATION_CONTROL_BODY_BYTES,
   CreateBinaryCalibrationRunRequestSchema
@@ -170,7 +170,7 @@ export function createBinaryCalibrationArtifactRouter(
     if (storedDigest !== artifact.artifactDigest) {
       throw new Error("Persisted binary calibration artifact digest mismatch");
     }
-    const verified = parseCanonicalBinaryCalibrationArtifactBytes(artifact.canonicalBytes);
+    const verified = parseCanonicalBinaryCalibrationV2ArtifactBytes(artifact.canonicalBytes);
     if (artifact.artifactId !== requestedArtifactId ||
       verified.artifactId !== artifact.artifactId ||
       verified.calibrationRunId !== artifact.calibrationRunId ||

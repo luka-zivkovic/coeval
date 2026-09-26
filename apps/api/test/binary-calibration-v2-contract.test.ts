@@ -17,7 +17,6 @@ import {
   skillDigestV2FromInput,
   typedQuestionDigest
 } from "../src/lib/evaluator-identity.js";
-import { evaluatorOutputContractDigest } from "../src/lib/evaluator-suite.js";
 import { BINDINGS, DEFINITIONS, QUESTION } from "./fixtures/evaluator-v2-vectors.js";
 import {
   BINARY_CALIBRATION_V2_MAX_CANONICAL_BYTES,
@@ -351,7 +350,12 @@ describe("binary calibration artifact v2 contract (ADR-0014 section 7)", () => {
 
   it("keeps v1's output-contract formula for prompted definitions and defines one for typed questions", () => {
     const prompted = DEFINITIONS.prompted;
-    expect(evaluatorOutputContractDigestV2(prompted)).toBe(evaluatorOutputContractDigest(prompted));
+    expect(evaluatorOutputContractDigestV2(prompted)).toBe(sha256Digest({
+      outputSchema: prompted.outputSchema,
+      verdictKind: prompted.verdictKind,
+      scalarRange: prompted.scalarRange,
+      categoricalChoiceScores: prompted.categoricalChoiceScores
+    }));
     expect(evaluatorOutputContractDigestV2(DEFINITIONS.typedQuestion)).toBe(sha256Digest({
       kind: "typed-question", questionType: "noul", polarity: "true_is_pass", rationale: "not_provided"
     }));

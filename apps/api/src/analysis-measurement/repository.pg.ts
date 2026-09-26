@@ -8,9 +8,9 @@ import {
   AnalysisWorkflowMeasurementReportSchema,
   type AnalysisCalibrationMeasurement,
   type AnalysisWorkflowMeasurementReport,
-  type BinaryCalibrationArtifact
+  type BinaryCalibrationV2Artifact
 } from "@rubrist/shared";
-import { parseCanonicalBinaryCalibrationArtifactBytes } from "../lib/binary-calibration.js";
+import { parseCanonicalBinaryCalibrationV2ArtifactBytes } from "../lib/binary-calibration-v2.js";
 import {
   analysisWorkflowMeasurementReportDigest,
   analysisCalibrationTrialMeasurements,
@@ -361,7 +361,7 @@ async function loadCalibration(
   if (digest !== String(row.stored_artifact_digest)) {
     throw repoError("evidence_unavailable", "Calibration artifact bytes do not match the stored digest");
   }
-  const artifact = parseCanonicalBinaryCalibrationArtifactBytes(bytes);
+  const artifact = parseCanonicalBinaryCalibrationV2ArtifactBytes(bytes);
   assertArtifactBinding(artifact, row, projectId, skillVersionId, criterionId, criterionVersionId);
   const current = await currentArtifactStatus(client, projectId, String(row.artifact_id));
   return {
@@ -380,7 +380,7 @@ async function loadCalibration(
 }
 
 function assertArtifactBinding(
-  artifact: BinaryCalibrationArtifact,
+  artifact: BinaryCalibrationV2Artifact,
   row: Record<string, unknown>,
   projectId: string,
   skillVersionId: string,

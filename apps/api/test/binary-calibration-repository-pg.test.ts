@@ -2,10 +2,12 @@ import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runMigrations } from "@rubrist/db";
 import { CreateSkillVersionInputSchema } from "@rubrist/shared";
+import { canonicalJson, sha256Digest } from "../src/lib/canonical-json.js";
 import {
-  parseCanonicalBinaryCalibrationArtifactBytes,
-  verifyBinaryCalibrationPrivateLedgerForArtifact
-} from "../src/lib/binary-calibration.js";
+  parseCanonicalBinaryCalibrationV2ArtifactBytes,
+  verifyBinaryCalibrationV2PrivateLedgerForArtifact
+} from "../src/lib/binary-calibration-v2.js";
+import { evaluatorIdentityFor, skillDigestV2 } from "../src/lib/evaluator-identity.js";
 import {
   type BinaryCalibrationActor
 } from "../src/binary-calibration/repository.js";
@@ -13,7 +15,7 @@ import { PgBinaryCalibrationRepository } from "../src/binary-calibration/reposit
 import { PgGovernedReviewRepository, type GovernedReviewActor } from "../src/governed-review/index.js";
 import { PgRepository } from "../src/repository.pg.js";
 import { openPostgresTestDatabase } from "./helpers/postgres.js";
-import { MOCK_BINDING, bindingInput } from "./fixtures/execution-binding.js";
+import { MOCK_BINDING, SEEDED_BINDING, bindingInput } from "./fixtures/execution-binding.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {
@@ -109,6 +111,10 @@ run("PgBinaryCalibrationRepository", () => {
       { projectId: PROJECT_ID, actorUserId: DEVELOPER.userId }
     );
     skillVersionId = version.id;
+    // Sealed calibration calls a provider; the mock makes no call. The version
+    // is saved on the mock (its regression gate needs no key) and then bound
+    // to the seeded Anthropic binding, which the executor stub below never calls.
+    await pool.query(`update skill_versions set execution_binding=$2::jsonb where id=$1`, [skillVersionId, JSON.stringify(SEEDED_BINDING)]);
 
     const instruction = await governed.createInstruction(OWNER, {
       criterionVersionId: version.criterionVersionId,
@@ -199,11 +205,36 @@ run("PgBinaryCalibrationRepository", () => {
           message: expect.stringContaining("mutable alias")
         });
       }
+      // The mock makes no call and typed-question evaluators arrive in 8E, so
+      // neither can produce sealed evidence.
+      const typedQuestion = { ...MOCK_BINDING, provider: "typesafe", modelId: "jev-1.13.0", modelVersion: "jev-1.13.0", verdictProtocol: "typed-question/v1" };
+      for (const binding of [MOCK_BINDING, typedQuestion]) {
+        await pool.query(`update skill_versions set execution_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(binding)]);
+        await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({ code: "unsupported" });
+      }
     } finally {
       await pool.query(`update skill_versions set execution_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(storedBinding)]);
     }
     const created = await repository.createRun(OWNER, input);
     expect(created).toMatchObject({ state: "queued", plannedObservations: 2, accountedObservations: 0 });
+    // The run pins the evaluator's v2 identity: the binding exactly as stored,
+    // its digest, and skillDigest v2.
+    const pinned = (await pool.query(
+      `select run.execution_binding,run.requested_binding_digest,run.skill_digest,run.definition_digest,run.requested_provider,
+              version.rubric_markdown,version.prompt,version.verdict_kind,version.output_schema,version.execution_binding as version_binding
+       from binary_calibration_runs run join skill_versions version on version.id=run.skill_version_id where run.id=$1`,
+      [created.runId]
+    )).rows[0]!;
+    const identity = evaluatorIdentityFor({
+      rubricMarkdown: String(pinned.rubric_markdown), prompt: String(pinned.prompt), verdictKind: "binary",
+      outputSchema: pinned.output_schema, scalarRange: null, categoricalChoiceScores: null, executionBinding: pinned.version_binding
+    });
+    expect(canonicalJson(pinned.execution_binding)).toBe(canonicalJson(SEEDED_BINDING));
+    expect(pinned).toMatchObject({
+      requested_provider: "anthropic",
+      requested_binding_digest: sha256Digest(SEEDED_BINDING),
+      skill_digest: skillDigestV2(identity)
+    });
     expect(await repository.createRun(OWNER, input)).toEqual(created);
     await expect(repository.createRun(OWNER, { ...input, positiveClass: "fail" }))
       .rejects.toMatchObject({ code: "idempotency_conflict" });
@@ -221,7 +252,7 @@ run("PgBinaryCalibrationRepository", () => {
     let claim = await repository.claimRun(runProjection.runId, "cal-worker-a", 60_000);
     expect(claim).not.toBeNull();
     const authorized = await repository.authorizeRun(claim!);
-    expect(authorized).toMatchObject({ itemCount: 2, requestedModelBinding: { provider: "mock" } });
+    expect(authorized).toMatchObject({ itemCount: 2, executionBinding: SEEDED_BINDING, customEndpointUrl: null });
     expect("getPrivateLedger" in repository).toBe(false);
 
     const blocker = await pool.connect();
@@ -247,14 +278,14 @@ run("PgBinaryCalibrationRepository", () => {
     expect(first).not.toBeNull();
     await repository.recordProviderCallStarted(claim!, first!.attemptId);
     await repository.completeAttempt(claim!, first!.attemptId, {
-      terminalEvaluatorOutcome: "evaluator_pass",
+      result: { state: "outcome", outcome: "pass" },
       attemptState: "terminal",
-      errorCode: null,
       providerObservation: {
-        provider: "mock",
-        observedModel: "mock-v1",
+        provider: "anthropic",
+        observedModel: "claude-sonnet-4-6-observed",
         observedVersion: null,
-        systemFingerprint: null
+        systemFingerprint: null,
+        upstreamProvider: null
       }
     });
     const second = await repository.getNextAttempt(claim!);
@@ -268,10 +299,9 @@ run("PgBinaryCalibrationRepository", () => {
     expect(claim).not.toBeNull();
     expect(await repository.recoverStartedAttempts(claim!)).toBe(1);
     await expect(repository.completeAttempt(authorized.claim, second!.attemptId, {
-      terminalEvaluatorOutcome: "evaluator_pass",
+      result: { state: "outcome", outcome: "pass" },
       attemptState: "terminal",
-      errorCode: null,
-      providerObservation: { provider: "mock", observedModel: "late", observedVersion: null, systemFingerprint: null }
+      providerObservation: { provider: "anthropic", observedModel: "late", observedVersion: null, systemFingerprint: null, upstreamProvider: null }
     })).rejects.toMatchObject({ code: "state_conflict" });
 
     const minted = await repository.finalizeRun(claim!);
@@ -282,14 +312,18 @@ run("PgBinaryCalibrationRepository", () => {
       trials: [{ outcomes: { planned: 2, classified: 1, errored: 1, providerCalls: 2 } }]
     });
     const copy = await repository.getArtifact({ projectId: PROJECT_ID }, minted.artifact.artifactId);
-    expect(parseCanonicalBinaryCalibrationArtifactBytes(copy.canonicalBytes)).toEqual(minted.artifact);
+    expect(parseCanonicalBinaryCalibrationV2ArtifactBytes(copy.canonicalBytes)).toEqual(minted.artifact);
+    expect(minted.artifact.evaluator).toMatchObject({
+      identity: { basis: "rubrist/evaluator-identity/v2", executionBinding: SEEDED_BINDING },
+      requestedBindingDigest: sha256Digest(SEEDED_BINDING)
+    });
     const privateBytes = (await pool.query(
       `select canonical_bytes from binary_calibration_private_ledgers where run_id=$1`,
       [runProjection.runId]
     )).rows[0].canonical_bytes as Buffer;
     const ledger = JSON.parse(privateBytes.toString("utf8"));
-    expect(verifyBinaryCalibrationPrivateLedgerForArtifact(ledger, minted.artifact).ledger.records)
-      .toEqual(expect.arrayContaining([expect.objectContaining({ errorCode: "outcome_unknown" })]));
+    expect(verifyBinaryCalibrationV2PrivateLedgerForArtifact(ledger, minted.artifact).ledger.records)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ result: { state: "failure", failureKind: "outcome_unknown" } })]));
     expect(await repository.getArtifactStatus({ projectId: PROJECT_ID }, minted.artifact.artifactId))
       .toMatchObject({ currentAdmissibility: "admissible", reasons: [] });
     await expect(pool.query(
@@ -316,10 +350,9 @@ run("PgBinaryCalibrationRepository", () => {
       const attempt = await repository.getNextAttempt(sameClaim!);
       if (!attempt) break;
       await repository.completeAttempt(sameClaim!, attempt.attemptId, {
-        terminalEvaluatorOutcome: "unevaluated",
+        result: { state: "not_attempted" },
         attemptState: "not_started",
-        errorCode: null,
-        providerObservation: { provider: "mock", observedModel: null, observedVersion: null, systemFingerprint: null }
+        providerObservation: { provider: "anthropic", observedModel: null, observedVersion: null, systemFingerprint: null, upstreamProvider: null }
       });
     }
     const rerunArtifact = await repository.finalizeRun(sameClaim!);
@@ -336,6 +369,7 @@ run("PgBinaryCalibrationRepository", () => {
       }),
       { projectId: PROJECT_ID, actorUserId: DEVELOPER.userId }
     );
+    await pool.query(`update skill_versions set execution_binding=$2::jsonb where id=$1`, [later.id, JSON.stringify(SEEDED_BINDING)]);
     const laterRun = await repository.createRun(OWNER, {
       datasetRevisionId: revisionId,
       skillVersionId: later.id,
@@ -415,6 +449,19 @@ run("PgBinaryCalibrationRepository", () => {
     await expect(pool.query(
       `delete from binary_calibration_runs where id=$1`, [terminalRunId]
     )).rejects.toMatchObject({ code: "55000" });
+
+    // Only an OpenRouter run can record the upstream that served a call.
+    const bound = (await pool.query(
+      `select run_id,dataset_revision_item_id,dataset_revision_item_digest from binary_calibration_attempts where project_id=$1 limit 1`,
+      [PROJECT_ID]
+    )).rows[0]!;
+    await expect(pool.query(
+      `insert into binary_calibration_attempts
+         (id,run_id,project_id,dataset_revision_item_id,dataset_revision_item_digest,trial_index,truth_label,
+          provider,upstream_provider,physical_provider_calls,attempt_state,commitment_salt)
+       values ('cal_upstream_probe',$1,$2,$3,$4,0,'pass','anthropic','Anthropic',1,'started',$5)`,
+      [bound.run_id, PROJECT_ID, bound.dataset_revision_item_id, bound.dataset_revision_item_digest, "c".repeat(64)]
+    )).rejects.toMatchObject({ code: "23514", message: expect.stringContaining("requested provider") });
 
     await pool.query(`delete from projects where id=$1`, [PROJECT_ID]);
     for (const table of [

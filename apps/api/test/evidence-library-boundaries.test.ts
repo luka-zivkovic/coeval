@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import * as binaryCalibration from "../src/lib/binary-calibration.js";
+import * as binaryCalibration from "../src/lib/binary-calibration-v2.js";
 import * as governedArtifacts from "../src/lib/governed-review-artifacts.js";
 import * as governedCommon from "../src/lib/governed-review-common.js";
 import * as governedEvidence from "../src/lib/governed-review-evidence.js";
@@ -13,7 +13,7 @@ import * as governedState from "../src/lib/governed-review-state.js";
 const LIB_DIRECTORY = fileURLToPath(new URL("../src/lib/", import.meta.url));
 const paths = {
   artifacts: path.join(LIB_DIRECTORY, "governed-review-artifacts.ts"),
-  binary: path.join(LIB_DIRECTORY, "binary-calibration.ts"),
+  binary: path.join(LIB_DIRECTORY, "binary-calibration-v2.ts"),
   common: path.join(LIB_DIRECTORY, "governed-review-common.ts"),
   evidence: path.join(LIB_DIRECTORY, "governed-review-evidence.ts"),
   root: path.join(LIB_DIRECTORY, "governed-review.ts"),
@@ -108,61 +108,61 @@ const GOVERNED_CONTENT_EXPORTS = [
 ] as const;
 
 const BINARY_EXPORTS = [
-  "BINARY_CALIBRATION_CANONICALIZATION_VERSION",
-  "BINARY_CALIBRATION_CONTRACT",
-  "BINARY_CALIBRATION_INTERVAL_DEFINITION_VERSION",
-  "BINARY_CALIBRATION_MAX_CANONICAL_BYTES",
-  "BINARY_CALIBRATION_MAX_ITEMS",
-  "BINARY_CALIBRATION_MAX_JSON_DEPTH",
-  "BINARY_CALIBRATION_MAX_STRING_CODE_POINTS",
-  "BINARY_CALIBRATION_METRIC_DEFINITION_VERSION",
-  "BINARY_CALIBRATION_PRIVATE_LEDGER_CONTRACT",
+  "BINARY_CALIBRATION_V2_CANONICALIZATION_VERSION",
+  "BINARY_CALIBRATION_V2_CONTRACT",
+  "BINARY_CALIBRATION_V2_INTERVAL_DEFINITION_VERSION",
+  "BINARY_CALIBRATION_V2_MAX_CANONICAL_BYTES",
+  "BINARY_CALIBRATION_V2_MAX_ITEMS",
+  "BINARY_CALIBRATION_V2_MAX_JSON_DEPTH",
+  "BINARY_CALIBRATION_V2_MAX_STRING_CODE_POINTS",
+  "BINARY_CALIBRATION_V2_METRIC_DEFINITION_VERSION",
+  "BINARY_CALIBRATION_V2_PRIVATE_LEDGER_CONTRACT",
   "binary64Bits",
   "binary64FromBits",
-  "binaryCalibrationArtifactDigest",
-  "binaryCalibrationEvidenceDigest",
-  "binaryCalibrationPrivateLedgerCommitmentDigest",
-  "BinaryCalibrationTrialBuildInput",
-  "buildBinaryCalibrationArtifact",
-  "BuildBinaryCalibrationArtifactInput",
-  "canonicalBinaryCalibrationArtifactBytes",
-  "canonicalBinaryCalibrationPrivateLedgerBytes",
+  "binaryCalibrationV2ArtifactDigest",
+  "binaryCalibrationV2EvidenceDigest",
+  "binaryCalibrationV2PrivateLedgerCommitmentDigest",
+  "BinaryCalibrationV2TrialBuildInput",
+  "buildBinaryCalibrationV2Artifact",
+  "BuildBinaryCalibrationV2ArtifactInput",
+  "canonicalBinaryCalibrationV2ArtifactBytes",
+  "canonicalBinaryCalibrationV2PrivateLedgerBytes",
   "compareProviderIdentityStrength",
-  "ExpectedBinaryCalibrationArtifact",
+  "ExpectedBinaryCalibrationV2Artifact",
   "isOutcomeUnknownError",
-  "parseCanonicalBinaryCalibrationArtifactBytes",
-  "verifyBinaryCalibrationArtifact",
-  "verifyBinaryCalibrationPrivateLedger",
-  "verifyBinaryCalibrationPrivateLedgerForArtifact",
+  "parseCanonicalBinaryCalibrationV2ArtifactBytes",
+  "verifyBinaryCalibrationV2Artifact",
+  "verifyBinaryCalibrationV2PrivateLedger",
+  "verifyBinaryCalibrationV2PrivateLedgerForArtifact",
   "WILSON_95_CONFIDENCE_BASIS_POINTS",
   "WILSON_95_Z_BINARY64",
   "wilson95Binary64Bounds"
 ] as const;
 
 const BINARY_TYPE_EXPORTS = [
-  "BinaryCalibrationTrialBuildInput",
-  "BuildBinaryCalibrationArtifactInput",
-  "ExpectedBinaryCalibrationArtifact"
+  "BinaryCalibrationV2TrialBuildInput",
+  "BuildBinaryCalibrationV2ArtifactInput",
+  "ExpectedBinaryCalibrationV2Artifact"
 ] as const;
 
 const BINARY_TYPE_EXPORT_SET = new Set<string>(BINARY_TYPE_EXPORTS);
 
 const BINARY_STAGES = [
   {
-    marker: "// Public v1 contract constants and artifact-construction inputs.",
+    marker: "// Public v2 contract constants and artifact-construction inputs.",
     exports: [
-      "BINARY_CALIBRATION_CANONICALIZATION_VERSION",
-      "BINARY_CALIBRATION_CONTRACT",
-      "BINARY_CALIBRATION_INTERVAL_DEFINITION_VERSION",
-      "BINARY_CALIBRATION_MAX_CANONICAL_BYTES",
-      "BINARY_CALIBRATION_MAX_ITEMS",
-      "BINARY_CALIBRATION_MAX_JSON_DEPTH",
-      "BINARY_CALIBRATION_MAX_STRING_CODE_POINTS",
-      "BINARY_CALIBRATION_METRIC_DEFINITION_VERSION",
-      "BINARY_CALIBRATION_PRIVATE_LEDGER_CONTRACT",
-      "BinaryCalibrationTrialBuildInput",
-      "BuildBinaryCalibrationArtifactInput",
-      "ExpectedBinaryCalibrationArtifact",
+      "BINARY_CALIBRATION_V2_CANONICALIZATION_VERSION",
+      "BINARY_CALIBRATION_V2_CONTRACT",
+      "BINARY_CALIBRATION_V2_INTERVAL_DEFINITION_VERSION",
+      "BINARY_CALIBRATION_V2_MAX_CANONICAL_BYTES",
+      "BINARY_CALIBRATION_V2_MAX_ITEMS",
+      "BINARY_CALIBRATION_V2_MAX_JSON_DEPTH",
+      "BINARY_CALIBRATION_V2_MAX_STRING_CODE_POINTS",
+      "BINARY_CALIBRATION_V2_METRIC_DEFINITION_VERSION",
+      "BINARY_CALIBRATION_V2_PRIVATE_LEDGER_CONTRACT",
+      "BinaryCalibrationV2TrialBuildInput",
+      "BuildBinaryCalibrationV2ArtifactInput",
+      "ExpectedBinaryCalibrationV2Artifact",
       "WILSON_95_CONFIDENCE_BASIS_POINTS",
       "WILSON_95_Z_BINARY64"
     ]
@@ -172,27 +172,27 @@ const BINARY_STAGES = [
     exports: [
       "binary64Bits",
       "binary64FromBits",
-      "binaryCalibrationArtifactDigest",
-      "binaryCalibrationEvidenceDigest",
+      "binaryCalibrationV2ArtifactDigest",
+      "binaryCalibrationV2EvidenceDigest",
       "wilson95Binary64Bounds"
     ]
   },
   {
     marker: "// Private-ledger validation and its canonical public commitment.",
     exports: [
-      "binaryCalibrationPrivateLedgerCommitmentDigest",
-      "canonicalBinaryCalibrationPrivateLedgerBytes",
-      "verifyBinaryCalibrationPrivateLedger",
-      "verifyBinaryCalibrationPrivateLedgerForArtifact"
+      "binaryCalibrationV2PrivateLedgerCommitmentDigest",
+      "canonicalBinaryCalibrationV2PrivateLedgerBytes",
+      "verifyBinaryCalibrationV2PrivateLedger",
+      "verifyBinaryCalibrationV2PrivateLedgerForArtifact"
     ]
   },
   {
     marker: "// Public artifact construction, canonical bytes, parsing, and verification.",
     exports: [
-      "buildBinaryCalibrationArtifact",
-      "canonicalBinaryCalibrationArtifactBytes",
-      "parseCanonicalBinaryCalibrationArtifactBytes",
-      "verifyBinaryCalibrationArtifact"
+      "buildBinaryCalibrationV2Artifact",
+      "canonicalBinaryCalibrationV2ArtifactBytes",
+      "parseCanonicalBinaryCalibrationV2ArtifactBytes",
+      "verifyBinaryCalibrationV2Artifact"
     ]
   },
   {
@@ -326,13 +326,13 @@ describe("evidence library boundaries", () => {
     ]);
   }, 30_000);
 
-  it("pins binary calibration as one ordered canonical v1 pipeline", () => {
+  it("pins binary calibration as one ordered canonical v2 pipeline", () => {
     const program = createApiProgram();
     expect(compilerExports(program, paths.binary)).toEqual(sorted(BINARY_EXPORTS));
     expect(Object.keys(binaryCalibration).sort()).toEqual(
       sorted(BINARY_EXPORTS.filter((name) => !BINARY_TYPE_EXPORT_SET.has(name)))
     );
-    expect(relativeModuleEdges(paths.binary)).toEqual(["./canonical-json.js"]);
+    expect(relativeModuleEdges(paths.binary)).toEqual(["./canonical-json.js", "./evaluator-identity.js"]);
 
     const text = fs.readFileSync(paths.binary, "utf8");
     expect(text.split("\n").length - 1).toBeGreaterThan(1_000);

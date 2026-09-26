@@ -4,11 +4,11 @@ import {
   CreateSkillVersionInputSchema,
   type Criterion,
   type CreatedCriterion,
-  type EvaluatorSuiteManifest
+  type EvaluatorSuiteManifestV2
 } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { AmbiguousProjectSkillError, DatasetRevisionConflictError, DemoRepository } from "../src/repository.js";
-import { canonicalEvaluatorSuiteManifestBytes } from "../src/lib/evaluator-suite.js";
+import { canonicalEvaluatorSuiteManifestV2Bytes } from "../src/lib/evaluator-suite-manifest-v2.js";
 import type { Queue, QueueJob, QueueName, QueueSendOptions } from "@rubrist/queue";
 import { enqueueDueLangSmithImports } from "../src/workers/langsmith-poller.js";
 import { enqueueDueLangfuseImports } from "../src/workers/langfuse-poller.js";
@@ -332,9 +332,9 @@ describe("criterion and evaluator-suite API", () => {
     });
     expect(first.status).toBe(201);
     const firstBytes = await first.text();
-    const manifest = JSON.parse(firstBytes) as EvaluatorSuiteManifest;
-    expect(firstBytes).toBe(canonicalEvaluatorSuiteManifestBytes(manifest).toString("utf8"));
-    expect(manifest).toMatchObject({ revision: 1, trialPlan: null });
+    const manifest = JSON.parse(firstBytes) as EvaluatorSuiteManifestV2;
+    expect(firstBytes).toBe(canonicalEvaluatorSuiteManifestV2Bytes(manifest).toString("utf8"));
+    expect(manifest).toMatchObject({ contract: "rubrist/evaluator-suite-manifest/v2", schemaVersion: 2, revision: 1, trialPlan: null });
     expect(manifest.members.map((member) => member.position)).toEqual([0, 1]);
     expect(manifest.members.every((member) => member.applicability.kind === "all_items")).toBe(true);
 

@@ -101,7 +101,7 @@ it.
 
 ## How it differs from sealed binary calibration
 
-[Sealed binary calibration](../contracts/binary-calibration-v1.md) is Rubrist's
+[Sealed binary calibration](../contracts/binary-calibration-v2.md) is Rubrist's
 governed evidence: one exact evaluator version, one governed-blind
 sealed-validation revision, independent human truth, a private salted ledger,
 and a digest-pinned aggregate artifact. Production calibration is none of
@@ -125,7 +125,7 @@ provider identity. Production intervals use the same pinned z constant,
 binary64 operation order, and exact 0/1 endpoint bounds as the sealed contract;
 only the bound encoding differs. Production calibration is a measurement of
 your traffic, not a governed calibration claim, and it does not extend or replace the
-`rubrist/binary-calibration/v1` contract.
+`rubrist/binary-calibration/v2` contract.
 
 ## Input records: `rubrist/production-decision-record/v1`
 
@@ -480,4 +480,4 @@ Changing retention, erasing, purging, and deleting snapshots are owner-only
   as given; the analysis ignores values of the wrong type for a question.
 - **Governed evidence.** The artifact is not digest-pinned, has no private
   ledger commitment, and is not admissible where a sealed
-  `rubrist/binary-calibration/v1` artifact is required.
+  `rubrist/binary-calibration/v2` artifact is required.

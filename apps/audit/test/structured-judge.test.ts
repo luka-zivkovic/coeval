@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { AnthropicJudgeProvider, type AnthropicMessagesCreate } from "../src/llm/anthropic.js";
 import { MockJudgeProvider } from "../src/llm/mock.js";
 import {
   buildStructuredJudgeMessage,
@@ -105,42 +104,16 @@ describe("judge prompt injection boundary", () => {
   });
 });
 
-describe("AnthropicJudgeProvider.judgeStructured — all three verdict kinds", () => {
-  function provider(toolInput: unknown, capture?: (params: Parameters<AnthropicMessagesCreate>[0]) => void) {
-    const messagesCreate: AnthropicMessagesCreate = async (params) => {
-      capture?.(params);
-      return { content: [{ type: "tool_use", name: "submit_verdict", input: toolInput }] };
-    };
-    return new AnthropicJudgeProvider({ model: "claude-sonnet-4-6", temperature: 0, messagesCreate });
-  }
-
-  it("returns a binary payload", async () => {
-    const result = await provider({ label: "pass", score: 0.9, rationale: "grounded" }).judgeStructured({
-      prompt: PROMPT,
-      trace: TRACE,
-      spec: BINARY
-    });
-    expect(result.verdict).toEqual({ kind: "binary", label: "pass", score: 0.9, rationale: "grounded" });
-    // Stub reports no usage envelope → usage is absent, never fabricated.
-    expect(result.usage).toBeUndefined();
+describe("parseStructuredVerdict — all three verdict kinds", () => {
+  it("returns a binary payload", () => {
+    expect(parseStructuredVerdict(BINARY, { label: "pass", score: 0.9, rationale: "grounded" }))
+      .toEqual({ kind: "binary", label: "pass", score: 0.9, rationale: "grounded" });
   });
 
-  it("returns explicit binary ambiguity instead of forcing pass or fail", async () => {
-    const result = await provider({
-      label: "ambiguous",
-      score: 0.72,
-      rationale: "The rubric explicitly abstains when policy context is missing."
-    }).judgeStructured({
-      prompt: PROMPT,
-      trace: TRACE,
-      spec: BINARY
-    });
-    expect(result.verdict).toEqual({
-      kind: "binary",
-      label: "ambiguous",
-      score: 0.72,
-      rationale: "The rubric explicitly abstains when policy context is missing."
-    });
+  it("returns explicit binary ambiguity instead of forcing pass or fail", () => {
+    const rationale = "The rubric explicitly abstains when policy context is missing.";
+    expect(parseStructuredVerdict(BINARY, { label: "ambiguous", score: 0.72, rationale }))
+      .toEqual({ kind: "binary", label: "ambiguous", score: 0.72, rationale });
   });
 
   it("rejects the obsolete boolean-only binary output", () => {
@@ -158,22 +131,13 @@ describe("AnthropicJudgeProvider.judgeStructured — all three verdict kinds", (
     })).toThrow();
   });
 
-  it("returns a scalar payload carrying the pinned range", async () => {
-    const result = await provider({ score: 4, rationale: "mostly good" }).judgeStructured({
-      prompt: PROMPT,
-      trace: TRACE,
-      spec: SCALAR
-    });
-    expect(result.verdict).toEqual({ kind: "scalar", score: 4, range: [1, 5], rationale: "mostly good" });
+  it("returns a scalar payload carrying the pinned range", () => {
+    expect(parseStructuredVerdict(SCALAR, { score: 4, rationale: "mostly good" }))
+      .toEqual({ kind: "scalar", score: 4, range: [1, 5], rationale: "mostly good" });
   });
 
-  it("returns a categorical payload carrying the choice scores", async () => {
-    const result = await provider({ choice: "excellent", rationale: "perfect" }).judgeStructured({
-      prompt: PROMPT,
-      trace: TRACE,
-      spec: CATEGORICAL
-    });
-    expect(result.verdict).toEqual({
+  it("returns a categorical payload carrying the choice scores", () => {
+    expect(parseStructuredVerdict(CATEGORICAL, { choice: "excellent", rationale: "perfect" })).toEqual({
       kind: "categorical",
       choice: "excellent",
       choiceScores: { excellent: 1, ok: 0.5, poor: 0 },
@@ -181,28 +145,12 @@ describe("AnthropicJudgeProvider.judgeStructured — all three verdict kinds", (
     });
   });
 
-  it("forwards the pinned temperature + the kind-specific tool schema", async () => {
-    let captured: Parameters<AnthropicMessagesCreate>[0] | undefined;
-    await provider({ score: 3, rationale: "ok" }, (params) => (captured = params)).judgeStructured({
-      prompt: PROMPT,
-      trace: TRACE,
-      spec: SCALAR
-    });
-    expect(captured?.temperature).toBe(0);
-    const inputSchema = captured?.tools[0]?.input_schema as { properties: { score: { maximum: number } } };
-    expect(inputSchema.properties.score.maximum).toBe(5);
+  it("rejects a scalar score outside the pinned range (defense in depth)", () => {
+    expect(() => parseStructuredVerdict(SCALAR, { score: 9, rationale: "out of range" })).toThrow();
   });
 
-  it("rejects a scalar score outside the pinned range (defense in depth)", async () => {
-    await expect(
-      provider({ score: 9, rationale: "out of range" }).judgeStructured({ prompt: PROMPT, trace: TRACE, spec: SCALAR })
-    ).rejects.toThrow();
-  });
-
-  it("rejects a categorical choice outside choiceScores", async () => {
-    await expect(
-      provider({ choice: "stellar", rationale: "not a choice" }).judgeStructured({ prompt: PROMPT, trace: TRACE, spec: CATEGORICAL })
-    ).rejects.toThrow();
+  it("rejects a categorical choice outside choiceScores", () => {
+    expect(() => parseStructuredVerdict(CATEGORICAL, { choice: "stellar", rationale: "not a choice" })).toThrow();
   });
 });
 

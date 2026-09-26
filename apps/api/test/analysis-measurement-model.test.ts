@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AnalysisWorkflowMeasurementReportSchema, type BinaryCalibrationArtifact } from "@rubrist/shared";
+import { AnalysisWorkflowMeasurementReportSchema, type BinaryCalibrationV2Artifact } from "@rubrist/shared";
 import {
   analysisCalibrationTrialMeasurements,
   analysisWorkflowMeasurementReportDigest,
@@ -127,9 +127,9 @@ describe("analysis workflow component measurements", () => {
 
   it("copies error directions and Wilson coverage only from the exact public aggregate artifact", () => {
     const artifact = JSON.parse(readFileSync(new URL(
-      "../../../contracts/fixtures/binary-calibration-v1.complete.json",
+      "../../../contracts/fixtures/binary-calibration-v2.complete.json",
       import.meta.url
-    ), "utf8")) as BinaryCalibrationArtifact;
+    ), "utf8")) as BinaryCalibrationV2Artifact;
     const trials = analysisCalibrationTrialMeasurements(artifact);
     expect(trials).toHaveLength(1);
     expect(trials[0]).toMatchObject({

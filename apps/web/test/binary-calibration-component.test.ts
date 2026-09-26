@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { BinaryCalibrationArtifactSchema } from "@rubrist/shared";
+import { BinaryCalibrationV2ArtifactSchema } from "@rubrist/shared";
 import { describe, expect, it, vi } from "vitest";
 import {
   ArtifactEvidence,
@@ -34,10 +34,10 @@ vi.mock("@/lib/evaluator-lifecycle-api", () => ({
 }));
 
 const bytes = readFileSync(new URL(
-  "../../../contracts/fixtures/binary-calibration-v1.complete.json",
+  "../../../contracts/fixtures/binary-calibration-v2.complete.json",
   import.meta.url
 ));
-const artifact = BinaryCalibrationArtifactSchema.parse(JSON.parse(bytes.toString("utf8")));
+const artifact = BinaryCalibrationV2ArtifactSchema.parse(JSON.parse(bytes.toString("utf8")));
 
 const run: BinaryCalibrationRun = {
   runId: artifact.calibrationRunId,
