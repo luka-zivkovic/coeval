@@ -103,10 +103,11 @@ snapshots. The repository acquires a durable revision lease before execution.
 The worker receives one protected payload without truth and runs it through
 the v2 executor, which sends exactly the pinned binding through its verdict
 protocol in one physical call, with no retries and no parameter-changing
-fallbacks (ADR-0014). Provider-call start is recorded durably after every
-check that can refuse the call and immediately before dispatch, so a refusal
-counts no call. The mock makes no call and typed-question evaluators arrive in
-Batch 8E, so neither can be calibrated.
+fallbacks (ADR-0014). A typed-question evaluator's attempt asks its question
+through typed-question/v1 and records pass or fail on its threshold; it never
+abstains (ADR-0014 section 5). Provider-call start is recorded durably after
+every check that can refuse the call and immediately before dispatch, so a
+refusal counts no call. The mock makes no call, so it can't be calibrated.
 
 Creating a run is a governed gate (ADR-0014 sections 2 and 4). It needs a
 resolved execution binding that states its temperature and reasoning, unless

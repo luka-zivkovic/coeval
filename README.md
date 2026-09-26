@@ -116,6 +116,10 @@ OPENROUTER_API_KEY=
 TYPESAFE_API_KEY=
 ```
 
+Typed-question evaluators ask a TypeSafe model one yes-or-no question; see
+[typed-question evaluators](docs/typed-question-evaluators.md) for when they
+fit and how to author one.
+
 Set `RUBRIST_TRUST_PROXY=1` only when clients cannot bypass your trusted reverse
 proxy. Rubrist will then use sanitized forwarded client-IP headers for the
 pre-auth onboarding rate limit; direct deployments use the socket address.
