@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { EvaluatorCallError } from "@rubrist/audit/runtime";
 import {
   EvalItemJobSchema,
   EvalRunJobSchema,
@@ -9,7 +10,9 @@ import {
 } from "@rubrist/shared";
 import type { Queue } from "@rubrist/queue";
 import type { RubristRepository } from "../repository.js";
+import type { EvalRunItemFailure } from "../repository/contracts.js";
 import { createJudgeProvider } from "../lib/judge-provider.js";
+import { NOTHING_OBSERVED, observedCallFrom } from "../lib/observed-call.js";
 import { isPermanentError, judgeAndRecord, type ProviderArg } from "./judge.js";
 
 // Eval-run fan-out: one `eval.run` job per run, which enqueues one `eval.item`
@@ -78,7 +81,8 @@ export async function registerEvalRunWorkers(
             evalRunId: parsed.data.evalRunId,
             evalRunItemId: parsed.data.evalRunItemId,
             executionToken,
-            error: postDispatchFailureMessage(error, disposition.providerCallReturned)
+            error: postDispatchFailureMessage(error, disposition.providerCallReturned),
+            failure: postDispatchFailure(error, disposition.providerCallReturned)
           });
           return;
         }
@@ -91,7 +95,8 @@ export async function registerEvalRunWorkers(
             executionToken,
             error: finalAttempt && !permanent
               ? `Judge failed after ${retryCount + 1} attempt(s): ${errorMessage(error)}`
-              : errorMessage(error)
+              : errorMessage(error),
+            failure: NOT_ATTEMPTED
           });
         }
       }
@@ -121,9 +126,35 @@ function errorMessage(error: unknown): string {
 }
 
 function postDispatchFailureMessage(error: unknown, providerCallReturned: boolean): string {
+  if (!providerCallReturned && error instanceof EvaluatorCallError) {
+    if (!error.physicalCall) return `The judge call was refused before sending (${error.failureKind}): ${errorMessage(error)}`;
+    return `The judge call failed (${error.failureKind}); the evaluator was not called again: ${errorMessage(error)}`;
+  }
   return providerCallReturned
     ? `Provider returned, but durable item completion failed; the evaluator was not called again: ${errorMessage(error)}`
     : `Provider outcome unknown after a dispatched call failed without a durable result; the evaluator was not called again: ${errorMessage(error)}`;
+}
+
+// How failed items are classified (ADR-0014 section 6). A call that left
+// Rubrist is a failure with its kind and what it observed (every field null
+// when nothing came back); an item whose request never left Rubrist, whether
+// refused before the call or never taken up, is not attempted, and its error
+// text keeps the reason.
+const OUTCOME_UNKNOWN: EvalRunItemFailure = { state: "failure", failureKind: "outcome_unknown", observed: NOTHING_OBSERVED };
+const NOT_ATTEMPTED: EvalRunItemFailure = { state: "not_attempted" };
+
+/**
+ * A failure after the durable call-start marker. A judge call that failed
+ * with a known kind keeps it and what it observed, and one refused before
+ * sending was never attempted; anything else, including a provider answer
+ * whose completion wasn't recorded, can't show what the provider did.
+ */
+function postDispatchFailure(error: unknown, providerCallReturned: boolean): EvalRunItemFailure {
+  if (!providerCallReturned && error instanceof EvaluatorCallError) {
+    if (!error.physicalCall) return { state: "not_attempted", executorRefused: true };
+    return { state: "failure", failureKind: error.failureKind, observed: observedCallFrom(error.observed, error.providerError) };
+  }
+  return OUTCOME_UNKNOWN;
 }
 
 export async function recoverStaleEvalRunItemExecutions(
@@ -205,7 +236,8 @@ export async function recoverStaleEvalRunItemExecutions(
         evalRunId: execution.evalRunId,
         evalRunItemId: execution.evalRunItemId,
         executionToken: recoveryToken,
-        error: `Queue delivery ended in ${confirmedState} before the evaluator started; the evaluation did not run.`
+        error: `Queue delivery ended in ${confirmedState} before the evaluator started; the evaluation did not run.`,
+        failure: NOT_ATTEMPTED
       });
       return;
     }
@@ -218,7 +250,8 @@ export async function recoverStaleEvalRunItemExecutions(
         ? "Provider returned, but durable item completion was interrupted; the evaluator was not called again."
         : execution.providerCallStarted
           ? "Provider outcome unknown after worker interruption; the evaluator was not called again."
-          : "Worker interrupted before provider dispatch; the evaluation did not run."
+          : "Worker interrupted before provider dispatch; the evaluation did not run.",
+      failure: execution.providerCallStarted || execution.providerCallReturned ? OUTCOME_UNKNOWN : NOT_ATTEMPTED
     });
   };
   // One item that can't be recovered must never stop recovery of the
@@ -293,7 +326,8 @@ export async function processEvalItemJob(
       executionToken: claimed.executionToken,
       error: claimed.providerCallReturned
         ? "Provider returned, but durable item completion was interrupted; the evaluator was not called again."
-        : "Provider outcome unknown after worker interruption; the evaluator was not called again."
+        : "Provider outcome unknown after worker interruption; the evaluator was not called again.",
+      failure: OUTCOME_UNKNOWN
     });
     return;
   }
@@ -406,7 +440,10 @@ export async function runEvalRunInline(
         executionToken,
         error: disposition.state === "pre_call_held" || disposition.state === "released"
           ? errorMessage(error)
-          : postDispatchFailureMessage(error, disposition.providerCallReturned)
+          : postDispatchFailureMessage(error, disposition.providerCallReturned),
+        failure: disposition.state === "pre_call_held" || disposition.state === "released"
+          ? NOT_ATTEMPTED
+          : postDispatchFailure(error, disposition.providerCallReturned)
       });
     }
   }

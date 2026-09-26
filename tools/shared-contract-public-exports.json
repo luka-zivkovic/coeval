@@ -709,6 +709,8 @@
     "MinimumVerdictOutputSchema",
     "ModelBinding",
     "ModelBindingSchema",
+    "ObservedCall",
+    "ObservedCallSchema",
     "OnboardingEvidenceInventory",
     "OnboardingEvidenceInventorySchema",
     "OpenRouterRouting",

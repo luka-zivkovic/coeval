@@ -495,6 +495,7 @@ describe("Demo evaluation and assessment-receipt repository slice", () => {
     });
     await repository.markEvalRunRunning(demoProject.id, failedRun.id);
     await expect(repository.failEvalRunItem({
+      failure: { state: "failure", failureKind: "provider_timeout", observed: { model: null, requestId: null, responseId: null, systemFingerprint: null, upstreamProvider: null, thinkingReturned: null, reasoningTokens: null } },
       projectId: demoProject.id,
       evalRunId: failedRun.id,
       evalRunItemId: failedRun.items[0]!.id,

@@ -698,6 +698,7 @@ describe("Rubrist Hono API", () => {
     });
     const detail = await repository.getEvalRunDetail("proj_langsmith_support", run!.id);
     await repository.failEvalRunItem({
+      failure: { state: "failure", failureKind: "provider_timeout", observed: { model: null, requestId: null, responseId: null, systemFingerprint: null, upstreamProvider: null, thinkingReturned: null, reasoningTokens: null } },
       projectId: "proj_langsmith_support",
       evalRunId: run!.id,
       evalRunItemId: detail!.items[0]!.id,

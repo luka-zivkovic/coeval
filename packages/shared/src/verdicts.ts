@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EvaluatorScoreSchema, ObservedCallSchema } from "./evaluator-execution.js";
 
 export const VerdictDistributionSchema = z.object({
   pass: z.number().int().nonnegative(),
@@ -87,6 +88,10 @@ export const VerdictRecordSchema = z.object({
   actorName: z.string().nullable().optional(),
   payload: VerdictPayloadSchema,
   externalRunId: z.string().nullable(),
+  // For an evaluator's verdict: what its call observed and the evaluator's
+  // own score (ADR-0014 section 6); null for people and imports.
+  observed: ObservedCallSchema.nullable().optional(),
+  evaluatorScore: EvaluatorScoreSchema.nullable().optional(),
   createdAt: z.string()
 });
 export type VerdictRecord = z.infer<typeof VerdictRecordSchema>;

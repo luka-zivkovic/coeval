@@ -4,6 +4,7 @@ import { containsLoneUtf16Surrogate, containsOwnProtoKey, exceedsJsonDepth } fro
 import {
   EvaluatorItemStateSchema,
   EvaluatorScoreSchema,
+  ObservedCallSchema,
   SkillDigestInputSchema
 } from "./evaluator-execution.js";
 
@@ -22,16 +23,7 @@ const IdentifierSchema = z.string().min(1);
  * `null` when the provider didn't report it; the whole object is `null` only
  * for an item that was never attempted.
  */
-export const ReceiptObservedCallSchema = z.object({
-  model: z.string().nullable(),
-  requestId: z.string().nullable(),
-  responseId: z.string().nullable(),
-  systemFingerprint: z.string().nullable(),
-  // The OpenRouter upstream that served the call (ADR-0014 section 2).
-  upstreamProvider: z.string().nullable(),
-  thinkingReturned: z.boolean().nullable(),
-  reasoningTokens: z.number().int().nonnegative().nullable()
-}).strict();
+export const ReceiptObservedCallSchema = ObservedCallSchema;
 export type ReceiptObservedCall = z.infer<typeof ReceiptObservedCallSchema>;
 
 export const AssessmentReceiptV2ItemSchema = z.object({

@@ -212,6 +212,9 @@ export class DemoEvaluationRepository implements
         providerMetadata: item.providerMetadata ?? null,
         cached: item.cached ?? false,
         error: null,
+        failureKind: null,
+        notAttempted: false,
+        observed: null,
         createdAt,
         finishedAt: status === "pending" ? null : createdAt
       };
@@ -617,13 +620,19 @@ export class DemoEvaluationRepository implements
     if (
       !item ||
       item.status !== "pending" ||
-      (input.executionToken !== undefined && this.store.evalRunItemExecutions.get(item.id)?.executionToken !== input.executionToken)
+      (input.executionToken !== undefined && this.store.evalRunItemExecutions.get(item.id)?.executionToken !== input.executionToken) ||
+      // A started call was attempted, whatever the caller believed (parity with PG).
+      (input.failure.state === "not_attempted" && input.failure.executorRefused !== true &&
+        this.store.evalRunItemExecutions.get(item.id)?.providerCallStarted === true)
     ) return { runFinished: this.isRunFinished(run) };
     const runBefore = structuredClone(run);
     const itemBefore = structuredClone(item);
     try {
       item.status = "failed";
       item.error = input.error;
+      item.failureKind = input.failure.state === "failure" ? input.failure.failureKind : null;
+      item.notAttempted = input.failure.state === "not_attempted";
+      item.observed = input.failure.state === "failure" ? input.failure.observed : null;
       item.finishedAt = new Date().toISOString();
       this.store.evalRunItemExecutions.delete(item.id);
       run.failedItems += 1;

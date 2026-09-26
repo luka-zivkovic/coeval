@@ -45,9 +45,11 @@ import type {
 import {
   ApiKeyCapabilitySchema,
   deriveGateCheckDecision,
+  EvaluatorFailureKindSchema,
   IronsideConnectionTestResultSchema,
   LangfuseConnectionTestResultSchema,
   LangSmithConnectionTestResultSchema,
+  ObservedCallSchema,
   RegressionRunResultSchema,
   SkillSchema,
   SkillVersionSchema,
@@ -610,6 +612,9 @@ export function rowToEvalRunItem(row: Record<string, unknown>): EvalRunItem {
       : parseJson(row.provider_metadata) as EvalRunItem["providerMetadata"],
     cached: Boolean(row.cached),
     error: row.error === null || row.error === undefined ? null : String(row.error),
+    failureKind: row.failure_kind == null ? null : EvaluatorFailureKindSchema.parse(row.failure_kind),
+    notAttempted: Boolean(row.not_attempted),
+    observed: row.observed == null ? null : ObservedCallSchema.parse(parseJson(row.observed)),
     createdAt: toIso(row.created_at),
     finishedAt: row.finished_at ? toIso(row.finished_at) : null
   };
@@ -868,6 +873,8 @@ export function rowToVerdictRecord(row: Record<string, unknown>): VerdictRecord 
     actorName: row.actor_name === null || row.actor_name === undefined ? null : String(row.actor_name),
     payload: VerdictPayloadSchema.parse(parseJson(row.payload)),
     externalRunId: row.external_run_id === null || row.external_run_id === undefined ? null : String(row.external_run_id),
+    observed: row.observed == null ? null : parseJson(row.observed),
+    evaluatorScore: row.evaluator_score == null ? null : parseJson(row.evaluator_score),
     createdAt: toIso(row.created_at)
   });
 }

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { DatasetSchema, validateStepExpectation } from "./datasets.js";
 import { ModelBindingSchema, VerdictLabelSchema } from "./judge.js";
+import { EvaluatorFailureKindSchema, ObservedCallSchema } from "./evaluator-execution.js";
 import { ManualTraceImportInputSchema } from "./traces.js";
 
 export const ProviderResponseMetadataSchema = z.object({
@@ -95,6 +96,11 @@ export const EvalRunItemSchema = z.object({
   // instead of spending provider tokens.
   cached: z.boolean(),
   error: z.string().nullable(),
+  // A failed item's shared classification (ADR-0014 section 6): the failure
+  // kind of an attempted item and what its call observed, or not attempted.
+  failureKind: EvaluatorFailureKindSchema.nullable().optional(),
+  notAttempted: z.boolean().optional(),
+  observed: ObservedCallSchema.nullable().optional(),
   createdAt: z.string(),
   finishedAt: z.string().nullable()
 });

@@ -10585,6 +10585,13 @@ CREATE TABLE eval_run_items (
     execution_claimed_at timestamp with time zone,
     provider_call_started_at timestamp with time zone,
     provider_call_returned_at timestamp with time zone,
+    -- A failed item's shared classification (ADR-0014 section 6): the failure
+    -- kind of an attempted item and what its call observed, or not attempted.
+    failure_kind text,
+    not_attempted boolean DEFAULT false NOT NULL,
+    observed jsonb,
+    CONSTRAINT eval_run_items_failure_classification_check CHECK (((status <> 'failed'::text) = ((failure_kind IS NULL) AND (NOT not_attempted))) AND ((failure_kind IS NULL) OR (NOT not_attempted)) AND ((NOT not_attempted) OR (observed IS NULL)) AND ((observed IS NULL) OR ((status = 'failed'::text) AND (jsonb_typeof(observed) = 'object'::text))) AND ((failure_kind IS NULL) OR (observed IS NOT NULL))),
+    CONSTRAINT eval_run_items_failure_kind_check CHECK ((failure_kind = ANY (ARRAY['provider_rejected_request'::text, 'provider_unavailable'::text, 'provider_authentication'::text, 'provider_rate_limit'::text, 'provider_timeout'::text, 'provider_transport'::text, 'provider_protocol'::text, 'invalid_evaluator_output'::text, 'outcome_unknown'::text, 'internal'::text]))),
     CONSTRAINT eval_run_items_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'completed'::text, 'failed'::text, 'skipped'::text])))
 );
 
@@ -12058,6 +12065,11 @@ CREATE TABLE verdicts (
     payload jsonb NOT NULL,
     external_run_id text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    -- An evaluator's verdict records what its call observed and the
+    -- evaluator's own score (ADR-0014 section 6).
+    observed jsonb,
+    evaluator_score jsonb,
+    CONSTRAINT verdicts_evaluator_provenance_check CHECK ((((observed IS NULL) AND (evaluator_score IS NULL)) OR (source = 'llm_judge'::text)) AND ((evaluator_score IS NULL) OR (observed IS NOT NULL)) AND ((observed IS NULL) OR (jsonb_typeof(observed) = 'object'::text)) AND ((evaluator_score IS NULL) OR (jsonb_typeof(evaluator_score) = 'object'::text))),
     CONSTRAINT verdicts_source_check CHECK ((source = ANY (ARRAY['llm_judge'::text, 'human'::text, 'imported_external'::text, 'adjudicated'::text]))),
     CONSTRAINT verdicts_verdict_kind_check CHECK ((verdict_kind = ANY (ARRAY['binary'::text, 'scalar'::text, 'categorical'::text])))
 );
