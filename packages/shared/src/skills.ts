@@ -28,6 +28,19 @@ export function evaluatorDefinitionInputIssues(input: {
 }): Array<{ path: string; message: string }> {
   const issues: Array<{ path: string; message: string }> = [];
   const issue = (path: string, message: string) => issues.push({ path, message });
+  // PostgreSQL text and jsonb can't hold a NUL character.
+  const question = typeof input.typedQuestion === "object" && input.typedQuestion !== null
+    ? input.typedQuestion as { instructions?: unknown; criteria?: { true?: unknown; false?: unknown } }
+    : null;
+  for (const [path, text] of [
+    ["rubricMarkdown", input.rubricMarkdown],
+    ["prompt", input.prompt],
+    ["typedQuestion", question?.instructions],
+    ["typedQuestion", question?.criteria?.true],
+    ["typedQuestion", question?.criteria?.false]
+  ] as const) {
+    if (typeof text === "string" && text.includes("\u0000")) issue(path, "evaluator text must not contain a NUL character");
+  }
   if (input.executionBinding.verdictProtocol === "typed-question/v1") {
     if (input.typedQuestion === undefined) issue("typedQuestion", "a typed-question evaluator names its question");
     if (input.decisionThreshold === undefined) issue("decisionThreshold", "a typed-question evaluator declares its decision threshold; there is no default");

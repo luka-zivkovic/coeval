@@ -2956,6 +2956,9 @@ $$;
 
 CREATE FUNCTION evaluator_lifecycle_request_digest_v1(row_value evaluator_lifecycles) RETURNS text
     LANGUAGE sql STABLE
+    -- The decision threshold is a float8: its JSON digits must be the
+    -- shortest exact ones, whatever the session's extra_float_digits.
+    SET extra_float_digits TO '1'
     AS $$
   select governed_content_v1_digest('evaluator-candidate-request/v1',jsonb_build_object(
     'criterionId',row_value.criterion_id,

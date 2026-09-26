@@ -70,11 +70,12 @@ export const EvaluatorCandidateCreateInputSchema = z.object({
   idempotencyKey: EvaluatorLifecycleIdempotencyKeySchema
 }).strict().refine((value) => !containsLoneUtf16Surrogate(value), {
   message: "Evaluator input must not contain an unpaired UTF-16 surrogate"
-}).refine((v) => ![v.rubricMarkdown, v.prompt, v.typedQuestion?.instructions, v.typedQuestion?.criteria.true, v.typedQuestion?.criteria.false]
-  .some((text) => text?.includes("\u0000")), {
-  message: "Evaluator text must not contain a NUL character"
 }).superRefine((v, ctx) => {
   for (const { path, message } of evaluatorDefinitionInputIssues(v)) ctx.addIssue({ code: "custom", path: [path], message });
+  // PostgreSQL text can't hold a NUL character.
+  for (const path of ["skillName", "skillDescription"] as const) {
+    if (v[path].includes("\u0000")) ctx.addIssue({ code: "custom", path: [path], message: "must not contain a NUL character" });
+  }
 }).transform((v) => ({ ...v, outputSchema: v.outputSchema ?? defaultEvaluatorOutputSchema(v.executionBinding.verdictProtocol) }));
 export type EvaluatorCandidateCreateInput = z.infer<typeof EvaluatorCandidateCreateInputSchema>;
 

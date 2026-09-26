@@ -76,6 +76,7 @@ class FakeExecutionRepository implements BinaryCalibrationExecutionRepository {
   recoveryMarks = 0;
   failCallStart = false;
   failCompleteCount = 0;
+  evaluator: BinaryCalibrationAuthorizedRun["evaluator"] | null = null;
 
   async listRunnableRunIds(): Promise<string[]> {
     return ["cal_run_1"];
@@ -109,7 +110,7 @@ class FakeExecutionRepository implements BinaryCalibrationExecutionRepository {
     claim: BinaryCalibrationExecutionClaim
   ): Promise<BinaryCalibrationAuthorizedRun> {
     this.authorizeCalls += 1;
-    return authorized(claim);
+    return this.evaluator === null ? authorized(claim) : { ...authorized(claim), evaluator: this.evaluator };
   }
 
   async recoverStartedAttempts(): Promise<number> {
@@ -439,6 +440,26 @@ describe("sealed binary calibration worker", () => {
         upstreamProvider: null
       }
     }]);
+  });
+
+  it("records an abstention from a typed-question evaluator as invalid output, since one never abstains", async () => {
+    const repository = new FakeExecutionRepository();
+    repository.evaluator = {
+      kind: "typed-question",
+      question: { type: "noul", instructions: "Is it answered?", criteria: { true: "Yes.", false: "No." } },
+      threshold: 0.5
+    };
+    const executeProvider: BinaryCalibrationProviderExecutor = async ({ beforePhysicalCall }) => {
+      await beforePhysicalCall();
+      return {
+        outcome: "abstain",
+        providerObservation: { provider: "openai", observedModel: "gpt-observed", observedVersion: null, systemFingerprint: null, upstreamProvider: null }
+      };
+    };
+    await expect(processBinaryCalibrationRun({ repository, executeProvider, runId: "cal_run_1", workerId: "worker_1" })).resolves.toBe(MINT);
+    expect(repository.completeInputs).toEqual([expect.objectContaining({
+      result: { state: "failure", failureKind: "invalid_evaluator_output" }, attemptState: "terminal"
+    })]);
   });
 
   it("keeps what a failed call observed, and nothing for a refusal before the call", async () => {

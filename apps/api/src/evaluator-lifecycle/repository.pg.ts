@@ -11,6 +11,7 @@ import {
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   SkillSchema,
   SkillVersionSchema,
+  defaultEvaluatorOutputSchema,
   mutableModelAlias,
   type DatasetReferenceProvenance,
   type DatasetRevisionPayloadSnapshot,
@@ -272,7 +273,7 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
                  null,0,0,0,'{}','binary',null,null,'human-authored',$9,
                  date_trunc('milliseconds',clock_timestamp()),null,$10,$11,$12,'recorded',$14::jsonb,$15)`,
         [skillVersionId, skillId, actor.projectId, `${versionNumber}.0.0`, input.rubricMarkdown ?? null, input.prompt ?? null,
-          JSON.stringify(input.outputSchema), JSON.stringify(stored.executionBinding),
+          JSON.stringify(input.outputSchema ?? defaultEvaluatorOutputSchema(stored.executionBinding.verdictProtocol)), JSON.stringify(stored.executionBinding),
           regressionRevisionId, input.criterionVersionId, actor.userId, subjectId, stored.customEndpointUrl,
           input.typedQuestion === undefined ? null : JSON.stringify(input.typedQuestion), input.decisionThreshold ?? null]
       );

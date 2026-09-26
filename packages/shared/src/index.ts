@@ -761,11 +761,6 @@ export const CreateSkillVersionInputSchema = z
   .refine((value) => !containsLoneUtf16Surrogate(value), {
     message: "Evaluator input must not contain an unpaired UTF-16 surrogate"
   })
-  // PostgreSQL text and jsonb can't hold a NUL character.
-  .refine((v) => ![v.rubricMarkdown, v.prompt, v.typedQuestion?.instructions, v.typedQuestion?.criteria.true, v.typedQuestion?.criteria.false]
-    .some((text) => text?.includes("\u0000")), {
-    message: "Evaluator text must not contain a NUL character"
-  })
   .refine(
     (v) => v.verdictKind !== "scalar" || (v.scalarRange !== undefined && v.scalarRange[0] < v.scalarRange[1]),
     { message: "scalar skill versions require an ascending scalarRange" }

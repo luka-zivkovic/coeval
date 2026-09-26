@@ -116,6 +116,7 @@ async function providerError(promise: Promise<unknown>): Promise<BinaryCalibrati
 
 afterEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.TYPESAFE_API_KEY;
   delete process.env.OPENAI_BASE_URL;
 });
 
@@ -235,6 +236,38 @@ describe("sealed binary calibration provider execution", () => {
       expect(JSON.stringify(result)).not.toMatch(/CANARY|0\.6/);
     }
     expect(order).toEqual(["call-start", "sent", "call-start", "sent"]);
+  });
+
+  it("refuses a prompted evaluator on a TypeSafe binding, and a typed item with no key, before call-start", async () => {
+    const http = stub(() => anthropicAnswer());
+    const promptedOnTypeSafe = await providerError(executor(http.fetch).execute({
+      authorizedRun: authorizedRun({ executionBinding: JEV }),
+      attempt: ATTEMPT,
+      beforePhysicalCall: async () => { throw new Error("must not start"); }
+    }));
+    expect(promptedOnTypeSafe).toMatchObject({ code: "internal", physicalCall: false });
+    process.env.TYPESAFE_API_KEY = "";
+    const keyless = await providerError(executor(http.fetch, null).execute({
+      authorizedRun: authorizedRun({ executionBinding: JEV, evaluator: TYPED_EVALUATOR }),
+      attempt: ATTEMPT,
+      beforePhysicalCall: async () => { throw new Error("must not start"); }
+    }));
+    expect(keyless).toMatchObject({ code: "provider_unavailable", physicalCall: false });
+    expect(http.sent).toHaveLength(0);
+  });
+
+  it("classifies a TypeSafe rate limit or outage once, after the call, keeping no request id", async () => {
+    for (const [status, code] of [[429, "provider_rate_limit"], [503, "provider_unavailable"]] as const) {
+      const http = stub(() => new Response(JSON.stringify({ detail: "busy" }), { status, headers: { "x-typesafe-request-id": "REQUEST_ID_CANARY" } }));
+      let started = 0;
+      const error = await providerError(executor(http.fetch, "typesafe-project-key").execute({
+        authorizedRun: authorizedRun({ executionBinding: JEV, evaluator: TYPED_EVALUATOR }),
+        attempt: ATTEMPT,
+        beforePhysicalCall: async () => { started += 1; }
+      }));
+      expect({ status, code: error.code, physicalCall: error.physicalCall, started }).toEqual({ status, code, physicalCall: true, started: 1 });
+      expect(JSON.stringify(error.observed)).not.toContain("CANARY");
+    }
   });
 
   it("refuses a typed-question evaluator on a prompted binding before call-start", async () => {
