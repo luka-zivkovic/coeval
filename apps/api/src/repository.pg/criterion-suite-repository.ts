@@ -123,6 +123,8 @@ export class PgCriterionSuiteRepository implements CriterionSuiteRepositoryPort 
         status: "draft",
         rubricMarkdown: input.evaluator.rubricMarkdown,
         prompt: input.evaluator.prompt,
+        typedQuestion: null,
+        decisionThreshold: null,
         ...executionBindingFromInput(input.evaluator.executionBinding),
         outputSchema: input.evaluator.outputSchema,
         goldenSetAgreement: null,

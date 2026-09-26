@@ -19,6 +19,7 @@ import {
   renderJudgePromptContent
 } from "@rubrist/shared";
 import { RegressionGateJudgeError } from "./errors.js";
+import { promptedText } from "../lib/evaluator-definition.js";
 
 // Subset of JudgeProvider needed by the binary golden-set regression gate. A
 // full JudgeProvider satisfies it structurally; declaring it narrowly lets
@@ -49,7 +50,7 @@ export async function runGoldenSetRegression(input: {
     id: input.skillVersion.id,
     name: input.skillVersion.version,
     kind: "unified",
-    content: renderJudgePromptContent(input.skillVersion)
+    content: renderJudgePromptContent(promptedText(input.skillVersion))
   };
 
   // Judge the comparable entries with bounded concurrency. Real providers

@@ -11897,8 +11897,10 @@ CREATE TABLE skill_versions (
     project_id text NOT NULL,
     version text NOT NULL,
     status text NOT NULL,
-    rubric_markdown text NOT NULL,
-    prompt text NOT NULL,
+    rubric_markdown text,
+    prompt text,
+    typed_question jsonb,
+    decision_threshold double precision,
     output_schema jsonb NOT NULL,
     execution_binding jsonb NOT NULL,
     custom_endpoint_url text,
@@ -11922,6 +11924,15 @@ CREATE TABLE skill_versions (
     onboarding_request_digest text,
     onboarding_assurance text,
     CONSTRAINT skill_versions_developer_identity_status_check CHECK ((developer_identity_status = ANY (ARRAY['unknown_legacy'::text, 'recorded'::text]))),
+    -- A typed-question version (ADR-0014 section 5) asks a question with a
+    -- decision threshold on P(pass), strictly between 0 and 1, and has no
+    -- rubric or prompt; a prompted version is the reverse. Only
+    -- typed-question/v1 runs a typed question, and its verdict is binary.
+    CONSTRAINT skill_versions_definition_kind_check CHECK ((
+      CASE WHEN ((execution_binding ->> 'verdictProtocol'::text) = 'typed-question/v1'::text)
+        THEN ((typed_question IS NOT NULL) AND (jsonb_typeof(typed_question) = 'object'::text) AND (decision_threshold IS NOT NULL) AND (decision_threshold > (0)::double precision) AND (decision_threshold < (1)::double precision) AND (rubric_markdown IS NULL) AND (prompt IS NULL) AND (verdict_kind = 'binary'::text))
+        ELSE ((typed_question IS NULL) AND (decision_threshold IS NULL) AND (rubric_markdown IS NOT NULL) AND (prompt IS NOT NULL))
+      END)),
     -- The binding names a custom endpoint only by digest (ADR-0014 section 2):
     -- SHA-256 of 'rubrist/endpoint-base-url/v1', a NUL byte, and the URL. A
     -- custom provider keeps its configured URL here, and only it does, and the

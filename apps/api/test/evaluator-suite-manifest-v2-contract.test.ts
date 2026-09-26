@@ -221,6 +221,7 @@ describe("evaluator suite manifest v2 contract (ADR-0014 section 7)", () => {
 describe("suite member evaluators", () => {
   const version = {
     id: "skv_member", skillId: "skill_member", rubricMarkdown: "Pass grounded answers.", prompt: "Judge {{rubric_markdown}}.",
+    typedQuestion: null, decisionThreshold: null,
     verdictKind: "binary", outputSchema: { type: "object" }, scalarRange: null, categoricalChoiceScores: null,
     executionBinding: SEEDED_BINDING
   } as unknown as SkillVersion;

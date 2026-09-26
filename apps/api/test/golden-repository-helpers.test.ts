@@ -109,7 +109,8 @@ describe("golden repository helpers", () => {
       "node:crypto",
       "@rubrist/audit/runtime",
       "@rubrist/shared",
-      "./errors.js"
+      "./errors.js",
+      "../lib/evaluator-definition.js"
     ]);
     expect(repositorySource.statements.filter((statement) =>
       (ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) &&

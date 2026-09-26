@@ -46,7 +46,8 @@ export function FirstVerdictCard({
   }, [dashboard.currentVersionResultCount, dashboard.skill.currentVersion.id]);
 
   if (!detail) return null;
-  const rubric = dashboard.skill.currentVersion.rubricMarkdown.trim();
+  // A typed-question version has no rubric; its views arrive in Batch 8F.
+  const rubric = (dashboard.skill.currentVersion.rubricMarkdown ?? "").trim();
   const excerpt = rubric.length > 720 ? `${rubric.slice(0, 720).trimEnd()}…` : rubric;
   const isFirst = dashboard.currentVersionResultCount === 1;
 

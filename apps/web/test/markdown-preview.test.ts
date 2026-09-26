@@ -156,7 +156,7 @@ describe("MarkdownPreview", () => {
     expect(skill).toContain("Execution binding · immutable settings");
     expect(skill).not.toContain("Model used");
     expect(skill).not.toContain("Rubrist flips this skill to");
-    expect(versions).toContain("<MarkdownPreview markdown={v.rubricMarkdown}");
+    expect(versions).toContain("<MarkdownPreview markdown={v.rubricMarkdown ?? \"\"}");
     expect(versions).toContain("{compiledPrompt.content");
     expect(editor).toContain('rubricMode === "preview"');
     expect(editor).toContain('aria-label="Review guide Markdown source"');

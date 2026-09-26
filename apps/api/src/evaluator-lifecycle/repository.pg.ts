@@ -29,6 +29,7 @@ import {
   type Skill
 } from "@rubrist/shared";
 import { ExecutionBindingInputError, executionBindingFromInput } from "../lib/execution-binding.js";
+import { rowToEvaluatorDefinitionText } from "../repository.pg/mappers.js";
 import { governedGateRefusal, type GovernedBinding } from "../lib/binding-resolution.js";
 import { sha256Digest } from "../lib/canonical-json.js";
 import {
@@ -781,7 +782,7 @@ async function loadSkill(db: Pool | PoolClient, projectId: string, skillVersionI
               when 'retired' then 'deprecated'
               else version.status
             end as version_status,
-            version.rubric_markdown,version.prompt,
+            version.rubric_markdown,version.prompt,version.typed_question,version.decision_threshold,
             version.execution_binding,version.custom_endpoint_url,version.output_schema,version.golden_set_agreement,
             version.too_strict_count,version.too_lenient_count,version.ambiguous_count,
             version.known_limitations,version.verdict_kind,version.scalar_range,
@@ -802,8 +803,7 @@ async function loadSkill(db: Pool | PoolClient, projectId: string, skillVersionI
     criterionVersionId: String(row.version_criterion_version_id),
     version: String(row.version),
     status: row.version_status,
-    rubricMarkdown: String(row.rubric_markdown),
-    prompt: String(row.prompt),
+    ...rowToEvaluatorDefinitionText(row),
     executionBinding: parseJson(row.execution_binding),
     customEndpointUrl: row.custom_endpoint_url == null ? null : String(row.custom_endpoint_url),
     outputSchema: parseJson(row.output_schema),

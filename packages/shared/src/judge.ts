@@ -134,6 +134,20 @@ export const MinimumVerdictOutputSchema = {
 } as const;
 
 /**
+ * The output contract a typed-question version stores (ADR-0014 section 5):
+ * a probability, and no rationale. Its identity names the contract by the
+ * question type and polarity, not by this schema.
+ */
+export const TypedQuestionOutputSchema = {
+  type: "object",
+  required: ["probability"],
+  additionalProperties: false,
+  properties: {
+    probability: { type: "number", minimum: 0, maximum: 1 }
+  }
+} as const;
+
+/**
  * How deep a saved output schema may nest: skill-format/v2 carries it four
  * levels below the document root (evaluator.identity.definition.outputSchema).
  */

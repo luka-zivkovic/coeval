@@ -290,6 +290,8 @@ describe("Rubrist Hono API", () => {
       status: "calibrating",
       rubricMarkdown: "x",
       prompt: "x",
+      typedQuestion: null,
+      decisionThreshold: null,
       executionBinding: structuredClone(MOCK_BINDING),
       customEndpointUrl: null,
       outputSchema: { type: "object" },

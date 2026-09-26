@@ -37,7 +37,8 @@ function candidateResult(replayed: boolean): EvaluatorCandidateCreateResult {
   const version = {
     id: "skill-version", skillId: "skill", criterionVersionId: "criterion-version",
     version: "1.0.0", status: "calibrating" as const, rubricMarkdown: "Exact rubric",
-    prompt: "Judge the response.", executionBinding: structuredClone(MOCK_BINDING), customEndpointUrl: null,
+    prompt: "Judge the response.", typedQuestion: null, decisionThreshold: null,
+    executionBinding: structuredClone(MOCK_BINDING), customEndpointUrl: null,
     outputSchema: MinimumVerdictOutputSchema, goldenSetAgreement: null,
     tooStrictCount: 0, tooLenientCount: 0, ambiguousCount: 0, knownLimitations: [],
     verdictKind: "binary" as const, scalarRange: null, categoricalChoiceScores: null,
@@ -235,6 +236,8 @@ describe("evaluator lifecycle API boundary", () => {
       projectId: "project",
       executionBinding: structuredClone(MOCK_BINDING),
       customEndpointUrl: null,
+      typedQuestion: null,
+      decisionThreshold: null,
       spec: { verdictKind: "binary" as const, scalarRange: null, categoricalChoiceScores: null }
     };
     const router = (repo: EvaluatorLifecycleRepository, bindingResolution: typeof services | null = services) => createEvaluatorLifecycleRouter({

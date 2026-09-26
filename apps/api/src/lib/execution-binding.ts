@@ -28,19 +28,25 @@ export function platformOpenAIBaseUrl(): string | null {
  * digest and kept beside the binding. An OpenAI binding on the managed
  * endpoint records the platform's OPENAI_BASE_URL override, when one is set,
  * as its custom endpoint: evidence names the endpoint the calls reach. The
- * result is validated with the stored binding's rules. Typed-question
- * bindings arrive with their definitions in Batch 8E, so none is accepted yet.
+ * result is validated with the stored binding's rules. A typed-question
+ * binding is accepted only where the caller saves a typed-question
+ * definition with it (`typedQuestion`); every other flow saves a prompted
+ * definition, which only a prompted binding runs.
  */
 export function executionBindingFromInput(
   raw: ExecutionBindingInput,
-  platform: { openAIBaseUrl: string | null } = { openAIBaseUrl: platformOpenAIBaseUrl() }
+  platform: { openAIBaseUrl: string | null } = { openAIBaseUrl: platformOpenAIBaseUrl() },
+  options: { typedQuestion?: boolean } = {}
 ): { executionBinding: ExecutionBinding; customEndpointUrl: string | null } {
   const issues = (error: { issues: Array<{ path: PropertyKey[]; message: string }> }) =>
     error.issues.map((issue) => `${issue.path.map(String).join(".") || "binding"}: ${issue.message}`).join("; ");
   const input = ExecutionBindingInputSchema.safeParse(raw);
   if (!input.success) throw new ExecutionBindingInputError(issues(input.error));
-  if (input.data.provider === "typesafe" || input.data.verdictProtocol === "typed-question/v1") {
-    throw new ExecutionBindingInputError("typed-question evaluators aren't available yet; bind a prompted evaluator to a prompted provider");
+  const typed = input.data.provider === "typesafe" || input.data.verdictProtocol === "typed-question/v1";
+  if (typed !== (options.typedQuestion === true)) {
+    throw new ExecutionBindingInputError(typed
+      ? "typed-question evaluators aren't available here; bind a prompted evaluator to a prompted provider"
+      : "a typed-question definition runs on the typesafe provider with typed-question/v1");
   }
   const { endpoint, ...rest } = input.data;
   let stored: ExecutionBinding["endpoint"];

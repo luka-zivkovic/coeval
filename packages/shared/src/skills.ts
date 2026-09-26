@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ExecutionBindingSchema } from "./evaluator-execution.js";
+import { ExecutionBindingSchema, TypedQuestionSchema } from "./evaluator-execution.js";
 import {
   JsonSchemaSchema,
   RubricProvenanceSchema,
@@ -14,8 +14,14 @@ export const SkillVersionSchema = z
     criterionVersionId: z.string(),
     version: z.string(),
     status: SkillStatusSchema,
-    rubricMarkdown: z.string(),
-    prompt: z.string(),
+    // A prompted version's rubric and prompt; null for a typed-question version.
+    rubricMarkdown: z.string().nullable(),
+    prompt: z.string().nullable(),
+    // A typed-question version (ADR-0014 section 5) asks a question instead:
+    // its text, and the decision threshold on P(pass), chosen on nonsealed data
+    // and part of its identity. Both null for a prompted version.
+    typedQuestion: TypedQuestionSchema.nullable(),
+    decisionThreshold: z.number().gt(0).lt(1).nullable(),
     // Identity (ADR-0014 section 1): exactly what every call sends.
     executionBinding: ExecutionBindingSchema,
     // A custom provider's configured base URL, which the binding names only by
@@ -58,6 +64,11 @@ export const SkillVersionSchema = z
   .refine((v) => v.verdictKind === "categorical" || v.categoricalChoiceScores === null, { message: "categoricalChoiceScores is only valid for categorical kinds" })
   .refine((v) => (v.executionBinding.provider === "custom") === (v.customEndpointUrl !== null), {
     message: "custom bindings keep their endpoint URL, and only they do"
+  })
+  .refine((v) => v.executionBinding.verdictProtocol === "typed-question/v1"
+    ? v.typedQuestion !== null && v.decisionThreshold !== null && v.rubricMarkdown === null && v.prompt === null && v.verdictKind === "binary"
+    : v.typedQuestion === null && v.decisionThreshold === null && v.rubricMarkdown !== null && v.prompt !== null, {
+    message: "a typed-question version holds a question and threshold and no rubric or prompt, and a prompted version the reverse"
   });
 export type SkillVersion = z.infer<typeof SkillVersionSchema>;
 

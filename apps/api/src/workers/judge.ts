@@ -21,6 +21,7 @@ import {
   structuredVerdictToLegacy,
   structuredVerdictToPayload,
   type JudgeProviderFactory, isJudgeAuthError } from "../lib/judge-provider.js";
+import { promptedText } from "../lib/evaluator-definition.js";
 
 // The worker builds the provider per skill version (so its requested model ID
 // and temperature are honored), but callers/tests may inject one provider —
@@ -121,7 +122,7 @@ export async function judgeAndRecord(
     id: skillVersion.id,
     name: skillVersion.version,
     kind: "unified",
-    content: renderJudgePromptContent(skillVersion)
+    content: renderJudgePromptContent(promptedText(skillVersion))
   };
 
   const startedAt = Date.now();

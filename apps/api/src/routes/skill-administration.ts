@@ -250,8 +250,8 @@ export function registerSkillAdministrationRoutes(
         version: version.version,
         status: version.status,
         identity,
-        // Typed-question evaluators, which carry their question text, arrive in Batch 8E.
-        question: null,
+        // A typed-question evaluator carries its question's text; its identity holds only the digest.
+        question: version.typedQuestion,
         examples,
         notes
       });

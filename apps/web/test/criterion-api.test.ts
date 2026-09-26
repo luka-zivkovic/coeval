@@ -79,6 +79,8 @@ describe("criterion-scoped web API", () => {
         status: "approved",
         rubricMarkdown: "Pass when correct.",
         prompt: "Judge correctness.",
+        typedQuestion: null,
+        decisionThreshold: null,
         executionBinding: { provider: "mock", endpoint: { kind: "managed" }, modelId: "mock", modelVersion: "mock", sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null, verdictProtocol: "mock/v1", routing: null },
         customEndpointUrl: null,
         outputSchema: { type: "object" },
