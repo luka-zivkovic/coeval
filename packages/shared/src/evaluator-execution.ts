@@ -596,7 +596,21 @@ export const CapabilityCheckInputSchema = ExecutionBindingInputSchema.pick({
   modelVersion: true,
   outputTokenLimit: true,
   routing: true
-}).strict();
+}).strict().superRefine((input, ctx) => {
+  // The binding rules a check's input can break, as a saved binding's would.
+  if ((input.provider === "custom") !== (input.endpoint.kind === "custom")) {
+    ctx.addIssue({ code: "custom", path: ["endpoint"], message: "only the custom provider names its own endpoint, and it must" });
+  }
+  if ((input.provider === "openrouter") !== (input.routing !== null)) {
+    ctx.addIssue({ code: "custom", path: ["routing"], message: "OpenRouter states its routing requirements; others have none" });
+  }
+  if (input.provider === "anthropic" && input.outputTokenLimit === null) {
+    ctx.addIssue({ code: "custom", path: ["outputTokenLimit"], message: "Anthropic requires an output token limit" });
+  }
+  if (!takesSamplingSettings(input.provider) && input.outputTokenLimit !== null) {
+    ctx.addIssue({ code: "custom", path: ["outputTokenLimit"], message: `${input.provider} takes no output token limit` });
+  }
+});
 export type CapabilityCheckInput = z.infer<typeof CapabilityCheckInputSchema>;
 
 /**
@@ -613,6 +627,10 @@ export const CapabilityCheckReportSchema = z.object({
   reasoningSupport: SettingSupportSchema.nullable(),
   probedReasoning: ReasoningSettingsSchema.nullable(),
   documentedDefault: ReasoningSettingsSchema.nullable(),
+  /** The dated reasoning-defaults table the documented default comes from. */
+  reasoningDefaultsVersion: z.string(),
+  /** Whether the check ended early: a probe couldn't be sent, or ended on a transient error. */
+  interrupted: z.boolean(),
   published: z.object({
     temperature: z.boolean().nullable(),
     topP: z.boolean().nullable(),

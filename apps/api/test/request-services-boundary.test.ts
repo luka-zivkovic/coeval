@@ -244,7 +244,8 @@ describe("request service composition boundary", () => {
       { factory: "createRequestServices", kind: "import", file: "app.ts" },
       { factory: "createSkillVersionResolver", kind: "call", file: "request-services/index.ts", owner: "createRequestServices" },
       { factory: "createSkillVersionResolver", kind: "import", file: "request-services/index.ts" },
-      // The judge request bucket and the production ingest record bucket.
+      // The judge request bucket, the production ingest record bucket, and the capability check bucket.
+      { factory: "createTokenBucket", kind: "call", file: "request-services/index.ts", owner: "createRequestServices" },
       { factory: "createTokenBucket", kind: "call", file: "request-services/index.ts", owner: "createRequestServices" },
       { factory: "createTokenBucket", kind: "call", file: "request-services/index.ts", owner: "createRequestServices" },
       { factory: "createTokenBucket", kind: "import", file: "request-services/index.ts" }

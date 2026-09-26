@@ -23,6 +23,8 @@ export interface RequestServices extends EvalRunRequestService {
   takeRateTokens(apiKeyId: string, count: number): boolean;
   /** Production ingest keys spend records from their own bucket, never the judge request bucket. */
   takeIngestRecords(apiKeyId: string, count: number): boolean;
+  /** Capability checks spend from their own bucket, per owner and project (ADR-0014 section 4). */
+  takeCapabilityCheck(identity: string): boolean;
   resolveSkillVersionId: ResolveSkillVersionId;
   listJudgeProviders(projectId: string): Promise<ReturnType<typeof judgeProviderAvailability>>;
   requireOwner(c: Context<{ Variables: AppVariables }>, action: string): Promise<Response | null>;
@@ -40,6 +42,8 @@ export interface CreateRequestServicesOptions {
 }
 
 export const PRODUCTION_INGEST_DEFAULT_RECORDS_PER_MINUTE = 60_000;
+/** Capability checks each owner may start per project per minute; each sends up to six provider calls. */
+export const CAPABILITY_CHECKS_PER_MINUTE = 10;
 
 // createApp owns exactly one of these containers. Every extracted router gets
 // the same limiter, authorization resolver, provider view, owner guard, and
@@ -57,12 +61,17 @@ export function createRequestServices(options: CreateRequestServicesOptions): Re
     capacity: Math.max(ingestRecordsPerMinute, PRODUCTION_RECORD_APPEND_MAX_RECORDS),
     refillPerMinute: ingestRecordsPerMinute
   });
+  const capabilityCheckBucket = createTokenBucket({
+    capacity: CAPABILITY_CHECKS_PER_MINUTE,
+    refillPerMinute: CAPABILITY_CHECKS_PER_MINUTE
+  });
   const evalRuns = createEvalRunRequestService(options.repository, options.queue);
 
   return {
     ...evalRuns,
     takeRateTokens: bucket.take,
     takeIngestRecords: ingestBucket.take,
+    takeCapabilityCheck: (identity) => capabilityCheckBucket.take(identity, 1),
     resolveSkillVersionId: createSkillVersionResolver(options.repository),
     async listJudgeProviders(projectId) {
       const configured = new Set(

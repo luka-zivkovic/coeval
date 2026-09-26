@@ -225,17 +225,13 @@ async function resolveCandidateBinding(
 }
 
 /**
- * Resolves a saved version's binding when the gate needs it (no record, an
- * unresolved one, or a resolved one missing an answer a gate needs) and
- * stores the result. A failed binding is fixed only by a new evaluator
- * version. Returns the latest record, or `undefined` when the version isn't
- * in the project.
- */
-/**
  * Resolution after save (ADR-0014 section 4), for the gate worker: a
- * just-saved version's binding is resolved when it has no current record, and
- * the attempt is recorded against the save. The mock makes no call, and a
- * mutable alias is refused at every governed gate, so neither is probed.
+ * just-saved version's binding is resolved when it has no record or only an
+ * unresolved one, and the attempt is recorded against the save. A resolved
+ * record that lacks an answer only a gate needs is left to the gate, since
+ * resolution after save never probes reasoning; a failed one is fixed only by
+ * a new version. The mock makes no call, and a mutable alias is refused at
+ * every governed gate, so neither is probed.
  */
 export function savedVersionResolver(
   repository: EvaluatorLifecycleRepository,
@@ -246,7 +242,7 @@ export function savedVersionResolver(
     if (!governed) return;
     const binding = governed.binding.executionBinding;
     if (binding.provider === "mock" || mutableModelAlias(binding.modelId) !== null) return;
-    if (!resolutionNeeded(binding, governed.record)) return;
+    if (governed.record !== null && governed.record.status !== "unresolved") return;
     const record = await resolveSavedBinding(services, governed.binding);
     await repository.recordResolution({
       projectId, skillVersionId, executionBinding: binding, kind: "resolution",
@@ -255,6 +251,13 @@ export function savedVersionResolver(
   };
 }
 
+/**
+ * Resolves a saved version's binding when a gate needs it (no record, an
+ * unresolved one, or a resolved one missing an answer a gate needs) and
+ * stores the result. A failed binding is fixed only by a new evaluator
+ * version. Returns the latest record, or `undefined` when the version isn't
+ * in the project.
+ */
 async function resolveWhenUnresolved(
   options: CreateEvaluatorLifecycleRouterOptions,
   projectId: string,

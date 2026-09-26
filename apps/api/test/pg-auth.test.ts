@@ -388,6 +388,14 @@ run("Postgres auth flow", () => {
       });
       expect(memberPairing.status).toBe(403);
 
+      // A capability check spends the project's key, so only an owner starts one.
+      const memberCapabilityCheck = await app.request("/api/judge/capability-check", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: memberCookie },
+        body: JSON.stringify({ provider: "anthropic", endpoint: { kind: "managed" }, modelId: "claude-opus-5-5", modelVersion: "claude-opus-5-5", outputTokenLimit: 1_200, routing: null })
+      });
+      expect(memberCapabilityCheck.status).toBe(403);
+
       const memberInvite = await app.request("/api/users/invite", {
         method: "POST",
         headers: { "content-type": "application/json", cookie: memberCookie },

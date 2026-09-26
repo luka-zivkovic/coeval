@@ -1,11 +1,43 @@
 import { Hono } from "hono";
+import type { Pool } from "pg";
 import { describe, expect, it, vi } from "vitest";
+import type { ExecutionFetch } from "@rubrist/audit/runtime";
 import { createApp, agentSetupPairingClaimExpiresAt, agentSetupPairingStatus } from "../src/app.js";
 import type { AgentSetupPairingRecord } from "../src/lib/auth.js";
 import { bindingResolutionServices } from "../src/lib/binding-resolution.js";
 import { DemoRepository } from "../src/repository.js";
-import { createRequestServices, type AppVariables } from "../src/request-services/index.js";
-import { registerProjectAdministrationRoutes } from "../src/routes/project-administration.js";
+import { CAPABILITY_CHECKS_PER_MINUTE, createRequestServices, type AppVariables } from "../src/request-services/index.js";
+import { CAPABILITY_CHECKS_IN_FLIGHT, registerProjectAdministrationRoutes } from "../src/routes/project-administration.js";
+
+const OPUS_CHECK = { provider: "anthropic", endpoint: { kind: "managed" }, modelId: "claude-opus-5-5", modelVersion: "claude-opus-5-5", outputTokenLimit: 1_200, routing: null };
+
+/** The route family alone, in a project, with provider calls answered by `fetch`. */
+function checkApp(fetch: ExecutionFetch, options: { pool?: Pool } = {}) {
+  const repository = new DemoRepository();
+  const app = new Hono<{ Variables: AppVariables }>();
+  app.use(async (c, next) => {
+    c.set("projectId", "project");
+    await next();
+  });
+  registerProjectAdministrationRoutes(app, {
+    repository,
+    ...options,
+    requestServices: createRequestServices({ repository, ownerAuthorizationEnabled: false, rateLimitPerMinute: 60, batchMaxItems: 100 }),
+    publicApiBaseUrl: () => "https://rubrist.example",
+    bindingResolution: bindingResolutionServices(async () => "sk-project", {
+      fetch,
+      capabilityFetch: async () => new Response("{}", { status: 404 })
+    })
+  });
+  return (body: unknown) => app.request("/api/judge/capability-check", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body)
+  });
+}
+
+const acceptedVerdict = () => new Response(JSON.stringify({
+  id: "msg", model: "claude-opus-5-5", stop_reason: "end_turn",
+  content: [{ type: "text", text: JSON.stringify({ label: "pass", score: 0.9, rationale: "ok" }) }], usage: { input_tokens: 1, output_tokens: 1 }
+}));
 
 describe("project administration routes", () => {
   it("owns the exact contiguous project-administration route family", () => {
@@ -59,6 +91,46 @@ describe("project administration routes", () => {
     } finally {
       if (previous !== undefined) process.env.ANTHROPIC_API_KEY = previous;
     }
+  });
+
+  it("refuses a check no saved binding could make, before any call", async () => {
+    const urls: string[] = [];
+    const check = checkApp(async (url) => {
+      urls.push(url);
+      return acceptedVerdict();
+    }, { pool: {} as Pool });
+    const elsewhere = await check({ ...OPUS_CHECK, provider: "openai", endpoint: { kind: "custom", baseUrl: "https://attacker.example/v1" }, outputTokenLimit: null });
+    expect(elsewhere.status).toBe(400);
+    expect((await check({ ...OPUS_CHECK, outputTokenLimit: null })).status).toBe(400);
+    const mock = await check({ provider: "mock", endpoint: { kind: "managed" }, modelId: "mock-heuristic-v1", modelVersion: "mock-heuristic-v1", outputTokenLimit: null, routing: null });
+    expect(mock.status).toBe(400);
+    await expect(mock.json()).resolves.toEqual({ error: "The mock provider has no capabilities to check." });
+    expect(urls).toEqual([]);
+  });
+
+  it("limits how many checks an owner starts, and how many a project runs at once", async () => {
+    const limited = checkApp(async () => acceptedVerdict());
+    for (let started = 0; started < CAPABILITY_CHECKS_PER_MINUTE; started += 1) {
+      expect((await limited(OPUS_CHECK)).status).toBe(200);
+    }
+    const over = await limited(OPUS_CHECK);
+    expect(over.status).toBe(429);
+    await expect(over.json()).resolves.toEqual({ error: `Rate limit exceeded: ${CAPABILITY_CHECKS_PER_MINUTE} capability checks/minute.` });
+
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const slow = checkApp(async () => {
+      await held;
+      return acceptedVerdict();
+    });
+    const running = Array.from({ length: CAPABILITY_CHECKS_IN_FLIGHT }, () => slow(OPUS_CHECK));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const busy = await slow(OPUS_CHECK);
+    expect(busy.status).toBe(429);
+    await expect(busy.json()).resolves.toEqual({ error: "A capability check for this project is already running. Retry when it finishes." });
+    release();
+    expect((await Promise.all(running)).map((response) => response.status)).toEqual([200, 200]);
+    expect((await slow(OPUS_CHECK)).status).toBe(200);
   });
 
   it("reports the exact saved Run fields available to beginner setup", async () => {
