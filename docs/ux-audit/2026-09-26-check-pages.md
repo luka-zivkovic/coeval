@@ -1,8 +1,9 @@
 # UX audit 3: the Check pages (Review guide, editor, versions, compare)
 
 Status: **audit record, not product authority.** It records CURRENT
-observations and proposals for founder review. Items marked *decide* need a
-decision before implementation. No item proposes an ADR.
+observations and proposals for founder review. Its open questions were
+settled on 2026-09-26 by taking the recommended options; see
+[Decisions](#decisions). No item proposes an ADR.
 
 Last reviewed: 2026-09-26 · code at `2c82321`
 
@@ -102,12 +103,12 @@ marked *installed*, *add*, or *Rubrist*.
 | 3 | The editor discards unsaved work. A template click, "Reset", Cancel, Back, and Version history all drop typed text without asking. (C2) | 3 | medium | fix |
 | 4 | Opening the editor swaps an unavailable provider without asking, and the change review counts the swap as the owner's edit. (C13) | 3 | medium | fix |
 | 5 | On phones, the override button runs off the screen, and the version tables hide their evidence columns behind a sideways scroll. (C4) | 3 | medium | fix |
-| 6 | The version page is titled with the model name, leads with technical evidence, says "current" twice, and offers no next step. (C5) | 3 | medium | fix, *decide* Guided content |
-| 7 | The editor is reached through seven different labels, and status words come from legacy version status. (C12) | 3 | large | *decide* |
+| 6 | The version page is titled with the model name, leads with technical evidence, says "current" twice, and offers no next step. (C5) | 3 | medium | fix (D1, D5) |
+| 7 | The editor is reached through seven different labels, and status words come from legacy version status. (C12) | 3 | large | fix (D6) |
 | 8 | Load failures read as "Version not found" or "Nothing to compare yet". Failed evidence reads vanish or show as empty, and error states tell users to start the API. (C7) | 2 | large | fix |
 | 9 | Waits never end. The running check polls forever with no elapsed time, and a count can say "Loading…" indefinitely. (C6) | 2 | medium | fix |
-| 10 | The check's outcomes point away from the fix. A blocked result makes the override the filled button, and a failed check offers no Retry. (C8) | 2 | quick | *decide* |
-| 11 | The editor buries the Review guide below four blocks. A chosen template looks like a primary, and save is enabled with nothing changed. (C9) | 2 | medium | fix, *decide* identical saves |
+| 10 | The check's outcomes point away from the fix. A blocked result makes the override the filled button, and a failed check offers no Retry. (C8) | 2 | quick | fix (D2, D3) |
+| 11 | The editor buries the Review guide below four blocks. A chosen template looks like a primary, and save is enabled with nothing changed. (C9) | 2 | medium | fix (D4) |
 | 12 | The Check page's tabs are not in the URL. A metric doubles as a navigation button, and the guide's own heading repeats the title in bold. (C10) | 2 | medium | fix |
 | 13 | Compare's pickers can trap a reversed pair that the page then asks you to swap. (C11) | 2 | quick | fix |
 
@@ -344,8 +345,7 @@ Proposal:
 
 ### C5. The version page names the model, leads with evidence, and offers no next step
 
-Sev 3 · CURRENT · *fix* · medium · Guided content *decide* · extends round 1's
-O7
+Sev 3 · CURRENT · *fix* · medium · decided in D1 and D5 · extends round 1's O7
 
 - **The title is the model id,** "anthropic/claude-sonnet-4-6"
   (`screens/skill-versions.tsx:380-382`). The version number appears only in
@@ -384,8 +384,8 @@ details" (`lib/display-mode.ts:15`). This page hides none of them.
 ASSUMPTION: the onboarding contract's rules carry over to this page. It files
 technical details as "Available for inspection without blocking the default
 journey" (BOJ:68). In Guided display it prefers **Check** before
-**Evaluator** (BOJ:70-71). BOJ governs first run (BOJ:7-8), so whether it
-applies here is part of the Guided-content decision.
+**Evaluator** (BOJ:70-71). BOJ governs first run (BOJ:7-8); D6 applies its
+product language here as a design decision, and BOJ itself is unchanged.
 
 Rule: `archetypes.md` › Detail (the primary action is the object's most
 common next step); `review.md` › Repeated facts; `labels.md` › Page titles
@@ -397,10 +397,10 @@ Proposal:
 - Lead with the Review guide and what changed from the previous version.
 - Move the Judge Card, κ, and self-consistency into a "Technical evidence"
   section. It is open by default in Technical display and collapsed in Guided
-  (*decide* the Guided content).
+  (D1).
 - Add "Compare with current" as a link to `/skill/compare?from=…&to=…`.
-- For owners, add "Start a new version from v1.2.0". The editor has no
-  parameter for a base version yet (*decide*).
+- For owners, add "Start a new version from v1.2.0", linking to
+  `/skill/edit?from=<id>` (D5).
 - Replace the API instruction with "No case has been judged twice under this
   version yet."
 
@@ -492,7 +492,7 @@ Proposal: one page-state pattern for all five routes:
 
 ### C8. The check's outcomes point away from the fix
 
-Sev 2 · CURRENT · *decide* · quick
+Sev 2 · CURRENT · *fix* · quick · decided in D2 and D3
 
 - **Blocked.**
   - The only filled button is "Create a new version with override", in the
@@ -516,22 +516,23 @@ Context:
 
 Rule: `placement.md` › In shadcn apps ("One filled button per page state");
 `decisions.md` › Errors and recovery ("One way forward"; "Offer Retry only
-when retrying can work"). Which path gets the filled button is this audit's
-recommendation, not a rule. Revising is the proposed default because the
-override records an exception to the gate.
+when retrying can work"). Which path gets the filled button is a design
+choice, not a rule: D2 makes revising the default because the override
+records an exception to the gate.
 
-Proposal (*decide*):
+Proposal (decided in D2 and D3):
 
 - **Blocked:** the primary is "Revise the edit". The override moves into a
   secondary "Record an override…" disclosure, which keeps its reason field.
-- **Check failed:** if the API can re-run one version's check, the primary is
-  "Retry the check". Otherwise it is "Back to edit", noting that saving again
-  creates the next version.
+- **Check failed:** the primary is "Back to edit". There, the unchanged form's
+  save reads "Re-run the check" and creates the next version (D4). When the
+  version's provider is unavailable, retrying cannot work, so the primary is
+  "Open Settings" instead.
 - **Passed:** the primary is "View the Check" (`/skill`).
 
 ### C9. The editor buries the Review guide and blurs its controls
 
-Sev 2 · CURRENT · *fix* · medium · identical saves *decide*
+Sev 2 · CURRENT · *fix* · medium · decided in D4
 
 - **The guide starts low.** The editable Review guide starts at y≈739 in a
   900 px window. Four blocks come first: the subtitle, the step strip, the
@@ -568,10 +569,11 @@ Proposal:
   into the empty-guide state. Templates are one-shot actions, not toggles.
 - Rename step 1 "Edit".
 - Use Runs and Results in Guided display.
-- Disable save until something changes, or name the identical save "Re-run the
-  check" if that use is intended (*decide*). Here "changes" means against the
-  base version, as the digest does; C13's fix keeps the editor from adding a
-  change the owner did not make.
+- When no evaluator field changed, name the save "Re-run the check" and say
+  what it does: it creates the next version with the same definition and
+  checks it against the current Protected examples (D4). "Changed" means
+  against the base version, as the digest does; C13's fix keeps the editor
+  from adding a change the owner did not make.
 
 ### C10. The Check page mixes tabs, metrics, and navigation
 
@@ -617,7 +619,8 @@ button and list only older versions in From.
 
 ### C12. Naming and status words
 
-Sev 3 · CURRENT · *decide* · large · extends round 1's naming proposal and O9
+Sev 3 · CURRENT · *fix* · large · decided in D6 · extends round 1's naming
+proposal and O9
 
 - **Seven labels lead to the editor:**
   - "Edit evaluator" (`screens/skill.tsx:98-100`);
@@ -660,8 +663,8 @@ Context:
 
 ASSUMPTION: BOJ governs first run (BOJ:7-8). Some of these labels sit on
 first-run surfaces, the setup ledger and the first Result, and lead into this
-editor. Whether BOJ's names and status rule govern the Check pages is part of
-the decision.
+editor. D6 applies BOJ's names and status rule to the Check pages as a design
+decision; BOJ itself is unchanged.
 
 Proposal:
 
@@ -670,8 +673,7 @@ Proposal:
   Round 2's T6 keeps "Open the Review guide" for the queue banner, which opens
   the guide beside the queue.
 - Apply round 1's Guided names (Check, Run, Result, Protected examples).
-- *Decide* the status vocabulary: what "approved" and "validated" become, and
-  whether the date line stays.
+- Map the status words and the date line as D6 sets out.
 
 ### C13. Opening the editor swaps an unavailable provider without asking
 
@@ -767,14 +769,14 @@ The step strip appears once the save starts.
 
 | State | Heading | Primary | Secondary | Notes |
 |---|---|---|---|---|
-| Editing, unchanged | Edit the Review guide | Create version (disabled) | Cancel | C9 |
+| Editing, unchanged | Edit the Review guide | Re-run the check (creates the next version) | Cancel | C9, D4 |
 | Stored provider unavailable | Edit the Review guide, with the binding marked unavailable | Create version (disabled until a provider is chosen) | Open Settings | C13 |
 | Editing, changed | Edit the Review guide | Create version | Cancel (asks before discarding) | C2 |
 | Member | The Review guide (read-only) | — | "Ask Product Lead" | C3 |
 | Running | Checking 2 Protected examples · started 1 min ago | View history | — | C6 |
 | Passed | v1.3.0 is current | View the Check | Compare with v1.2.0 | C8 |
 | Blocked | 1 Protected example would regress | Revise the edit | Record an override… (owners) | C8, C4 |
-| Check failed | v1.3.0 was saved; its check did not finish | Retry the check, or Back to edit | View history | C8, *decide* |
+| Check failed | v1.3.0 was saved; its check did not finish | Back to edit, or Open Settings when the provider is unavailable | View history | C8, D3 |
 
 ### Version page (`/skill/versions/:id`)
 
@@ -805,20 +807,72 @@ Saved Apr 30, 2026 · anthropic/claude-sonnet-4-6 · 2 known limitations
 | Compare | "Save a second version to compare." | `Skeleton` rows (*add*); tiles show "—"; never the empty state | `EmptyShell` with Retry; a failed run read says so in its row |
 | Running check | — | "Started N min ago"; past a set time, "taking longer than usual" | Poll errors keep the last state and say when it was last checked |
 
-## Open questions
+## Decisions
 
-1. **Guided content of the version page (C5).** What should Guided display
-   show, what goes under Technical evidence, and does BOJ:68 apply beyond
-   first run?
-2. **Override prominence (C8).** Should revising be the default path, with the
-   override behind a disclosure?
-3. **Retrying a failed check (C8).** Can the API re-run the check for an
-   existing version, or does retrying always mean a new version?
-4. **Identical saves (C9).** Block them, or name them "Re-run the check"?
-5. **A base version for the editor (C5).** Should "Start from v1.2.0" exist,
-   and through which parameter?
-6. **Status vocabulary (C12).** What should "approved" and "validated" say,
-   and do BOJ's names and its status rule (BOJ:316-317) govern these pages?
+Decided 2026-09-26: the founder asked to take the recommended options. These
+are design decisions for implementing this audit, not product authority.
+`PRODUCT.md`, the accepted ADRs, and the onboarding contract are unchanged.
+
+1. **Guided content of the version page (C5).** Guided display shows the
+   header, what changed, the Review guide, and the known-failure check, with
+   "no recorded check" when there is none. The Judge Card, κ,
+   self-consistency, binding, and schema sit in a "Technical evidence"
+   section: collapsed in Guided display, open in Technical display. Guided
+   display's CURRENT promise to hide technical details
+   (`lib/display-mode.ts:15`) already requires this; D6 settles BOJ:68.
+2. **Override prominence (C8).** Revising is the default. "Revise the edit"
+   is the filled button, and the override moves into a "Record an override…"
+   disclosure for owners, which keeps its reason field. An override records an
+   exception to the gate (ARCH:214-216), so it should not be the easiest path.
+3. **Retrying a failed check (C8).** There is no re-run for an existing
+   version. The check already retries provider failures up to five times with
+   backoff (`apps/api/src/routes/skill-administration.ts:437-444`,
+   `apps/api/src/workers/gate.ts:8-35`), and each version keeps one terminal
+   check record. After a failed check, the primary is "Back to edit", where
+   saving the unchanged form re-runs the check as the next version (D4). When
+   the version's provider is unavailable, the primary is "Open Settings",
+   because retrying cannot work.
+4. **Identical saves (C9).** Allow them, and name them for what they do. When
+   no evaluator field changed, the save button reads "Re-run the check", and
+   the change review says: "No evaluator field changed. Saving creates v1.3.0
+   with the same definition and checks it against the current Protected
+   examples." A save pins the current known-failure revision
+   (`components/skill-edit-flow.tsx:179-180`), and that set can change after a
+   version's check (`apps/api/src/lib/judge-card.ts:75`). An unchanged
+   definition can therefore be re-checked only as a new version.
+5. **A base version for the editor (C5).** Add `/skill/edit?from=<versionId>`
+   for owners. It reuses the editor's `editFromVersion`
+   (`screens/skill-edit.tsx:215-224`), which today only "Back to edit" calls
+   (`:736`). The change review still compares with the current version and
+   names the starting point ("Started from v1.1.0"). `?version=` stays
+   reserved for resuming a queued version (`screens/skill-edit.tsx:73,280-314`).
+6. **Status vocabulary and the onboarding contract (C12).** The contract's
+   product language applies to Guided display on these pages. That includes
+   its rule that assurance copy derives from evidence rather than legacy
+   version status (BOJ:316-317). BOJ:7-8 still scopes the contract to first
+   run, so claims that rest on it here stay ASSUMPTION until that line
+   changes. Status words map as follows:
+
+   | Status and its CURRENT meaning | Guided | Technical |
+   |---|---|---|
+   | `production`: the current version | Current | current |
+   | `approved` after a passing check | Check passed | approved · check passed |
+   | `approved` after an override | Override recorded | approved · overridden |
+   | `approved` with no Protected examples to compare (`apps/api/src/repository.pg/skill-lifecycle-repository.ts:714-725`) | No Protected examples to check | approved · advisory only |
+   | `approved` by a starter sign-off, recorded as `skill_version.signoff` (`:253-275`) | Signed off | approved · signed off |
+   | `approved` with no recorded check, such as a version saved before the gate | No recorded check | approved · no recorded check |
+   | `validated`: no code path sets it | Saved | validated (legacy) |
+   | `calibrating` | Check running | calibrating |
+   | `regressing` | Blocked by a regression | regressing |
+   | `failed` | Check didn't finish | failed |
+   | `needs_review` | Needs review | needs review |
+   | `draft` | Draft | draft |
+   | `deprecated` | Replaced | deprecated |
+
+   The "Approved <date>" line becomes the basis and its date, for example
+   "Check passed Apr 30, 2026 · 2 Protected examples" or "Saved Mar 15, 2026 ·
+   no recorded check". No status reads "approved" or "validated" in Guided
+   display, in line with BOJ:272.
 
 ## Next rounds
 

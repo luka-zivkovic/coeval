@@ -1,8 +1,9 @@
 # UX audit 2: the triage flow (Exceptions queue, case page, review player)
 
 Status: **audit record, not product authority.** It records CURRENT
-observations and proposals for founder review. Items marked *decide* need a
-decision before implementation. No item proposes an ADR.
+observations and proposals for founder review. Its open questions were
+settled on 2026-09-26 by taking the recommended options; see
+[Decisions](#decisions). No item proposes an ADR.
 
 Last reviewed: 2026-09-26 · code at `2c82321`
 
@@ -59,9 +60,9 @@ Each proposal marks its component:
 - *add*: run `npx shadcn add <name>` in `apps/web`, then restyle it;
 - *Rubrist*: an existing `components/rubrist/` component.
 
-This round's proposals add five components: `Sheet` (T5, T6), `ToggleGroup`
-(T7), `Sonner` (T4), `AlertDialog` (the Pause guard), and `Skeleton`
-(loading rows).
+This round's proposals add six components: `Sheet` (T5, T6), `ToggleGroup`
+(T7), `Tooltip` (T7's category labels), `Sonner` (T4), `AlertDialog` (the
+Pause guard), and `Skeleton` (loading rows).
 
 ## Method
 
@@ -90,8 +91,8 @@ This round's proposals add five components: `Sheet` (T5, T6), `ToggleGroup`
 | 1 | The decision is buried. "Record your ruling" is the last card of the right column: its Accept button sits at y≈978 in a 900 px window, and ≈1,540–1,590 px down on a phone. Above it in that column are the evaluator panel, the Judge call panel, and the decision history. On a phone the raw JSON conversation comes first as well. (T1) | 3 | fix |
 | 2 | The page's only filled button is not the decision. The case page leads with a test banner above the case title, and the banner's button is the filled one. The ruling buttons are outlined, and in the player nothing is filled until a form opens. (T2) | 3 | fix |
 | 3 | There are two surfaces for one decision, and each item costs a round trip. A row click opens a case page with no Next. A row "Review" opens a one-case player whose done view sends you to the Overview. (T3) | 3 | fix |
-| 4 | Along the flow, the queue has seven names. Ruling buttons submit under a different name than they open with, and the contract's "Correct this result" is not used. (T8) | 3 | decide |
-| 5 | One keystroke records a ruling and moves on, with no undo. (T4) | 2 | fix, *decide* undo semantics |
+| 4 | Along the flow, the queue has seven names. Ruling buttons submit under a different name than they open with, and the contract's "Correct this result" is not used. (T8) | 3 | fix (D3) |
+| 5 | One keystroke records a ruling and moves on, with no undo. (T4) | 2 | fix (D2) |
 | 6 | On phones the queue shows two columns. The Result and every row action sit behind a sideways scroll that nothing on a touch screen signals. (T5) | 2 | fix |
 | 7 | Several links break the scent: "Open rubric alongside" leaves the queue; "Draft rubric edit from these cases" passes no cases; "Compare and resolve" opens a page Guided display hides; the default Back goes to Traces. (T6) | 2 | fix |
 | 8 | In the queue's structure, active filter chips look like primaries, a pointer card sits above the list, and each row offers four interactions. (T7) | 2 | fix |
@@ -224,7 +225,7 @@ They sit alongside "review or correct the result", and the contract calls
 them progressive milestones, not first-run requirements
 (`docs/beginner-onboarding-journey.md` › Optional next steps). The contract
 does not say where they sit on the case page. Placing them after a ruling is
-this audit's proposal (ASSUMPTION).
+this audit's proposal (ASSUMPTION), now decided in D6.
 
 Rule: `placement.md` › In shadcn apps (one filled button per page state);
 `archetypes.md` › Pages that change with state.
@@ -272,7 +273,7 @@ Proposal:
 
 ### T4. One key, no undo
 
-Sev 2 · CURRENT · *fix* · undo semantics *decide*
+Sev 2 · CURRENT · *fix* · decided in D2
 
 - A click on "Accept evaluator opinion", or, in the player, the A key
   (`components/trace-detail.tsx:529`), records a human ruling immediately
@@ -291,10 +292,13 @@ last decision); `decisions.md` › In shadcn apps (sonner with an Undo action).
 
 Proposal: add shadcn's `Sonner` (*add*; it wraps the `sonner` package) and
 mount its `Toaster` once in the root layout. Then call
-`toast("Result accepted", { action: { label: "Undo", onClick } })`. Undo
-appends a superseding record and moves the cursor back. ASSUMPTION: an
-undo that appends rather than deletes fits the append-only record
-(`PRODUCT.md` principle 8). Confirm that with the evidence model (*decide*).
+`toast("Result accepted", { action: { label: "Change", onClick } })`.
+"Change" moves the cursor back and opens "Correct this result", and the
+correction appends a superseding ruling (D2). Rulings are append-only rows,
+and no record returns a case to "not reviewed"
+(`apps/api/src/routes/legacy-evidence-administration.ts:129-132`), so the
+action cannot honestly be called Undo. Appending fits `PRODUCT.md`
+principle 8.
 
 ### T5. On phones the Result and the actions sit behind a sideways scroll
 
@@ -348,11 +352,11 @@ destination).
 
 Proposal:
 
-- Open the Review guide in a `Sheet` (*add*) beside the queue, or rename the
-  banner button "Open the Review guide".
-- Pass the corrected case ids to the editor, or rename the done-view button.
-- Keep reviewer disagreements in this flow, or show Reliability in Guided
-  display when this card appears.
+- Open the Review guide in a `Sheet` (*add*) beside the queue, from a banner
+  button named "Open the Review guide".
+- Pass the corrected case ids to the editor, as the flow's landing proposes.
+- Keep Reliability as the home for reviewer disagreements, and show it in
+  Guided display when this card appears (D5).
 - Carry `?from=` in the URL, with a fallback the nav shows.
 - Link the note to the Review guide.
 
@@ -389,17 +393,17 @@ Proposal:
 
 - Build the filters with `ToggleGroup` (*add*). Restyle its pressed state so
   it does not use the primary's ink fill.
-- Move the disagreements card below the list, or make it a filter
-  ("Reviewer disagreements · 1").
+- Move the disagreements card below the list as one line (D5).
 - Give each row one action (open it in the player) and expand the note
   inline on the row.
 - Add "Clear filters" to the No matches state.
-- Humanize category labels, with the exact value in a tooltip (*decide*,
-  because the code keeps exact evaluator categories on purpose).
+- Humanize category labels by formatting only, with the exact value in a
+  `Tooltip` (*add*) and verbatim in Technical display (D4). The code keeps
+  exact evaluator categories on purpose, so no label is invented.
 
 ### T8. Naming along the flow
 
-Sev 3 · CURRENT vs TARGET · *decide*
+Sev 3 · CURRENT vs TARGET · *fix* · decided in D3
 
 TARGET (`docs/beginner-onboarding-journey.md` › Product language): **Result**
 (the Check's output), **Correct this result** (the visible, ungoverned
@@ -519,7 +523,7 @@ must carry what the destination needs (T3, T6).
 flowchart LR
   O[Overview] -->|Review N Results| P
   Q[Waiting on a person] -->|"Review N Results, or any row"| P[Decide: case i of N]
-  P -->|"Accept result (A)"| U[Toast: Result accepted, Undo]
+  P -->|"Accept result (A)"| U[Toast: Result accepted, Change]
   U --> P
   P -->|"Correct this result (C)"| F[Reason, then Record correction]
   F --> P
@@ -533,8 +537,9 @@ flowchart LR
 
 **Decisions.**
 
-- **Accept:** acts immediately, with Undo in a toast (`decisions.md` ›
-  Confirmation, undo, or nothing). Undo semantics are *decide* (T4).
+- **Accept:** acts immediately, with "Change" in a toast (D2).
+  `decisions.md` › Confirmation, undo, or nothing prefers Undo for reversible
+  actions, but an append-only ruling can be superseded, not undone.
 - **Correct:** the required reason is the deliberate step, so there is no
   extra confirmation.
 - **Add to protected examples:** a separate action, offered after a
@@ -598,7 +603,7 @@ The Check says FAIL: "The answer promises…"
 | Walk bar | Prev and Next, the position and progress, the scope, Pause | `patterns.md` › Triage a queue |
 | Evidence | The Run, formatted, with raw JSON on request; the Review guide excerpt | Everything the decision needs |
 | Decide *(sticky; the task zone)* | The Check's Result and reasoning, a link to the guide, one filled "Accept result", "Correct this result", Skip | T1, T2 |
-| After a ruling | The ruling, "Change ruling", and next steps: the Result's test step ("Prevent this next time" on a failed Result, "Protect this behavior" on a passing one), then "Add to protected examples" | T2 (placement is an ASSUMPTION); T8 (naming) |
+| After a ruling | The ruling, "Change ruling", and next steps: the Result's test step ("Prevent this next time" on a failed Result, "Protect this behavior" on a passing one), then "Add to protected examples" | T2 and D6; T8 (naming) |
 | History and technical | Decision history and Judge call, collapsed (open in Technical display) | O7 in round 1; `lib/display-mode.ts:15` |
 
 ### Queue
@@ -629,19 +634,37 @@ Today the queue's error state is titled "API unavailable". It shows the raw
 error, or the developer instruction "Start the API with `pnpm dev:api` and
 refresh.", and it has no Retry (`screens/exceptions.tsx:271-282`).
 
-## Open questions
+## Decisions
 
-1. **One decision surface (T3).** Should every entry open the player at a
-   row, keeping `/cases/:id` for deep links?
-2. **Undo semantics (T4).** Should undo append a superseding ruling?
-3. **The queue's name (T8).** This is shared with round 1's open question 2.
-4. **Category labels (T7).** Humanize evaluator categories in Guided display
-   and keep the exact value in a tooltip?
-5. **Reviewer disagreements (T6, T7).** Handle them in this flow, or keep
-   Reliability as their home and show it in Guided display?
-6. **Test creation (T2).** Confirm it belongs after the ruling. The contract
-   lists it as an optional next step after the first-run summary but does
-   not place it on the case page.
+Decided 2026-09-26: the founder asked to take the recommended options. These
+are design decisions for implementing this audit, not product authority.
+`PRODUCT.md`, the accepted ADRs, and the onboarding contract are unchanged.
+
+1. **One decision surface (T3).** Every entry opens the player at the chosen
+   row, within the current filtered list, with Prev and Next. `/cases/:id`
+   stays the deep-link view and gains "Next waiting" when opened from the
+   queue.
+2. **Undo semantics (T4).** Rulings are append-only rows: a correction records
+   a new row, and no record returns a case to "not reviewed"
+   (`apps/api/src/routes/legacy-evidence-administration.ts:129-132`). The
+   toast therefore offers "Change", not "Undo". It returns to that case with
+   "Correct this result" open, and the correction appends a superseding
+   ruling. A true Undo would need a retraction record, which would change the
+   evidence model and the κ history built on these rows; this audit does not
+   propose one.
+3. **The queue's name (T8).** "Waiting on a person" in Guided display and
+   "Exceptions" in Technical display (round 1's D2), with the rest of T8's
+   table.
+4. **Category labels (T7).** Humanize by formatting only, so
+   `policy_grounding` becomes "Policy grounding"; never invent a name. The
+   exact value shows in a `Tooltip` (*add*) and verbatim in Technical display.
+5. **Reviewer disagreements (T6, T7).** Reliability stays their home. Guided
+   display shows its nav item whenever a disagreement exists, and the queue's
+   card becomes one line below the list, as in the queue blueprint.
+6. **Test creation (T2).** It follows the ruling, as the decision card's next
+   step. A test built before review would encode the Check's unreviewed
+   opinion. The contract lists these steps only as optional next steps after
+   first run (`docs/beginner-onboarding-journey.md` › Optional next steps).
 
 ## Next rounds
 

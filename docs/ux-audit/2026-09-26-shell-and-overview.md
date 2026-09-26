@@ -1,8 +1,9 @@
 # UX audit 1: app shell and Overview
 
 Status: **audit record, not product authority.** It records CURRENT
-observations and proposals for founder review. Items marked *decide* need a
-decision before anyone implements them. No item proposes an ADR.
+observations and proposals for founder review. Its open questions were
+settled on 2026-09-26 by taking the recommended options; see
+[Decisions](#decisions). No item proposes an ADR.
 
 Last reviewed: 2026-09-26 · code at `2c82321`
 
@@ -41,7 +42,8 @@ Later rounds add files to this folder; see [Next rounds](#next-rounds).
   Each file lists its primary sources (NN/g, GOV.UK, Apple HIG, Material 3,
   WCAG).
 - **Status** is one of *fix* (no product decision needed), *decide* (needs a
-  founder decision), or *keep*.
+  founder decision), or *keep*. Every *decide* item is now settled, and each
+  names its decision, for example "decided in D2".
 
 ## Method
 
@@ -88,8 +90,8 @@ Later rounds add files to this folder; see [Next rounds](#next-rounds).
 | 1 | At phone width the Overview's primary actions break. The next-action button is clipped. The day-0 first step collapses to one word per line under an overlapping button. The provisional banner makes the page 43 px wider than the screen. (O10) | 3 | fix |
 | 2 | The topbar shows numbers that are not what they say. An all-time count is labelled "this week". "0 traces · 0 exceptions" shows while data loads and after a 401. (S4) | 3 | fix |
 | 3 | Location cues are unreliable. Nav label, breadcrumb, and page title disagree on most routes. No route sets its own document title. Most page titles are not headings. (S1–S3) | 3 | fix |
-| 4 | One journey is told three ways, with different names and numbers: sidebar acts, Overview pipeline, and setup ledger. (O2) | 3 | decide |
-| 5 | Guided surfaces name the evaluator four ways and the human queue five ways on the production Overview (six counting provisional), against the product-language contract. (O4, O8) | 3 | decide |
+| 4 | One journey is told three ways, with different names and numbers: sidebar acts, Overview pipeline, and setup ledger. (O2) | 3 | fix (D1) |
+| 5 | Guided surfaces name the evaluator four ways and the human queue five ways on the production Overview (six counting provisional), against the product-language contract. (O4, O8) | 3 | fix (D2, D11) |
 | 6 | The production Overview has no dominant element. The only filled button and the attention list are in the last card, below the fold. (O3) | 3 | fix |
 | 7 | Shell error states mislead. A 401 leaves the page loading with no way back to sign-in. A 500 reads as a lost internet connection. (S6) | 2 | fix |
 | 8 | Guided display shows the model binding, and bench projects are labelled "production". (O7, O9) | 2 | fix |
@@ -268,14 +270,13 @@ Error (what failed, what the user can do, and only the data that did load).
 
 Proposal:
 
-- label the count "traces imported", or compute a real 7-day count if the
-  week matters (*decide*);
+- label the count "Runs imported", with no 7-day count (D7);
 - show placeholders, not zeros, until the dashboard loads;
 - hide the stats on error.
 
 ### S5. The topbar's right zone does five jobs
 
-Sev 2 · CURRENT · *fix* and *decide*
+Sev 2 · CURRENT · *fix* · decided in D6
 
 The zone (`root-layout.tsx:170-207`) holds:
 
@@ -301,8 +302,9 @@ Problems:
 
 Proposal:
 
-- *decide*: make the breadcrumb `Project / Criterion / Page`, with the
-  criterion crumb as the switcher;
+- decided in D6: make the breadcrumb `Project / Criterion / Page`, with the
+  criterion crumb as the switcher, when the project has more than one
+  criterion;
 - *fix*: remove the display pill, or turn it into the switch;
 - *keep* Import trace as the one global action. ASSUMPTION: importing is the
   product's main input and the day-0 path, so a global entry beats a
@@ -353,7 +355,7 @@ Proposal:
 
 ### S7. Sidebar grouping mixes two schemes
 
-Sev 2 · CURRENT · *decide*
+Sev 2 · CURRENT · *fix* · decided in D5
 
 The groups interleave journey stages with evidence classes
 (`sidebar.tsx:52-127`):
@@ -376,22 +378,21 @@ ungoverned" onto two lines.
 On the day-0 Overview in Guided display, the sidebar lists "Criteria",
 "Golden set", and "Human truth · governed". The contract asks that first-run
 screens not *lead* with "criterion" or "golden" (TARGET,
-`docs/beginner-onboarding-journey.md` › Product language). Whether persistent
-navigation counts as leading is part of this decision.
+`docs/beginner-onboarding-journey.md` › Product language). D5 treats
+persistent navigation as leading.
 
 - TARGET: the separation itself is required. See `PRODUCT.md` principles 1
   and 10, and the intent comment at `sidebar.tsx:49-51`: a trace count or
-  golden-set size must not imply stronger evidence. Keep the separation. The
-  open question is its form.
+  golden-set size must not imply stronger evidence. Keep the separation; D5
+  sets its form.
 - ASSUMPTION: an unnumbered group between "1" and "2" reads as part of the
   numbered sequence.
 - Rule: `navigation.md` › "mutually exclusive… named in the user's
   vocabulary"; "Seven is a smell… group, then count groups… test the tree with
   real tasks".
-- Proposal (*decide*): use one grouping scheme, either stages or evidence
-  classes. Show the other as one consistent marker, such as a small
-  "ungoverned" tag, instead of label suffixes. Tree-test 5–8 real tasks
-  before changing it.
+- Proposal (decided in D5): group by evidence class, with the ungoverned
+  loop's items ordered by stage and unnumbered, and no label suffixes.
+  Tree-test 5–8 real tasks before changing it.
 
 ### S8. Small shell defects
 
@@ -419,7 +420,7 @@ Sev 1–2 · CURRENT · *fix*
 
 ### S9. Content width varies within one archetype
 
-Sev 1 · CURRENT · *decide*
+Sev 1 · CURRENT · *fix* · decided in D8
 
 The shell's content frame is `max-w-none` (`root-layout.tsx:209`), so each
 page sets its own width:
@@ -479,7 +480,7 @@ What holds up (*keep*):
 
 ### O1. The page title changes with the state
 
-Sev 2 · CURRENT · *decide*
+Sev 2 · CURRENT · *fix* · decided in D9
 
 The page titles are:
 
@@ -499,7 +500,7 @@ the lead sentence, which the provisional and production states already have.
 
 ### O2. One journey, three step models
 
-Sev 3 · CURRENT · *decide*
+Sev 3 · CURRENT · *fix* · decided in D1
 
 | Where | Step 1 | Step 2 | Step 3 |
 |---|---|---|---|
@@ -527,7 +528,7 @@ strip, so the sidebar's numbered groups are their only view of the loop.
 - TARGET: the contract describes one journey in seven steps
   (`docs/beginner-onboarding-journey.md` › In the app). It does not define the
   acts.
-- Proposal (*decide*): name two things, not three.
+- Proposal (decided in D1): name two things, not three.
   - **Setup** is the ledger. It shows until complete and then leaves (see O6).
   - The ongoing **loop** is the acts, with the same names in the sidebar and
     the pipeline.
@@ -666,7 +667,7 @@ agreement, and owner.
 
 ### O8. Terminology on Guided surfaces
 
-Sev 3 · CURRENT vs TARGET · *decide*
+Sev 3 · CURRENT vs TARGET · *fix* · decided in D2 and D11
 
 TARGET vocabulary (`docs/beginner-onboarding-journey.md` › Product language):
 Guided display uses **Run**, **Check**, **Result**, **Review guide**,
@@ -759,7 +760,7 @@ Proposal:
 
 ### O11. Day 0 offers eight ways to start
 
-Sev 2 · CURRENT · *decide*
+Sev 2 · CURRENT · *fix* · decided in D10
 
 Besides the primary "Add a recorded run", day 0 offers:
 
@@ -782,27 +783,33 @@ the tracer, API, and agent paths. Cut each explanation to one line.
 
 ### O12. Provisional sign-off is one click next to the primary
 
-Sev 2 · CURRENT · *decide*
+Sev 2 · CURRENT · *fix* · decided in D4
 
 "Use this starter Check" (ghost style) sits next to "Review the Check" in the
-banner (`screens/dashboard-provisional.tsx:77-86`) and signs off at once. Per
-`components/rubrist/provisional.tsx:7`, nothing syncs back until sign-off, so
-this click can start writing Results to the tracing platform.
+banner (`screens/dashboard-provisional.tsx:77-86`) and signs off at once. A
+code comment says nothing syncs back until sign-off
+(`components/rubrist/provisional.tsx:7`), so this click may start writing
+Results to the tracing platform.
 
-- ASSUMPTION: check in the sync worker whether sign-off also writes back past
-  Results.
+- ASSUMPTION, now in doubt: the sync code shows no sign-off gate. Both judge
+  paths queue a write-back for every judged Run with a tracing source
+  (`apps/api/src/workers/judge.ts:53-67`,
+  `apps/api/src/workers/eval-run.ts:346-365`), and the job insert has no
+  sign-off condition (`apps/api/src/repository.pg/judge-feedback-repository.ts:195-214`).
+  If provisional Results already sync, they reach the tracing platform before
+  an owner has reviewed the starter guide, which the comment says should not
+  happen. Verify this in Postgres mode before writing the confirmation.
 - TARGET: the click is deliberate, so explicit authority is present. The
   contract does not require a confirmation.
 - Rule: `placement.md` › Universal rules (keep consequential options apart from
   benign ones); `decisions.md` › Confirmation, undo, or nothing.
-- Proposal (*decide*): add a confirmation that names the effect, such as "Sign
-  off Check v0.1.0? Its Results stop being provisional and will be written
-  back to LangSmith." Alternatively, move sign-off to the Review guide page,
-  where the guide is visible.
+- Proposal (decided in D4): add a confirmation that names the effect, such as
+  "Sign off Check v0.1.0? Its Results stop being provisional." Add the
+  write-back sentence only if the check above confirms it.
 
 ### O13. Governed evidence is absent from the Overview
 
-Sev 2 · TARGET vs CURRENT · *decide*
+Sev 2 · TARGET vs CURRENT · *fix* · decided in D3
 
 The Overview reports only the operational loop: imports, legacy human checks,
 exceptions, sync-back, and the golden set.
@@ -820,8 +827,8 @@ That view renders only inside the Analyze workspace
 gap: "Operational setup only. Governed analysis and human truth are tracked
 separately" (`journey-pipeline.tsx:103`).
 
-Proposal (*decide*): add a visually separate "Governed evidence" status zone
-to the Overview, with:
+Proposal (decided in D3): add a visually separate "Governed evidence" status
+zone to the Overview, with:
 
 - status only: study open or closed, truth revisions, and whether
   calibration is admissible;
@@ -859,7 +866,7 @@ Failure categories                          │ Check
   Policy misquote       22   moderate       │ v1.2.0 · active · Owner: Product Lead
   Missing escalation     9   low            │ [Open Check]   Technical: model, binding
 ───────────────────────────────────────────────────────────────────────────
-Governed evidence · status only                                (decide, O13)
+Governed evidence · status only                                    (O13, D3)
   Analysis study: closed · Human truth: 1 revision · Calibration: not admissible
 ```
 
@@ -883,7 +890,7 @@ Waiting on a person · 5 of 7
 [Agreement 86%] [Sync-back 97% ]
 Failure categories (stacked list)
 Check summary
-Governed evidence (decide)
+Governed evidence (D3)
 ```
 
 **Zones**
@@ -897,15 +904,15 @@ Governed evidence (decide)
 | Health | 3–4 tiles of equal weight, each linking to where the user acts; the distribution bar inside the Results tile | `archetypes.md` › Dashboard |
 | Breakdown | Failure categories, still with no similarity claim | `PRODUCT.md` principle 9 (TARGET) |
 | Check | Name, mapped status, owner, and agreement; model and binding in Technical only | O7, O9 |
-| Governed evidence *(decide)* | Status only, visually separate | O13; `PRODUCT.md` principles 1 and 10 |
+| Governed evidence | Status only, visually separate | O13, D3; `PRODUCT.md` principles 1 and 10 |
 
 Removed:
 
 - the Exceptions tile, because Next and Waiting cover it;
 - "Manage integrations";
 - the repeated "as of" line;
-- on this page only, the topbar stats (*decide* whether they stay on other
-  pages).
+- on this page only, the topbar stats. Other pages keep them, hidden below
+  `sm` (D7).
 
 **Placement decisions**
 
@@ -973,36 +980,74 @@ contract's Product language table.
 |---|---|---|---|
 | The evaluator | Check (sentence, button); Skill (card title, "Skill said", breadcrumb, "Skill owner"); evaluator; judge | Check / evaluator | rename |
 | Its rubric | Review guide (nav); guide; starter guide; rubric; breadcrumb "Skill" | Review guide / rubric | keep; fix the breadcrumb |
-| Unit of evidence | traces, Runs, cases, examples | Run / trace or case; bench uses "example" | rename; *decide* bench |
+| Unit of evidence | traces, Runs, cases, examples | Run / trace or case; bench uses "example" | rename (D11) |
 | The evaluator's output | Result; verdict; "Skill said" | Result / verdict; column "Check said" | rename |
-| Waiting queue | Exceptions; Needs a human; waiting on a person; Waiting on a reviewer; Humans next; Need a closer look (provisional) | One term. Recommend "Waiting on a person" in Guided, "Exceptions" in Technical | *decide* |
-| Ungoverned human rulings | Legacy human checks | Corrections · ungoverned, from the contract's "Correct this result" | *decide* |
+| Waiting queue | Exceptions; Needs a human; waiting on a person; Waiting on a reviewer; Humans next; Need a closer look (provisional) | Waiting on a person / Exceptions | rename (D2) |
+| Ungoverned human rulings | Legacy human checks | Corrections · ungoverned, from the contract's "Correct this result" | rename (D11) |
 | Regression set | Golden set; golden cases; Golden-set agreement; Protected examples; Guard known failures | Protected examples / Golden set | rename |
-| Loop steps | Three sets (O2) | One set, identical in the sidebar and the Overview | *decide* |
+| Loop steps | Three sets (O2) | Setup: three numbered steps. Loop: "Choose a Check", "See Results", "Protect examples", unnumbered, identical in the sidebar and the Overview | rename (D1) |
 | This page | Overview; Project overview; "Monday morning" (dead loading title); project dashboard | Overview | rename |
 | Version status | Raw `status` enum | Copy mapped per mode (O9) | rename |
 | Imported count | "traces this week" (topbar); "Traces imported" (KPI) | Runs imported | rename |
 | Crumb casing | First Result | First result | rename |
 
-If these are approved, add the queue name, the loop step names, and the
-rejected synonyms to the contract's Product language table. That table is
-effectively Rubrist's interface glossary.
+These names are decided (D1, D2, D11). They become TARGET only when the queue
+name, the loop step names, and the rejected synonyms are added to the
+contract's Product language table, which is effectively Rubrist's interface
+glossary.
 
-## Open questions
+## Decisions
 
-1. **Loop and setup naming (O2).** Which names, which numbering, and does
-   bench get the pipeline?
-2. **The queue's single name (O4, O8).**
-3. **Governed evidence on the Overview (O13).** Should it appear there, and
-   with which three statuses?
-4. **Sign-off (O12).** Add a confirmation on the Overview, or move sign-off to
-   the Review guide page?
-5. **Sidebar grouping (S7).** Should Guided display list "Criteria" and
-   "Golden set" on first-run screens?
-6. **Criterion scope (S5).** Should the criterion become a breadcrumb-level
-   switcher?
-7. **Topbar count (S4).** Does the week matter, or is "imported" enough?
-8. **Content widths (S9).** Adopt one width per archetype?
+Decided 2026-09-26: the founder asked to take the recommended options. These
+are design decisions for implementing this audit, not product authority.
+`PRODUCT.md`, the accepted ADRs, and the onboarding contract are unchanged.
+Items 9–11 were marked *decide* in their findings but were not in the open
+questions.
+
+1. **Loop and setup naming (O2).** Setup is the ledger's three numbered
+   steps. It shows until complete, then collapses to a one-line receipt. The
+   loop is three unnumbered stages with the same names in the sidebar and on
+   the Overview: "Choose a Check", "See Results", and "Protect examples".
+   Bench projects get the loop strip once setup is complete (O6). Only setup
+   is numbered, so no screen shows two numbered sequences.
+2. **The queue's name (O4, O8).** "Waiting on a person" in Guided display and
+   "Exceptions" in Technical display, the same in the nav, crumb, title, and
+   eyebrow. Round 2's T8 uses the same names.
+3. **Governed evidence on the Overview (O13).** Add the status-only zone to the
+   production Overview, visually separate from the operational zones. It shows
+   whether an analysis study is open, the number of truth revisions, and
+   whether calibration is admissible. It links to Analyze and Human truth and
+   shares no numbers with the ungoverned zones. The dashboard response carries
+   none of these statuses today (`packages/shared/src/index.ts:711-725`);
+   the Analyze and Human truth round should confirm where they come from.
+4. **Sign-off (O12).** Keep sign-off on the Overview as a separate secondary
+   action, behind an `AlertDialog` (*add*) that names its effect. Write that
+   copy from verified behavior: O12 now records a doubt about when Results
+   sync back.
+5. **Sidebar grouping (S7).** Group by evidence class: the ungoverned loop,
+   governed evidence, and system. Order the loop's items by stage, without
+   numbers, and drop the per-item governance suffixes. Persistent navigation
+   counts as leading, so Guided display names the regression set "Protected
+   examples" (D11) and hides "Criteria" during setup unless the project has a
+   second criterion. Tree-test 5–8 real tasks before shipping.
+6. **Criterion scope (S5).** When a project has more than one criterion, the
+   breadcrumb reads `Project / Criterion / Page`, and the criterion crumb is
+   the switcher (`DropdownMenu`, *add*). With one criterion, the crumb is
+   omitted.
+7. **Topbar count (S4).** "Imported" is enough: the stat reads "N Runs
+   imported", with no 7-day count. Pages other than the Overview keep the
+   topbar stats, hidden below `sm`.
+8. **Content widths (S9).** One width token per archetype, set in the shell:
+   one for list, detail, and dashboard pages, one for settings, and one for
+   flows.
+9. **The Overview's title (O1).** `h1` "Overview" in every journey state, with
+   the state in the eyebrow and the lead sentence.
+10. **Ways to start on day 0 (O11).** One primary, "Add a recorded Run", and
+    one "Other ways to bring a Run" disclosure for the tracer, API, and agent
+    paths. Each explanation is cut to one line.
+11. **The naming table (O8).** Adopt it as written. Bench projects say
+    "example" for the unit of evidence, and ungoverned human rulings are
+    "Corrections · ungoverned".
 
 ## Next rounds
 
