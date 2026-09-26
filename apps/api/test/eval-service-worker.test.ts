@@ -18,6 +18,8 @@ function skillVersion(overrides: Partial<SkillVersion>): SkillVersion {
     prompt: "Rate it.",
     executionBinding: structuredClone(MOCK_BINDING),
     customEndpointUrl: null,
+    typedQuestion: null,
+    decisionThreshold: null,
     outputSchema: { type: "object" },
     goldenSetAgreement: null,
     tooStrictCount: 0,

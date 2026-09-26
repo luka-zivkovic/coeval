@@ -168,8 +168,9 @@ export function SkillScreen() {
         </aside>
 
         <div className="min-w-0">
-          {tab === "rubric" ? <RubricView markdown={v.rubricMarkdown} /> : null}
-          {tab === "prompt" ? <PromptView prompt={v.prompt} rubricMarkdown={v.rubricMarkdown} /> : null}
+          {/* A typed-question version has no rubric or prompt; its views arrive in Batch 8F. */}
+          {tab === "rubric" ? <RubricView markdown={v.rubricMarkdown ?? ""} /> : null}
+          {tab === "prompt" ? <PromptView prompt={v.prompt ?? ""} rubricMarkdown={v.rubricMarkdown ?? ""} /> : null}
           {tab === "binding" ? (
             <BindingView
               binding={v.executionBinding}

@@ -173,6 +173,8 @@ export class PgSkillLifecycleRepository implements SkillLifecycleRepositoryPort 
               end as version_status,
               sv.rubric_markdown,
               sv.prompt,
+              sv.typed_question,
+              sv.decision_threshold,
               sv.execution_binding,
               sv.custom_endpoint_url,
               sv.output_schema,
@@ -311,7 +313,7 @@ export class PgSkillLifecycleRepository implements SkillLifecycleRepositoryPort 
   // Inserts the version in `calibrating` with no regression run. The strict
   // provider refusal runs HERE so a 503 never leaves a pending row behind.
   async createSkillVersionPending(skillId: string, input: CreateSkillVersionInput, context: CreateSkillVersionContext): Promise<SkillVersion> {
-    const stored = executionBindingFromInput(input.executionBinding);
+    const stored = executionBindingFromInput(input.executionBinding, undefined, { typedQuestion: input.typedQuestion !== undefined });
     const submitProvider = stored.executionBinding.provider;
     const suppliedCredential = context.agentSetup?.providerCredential;
     const submitKey = suppliedCredential && suppliedCredential.provider === submitProvider
@@ -320,7 +322,7 @@ export class PgSkillLifecycleRepository implements SkillLifecycleRepositoryPort 
         ? await this.dependencies.getJudgeProviderCredential(context.projectId, submitProvider)
         : null;
     const judgeProvider = this.judgeProviderFactory(
-      { ...stored, rubricMarkdown: input.rubricMarkdown, prompt: input.prompt },
+      { ...stored, rubricMarkdown: input.rubricMarkdown ?? null, prompt: input.prompt ?? null },
       submitKey ? { apiKey: submitKey } : undefined
     );
     if (submitProvider !== "mock" && judgeProvider.name === "mock") {
@@ -490,8 +492,10 @@ export class PgSkillLifecycleRepository implements SkillLifecycleRepositoryPort 
         criterionVersionId,
         version: await nextVersion(client, skillId),
         status: "calibrating",
-        rubricMarkdown: input.rubricMarkdown,
-        prompt: input.prompt,
+        rubricMarkdown: input.rubricMarkdown ?? null,
+        prompt: input.prompt ?? null,
+        typedQuestion: input.typedQuestion ?? null,
+        decisionThreshold: input.decisionThreshold ?? null,
         executionBinding: stored.executionBinding,
         customEndpointUrl: stored.customEndpointUrl,
         outputSchema: input.outputSchema ?? MinimumVerdictOutputSchema,

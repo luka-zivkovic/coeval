@@ -37,6 +37,8 @@ export const demoSkill: Skill = {
       "Judge support answer quality against the review guide below.\n\n<review_guide>\n{{rubric_markdown}}\n</review_guide>",
     executionBinding: structuredClone(SEEDED_DEFAULT_EXECUTION_BINDING),
     customEndpointUrl: null,
+    typedQuestion: null,
+    decisionThreshold: null,
     outputSchema: MinimumVerdictOutputSchema,
     goldenSetAgreement: 0.86,
     tooStrictCount: 5,

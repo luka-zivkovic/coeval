@@ -150,21 +150,27 @@ describe("the provider refuses what can't be sent, when it is built", () => {
 });
 
 describe("binding input at the API boundary", () => {
-  it("refuses typed-question bindings until their definitions exist", async () => {
-    expect(() => executionBindingFromInput({
-      ...bindingInput(MOCK_BINDING), provider: "typesafe", verdictProtocol: "typed-question/v1"
-    }, { openAIBaseUrl: null })).toThrow(/typed-question evaluators aren't available yet/);
+  it("saves a typed-question binding only with a typed-question definition, and the routes still refuse both", async () => {
+    const typed = { ...bindingInput(MOCK_BINDING), provider: "typesafe", modelId: "jev-1.13.0", modelVersion: "jev-1.13.0", verdictProtocol: "typed-question/v1" } as const;
+    expect(() => executionBindingFromInput(typed, { openAIBaseUrl: null })).toThrow(/typed-question evaluators aren't available here/);
+    expect(executionBindingFromInput(typed, { openAIBaseUrl: null }, { typedQuestion: true }).executionBinding).toMatchObject({
+      provider: "typesafe", verdictProtocol: "typed-question/v1", endpoint: { kind: "managed" }
+    });
+    expect(() => executionBindingFromInput(bindingInput(MOCK_BINDING), { openAIBaseUrl: null }, { typedQuestion: true }))
+      .toThrow(/a typed-question definition runs on the typesafe provider/);
+    // Until the runtime can judge with them (Batch 8E-3), no route saves one.
     const app = createApp(new DemoRepository());
     const response = await app.request("/api/skills/skill_support_quality/versions", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        rubricMarkdown: "r", prompt: "p",
-        executionBinding: { ...bindingInput(MOCK_BINDING), provider: "typesafe", modelId: "jev-1.13.0", modelVersion: "jev-1.13.0", verdictProtocol: "typed-question/v1" }
+        typedQuestion: { type: "noul", instructions: "Is the answer grounded?", criteria: { true: "Grounded.", false: "Not grounded." } },
+        decisionThreshold: 0.5,
+        executionBinding: typed
       })
     });
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toMatchObject({ error: expect.stringMatching(/^Invalid execution binding: /) });
+    await expect(response.json()).resolves.toMatchObject({ error: expect.stringMatching(/^Invalid execution binding: typed-question evaluators/) });
   });
 
   it("takes canonical provider ids only, since the binding is identity", () => {

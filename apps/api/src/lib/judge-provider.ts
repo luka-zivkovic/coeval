@@ -22,6 +22,7 @@ import {
   type VerdictPayload
 } from "@rubrist/shared";
 import { endpointUrlFor } from "./execution-binding.js";
+import { promptedText } from "./evaluator-definition.js";
 
 // Factory keyed by an evaluator version's immutable execution binding
 // (ADR-0014 section 2). The worker and the eval-as-a-service endpoint build
@@ -155,8 +156,7 @@ class ExecutionBindingJudgeProvider implements JudgeProvider {
       binding: this.version.executionBinding,
       apiKey: this.apiKey,
       customBaseUrl: endpointUrlFor(this.version),
-      rubricMarkdown: this.version.rubricMarkdown,
-      prompt: this.version.prompt,
+      ...promptedText(this.version),
       trace: input.trace,
       spec: input.spec
     });

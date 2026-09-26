@@ -140,6 +140,21 @@ export function rowToEvaluatorSuite(row: Record<string, unknown>): EvaluatorSuit
   };
 }
 
+/**
+ * A skill version's definition text: a prompted version's rubric and prompt,
+ * or a typed-question version's question and decision threshold.
+ */
+export function rowToEvaluatorDefinitionText(row: Record<string, unknown>): Pick<
+  SkillVersion, "rubricMarkdown" | "prompt" | "typedQuestion" | "decisionThreshold"
+> {
+  return {
+    rubricMarkdown: row.rubric_markdown == null ? null : String(row.rubric_markdown),
+    prompt: row.prompt == null ? null : String(row.prompt),
+    typedQuestion: row.typed_question == null ? null : parseJson(row.typed_question) as SkillVersion["typedQuestion"],
+    decisionThreshold: row.decision_threshold == null ? null : Number(row.decision_threshold)
+  };
+}
+
 export function rowToSkill(row: Record<string, unknown>): Skill {
   return SkillSchema.parse({
     id: String(row.id),
@@ -156,8 +171,7 @@ export function rowToSkill(row: Record<string, unknown>): Skill {
       criterionVersionId: String(row.version_criterion_version_id),
       version: String(row.version),
       status: toSkillStatus(row.version_status),
-      rubricMarkdown: String(row.rubric_markdown),
-      prompt: String(row.prompt),
+      ...rowToEvaluatorDefinitionText(row),
       executionBinding: parseJson(row.execution_binding),
       customEndpointUrl: row.custom_endpoint_url == null ? null : String(row.custom_endpoint_url),
       outputSchema: parseJson(row.output_schema),
@@ -205,8 +219,7 @@ export function rowToSkillVersion(row: Record<string, unknown>): SkillVersion {
     criterionVersionId: String(row.criterion_version_id),
     version: String(row.version),
     status: toSkillStatus(row.status),
-    rubricMarkdown: String(row.rubric_markdown),
-    prompt: String(row.prompt),
+    ...rowToEvaluatorDefinitionText(row),
     executionBinding: parseJson(row.execution_binding),
     customEndpointUrl: row.custom_endpoint_url == null ? null : String(row.custom_endpoint_url),
     outputSchema: parseJson(row.output_schema),

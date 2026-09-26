@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runMigrations } from "@rubrist/db";
-import { CreateSkillVersionInputSchema } from "@rubrist/shared";
+import { CreateSkillVersionInputSchema, TypedQuestionOutputSchema } from "@rubrist/shared";
 import { canonicalJson, sha256Digest } from "../src/lib/canonical-json.js";
 import {
   parseCanonicalBinaryCalibrationV2ArtifactBytes,
@@ -207,13 +207,27 @@ run("PgBinaryCalibrationRepository", () => {
           message: expect.stringContaining("mutable alias")
         });
       }
-      // The mock makes no call and typed-question evaluators arrive in 8E, so
-      // neither can produce sealed evidence.
+      // The mock makes no call and typed-question calibration arrives in 8E-4,
+      // so neither can produce sealed evidence yet.
+      await pool.query(`update skill_versions set execution_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(MOCK_BINDING)]);
+      await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({ code: "unsupported" });
       const typedQuestion = { ...MOCK_BINDING, provider: "typesafe", modelId: "jev-1.13.0", modelVersion: "jev-1.13.0", verdictProtocol: "typed-question/v1" };
-      for (const binding of [MOCK_BINDING, typedQuestion]) {
-        await pool.query(`update skill_versions set execution_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(binding)]);
-        await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({ code: "unsupported" });
-      }
+      const prompted = (await pool.query(`select rubric_markdown,prompt,output_schema from skill_versions where id=$1`, [skillVersionId])).rows[0]!;
+      await pool.query(
+        `update skill_versions set execution_binding = $2::jsonb, rubric_markdown = null, prompt = null,
+                typed_question = $3::jsonb, decision_threshold = 0.5, output_schema = $4::jsonb where id=$1`,
+        [
+          skillVersionId, JSON.stringify(typedQuestion),
+          JSON.stringify({ type: "noul", instructions: "Is it correct?", criteria: { true: "Yes.", false: "No." } }),
+          JSON.stringify(TypedQuestionOutputSchema)
+        ]
+      );
+      await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({ code: "unsupported" });
+      await pool.query(
+        `update skill_versions set execution_binding = $2::jsonb, rubric_markdown = $3, prompt = $4,
+                typed_question = null, decision_threshold = null, output_schema = $5::jsonb where id=$1`,
+        [skillVersionId, JSON.stringify(MOCK_BINDING), prompted.rubric_markdown, prompted.prompt, JSON.stringify(prompted.output_schema)]
+      );
       // Governed gate (ADR-0014 section 2): a resolved binding that states
       // its temperature and reasoning, unless the model rejects the parameter.
       for (const [binding, setting] of [
@@ -275,7 +289,7 @@ run("PgBinaryCalibrationRepository", () => {
       [created.runId]
     )).rows[0]!;
     const identity = evaluatorIdentityFor({
-      rubricMarkdown: String(pinned.rubric_markdown), prompt: String(pinned.prompt), verdictKind: "binary",
+      rubricMarkdown: String(pinned.rubric_markdown), prompt: String(pinned.prompt), typedQuestion: null, decisionThreshold: null, verdictKind: "binary",
       outputSchema: pinned.output_schema, scalarRange: null, categoricalChoiceScores: null, executionBinding: pinned.version_binding
     });
     expect(canonicalJson(pinned.execution_binding)).toBe(canonicalJson(SEEDED_BINDING));

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { SkillVersion } from "@rubrist/shared";
+import { TypedQuestionOutputSchema, type SkillVersion } from "@rubrist/shared";
 import type { PoolClient } from "pg";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
@@ -47,6 +47,8 @@ function versionFixture(): SkillVersion {
     prompt: "Judge the trace.",
     executionBinding: structuredClone(MOCK_BINDING),
     customEndpointUrl: null,
+    typedQuestion: null,
+    decisionThreshold: null,
     outputSchema: { type: "object", required: ["pass"] },
     goldenSetAgreement: null,
     tooStrictCount: 1,
@@ -196,8 +198,8 @@ describe("PostgreSQL skill-version client commands", () => {
       "verdict_kind, scalar_range, categorical_choice_scores, rubric_provenance, " +
       "regression_dataset_revision_id, created_at, approved_at, criterion_version_id, " +
       "created_by_user_id, created_by_subject_id, developer_identity_status, " +
-      "onboarding_idempotency_key, onboarding_request_digest, onboarding_assurance) " +
-      "values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$29,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)"
+      "onboarding_idempotency_key, onboarding_request_digest, onboarding_assurance, typed_question, decision_threshold) " +
+      "values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$29,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$30,$31)"
     );
     expect(calls[3]?.values).toEqual([
       "skill-version-2",
@@ -228,8 +230,42 @@ describe("PostgreSQL skill-version client commands", () => {
       "idempotency-1",
       `sha256:${"2".repeat(64)}`,
       "starter_unvalidated",
+      null,
+      null,
       null
     ]);
+  });
+
+  it("writes a typed-question version's question and threshold in place of a rubric and prompt", async () => {
+    const question = { type: "noul" as const, instructions: "Is the answer grounded?", criteria: { true: "Grounded.", false: "Not grounded." } };
+    const version: SkillVersion = {
+      ...versionFixture(),
+      rubricMarkdown: null,
+      prompt: null,
+      typedQuestion: question,
+      decisionThreshold: 0.62,
+      executionBinding: {
+        provider: "typesafe", endpoint: { kind: "managed" }, modelId: "jev-1.13.0", modelVersion: "jev-1.13.0",
+        sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null,
+        verdictProtocol: "typed-question/v1", routing: null
+      },
+      outputSchema: structuredClone(TypedQuestionOutputSchema) as unknown as SkillVersion["outputSchema"],
+      verdictKind: "binary",
+      scalarRange: null
+    };
+    const calls: Array<{ sql: string; values: unknown[] | undefined }> = [];
+    const client = {
+      query: async (sql: string, values?: unknown[]) => {
+        calls.push({ sql, values });
+        if (sql.includes("insert into skill_versions")) return { rows: [], rowCount: 1 };
+        return { rows: [], rowCount: 0 };
+      }
+    } as unknown as PoolClient;
+
+    await commands.insertSkillVersion(client, version, "project-1", "criterion-version-1", null);
+    const values = calls.find((call) => call.sql.includes("insert into skill_versions"))?.values ?? [];
+    expect({ rubric: values[5], prompt: values[6], question: values[29], threshold: values[30] })
+      .toEqual({ rubric: null, prompt: null, question: JSON.stringify(question), threshold: 0.62 });
   });
 
   it("keeps absent or unverified authors unknown without retaining account PII", async () => {

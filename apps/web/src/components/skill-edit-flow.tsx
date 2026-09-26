@@ -189,7 +189,7 @@ export function SkillChangeReview({
           <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2">
             <div className="text-ink-3">Review guide</div>
             <div className="mt-0.5 font-medium text-ink">{rubricChanged ? "Changed" : "No change"}</div>
-            <div className="text-[10.5px] text-ink-3">{lineCount(base.rubricMarkdown)} → {lineCount(rubricMarkdown)} lines</div>
+            <div className="text-[10.5px] text-ink-3">{lineCount(base.rubricMarkdown ?? "")} → {lineCount(rubricMarkdown)} lines</div>
           </div>
           <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2">
             <div className="text-ink-3">Judge instructions</div>
@@ -213,10 +213,10 @@ export function SkillChangeReview({
             <summary className="cursor-pointer text-[12px] font-medium text-ink">View exact source comparison</summary>
             <div className="mt-3 flex flex-col gap-4">
               {rubricChanged ? (
-                <SourceComparison label="Review guide" version={base.version} before={base.rubricMarkdown} after={rubricMarkdown} />
+                <SourceComparison label="Review guide" version={base.version} before={base.rubricMarkdown ?? ""} after={rubricMarkdown} />
               ) : null}
               {promptChanged ? (
-                <SourceComparison label="Judge instructions" version={base.version} before={base.prompt} after={prompt} />
+                <SourceComparison label="Judge instructions" version={base.version} before={base.prompt ?? ""} after={prompt} />
               ) : null}
             </div>
           </details>

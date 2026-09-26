@@ -281,6 +281,8 @@ describe("a saved version's identity", () => {
   const version = {
     rubricMarkdown: PROMPTED_DEFINITION.rubricMarkdown,
     prompt: PROMPTED_DEFINITION.prompt,
+    typedQuestion: null,
+    decisionThreshold: null,
     verdictKind: "binary" as const,
     outputSchema: { type: "object" },
     scalarRange: null,
@@ -311,8 +313,10 @@ describe("a saved version's identity", () => {
       const input = CreateSkillVersionInputSchema.parse(raw);
       const { executionBinding } = executionBindingFromInput(input.executionBinding, { openAIBaseUrl: null });
       expect(() => evaluatorIdentityFor({
-        rubricMarkdown: input.rubricMarkdown,
-        prompt: input.prompt,
+        rubricMarkdown: input.rubricMarkdown ?? null,
+        prompt: input.prompt ?? null,
+        typedQuestion: input.typedQuestion ?? null,
+        decisionThreshold: input.decisionThreshold ?? null,
         verdictKind: input.verdictKind,
         outputSchema: input.outputSchema,
         scalarRange: input.scalarRange ?? null,

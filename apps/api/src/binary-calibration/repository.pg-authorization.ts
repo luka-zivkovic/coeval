@@ -42,6 +42,8 @@ import {
   stableId,
   toIso
 } from "./repository.pg-support.js";
+import { rowToEvaluatorDefinitionText } from "../repository.pg/mappers.js";
+import { promptedText } from "../lib/evaluator-definition.js";
 
 export async function deriveRunIdentity(
   client: PoolClient,
@@ -640,8 +642,7 @@ function identityProblem(error: unknown): string {
 export function evaluatorVersionHoldsPin(run: Record<string, unknown>, versionRow: Record<string, unknown>): boolean {
   try {
     const identity = evaluatorIdentityFor({
-      rubricMarkdown: String(versionRow.rubric_markdown),
-      prompt: String(versionRow.prompt),
+      ...rowToEvaluatorDefinitionText(versionRow),
       verdictKind: VerdictKindSchema.parse(versionRow.verdict_kind),
       outputSchema: parseJson(versionRow.output_schema) as Record<string, unknown>,
       scalarRange: versionRow.scalar_range == null ? null : parseJson(versionRow.scalar_range) as [number, number],
@@ -659,7 +660,8 @@ export function evaluatorVersionHoldsPin(run: Record<string, unknown>, versionRo
 
 export async function loadPinnedVersionRow(db: Db, run: Record<string, unknown>): Promise<Record<string, unknown> | null> {
   return (await db.query(
-    `select rubric_markdown,prompt,verdict_kind,output_schema,scalar_range,categorical_choice_scores,execution_binding
+    `select rubric_markdown,prompt,typed_question,decision_threshold,verdict_kind,output_schema,scalar_range,
+            categorical_choice_scores,execution_binding
      from skill_versions where id=$1 and project_id=$2`,
     [run.skill_version_id, run.project_id]
   )).rows[0] ?? null;
@@ -671,7 +673,8 @@ export async function loadAuthorizedRun(
   knownRun?: RunRow
 ): Promise<BinaryCalibrationAuthorizedRun> {
   const result = await db.query(
-    `select run.*,version.rubric_markdown,version.prompt,version.verdict_kind,version.output_schema,
+    `select run.*,version.rubric_markdown,version.prompt,version.typed_question,version.decision_threshold,
+            version.verdict_kind,version.output_schema,
             version.scalar_range,version.categorical_choice_scores,
             version.execution_binding as version_execution_binding,version.custom_endpoint_url,
             auth_check.snapshot_digest,auth_check.recorded_at
@@ -713,10 +716,7 @@ export async function loadAuthorizedRun(
       policyDigest: String(row.provider_policy_digest),
       payloadTransmission: "sealed_payload_to_pinned_provider"
     },
-    evaluator: {
-      rubricMarkdown: String(row.rubric_markdown),
-      prompt: String(row.prompt)
-    },
+    evaluator: promptedText(rowToEvaluatorDefinitionText(row)),
     authorization: {
       snapshotDigest: String(row.snapshot_digest),
       eventId: String(row.authorization_check_id),

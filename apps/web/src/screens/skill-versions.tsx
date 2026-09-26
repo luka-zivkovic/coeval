@@ -360,7 +360,8 @@ export function SkillVersionDetailScreen() {
   }
 
   const agreementPct = v.goldenSetAgreement == null ? null : Math.round(v.goldenSetAgreement * 100);
-  const compiledPrompt = compileJudgePrompt({ prompt: v.prompt, rubricMarkdown: v.rubricMarkdown });
+  // A typed-question version has no rubric or prompt; its views arrive in Batch 8F.
+  const compiledPrompt = compileJudgePrompt({ prompt: v.prompt ?? "", rubricMarkdown: v.rubricMarkdown ?? "" });
 
   return (
     <div className="fadeUp max-w-[1760px]">
@@ -403,7 +404,7 @@ export function SkillVersionDetailScreen() {
               <p className="mt-2 text-[12px] leading-5 text-ink-2">
                 Defines what a good result looks like and the evidence this evaluator should use.
               </p>
-              <MarkdownPreview markdown={v.rubricMarkdown} className="mt-3 max-h-[520px]" />
+              <MarkdownPreview markdown={v.rubricMarkdown ?? ""} className="mt-3 max-h-[520px]" />
             </CardContent>
           </Card>
           <Card>

@@ -33,24 +33,43 @@ export function evaluatorDefinitionDigest(definition: EvaluatorDefinition): stri
 
 /**
  * The identity of a saved evaluator version (ADR-0014 section 1): its
- * prompted definition and its execution binding. It is parsed with the
- * identity's rules, so a version they refuse throws instead of yielding
- * evidence. Typed-question definitions arrive in Batch 8E.
+ * definition and its execution binding. A prompted definition holds its
+ * rubric, prompt, and output contract; a typed-question definition holds its
+ * question's digest, its polarity, and its decision threshold (section 5). It
+ * is parsed with the identity's rules, so a version they refuse throws instead
+ * of yielding evidence.
  */
 export function evaluatorIdentityFor(
-  version: Pick<SkillVersion, "rubricMarkdown" | "prompt" | "verdictKind" | "outputSchema" | "scalarRange" | "categoricalChoiceScores" | "executionBinding">
+  version: Pick<
+    SkillVersion,
+    | "rubricMarkdown" | "prompt" | "typedQuestion" | "decisionThreshold" | "verdictKind"
+    | "outputSchema" | "scalarRange" | "categoricalChoiceScores" | "executionBinding"
+  >
 ): EvaluatorIdentity {
+  const question = version.typedQuestion ?? null;
+  if ((version.executionBinding.verdictProtocol === "typed-question/v1") !== (question !== null)) {
+    throw new Error("a version holds a typed question exactly when it runs typed-question/v1");
+  }
+  const definition = question !== null
+    ? {
+        kind: "typed-question",
+        question: { type: question.type, digest: typedQuestionDigest(question) },
+        polarity: "true_is_pass",
+        threshold: version.decisionThreshold,
+        rationale: "not_provided"
+      }
+    : {
+        kind: "prompted",
+        rubricMarkdown: version.rubricMarkdown,
+        prompt: version.prompt,
+        verdictKind: version.verdictKind,
+        outputSchema: version.outputSchema,
+        scalarRange: version.scalarRange,
+        categoricalChoiceScores: version.categoricalChoiceScores
+      };
   return parseExactly(EvaluatorIdentitySchema, {
     basis: EVALUATOR_IDENTITY_BASIS,
-    definition: {
-      kind: "prompted",
-      rubricMarkdown: version.rubricMarkdown,
-      prompt: version.prompt,
-      verdictKind: version.verdictKind,
-      outputSchema: version.outputSchema,
-      scalarRange: version.scalarRange,
-      categoricalChoiceScores: version.categoricalChoiceScores
-    },
+    definition,
     executionBinding: version.executionBinding
   }, "evaluator identity");
 }

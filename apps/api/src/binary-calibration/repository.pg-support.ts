@@ -12,6 +12,7 @@ import {
 } from "@rubrist/shared";
 import { evaluatorExecutionAuthorizationDigest } from "../lib/evaluator-lifecycle.js";
 import { canonicalJson, sha256Digest } from "../lib/canonical-json.js";
+import { rowToEvaluatorDefinitionText } from "../repository.pg/mappers.js";
 
 import type {
   BinaryCalibrationActor,
@@ -211,8 +212,7 @@ export function skillVersionFromRow(row: Record<string, unknown>): SkillVersion 
     criterionVersionId: String(row.criterion_version_id),
     version: String(row.version),
     status: String(row.status),
-    rubricMarkdown: String(row.rubric_markdown),
-    prompt: String(row.prompt),
+    ...rowToEvaluatorDefinitionText(row),
     executionBinding: parseJson(row.execution_binding),
     customEndpointUrl: row.custom_endpoint_url == null ? null : String(row.custom_endpoint_url),
     outputSchema: parseJson(row.output_schema),

@@ -134,6 +134,41 @@ export const MinimumVerdictOutputSchema = {
 } as const;
 
 /**
+ * The output contract a typed-question version stores (ADR-0014 section 5):
+ * a probability, and no rationale. Its identity names the contract by the
+ * question type and polarity, not by this schema.
+ */
+export const TypedQuestionOutputSchema = {
+  type: "object",
+  required: ["probability"],
+  additionalProperties: false,
+  properties: {
+    probability: { type: "number", minimum: 0, maximum: 1 }
+  }
+} as const;
+
+/** JSON equality, with object keys in any order. */
+function sameJson(left: unknown, right: unknown): boolean {
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left) && Array.isArray(right) && left.length === right.length &&
+      left.every((entry, index) => sameJson(entry, right[index]));
+  }
+  if (left !== null && right !== null && typeof left === "object" && typeof right === "object") {
+    const leftRecord = left as Record<string, unknown>;
+    const rightRecord = right as Record<string, unknown>;
+    const keys = Object.keys(leftRecord);
+    return keys.length === Object.keys(rightRecord).length &&
+      keys.every((key) => Object.hasOwn(rightRecord, key) && sameJson(leftRecord[key], rightRecord[key]));
+  }
+  return Object.is(left, right);
+}
+
+/** Whether a stored output schema is exactly the typed-question contract, keys in any order. */
+export function isTypedQuestionOutputSchema(value: unknown): boolean {
+  return sameJson(value, TypedQuestionOutputSchema);
+}
+
+/**
  * How deep a saved output schema may nest: skill-format/v2 carries it four
  * levels below the document root (evaluator.identity.definition.outputSchema).
  */

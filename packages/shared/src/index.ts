@@ -5,6 +5,8 @@ import {
   JudgeProviderCredentialSourceSchema,
   JudgeProviderIdSchema,
   MinimumVerdictOutputSchema,
+  TypedQuestionOutputSchema,
+  isTypedQuestionOutputSchema,
   RubricProvenanceSchema,
   RUBRIC_TEMPLATE_VARIABLE,
   SkillStatusSchema,
@@ -51,7 +53,7 @@ import type {
   RetentionPruneResult,
   UpdateProjectSettingsInput
 } from "./projects.js";
-import { EVALUATOR_DEFINITION_TEXT_MAX, ExecutionBindingInputSchema } from "./evaluator-execution.js";
+import { EVALUATOR_DEFINITION_TEXT_MAX, ExecutionBindingInputSchema, TypedQuestionSchema } from "./evaluator-execution.js";
 import { SkillSchema, SkillVersionSchema } from "./skills.js";
 import type { Skill, SkillVersion } from "./skills.js";
 import {
@@ -116,6 +118,7 @@ export {
   SkillSchema,
   SkillStatusSchema,
   SkillVersionSchema,
+  TypedQuestionOutputSchema,
   UpdateProjectSettingsInputSchema,
   VerdictDistributionSchema,
   VerdictKindSchema,
@@ -125,6 +128,7 @@ export {
   VerdictSourceSchema,
   compileJudgePrompt,
   containsLoneUtf16Surrogate,
+  isTypedQuestionOutputSchema,
   defaultJudgePromptTemplate,
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   mutableModelAlias,
@@ -728,10 +732,17 @@ export type SkillVersionTimeScope = z.infer<typeof SkillVersionTimeScopeSchema>;
 export const CreateSkillVersionInputSchema = z
   .object({
     criterionVersionId: z.string().min(1).optional(),
-    rubricMarkdown: z.string().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX),
-    prompt: z.string().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX),
+    // A prompted version's definition text.
+    rubricMarkdown: z.string().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX).optional(),
+    prompt: z.string().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX).optional(),
+    // A typed-question version's question and decision threshold (ADR-0014
+    // section 5). The threshold is chosen on nonsealed data and has no default.
+    typedQuestion: TypedQuestionSchema.optional(),
+    decisionThreshold: z.number().gt(0).lt(1).optional(),
     executionBinding: ExecutionBindingInputSchema,
-    outputSchema: JsonSchemaSchema.default(MinimumVerdictOutputSchema),
+    // Defaults to the minimum verdict schema; a typed-question version's
+    // contract is fixed, so it sends none.
+    outputSchema: JsonSchemaSchema.optional(),
     verdictKind: VerdictKindSchema.default("binary"),
     scalarRange: z.tuple([z.number(), z.number()]).optional(),
     categoricalChoiceScores: z.record(z.string(), z.number().min(0).max(1)).optional(),
@@ -740,6 +751,11 @@ export const CreateSkillVersionInputSchema = z
   })
   .refine((value) => !containsLoneUtf16Surrogate(value), {
     message: "Evaluator input must not contain an unpaired UTF-16 surrogate"
+  })
+  // PostgreSQL text and jsonb can't hold a NUL character.
+  .refine((v) => ![v.rubricMarkdown, v.prompt, v.typedQuestion?.instructions, v.typedQuestion?.criteria.true, v.typedQuestion?.criteria.false]
+    .some((text) => text?.includes("\u0000")), {
+    message: "Evaluator text must not contain a NUL character"
   })
   .refine(
     (v) => v.verdictKind !== "scalar" || (v.scalarRange !== undefined && v.scalarRange[0] < v.scalarRange[1]),
@@ -750,7 +766,30 @@ export const CreateSkillVersionInputSchema = z
     { message: "categorical skill versions require a non-empty categoricalChoiceScores map" }
   )
   .refine((v) => v.verdictKind === "scalar" || v.scalarRange === undefined, { message: "scalarRange is only valid for scalar kinds" })
-  .refine((v) => v.verdictKind === "categorical" || v.categoricalChoiceScores === undefined, { message: "categoricalChoiceScores is only valid for categorical kinds" });
+  .refine((v) => v.verdictKind === "categorical" || v.categoricalChoiceScores === undefined, { message: "categoricalChoiceScores is only valid for categorical kinds" })
+  .superRefine((v, ctx) => {
+    const issue = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message });
+    if (v.executionBinding.verdictProtocol === "typed-question/v1") {
+      if (v.typedQuestion === undefined) issue("typedQuestion", "a typed-question version names its question");
+      if (v.decisionThreshold === undefined) issue("decisionThreshold", "a typed-question version declares its decision threshold; there is no default");
+      if (v.rubricMarkdown !== undefined) issue("rubricMarkdown", "a typed-question version has no rubric");
+      if (v.prompt !== undefined) issue("prompt", "a typed-question version has no prompt");
+      if (v.verdictKind !== "binary") issue("verdictKind", "a typed-question version is binary");
+      // The contract is fixed, so it may be left out or sent back unchanged.
+      if (v.outputSchema !== undefined && !isTypedQuestionOutputSchema(v.outputSchema)) {
+        issue("outputSchema", "a typed-question version's output contract is the fixed probability schema");
+      }
+    } else {
+      if (v.rubricMarkdown === undefined) issue("rubricMarkdown", "a prompted version needs a rubric");
+      if (v.prompt === undefined) issue("prompt", "a prompted version needs a prompt");
+      if (v.typedQuestion !== undefined) issue("typedQuestion", "only a typed-question version names a question");
+      if (v.decisionThreshold !== undefined) issue("decisionThreshold", "only a typed-question version declares a decision threshold");
+    }
+  })
+  .transform((v) => ({
+    ...v,
+    outputSchema: v.outputSchema ?? (v.executionBinding.verdictProtocol === "typed-question/v1" ? TypedQuestionOutputSchema : MinimumVerdictOutputSchema)
+  }));
 export type CreateSkillVersionInput = z.infer<typeof CreateSkillVersionInputSchema>;
 
 // Beginner onboarding creates the first real Check over the project's seeded

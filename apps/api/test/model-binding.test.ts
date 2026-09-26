@@ -43,6 +43,8 @@ const VERSION = {
   status: "production",
   rubricMarkdown: "# Rubric",
   prompt: "Judge the trace.",
+  typedQuestion: null,
+  decisionThreshold: null,
   executionBinding: SEEDED_BINDING,
   customEndpointUrl: null,
   outputSchema: { type: "object" },

@@ -197,8 +197,9 @@ export function SkillEditScreen() {
   // not silently re-apply the template.
   const applyCurrentVersion = useCallback((s: Skill) => {
     const v = s.currentVersion;
-    setRubric(v.rubricMarkdown);
-    setPrompt(v.prompt);
+    // The editor is prompted; a typed-question version's authoring arrives in Batch 8F.
+    setRubric(v.rubricMarkdown ?? "");
+    setPrompt(v.prompt ?? "");
     setVerdictKind(v.verdictKind);
     setChoiceScores(v.categoricalChoiceScores);
     setScalarRange(v.scalarRange);
@@ -213,8 +214,8 @@ export function SkillEditScreen() {
   }, [skill, providerOptions, applyCurrentVersion, applyBindingFields]);
 
   const editFromVersion = useCallback((version: SkillVersion) => {
-    setRubric(version.rubricMarkdown);
-    setPrompt(version.prompt);
+    setRubric(version.rubricMarkdown ?? "");
+    setPrompt(version.prompt ?? "");
     setVerdictKind(version.verdictKind);
     setChoiceScores(version.categoricalChoiceScores);
     setScalarRange(version.scalarRange);
