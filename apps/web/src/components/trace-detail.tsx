@@ -17,6 +17,7 @@ import {
 } from "@/lib/api";
 import {
   effectiveHumanVerdict,
+  payloadRationale,
   verdictLabelFromPayload,
   type CaseDatasetExpectation,
   type ExceptionDetail,
@@ -249,7 +250,7 @@ function HumanRulingCard({
         <div>
           <Eyebrow>Review rationale</Eyebrow>
           <div className="mt-1.5 text-[13px] leading-[1.55] text-ink-2">
-            {ruling.payload.rationale || <span className="text-ink-3">No rationale recorded.</span>}
+            {payloadRationale(ruling.payload) || <span className="text-ink-3">No rationale recorded.</span>}
           </div>
         </div>
         <div className="font-mono text-[10.5px] text-ink-3">
@@ -297,7 +298,7 @@ function DecisionHistory({
                     {humanButLowerPriority ? <Chip>does not override owner ruling</Chip> : null}
                   </div>
                   <div className="mt-1.5 text-[12px] leading-[1.5] text-ink-2">
-                    {verdict.payload.rationale || "No rationale recorded."}
+                    {(payloadRationale(verdict.payload) ?? "This evaluator states no rationale.") || "No rationale recorded."}
                   </div>
                   <div className="mt-1 font-mono text-[10.5px] text-ink-3">
                     {verdictActor(verdict)} · {new Date(verdict.createdAt).toLocaleString()}
@@ -329,7 +330,7 @@ export function TraceDetail({ detail, onChanged, shortcuts }: TraceDetailProps) 
   const effectiveRulingLabel = effectiveRuling ? verdictLabelFromPayload(effectiveRuling.payload) : null;
   // A regression-reference reason should describe the recorded human ruling
   // when one exists, not repeat the evaluator rationale that it overturned.
-  const promoteReasonPrefill = effectiveRuling?.payload.rationale || exception.reason;
+  const promoteReasonPrefill = (effectiveRuling && payloadRationale(effectiveRuling.payload)) || exception.reason;
 
   // Reset all per-case state when the user navigates to a different case.
   // Deps are intentionally narrow: just exception.id. Reload-after-decide
@@ -643,7 +644,9 @@ export function TraceDetail({ detail, onChanged, shortcuts }: TraceDetailProps) 
               <div>
                 <Eyebrow>Reasoning</Eyebrow>
                 <div className="mt-1.5 text-[13px] leading-[1.55] text-ink-2">
-                  {judgeRun.reasoning || <span className="text-ink-3">No rationale recorded.</span>}
+                  {judgeRun.reasoning === null
+                    ? <span className="text-ink-3">This evaluator states no rationale.</span>
+                    : judgeRun.reasoning || <span className="text-ink-3">No rationale recorded.</span>}
                 </div>
               </div>
 

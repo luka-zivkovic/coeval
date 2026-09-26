@@ -742,3 +742,27 @@ baseline restarts every versioned identifier in the three repositories at v1
    - Integrity rules that aren't about compatibility stay: once evidence
      exists, it is immutable, and a change to injected text is a new
      protocol identity. ADR-0011's exit condition ends this decision.
+
+## Founder decisions for typed-question evaluators (2026-09-26)
+
+These answer the questions Batch 8E raised about section 5. They add detail
+to it and change nothing it decides.
+
+8. **A typed-question verdict records an explicit status, not text.** The
+   verdict payload is `{kind: "binary", pass, rationaleStatus:
+   "not_provided"}`: pass or fail on the evaluator's threshold, with the
+   probability as the verdict's `native_probability` score. The evaluator
+   definition states the same with `rationale: "not_provided"`. A person's
+   verdict always states a reason, so only an evaluator records this shape.
+   A typed-question verdict never abstains: it passes when the probability
+   is at or above the threshold.
+9. **TypeSafe credentials** come from the platform's `TYPESAFE_API_KEY` or a
+   project key, like every other provider's, and a project key is
+   authoritative.
+10. **The state a typed-question model is shown** is the #101 spike's
+    projection: the trace's input and output, and its steps' names, inputs,
+    and outputs when it has any, as a JSON object. The trace id and metadata
+    are not sent.
+11. **Scalar and categorical release evidence is unchanged.** A mid-range
+    score still abstains; typed-question evaluators cover binary questions
+    only.

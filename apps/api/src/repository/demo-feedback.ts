@@ -65,7 +65,7 @@ export class DemoJudgeFeedbackRepository implements JudgeFeedbackRepositoryPort 
       skillVersionId: input.skillVersionId,
       verdict: input.verdict.label,
       score: input.verdict.score,
-      reasoning: input.verdict.reason,
+      reasoning: input.verdict.reason ?? null,
       ...(input.latencyMs !== undefined ? { latencyMs: input.latencyMs } : {}),
       providerMetadata: input.providerMetadata ?? {
         model: null,

@@ -65,7 +65,9 @@ export function FirstVerdictCard({
       <CardContent className="grid grid-cols-2 gap-5">
         <div>
           <Eyebrow>Why the Check said this</Eyebrow>
-          <div className="mt-2 text-[13px] leading-[1.6] text-ink-2">{detail.judgeRun.reasoning}</div>
+          <div className="mt-2 text-[13px] leading-[1.6] text-ink-2">
+            {detail.judgeRun.reasoning ?? <span className="text-ink-3">This evaluator states no rationale.</span>}
+          </div>
           <Button className="mt-3" size="sm" variant="outline" onClick={() => onOpenCase(detail.judgeRun.caseId)}>
             Open the recorded Run <ArrowRight />
           </Button>

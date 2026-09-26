@@ -78,11 +78,15 @@ const throwing = (error: unknown) => ({
 describe("the evaluator's own score", () => {
   const binary: StructuredVerdict = { kind: "binary", label: "fail", score: 0.2, rationale: "r" };
   it("is a binary verdict's P(pass), a normalized scalar score, and nothing for a categorical choice", () => {
-    expect(evaluatorScoreFor(binary, "anthropic.structured-output/v1")).toEqual({ value: 0.2, kind: "self_reported_score" });
-    expect(evaluatorScoreFor({ kind: "scalar", score: 4, range: [1, 5], rationale: "r" }, "openai.forced-function/v1"))
+    expect(evaluatorScoreFor(binary)).toEqual({ value: 0.2, kind: "self_reported_score" });
+    expect(evaluatorScoreFor({ kind: "scalar", score: 4, range: [1, 5], rationale: "r" }))
       .toEqual({ value: 0.75, kind: "self_reported_score" });
-    expect(evaluatorScoreFor({ kind: "categorical", choice: "ok", choiceScores: { ok: 0.5, bad: 0 }, rationale: "r" }, "mock/v1")).toBeNull();
-    expect(evaluatorScoreFor(binary, "typed-question/v1")).toEqual({ value: 0.2, kind: "native_probability" });
+    expect(evaluatorScoreFor({ kind: "categorical", choice: "ok", choiceScores: { ok: 0.5, bad: 0 }, rationale: "r" })).toBeNull();
+  });
+
+  it("is a typed-question verdict's probability, native to its model", () => {
+    expect(evaluatorScoreFor({ kind: "typed-question", label: "fail", probability: 0.2, threshold: 0.6, rationaleStatus: "not_provided" }))
+      .toEqual({ value: 0.2, kind: "native_probability" });
   });
 });
 

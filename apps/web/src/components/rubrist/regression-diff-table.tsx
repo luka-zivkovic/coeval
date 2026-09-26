@@ -93,7 +93,7 @@ export function RegressionDiffTable({
                   <VerdictChip verdict={c.newLabel} />
                 </div>
               </td>
-              <td className="text-[12px] text-ink-3">{c.rationale}</td>
+              <td className="text-[12px] text-ink-3">{c.rationale ?? "This evaluator states no rationale."}</td>
             </tr>
           ))}
         </tbody>

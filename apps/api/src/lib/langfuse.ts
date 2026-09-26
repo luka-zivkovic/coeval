@@ -88,7 +88,7 @@ export class LangfuseClient implements LangfuseTraceFetcher, LangSmithFeedbackWr
         traceId: input.runId,
         name: input.key,
         value: input.score,
-        comment: `${input.value}: ${input.comment}`,
+        comment: input.comment !== null ? `${input.value}: ${input.comment}` : input.value,
         metadata: {
           verdict: input.value,
           ...input.sourceInfo

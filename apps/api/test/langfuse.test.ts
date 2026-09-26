@@ -82,6 +82,20 @@ describe("Langfuse client", () => {
     });
   });
 
+  it("comments only the verdict for one that states no rationale", async () => {
+    let body: Record<string, unknown> | undefined;
+    const client = new LangfuseClient({
+      publicKey: "pk-lf-test",
+      secretKey: "sk-lf-test",
+      fetchImpl: (async (_input: string | URL | Request, init?: RequestInit) => {
+        body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        return new Response("{}", { status: 200 });
+      }) as typeof fetch
+    });
+    await client.createFeedback({ feedbackId: "fsync_typed", runId: "trace_123", key: "rubrist_verdict", score: 0.31, value: "fail", comment: null });
+    expect(body?.comment).toBe("fail");
+  });
+
   it("classifies Langfuse auth/not-found errors as permanent worker failures", () => {
     expect(isPermanentLangfuseImportError(new LangfuseHttpError("revoked key", 401, "listTraces"))).toBe(true);
     expect(isPermanentLangfuseImportError(new LangfuseIntegrationNotFoundError("int_missing"))).toBe(true);

@@ -46,7 +46,8 @@ export type HumanLabel = z.infer<typeof HumanLabelSchema>;
 export const JudgeVerdictSchema = z.object({
   label: LabelSchema,
   score: z.number().min(0).max(1),
-  reason: z.string().min(1),
+  // Absent only when the evaluator states no reason: a typed-question verdict.
+  reason: z.string().min(1).optional(),
   failureCategory: z.string().optional(),
   expectedBehavior: z.string().optional(),
   confidence: z.number().min(0).max(1),

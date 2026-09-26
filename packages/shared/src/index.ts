@@ -59,13 +59,16 @@ import type { Skill, SkillVersion } from "./skills.js";
 import {
   BinaryAbstainedVerdictPayloadSchema,
   BinaryClassifiedVerdictPayloadSchema,
+  BinaryTypedQuestionVerdictPayloadSchema,
   BinaryVerdictPayloadSchema,
   CategoricalVerdictPayloadSchema,
+  HumanVerdictPayloadSchema,
   ScalarVerdictPayloadSchema,
   VerdictDistributionSchema,
   VerdictPayloadSchema,
   VerdictRecordSchema,
-  VerdictSourceSchema
+  VerdictSourceSchema,
+  payloadRationale
 } from "./verdicts.js";
 import type {
   VerdictDistribution,
@@ -96,11 +99,13 @@ import {
 export {
   BinaryAbstainedVerdictPayloadSchema,
   BinaryClassifiedVerdictPayloadSchema,
+  BinaryTypedQuestionVerdictPayloadSchema,
   BinaryVerdictPayloadSchema,
   CategoricalVerdictPayloadSchema,
   DeleteProjectInputSchema,
   GOLDEN_GATE_ARMS_AT,
   GOLDEN_GATE_RECOMMENDED,
+  HumanVerdictPayloadSchema,
   JsonSchemaSchema,
   JudgeProviderCredentialSourceSchema,
   JudgeProviderIdSchema,
@@ -132,6 +137,7 @@ export {
   defaultJudgePromptTemplate,
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   mutableModelAlias,
+  payloadRationale,
   promptReferencesRubric,
   renderJudgePromptContent,
   verdictOutputSchema
@@ -542,7 +548,8 @@ export const JudgeRunSchema = z.object({
   skillVersionId: z.string(),
   verdict: VerdictLabelSchema,
   score: z.number().min(0).max(1),
-  reasoning: z.string(),
+  // Null when the evaluator states no reason: a typed-question verdict.
+  reasoning: z.string().nullable(),
   // Wall-clock duration of the provider call when the provider execution path
   // captures it; other current run sources may not report a duration.
   latencyMs: z.number().int().nonnegative().optional(),
@@ -875,7 +882,8 @@ export const RegressionCaseDiffSchema = z.object({
   agreedLabel: VerdictLabelSchema.exclude(["ambiguous"]),
   newLabel: VerdictLabelSchema,
   change: RegressionCaseChangeSchema,
-  rationale: z.string().max(REGRESSION_RATIONALE_MAX_LENGTH)
+  // Null when the evaluator states no reason: a typed-question verdict.
+  rationale: z.string().max(REGRESSION_RATIONALE_MAX_LENGTH).nullable()
 });
 export type RegressionCaseDiff = z.infer<typeof RegressionCaseDiffSchema>;
 

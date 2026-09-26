@@ -22,7 +22,8 @@ export interface CreateLangSmithFeedbackInput {
   key: string;
   score: number;
   value: string;
-  comment: string;
+  // Null when the verdict states no reason.
+  comment: string | null;
   sourceInfo?: Record<string, unknown> | undefined;
 }
 
@@ -104,7 +105,7 @@ export class LangSmithClient implements LangSmithTraceFetcher {
         key: input.key,
         score: input.score,
         value: input.value,
-        comment: input.comment,
+        ...(input.comment !== null ? { comment: input.comment } : {}),
         source_info: input.sourceInfo ?? {}
       })
     });

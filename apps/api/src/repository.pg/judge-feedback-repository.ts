@@ -153,7 +153,7 @@ export class PgJudgeFeedbackRepository implements JudgeFeedbackRepositoryPort {
         input.skillVersionId,
         input.verdict.label,
         input.verdict.score,
-        input.verdict.reason,
+        input.verdict.reason ?? null,
         JSON.stringify(input.rawRequest ?? {}),
         JSON.stringify(input.rawResponse ?? input.verdict),
         input.latencyMs ?? null,
@@ -286,7 +286,8 @@ export class PgJudgeFeedbackRepository implements JudgeFeedbackRepositoryPort {
         executionBinding: ExecutionBindingSchema.parse(parseJson(row.execution_binding)),
         verdict: row.verdict === "fail" ? "fail" : row.verdict === "ambiguous" ? "ambiguous" : "pass",
         score: Number(row.score),
-        reasoning: String(row.reasoning),
+        // Null when the evaluator states no reason: no comment is sent for it.
+        reasoning: row.reasoning == null ? null : String(row.reasoning),
         createdAt: toIso(row.judge_run_created_at)
       },
       integration: provider === "langfuse"

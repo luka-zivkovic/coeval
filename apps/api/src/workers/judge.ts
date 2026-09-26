@@ -1,14 +1,12 @@
 import { z } from "zod";
-import { DEFAULT_OUTPUT_SCHEMA, EvaluatorCallError, type JudgePrompt, type JudgeProvider, type StructuredVerdict } from "@rubrist/audit/runtime";
+import { DEFAULT_OUTPUT_SCHEMA, EvaluatorCallError, type EvaluatorVerdict, type JudgePrompt, type JudgeProvider } from "@rubrist/audit/runtime";
 import {
   JudgeRunJobSchema,
-  renderJudgePromptContent,
   type EvaluatorScore,
   type JudgeRun,
   type JudgeRunJob,
   type ObservedCall,
   type VerdictPayload,
-  type VerdictProtocolId,
   type VerdictRecord
 } from "@rubrist/shared";
 import type { Queue } from "@rubrist/queue";
@@ -21,7 +19,7 @@ import {
   structuredVerdictToLegacy,
   structuredVerdictToPayload,
   type JudgeProviderFactory, isJudgeAuthError } from "../lib/judge-provider.js";
-import { promptedText } from "../lib/evaluator-definition.js";
+import { judgePromptContent } from "../lib/evaluator-definition.js";
 
 // The worker builds the provider per skill version (so its requested model ID
 // and temperature are honored), but callers/tests may inject one provider —
@@ -112,7 +110,7 @@ export async function judgeAndRecord(
   // invalid project key therefore fails at call time (classified permanent
   // below), never silently falling back to platform credentials.
   const bindingProvider = skillVersion.executionBinding.provider;
-  const projectKey = bindingProvider !== "mock" && bindingProvider !== "typesafe"
+  const projectKey = bindingProvider !== "mock"
     ? await repository.getJudgeProviderCredential(context.projectId, bindingProvider)
     : null;
   const provider = providerFactory(skillVersion, projectKey ? { apiKey: projectKey } : undefined);
@@ -122,7 +120,7 @@ export async function judgeAndRecord(
     id: skillVersion.id,
     name: skillVersion.version,
     kind: "unified",
-    content: renderJudgePromptContent(promptedText(skillVersion))
+    content: judgePromptContent(skillVersion)
   };
 
   const startedAt = Date.now();
@@ -145,7 +143,7 @@ export async function judgeAndRecord(
   // A provider that executes no binding (the demo mock fallback) observes
   // nothing, and its heuristic score is no evaluator's: neither is recorded.
   const observed = judged.observed ? observedCallFrom(judged.observed) : null;
-  const evaluatorScore = observed === null ? null : evaluatorScoreFor(structured, skillVersion.executionBinding.verdictProtocol);
+  const evaluatorScore = observed === null ? null : evaluatorScoreFor(structured);
   const latencyMs = Date.now() - startedAt;
   const payload = structuredVerdictToPayload(structured);
   const legacy = structuredVerdictToLegacy(structured);
@@ -201,19 +199,19 @@ export async function judgeAndRecord(
 
 /**
  * The evaluator's own score for its verdict (ADR-0014 section 6), in [0,1]:
- * a binary verdict's score is P(pass), and a scalar score is normalized over
- * its range. A categorical choice carries only the author's configured score
- * for that choice, which isn't the evaluator's, so it records none. The
- * typed-question protocol's probability is native; every other score is
- * self-reported. Neither is calibrated.
+ * a typed-question verdict's probability of passing is native to its model; a
+ * prompted binary verdict's score is its self-reported P(pass), and a scalar
+ * score is normalized over its range. A categorical choice carries only the
+ * author's configured score for that choice, which isn't the evaluator's, so
+ * it records none. None of these is calibrated.
  */
-export function evaluatorScoreFor(verdict: StructuredVerdict, protocol: VerdictProtocolId): EvaluatorScore | null {
-  const kind = protocol === "typed-question/v1" ? "native_probability" as const : "self_reported_score" as const;
-  if (verdict.kind === "binary") return { value: verdict.score, kind };
+export function evaluatorScoreFor(verdict: EvaluatorVerdict): EvaluatorScore | null {
+  if (verdict.kind === "typed-question") return { value: verdict.probability, kind: "native_probability" };
+  if (verdict.kind === "binary") return { value: verdict.score, kind: "self_reported_score" };
   if (verdict.kind === "scalar") {
     const [low, high] = verdict.range;
     if (!(high > low)) return null;
-    return { value: Math.min(1, Math.max(0, (verdict.score - low) / (high - low))), kind };
+    return { value: Math.min(1, Math.max(0, (verdict.score - low) / (high - low))), kind: "self_reported_score" };
   }
   return null;
 }

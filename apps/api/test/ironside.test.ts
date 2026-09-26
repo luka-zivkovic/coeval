@@ -180,6 +180,24 @@ describe("Ironside native evaluator client", () => {
     expect(captured?.init?.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it("writes no comment for an assessment that states no rationale", async () => {
+    let body: Record<string, unknown> | undefined;
+    const client = new IronsideClient({
+      url: "http://ironside.test:18788",
+      apiKey: "ironside_sk_test",
+      fetchImpl: (async (_input: string | URL | Request, init?: RequestInit) => {
+        body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        return new Response(JSON.stringify({ id: "fsync_typed" }), { status: 201 });
+      }) as typeof fetch
+    });
+    await client.createFeedback({
+      feedbackId: "fsync_typed", runId: "trace_123", key: "rubrist_assessment/response-quality", score: 0.31, value: "fail",
+      comment: null, sourceInfo: { skillVersionId: "skillv_1", criterionKey: "response-quality", judgeRunId: "judge_typed" }
+    });
+    expect(body).not.toHaveProperty("comment");
+    expect(body).toMatchObject({ assessmentLabel: "fail", value: 0.31 });
+  });
+
   it("classifies credential and missing-resource errors as permanent", () => {
     expect(isPermanentIronsideImportError(new IronsideHttpError("revoked", 401, "listTraces"))).toBe(true);
     expect(isPermanentIronsideImportError(new IronsideIntegrationNotFoundError("missing"))).toBe(true);

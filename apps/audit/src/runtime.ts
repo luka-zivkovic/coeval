@@ -1,5 +1,5 @@
 export { MockJudgeProvider } from "./llm/mock.js";
-export type { JudgeProvider, StructuredJudgeResult } from "./llm/provider.js";
+export type { EvaluatorVerdict, JudgeProvider, StructuredJudgeResult } from "./llm/provider.js";
 export { DEFAULT_OUTPUT_SCHEMA } from "./skill/default-output-schema.js";
 // The "merge personal judging prompts into one governed team skill" compiler —
 // the onboarding pitch's only implementation. No platform call site yet; the
@@ -62,6 +62,7 @@ export {
   TypedQuestionStateError,
   parseTypedQuestionResponse,
   typedQuestionRequestText,
-  typedQuestionStateText
+  typedQuestionStateText,
+  typedQuestionText
 } from "./protocols/typed-question.js";
 export type { TypedQuestion, TypedQuestionEvaluator, TypedQuestionVerdict } from "./protocols/typed-question.js";

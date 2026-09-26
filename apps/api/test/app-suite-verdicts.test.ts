@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { verdictLabelFromPayload } from "@rubrist/shared";
+import { payloadRationale, verdictLabelFromPayload } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { DemoRepository } from "../src/repository.js";
 
@@ -30,7 +30,7 @@ describe("Rubrist Hono API", () => {
     expect(latestJudgeEvidence).toBeDefined();
     expect(detail?.judgeRun).toMatchObject({
       verdict: verdictLabelFromPayload(latestJudgeEvidence!.payload),
-      reasoning: latestJudgeEvidence!.payload.rationale,
+      reasoning: payloadRationale(latestJudgeEvidence!.payload),
       createdAt: latestJudgeEvidence!.createdAt
     });
 

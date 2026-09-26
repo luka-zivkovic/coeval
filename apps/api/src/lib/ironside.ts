@@ -139,7 +139,7 @@ export class IronsideClient implements IronsideTraceSource, LangSmithFeedbackWri
         name: input.key,
         value: input.score,
         assessmentLabel: input.value,
-        comment: boundedIronsideScoreComment(input.comment),
+        comment: boundedIronsideScoreComment(input.comment ?? undefined),
         evaluator: { provider: "rubrist", versionId, criterionKey },
         metadata: {
           judgeRunId: input.sourceInfo?.judgeRunId,

@@ -67,6 +67,10 @@ export class DemoCaseEvidenceRepository implements CaseEvidenceRepositoryPort {
       throw new Error("Only an evaluator's verdict records call provenance");
     }
     if (input.evaluatorScore && !input.observed) throw new Error("An evaluator score needs the call's observation");
+    // And only an evaluator records a verdict that states no rationale.
+    if ("rationaleStatus" in input.payload && input.source !== "llm_judge") {
+      throw new Error("Only an evaluator's verdict may state no rationale");
+    }
     if (input.externalRunId) {
       const existing = this.store.verdicts.find(
         (candidate) =>
