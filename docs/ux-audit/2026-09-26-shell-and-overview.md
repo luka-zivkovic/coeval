@@ -11,7 +11,8 @@ covers:
 
 - the shell every signed-in page shares: sidebar, topbar, content frame, and
   shell-level loading and error states;
-- the Overview route (`/`) in all four of its journey states.
+- the Overview route (`/`) in its three journey states (day 0, provisional,
+  production), including their tracing and bench variants.
 
 Later rounds add files to this folder; see [Next rounds](#next-rounds).
 
@@ -88,7 +89,7 @@ Later rounds add files to this folder; see [Next rounds](#next-rounds).
 | 2 | The topbar shows numbers that are not what they say. An all-time count is labelled "this week". "0 traces · 0 exceptions" shows while data loads and after a 401. (S4) | 3 | fix |
 | 3 | Location cues are unreliable. Nav label, breadcrumb, and page title disagree on most routes. No route sets its own document title. Most page titles are not headings. (S1–S3) | 3 | fix |
 | 4 | One journey is told three ways, with different names and numbers: sidebar acts, Overview pipeline, and setup ledger. (O2) | 3 | decide |
-| 5 | Guided surfaces name the evaluator four ways and the human queue five ways, against the product-language contract. (O4, O8) | 3 | decide |
+| 5 | Guided surfaces name the evaluator four ways and the human queue five ways on the production Overview (six counting provisional), against the product-language contract. (O4, O8) | 3 | decide |
 | 6 | The production Overview has no dominant element. The only filled button and the attention list are in the last card, below the fold. (O3) | 3 | fix |
 | 7 | Shell error states mislead. A 401 leaves the page loading with no way back to sign-in. A 500 reads as a lost internet connection. (S6) | 2 | fix |
 | 8 | Guided display shows the model binding, and bench projects are labelled "production". (O7, O9) | 2 | fix |
@@ -197,8 +198,10 @@ Sev 2 · CURRENT · *fix*
   A case opened from the Overview therefore shows neither a crumb nor an
   active nav item.
 - The `/exceptions` → "Exceptions / Trace" special case
-  (`root-layout.tsx:40-42`) matches no route in `App.tsx`. Only the 404 page
-  ever renders it.
+  (`root-layout.tsx:40-42`) matches no nested route in `App.tsx`. Only the 404
+  page and a trailing-slash `/exceptions/` URL render it. The router ignores
+  the trailing slash, so `/exceptions/` shows the real Exceptions screen under
+  a bogus "Trace" crumb.
 - Crumbs are plain text (`components/layout/topbar.tsx:28-34`), so the trail
   cannot take the user up a level.
 - "First Result" is the only Title Case crumb (`casing.md`: default sentence
@@ -247,8 +250,9 @@ Sev 3 · CURRENT · *fix*
 
 - "1,248 traces this week" labels `project.importedTraceCount`
   (`root-layout.tsx:198-202`). That value is an all-time count of the
-  project's raw traces, with no time filter
-  (`apps/api/src/repository.pg/project-counter-commands.ts:3-16`). The
+  project's imported raw traces (excluding gate-candidate and release-evidence
+  cases), with no time filter
+  (`apps/api/src/repository.pg/project-counter-commands.ts:3-17`). The
   Overview labels the same number "Traces imported".
 - While the dashboard request is in flight, and after a 401 until the session
   refreshes (S6), the topbar shows "0 traces this week · 0 exceptions" and the
@@ -314,7 +318,7 @@ Sev 2 · CURRENT · *fix*
   comment at `root-layout.tsx:125` says AuthGate handles 401. AuthGate follows
   Better Auth's session hook, which refetches when the window regains focus;
   it does not react to API 401s. Until that refetch, every criterion-scoped
-  route shows "Loading the selected criterion's evaluator and evidence…" with
+  route shows "Loading the selected criterion’s evaluator and evidence…" with
   no way back to sign-in.
 - **500.** The page reads "Connection lost · Rubrist can't reach its backend
   right now" with the detail `net::ERR_INTERNET_DISCONNECTED`. That detail is
@@ -331,8 +335,8 @@ Sev 2 · CURRENT · *fix*
     (`screens/dashboard.tsx:77-86`);
   - the Overview's error branch, "API unavailable… Start the API with `pnpm
     dev:api`" (`screens/dashboard.tsx:88-102`);
-  - the same branches in `screens/exceptions.tsx:260-282` and
-    `screens/review.tsx:54-60`.
+  - the same loading and error branches in `screens/exceptions.tsx:260-282`;
+  - the loading branch in `screens/review.tsx:54-60`.
 
   They should be deleted, not fixed.
 
@@ -423,7 +427,7 @@ page sets its own width:
 - list pages use 1760 px (Exceptions, Review queues, Integrations) or no limit
   (Traces, Golden set, Datasets, Criteria);
 - Settings and the evaluator editor use 1600 px;
-- flow pages use 900–1180 px.
+- flow pages use about 900–1200 px.
 
 Narrow flow pages are right (`layouts.md` › Centered narrow). The spread
 among list pages only shows on screens wider than about 2,090 px (1,760 px
@@ -458,7 +462,7 @@ available without competing visually with it." (`docs/beginner-onboarding-journe
 What holds up (*keep*):
 
 - The journey state comes from durable project state, never from click flags
-  (`lib/journey.ts:55-59`), so there is nothing to drift.
+  (`lib/journey.ts:16-18,55-59`), so there is nothing to drift.
 - In production, every KPI tile links to the page where the user acts on it
   (`archetypes.md` › Dashboard). The provisional "Imported" and "Results ·
   provisional" tiles do not link (`screens/dashboard-provisional.tsx:128-137`).
@@ -466,8 +470,10 @@ What holds up (*keep*):
   9, and 10). Examples: "not governed human truth", "ungoverned", "The
   remaining Results rely only on the Check", and "Rubrist does not group cases
   by semantic similarity".
-- Day 0 and provisional each render exactly one filled button: "Add a
-  recorded run" and "Review the Check".
+- For owners, day 0 and provisional each render exactly one filled button:
+  "Add a recorded run", and the ledger's "Review the Check". The banner's
+  button of the same name is unfilled. Provisional members see no filled
+  button.
 - The categories and exceptions tables explain why they are empty
   (`states.md` › Empty).
 
@@ -499,7 +505,7 @@ Sev 3 · CURRENT · *decide*
 |---|---|---|---|
 | Sidebar groups (`sidebar.tsx:54-78`) | 1 · Define good | 2 · Operational triage | 3 · Guard known failures |
 | Overview pipeline, tracing production (`components/rubrist/journey-pipeline.tsx:33,49,63`) | Act 1 · Choose what to Check | Act 2 · See Results on real Runs | Act 3 · Protect reviewed examples |
-| Setup ledger: day 0, provisional, bench (`components/first-run-setup-ledger.tsx:28-74`) | 1 · Bring one recorded run | 2 · Choose one thing to Check | 3 · See the first Result |
+| Setup ledger: day 0, provisional, bench (`components/first-run-setup-ledger.tsx:28-74`) | 1 · Bring one recorded run (bench: "Bring one example run") | 2 · Choose one thing to Check | 3 · See the first Result |
 | First project key card (`components/first-project-key.tsx:50`) | — | "Act 2 · judge something real" | — |
 
 The same step carries different numbers. "Choose one thing to Check" is ledger
@@ -512,8 +518,9 @@ same time, with different "now" markers. On day 0, for example:
 - the ledger's current step is "Bring one recorded run";
 - the key card says "Act 2".
 
-In bench production the ledger replaces the pipeline, so bench users never see
-the act names the sidebar uses.
+In bench production the ledger replaces the pipeline
+(`screens/dashboard.tsx:192-196`). Bench users never see the Overview's Act 1–3
+strip, so the sidebar's numbered groups are their only view of the loop.
 
 - Rule: `navigation.md` › Consistency across the app; `labels.md` ›
   Terminology (one term per concept); `decisions.md` › Progress indication.
@@ -536,7 +543,8 @@ The production order (`screens/dashboard.tsx:176-514`) is:
 1. key card (shown once);
 2. setup receipt;
 3. header;
-4. pipeline;
+4. pipeline, then the first-Result card when exactly one Result exists
+   (`screens/dashboard.tsx:198-204`);
 5. a three-line serif summary;
 6. four KPI tiles of equal weight;
 7. distribution;
@@ -590,8 +598,9 @@ name for the queue (see O8).
 
 Sev 2 · CURRENT · *fix*
 
-When anything is waiting, "Protect reviewed examples" shows a "Review Results"
-button that goes to `/exceptions` (`journey-pipeline.tsx:67`). The step
+When Act 3 is the current act and anything is waiting, "Protect reviewed
+examples" shows a "Review Results" button that goes to `/exceptions`
+(`journey-pipeline.tsx:67,94-98`). The step
 promises protection, but its button goes to triage. ASSUMPTION: the intent is
 "review first, then protect".
 
@@ -640,8 +649,9 @@ The Check card prints two technical lines in every display
 (`screens/dashboard.tsx:412-422`):
 
 - "Model · anthropic/claude-sonnet-4-6";
-- the full binding: "temperature 0 · thinking disabled at effort high · 1200
-  output tokens · anthropic.structured-output/v1".
+- the full binding, which repeats the model: "Binding ·
+  anthropic/claude-sonnet-4-6 · temperature 0 · thinking disabled at effort
+  high · 1200 output tokens · anthropic.structured-output/v1".
 
 Only "Too strict / lenient" is marked `dev-only`. Guided promises to hide
 "secondary diagnostics and technical details" (`lib/display-mode.ts:15`).
@@ -660,7 +670,8 @@ Sev 3 · CURRENT vs TARGET · *decide*
 
 TARGET vocabulary (`docs/beginner-onboarding-journey.md` › Product language):
 Guided display uses **Run**, **Check**, **Result**, **Review guide**,
-**Protected example**, **Correct this result**, and **Agreement with people**.
+**Protected example**, **Correct this result**, **Independent human review**,
+and **Agreement with people**.
 
 In Guided display, prefer **Check** before introducing **Evaluator**, and
 explain the relationship once in context: "Rubrist calls this reusable
@@ -706,8 +717,9 @@ production language". Three things break it:
 
 - `skillVersionStateLabel` prints the raw status
   (`lib/skill-presentation.ts:12-18`);
-- the `active` lifecycle state maps to `production`
-  (`apps/api/src/repository.pg/skill-lifecycle-repository.ts:120`);
+- the `active` lifecycle state maps to `production` in the query that feeds
+  the dashboard (`apps/api/src/repository.pg/skill-lifecycle-repository.ts:169`,
+  repeated at `:120`, `:160`, and `:878`);
 - the bench card, titled "Skill on the bench", therefore wears a "v1.2.0 ·
   production" chip.
 
@@ -963,7 +975,7 @@ contract's Product language table.
 | Its rubric | Review guide (nav); guide; starter guide; rubric; breadcrumb "Skill" | Review guide / rubric | keep; fix the breadcrumb |
 | Unit of evidence | traces, Runs, cases, examples | Run / trace or case; bench uses "example" | rename; *decide* bench |
 | The evaluator's output | Result; verdict; "Skill said" | Result / verdict; column "Check said" | rename |
-| Waiting queue | Exceptions; Needs a human; waiting on a person; Need a closer look; Humans next | One term. Recommend "Waiting on a person" in Guided, "Exceptions" in Technical | *decide* |
+| Waiting queue | Exceptions; Needs a human; waiting on a person; Waiting on a reviewer; Humans next; Need a closer look (provisional) | One term. Recommend "Waiting on a person" in Guided, "Exceptions" in Technical | *decide* |
 | Ungoverned human rulings | Legacy human checks | Corrections · ungoverned, from the contract's "Correct this result" | *decide* |
 | Regression set | Golden set; golden cases; Golden-set agreement; Protected examples; Guard known failures | Protected examples / Golden set | rename |
 | Loop steps | Three sets (O2) | One set, identical in the sidebar and the Overview | *decide* |
