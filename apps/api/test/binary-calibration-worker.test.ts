@@ -51,6 +51,7 @@ function authorized(claim: BinaryCalibrationExecutionClaim): BinaryCalibrationAu
       payloadTransmission: "sealed_payload_to_pinned_provider"
     },
     evaluator: {
+      kind: "prompted",
       rubricMarkdown: "PROMPT_CANARY",
       prompt: "Judge {{rubric_markdown}}"
     },

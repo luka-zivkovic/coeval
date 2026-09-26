@@ -93,12 +93,12 @@ export async function deriveRunIdentity(
   if (skillVersion.verdictKind !== "binary") {
     throw repoError("unsupported", "binary calibration requires a binary evaluator version");
   }
-  // Calibration runs a prompted evaluator through the executor, one physical
-  // call per item. Typed-question evaluators arrive in Batch 8E, and the mock
-  // makes no call, so neither can produce sealed evidence.
+  // Calibration runs the evaluator through its executor, one physical call
+  // per item: a prompted protocol or typed-question/v1. The mock makes no
+  // call, so it can't produce sealed evidence.
   const binding = skillVersion.executionBinding;
-  if (binding.provider === "mock" || binding.provider === "typesafe") {
-    throw repoError("unsupported", `sealed calibration can't run a ${binding.provider} binding; it needs a prompted evaluator on a provider it calls`);
+  if (binding.provider === "mock") {
+    throw repoError("unsupported", "sealed calibration can't run a mock binding; it needs an evaluator on a provider it calls");
   }
   let identity: EvaluatorIdentity;
   try {
@@ -658,6 +658,14 @@ export function evaluatorVersionHoldsPin(run: Record<string, unknown>, versionRo
   }
 }
 
+/** What each call of a run judges with, from the version's stored definition. */
+function calibrationEvaluator(definition: ReturnType<typeof rowToEvaluatorDefinitionText>): BinaryCalibrationAuthorizedRun["evaluator"] {
+  if (definition.typedQuestion !== null && definition.decisionThreshold !== null) {
+    return { kind: "typed-question", question: definition.typedQuestion, threshold: definition.decisionThreshold };
+  }
+  return { kind: "prompted", ...promptedText(definition) };
+}
+
 export async function loadPinnedVersionRow(db: Db, run: Record<string, unknown>): Promise<Record<string, unknown> | null> {
   return (await db.query(
     `select rubric_markdown,prompt,typed_question,decision_threshold,verdict_kind,output_schema,scalar_range,
@@ -716,7 +724,7 @@ export async function loadAuthorizedRun(
       policyDigest: String(row.provider_policy_digest),
       payloadTransmission: "sealed_payload_to_pinned_provider"
     },
-    evaluator: promptedText(rowToEvaluatorDefinitionText(row)),
+    evaluator: calibrationEvaluator(rowToEvaluatorDefinitionText(row)),
     authorization: {
       snapshotDigest: String(row.snapshot_digest),
       eventId: String(row.authorization_check_id),

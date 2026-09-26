@@ -5,7 +5,8 @@ import type {
   CapabilityProbe,
   EvaluatorItemState,
   ExecutionBinding,
-  ResolutionRecord
+  ResolutionRecord,
+  TypedQuestion
 } from "@rubrist/shared";
 import type { GovernedBinding } from "../lib/binding-resolution.js";
 import type { ResolutionAttemptInput } from "../evaluator-lifecycle/resolution.pg.js";
@@ -161,10 +162,10 @@ export interface BinaryCalibrationAuthorizedRun {
   /** A custom provider's configured base URL, checked against the binding's digest; never in public bytes. */
   customEndpointUrl: string | null;
   providerDataHandling: BinaryCalibrationProviderDataHandlingPolicy;
-  evaluator: {
-    rubricMarkdown: string;
-    prompt: string;
-  };
+  /** What each call judges with: a prompted rubric and prompt, or a typed question and its threshold. */
+  evaluator:
+    | { kind: "prompted"; rubricMarkdown: string; prompt: string }
+    | { kind: "typed-question"; question: TypedQuestion; threshold: number };
   authorization: {
     snapshotDigest: string;
     eventId: string;

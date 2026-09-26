@@ -7,6 +7,7 @@ import {
   ANALYSIS_CRITERION_PROMOTION_HANDOFF_VERSION,
   CreateSkillVersionInputSchema,
   MinimumVerdictOutputSchema,
+  TypedQuestionOutputSchema,
   type AnalysisCriterionPromotionCreateInput,
   type AnalysisCriterionPromotionHandoff,
   type AnalysisCriterionPromotionSupportArtifact,
@@ -34,6 +35,7 @@ import { openPostgresTestDatabase } from "./helpers/postgres.js";
 import { MOCK_BINDING, SEEDED_BINDING, bindingInput, resolvedRecordFor } from "./fixtures/execution-binding.js";
 import { executionBindingFromInput } from "../src/lib/execution-binding.js";
 import { sha256Digest } from "../src/lib/canonical-json.js";
+import { evaluatorCandidateRequestDigest } from "../src/lib/evaluator-lifecycle.js";
 
 const databaseUrl = process.env.PG_SMOKE_DATABASE_URL;
 if ((process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") && !databaseUrl) {
@@ -1312,6 +1314,41 @@ run("PostgreSQL analysis criterion promotion persistence", () => {
         outputSchema: MinimumVerdictOutputSchema,
         idempotencyKey: "promotion-repository-candidate"
       })).toMatchObject({ replayed: true });
+      // A typed-question candidate's request digest (ADR-0014 section 5) is the
+      // one the database recomputes from the stored version: shown on this
+      // candidate's lifecycle with its version rewritten as typed, then rolled back.
+      const typedCandidate: EvaluatorCandidateCreateInput = {
+        ...candidateInput,
+        rubricMarkdown: undefined,
+        prompt: undefined,
+        typedQuestion: { type: "noul", instructions: "Is the answer substantively correct?", criteria: { true: "Correct.", false: "Incorrect." } },
+        decisionThreshold: 0.123456789,
+        executionBinding: {
+          provider: "typesafe", endpoint: { kind: "managed" }, modelId: "jev-1.13.0", modelVersion: "jev-1.13.0",
+          sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null,
+          verdictProtocol: "typed-question/v1", routing: null
+        },
+        outputSchema: TypedQuestionOutputSchema
+      };
+      const rewrite = await pool.connect();
+      try {
+        await rewrite.query("begin");
+        await rewrite.query(
+          `update skill_versions set execution_binding=$2::jsonb, rubric_markdown=null, prompt=null,
+                  typed_question=$3::jsonb, decision_threshold=$4, output_schema=$5::jsonb
+            where id=$1`,
+          [candidate.skill.currentVersion.id, JSON.stringify(typedCandidate.executionBinding), JSON.stringify(typedCandidate.typedQuestion),
+            typedCandidate.decisionThreshold, JSON.stringify(TypedQuestionOutputSchema)]
+        );
+        const recomputed = (await rewrite.query(
+          `select evaluator_lifecycle_request_digest_v1(lifecycle) as digest from evaluator_lifecycles lifecycle where id=$1`,
+          [candidate.projection.lifecycle.id]
+        )).rows[0]!.digest;
+        expect(recomputed).toBe(evaluatorCandidateRequestDigest(evidence.projectId, typedCandidate));
+      } finally {
+        await rewrite.query("rollback");
+        rewrite.release();
+      }
       await expect(lifecycle.authorizeExecution({
         projectId: evidence.projectId,
         skillVersionId: candidate.skill.currentVersion.id,

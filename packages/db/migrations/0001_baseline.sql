@@ -2972,7 +2972,9 @@ CREATE FUNCTION evaluator_lifecycle_request_digest_v1(row_value evaluator_lifecy
     'rubricMarkdown',(select version.rubric_markdown from skill_versions version where version.id=row_value.skill_version_id),
     'skillDescription',(select skill.description from skills skill where skill.id=row_value.skill_id),
     'skillName',(select skill.name from skills skill where skill.id=row_value.skill_id),
-    'truthDatasetRevisionId',row_value.truth_dataset_revision_id
+    'truthDatasetRevisionId',row_value.truth_dataset_revision_id,
+    'typedQuestion',(select version.typed_question from skill_versions version where version.id=row_value.skill_version_id),
+    'decisionThreshold',(select version.decision_threshold from skill_versions version where version.id=row_value.skill_version_id)
   ))
 $$;
 

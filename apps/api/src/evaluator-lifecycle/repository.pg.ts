@@ -9,7 +9,6 @@ import {
   EvaluatorLifecycleProjectionSchema,
   ExecutionBindingSchema,
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
-  MinimumVerdictOutputSchema,
   SkillSchema,
   SkillVersionSchema,
   mutableModelAlias,
@@ -120,7 +119,7 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
     requireOwner(actor);
     let stored: ReturnType<typeof executionBindingFromInput>;
     try {
-      stored = executionBindingFromInput(input.executionBinding);
+      stored = executionBindingFromInput(input.executionBinding, undefined, { typedQuestion: input.typedQuestion !== undefined });
     } catch (error) {
       if (error instanceof ExecutionBindingInputError) throw repoError("invalid_execution_binding", error.message);
       throw error;
@@ -268,13 +267,14 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
             golden_set_agreement,too_strict_count,too_lenient_count,ambiguous_count,known_limitations,
             verdict_kind,scalar_range,categorical_choice_scores,rubric_provenance,
             regression_dataset_revision_id,created_at,approved_at,criterion_version_id,
-            created_by_user_id,created_by_subject_id,developer_identity_status)
+            created_by_user_id,created_by_subject_id,developer_identity_status,typed_question,decision_threshold)
          values ($1,$2,$3,$4,'calibrating',$5,$6,$7::jsonb,$8::jsonb,$13,
                  null,0,0,0,'{}','binary',null,null,'human-authored',$9,
-                 date_trunc('milliseconds',clock_timestamp()),null,$10,$11,$12,'recorded')`,
-        [skillVersionId, skillId, actor.projectId, `${versionNumber}.0.0`, input.rubricMarkdown, input.prompt,
-          JSON.stringify(input.outputSchema ?? MinimumVerdictOutputSchema), JSON.stringify(stored.executionBinding),
-          regressionRevisionId, input.criterionVersionId, actor.userId, subjectId, stored.customEndpointUrl]
+                 date_trunc('milliseconds',clock_timestamp()),null,$10,$11,$12,'recorded',$14::jsonb,$15)`,
+        [skillVersionId, skillId, actor.projectId, `${versionNumber}.0.0`, input.rubricMarkdown ?? null, input.prompt ?? null,
+          JSON.stringify(input.outputSchema), JSON.stringify(stored.executionBinding),
+          regressionRevisionId, input.criterionVersionId, actor.userId, subjectId, stored.customEndpointUrl,
+          input.typedQuestion === undefined ? null : JSON.stringify(input.typedQuestion), input.decisionThreshold ?? null]
       );
       await saveResolutionRecord(client, actor.projectId, skillVersionId, stored.executionBinding, record!);
 

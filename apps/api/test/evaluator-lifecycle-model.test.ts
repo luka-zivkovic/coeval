@@ -5,6 +5,7 @@ import {
   EvaluatorLifecycleEventSchema,
   JudgeRunJobSchema,
   MinimumVerdictOutputSchema,
+  TypedQuestionOutputSchema,
   type EvaluatorExecutionContext,
   type EvaluatorLifecycleState
 } from "@rubrist/shared";
@@ -94,6 +95,46 @@ describe("evaluator lifecycle authority", () => {
     expect(evaluatorCandidateRequestDigest("project", input)).toBe(
       evaluatorCandidateRequestDigest("project", { ...input, idempotencyKey: "second" })
     );
+  });
+
+  it("takes a typed-question candidate's question and threshold in place of a rubric and prompt", () => {
+    const base = {
+      criterionId: "criterion",
+      criterionVersionId: "criterion-version",
+      governedBatchId: "batch",
+      expectedBatchDigest: digest,
+      truthDatasetRevisionId: "truth",
+      expectedTruthRevisionDigest: digest,
+      expectedTruthContentDigest: digest,
+      skillName: "Evaluator",
+      skillDescription: "Exact governed candidate.",
+      idempotencyKey: "first"
+    };
+    const typed = {
+      ...base,
+      typedQuestion: { type: "noul", instructions: "Is it correct?", criteria: { true: "Correct.", false: "Incorrect." } },
+      decisionThreshold: 0.6,
+      executionBinding: {
+        provider: "typesafe", endpoint: { kind: "managed" }, modelId: "jev-1.13.0", modelVersion: "jev-1.13.0",
+        sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null,
+        verdictProtocol: "typed-question/v1", routing: null
+      }
+    };
+    const parsed = EvaluatorCandidateCreateInputSchema.parse(typed);
+    expect(parsed.outputSchema).toEqual(TypedQuestionOutputSchema);
+    // A parsed request parses again unchanged, and its digest ignores the idempotency alias.
+    expect(EvaluatorCandidateCreateInputSchema.parse(parsed)).toEqual(parsed);
+    expect(evaluatorCandidateRequestDigest("project", parsed)).toBe(evaluatorCandidateRequestDigest("project", { ...parsed, idempotencyKey: "second" }));
+    // The threshold is part of the request.
+    expect(evaluatorCandidateRequestDigest("project", parsed)).not.toBe(evaluatorCandidateRequestDigest("project", { ...parsed, decisionThreshold: 0.5 }));
+    const { decisionThreshold: _threshold, ...noThreshold } = typed;
+    for (const [name, input] of [
+      ["typed with a rubric", { ...typed, rubricMarkdown: "Return pass or fail." }],
+      ["typed without a threshold", noThreshold],
+      ["prompted with a question", { ...base, rubricMarkdown: "r", prompt: "p", typedQuestion: typed.typedQuestion, executionBinding: bindingInput(SEEDED_BINDING) }]
+    ] as const) {
+      expect(EvaluatorCandidateCreateInputSchema.safeParse(input).success, name).toBe(false);
+    }
   });
 
   it("rejects active-to-active activation and partial eval provenance", () => {

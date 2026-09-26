@@ -54,7 +54,7 @@ import type {
   UpdateProjectSettingsInput
 } from "./projects.js";
 import { EVALUATOR_DEFINITION_TEXT_MAX, ExecutionBindingInputSchema, TypedQuestionSchema } from "./evaluator-execution.js";
-import { SkillSchema, SkillVersionSchema } from "./skills.js";
+import { SkillSchema, SkillVersionSchema, defaultEvaluatorOutputSchema, evaluatorDefinitionInputIssues } from "./skills.js";
 import type { Skill, SkillVersion } from "./skills.js";
 import {
   BinaryAbstainedVerdictPayloadSchema,
@@ -134,7 +134,9 @@ export {
   compileJudgePrompt,
   containsLoneUtf16Surrogate,
   isTypedQuestionOutputSchema,
+  defaultEvaluatorOutputSchema,
   defaultJudgePromptTemplate,
+  evaluatorDefinitionInputIssues,
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   mutableModelAlias,
   payloadRationale,
@@ -775,28 +777,9 @@ export const CreateSkillVersionInputSchema = z
   .refine((v) => v.verdictKind === "scalar" || v.scalarRange === undefined, { message: "scalarRange is only valid for scalar kinds" })
   .refine((v) => v.verdictKind === "categorical" || v.categoricalChoiceScores === undefined, { message: "categoricalChoiceScores is only valid for categorical kinds" })
   .superRefine((v, ctx) => {
-    const issue = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message });
-    if (v.executionBinding.verdictProtocol === "typed-question/v1") {
-      if (v.typedQuestion === undefined) issue("typedQuestion", "a typed-question version names its question");
-      if (v.decisionThreshold === undefined) issue("decisionThreshold", "a typed-question version declares its decision threshold; there is no default");
-      if (v.rubricMarkdown !== undefined) issue("rubricMarkdown", "a typed-question version has no rubric");
-      if (v.prompt !== undefined) issue("prompt", "a typed-question version has no prompt");
-      if (v.verdictKind !== "binary") issue("verdictKind", "a typed-question version is binary");
-      // The contract is fixed, so it may be left out or sent back unchanged.
-      if (v.outputSchema !== undefined && !isTypedQuestionOutputSchema(v.outputSchema)) {
-        issue("outputSchema", "a typed-question version's output contract is the fixed probability schema");
-      }
-    } else {
-      if (v.rubricMarkdown === undefined) issue("rubricMarkdown", "a prompted version needs a rubric");
-      if (v.prompt === undefined) issue("prompt", "a prompted version needs a prompt");
-      if (v.typedQuestion !== undefined) issue("typedQuestion", "only a typed-question version names a question");
-      if (v.decisionThreshold !== undefined) issue("decisionThreshold", "only a typed-question version declares a decision threshold");
-    }
+    for (const { path, message } of evaluatorDefinitionInputIssues(v)) ctx.addIssue({ code: "custom", path: [path], message });
   })
-  .transform((v) => ({
-    ...v,
-    outputSchema: v.outputSchema ?? (v.executionBinding.verdictProtocol === "typed-question/v1" ? TypedQuestionOutputSchema : MinimumVerdictOutputSchema)
-  }));
+  .transform((v) => ({ ...v, outputSchema: v.outputSchema ?? defaultEvaluatorOutputSchema(v.executionBinding.verdictProtocol) }));
 export type CreateSkillVersionInput = z.infer<typeof CreateSkillVersionInputSchema>;
 
 // Beginner onboarding creates the first real Check over the project's seeded

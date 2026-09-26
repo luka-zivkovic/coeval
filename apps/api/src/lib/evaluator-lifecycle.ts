@@ -30,20 +30,26 @@ export function evaluatorLifecycleDigest(value: unknown): string {
 
 /**
  * The candidate request as stored: its binding in saved form (a custom
- * endpoint named by digest, with its URL beside it), which is what the
- * database's evaluator_lifecycle_request_digest_v1 reads back.
+ * endpoint named by digest, with its URL beside it), and its definition with
+ * every field present, null where its kind has none (a prompted candidate
+ * names no question, a typed-question one no rubric or prompt). That is what
+ * the database's evaluator_lifecycle_request_digest_v1 reads back.
  */
 export function evaluatorCandidateRequestDigest(
   projectId: string,
   input: EvaluatorCandidateCreateInput
 ): string {
   const parsed = EvaluatorCandidateCreateInputSchema.parse(input);
-  const { idempotencyKey: _idempotencyKey, executionBinding, ...request } = parsed;
-  const stored = executionBindingFromInput(executionBinding);
+  const { idempotencyKey: _idempotencyKey, executionBinding, rubricMarkdown, prompt, typedQuestion, decisionThreshold, ...request } = parsed;
+  const stored = executionBindingFromInput(executionBinding, undefined, { typedQuestion: typedQuestion !== undefined });
   return evaluatorLifecycleDigest({
     basis: EVALUATOR_CANDIDATE_REQUEST_DIGEST_BASIS,
     projectId: nonBlank(projectId, "projectId"),
     ...request,
+    rubricMarkdown: rubricMarkdown ?? null,
+    prompt: prompt ?? null,
+    typedQuestion: typedQuestion ?? null,
+    decisionThreshold: decisionThreshold ?? null,
     executionBinding: stored.executionBinding,
     customEndpointUrl: stored.customEndpointUrl
   });
