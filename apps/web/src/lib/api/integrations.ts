@@ -1,6 +1,9 @@
 import {
   type AgentSetupPairing,
   AgentSetupPairingSchema,
+  type CapabilityCheckInput,
+  type CapabilityCheckReport,
+  CapabilityCheckReportSchema,
   type ApiKey,
   type ApiKeyCapability,
   ApiKeySchema,
@@ -215,6 +218,22 @@ export async function fetchJudgeModels(provider: JudgeProviderId): Promise<Judge
   const response = await apiFetch(`${API_BASE}/api/judge/providers/${provider}/models`, { credentials: "include" });
   if (!response.ok) throw await apiErrorFromResponse(response, "Judge models request failed");
   return JudgeModelCatalogSchema.parse(await response.json());
+}
+
+/**
+ * The capability check before save (ADR-0014 section 4): up to 6 probes of the
+ * model, with the credential and endpoint a saved binding would use.
+ */
+export async function checkModelCapabilities(input: CapabilityCheckInput): Promise<CapabilityCheckReport> {
+  const response = await apiFetch(`${API_BASE}/api/judge/capability-check`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input)
+  });
+  if (!response.ok) throw await apiErrorFromResponse(response, "Capability check failed");
+  const body = (await response.json()) as { report: unknown };
+  return CapabilityCheckReportSchema.parse(body.report);
 }
 
 export async function setJudgeKey(provider: JudgeKeyProvider, apiKey: string): Promise<JudgeProviderKey> {

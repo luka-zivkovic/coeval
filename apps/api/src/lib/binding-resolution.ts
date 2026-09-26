@@ -319,6 +319,8 @@ export async function checkBindingCapabilities(
     // The check ended early: a probe couldn't be sent, or the last one ended on a transient error.
     interrupted: unsent || last?.outcome === "error",
     published: published === null ? null : {
+      structuredOutput: published.structuredOutput,
+      toolUse: published.toolUse,
       temperature: published.temperature,
       topP: published.topP,
       reasoning: published.reasoning,

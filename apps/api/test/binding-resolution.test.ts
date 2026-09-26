@@ -332,7 +332,9 @@ describe("the capability check before save (ADR-0014 section 4)", () => {
       }))
     });
     const report = await checkBindingCapabilities(check, "project", base);
-    expect(report.published).toEqual({ temperature: null, topP: null, reasoning: true, thinkingTypes: ["adaptive"], effortLevels: ["low", "medium"] });
+    expect(report.published).toEqual({
+      structuredOutput: true, toolUse: null, temperature: null, topP: null, reasoning: true, thinkingTypes: ["adaptive"], effortLevels: ["low", "medium"]
+    });
   });
 
   it("never reports the key, even when the provider echoes it", async () => {

@@ -632,6 +632,8 @@ export const CapabilityCheckReportSchema = z.object({
   /** Whether the check ended early: a probe couldn't be sent, or ended on a transient error. */
   interrupted: z.boolean(),
   published: z.object({
+    structuredOutput: z.boolean().nullable(),
+    toolUse: z.boolean().nullable(),
     temperature: z.boolean().nullable(),
     topP: z.boolean().nullable(),
     reasoning: z.boolean().nullable(),

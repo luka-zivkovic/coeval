@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,6 +52,7 @@ import {
   type SkillVersionTimeScope,
   type VerdictKind
 } from "@rubrist/shared";
+import { useBindingPicker } from "./skill-edit/binding-settings.js";
 import { SkillVersionEditor } from "./skill-edit/editor.js";
 import {
   GovernedEvaluatorEditBoundary,
@@ -119,6 +120,18 @@ export function SkillEditScreen() {
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [temperature, setTemperature] = useState("0");
+  const baseUrlValid = provider !== "custom" || /^https?:\/\/\S+$/i.test(baseUrl.trim());
+  const providerAvailable = providerOptions.some((option) => option.provider === provider && option.available);
+  // The model picker's settings, guided by a capability check (Batch 8F). First-project
+  // setup shows no picker, so it never checks.
+  const pickerModel = useMemo(() => ({ provider, modelId, modelVersion, baseUrl }), [provider, modelId, modelVersion, baseUrl]);
+  const canCheckModel = !firstRun && providerAvailable && baseUrlValid && modelId.trim() !== "" && modelVersion.trim() !== "";
+  const picker = useBindingPicker(pickerModel, (baseVersion ?? skill?.currentVersion)?.executionBinding ?? null, {
+    canCheck: canCheckModel,
+    temperature
+  });
+  const loadPickerSettings = picker.load;
+  const pickerSavedFields = picker.savedFields;
   // First-run setup starts from an already-recorded Run whenever one exists;
   // keep the new Check on future Runs and enqueue the existing evidence after
   // its regression gate. The ordinary editor preserves the safer new-only
@@ -176,7 +189,8 @@ export function SkillEditScreen() {
     setModelVersion(keeps ? fields.modelVersion : "");
     setBaseUrl(keeps && selectedProvider === "custom" ? fields.baseUrl : "");
     setTemperature(keeps ? fields.temperature : selectedProvider === "mock" ? "" : "0");
-  }, []);
+    loadPickerSettings(keeps ? version : null);
+  }, [loadPickerSettings]);
 
   // Apply a starter template's content over the form. Model binding stays as
   // whatever's loaded (the team's existing pinned model) — starters
@@ -490,12 +504,11 @@ export function SkillEditScreen() {
   }, [provider, providerOptions, skill?.id]);
 
   // A blank temperature is not sent (ADR-0014 section 2); it is never read as
-  // 0, which Number("") would silently produce. The mock takes no sampling.
+  // 0, which Number("") would silently produce. The mock takes no sampling, and
+  // a temperature the model rejects outright is hidden and not sent.
   const parsedTemperature = Number(temperature);
-  const temperatureValid = provider === "mock" || temperature.trim() === "" ||
+  const temperatureValid = provider === "mock" || !picker.guidance.temperature.shown || temperature.trim() === "" ||
     (Number.isFinite(parsedTemperature) && parsedTemperature >= 0 && parsedTemperature <= 2);
-  const baseUrlValid = provider !== "custom" || /^https?:\/\/\S+$/i.test(baseUrl.trim());
-  const providerAvailable = providerOptions.some((option) => option.provider === provider && option.available);
   // The pinned model is allowed to be absent from the fetched catalog (it may
   // have been deprecated or filtered out of the listing). It stays selectable
   // and saveable — the warning below the picker is the honest surface.
@@ -517,7 +530,7 @@ export function SkillEditScreen() {
       // Settings not in the editor carry over from the version being edited,
       // the same base the change review compares against.
       const executionBinding = executionBindingInputFromFields(
-        { provider, modelId, modelVersion, baseUrl, temperature },
+        { provider, modelId, modelVersion, baseUrl, ...pickerSavedFields(temperature) },
         (baseVersion ?? v).executionBinding
       );
       if (executionBinding === null) return null;
@@ -549,11 +562,15 @@ export function SkillEditScreen() {
       };
       return input;
     },
-    [skill, baseVersion, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange, firstRun, starterSuppliedOutputContract]
+    [skill, baseVersion, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, pickerSavedFields, timeScope, verdictKind, choiceScores, scalarRange, firstRun, starterSuppliedOutputContract]
   );
 
+  // A setting the check saw rejected would fail resolution after save, so it blocks saving.
+  const draftInput = buildInput();
   const canSave =
     skill != null &&
+    draftInput !== null &&
+    (firstRun || picker.blockingProblems.length === 0) &&
     rubric.trim().length > 0 &&
     prompt.trim().length > 0 &&
     modelId.trim().length > 0 &&
@@ -591,7 +608,7 @@ export function SkillEditScreen() {
       : null;
     const input = buildInput(extra);
     if (!input) {
-      setSubmitError("Check the model binding — choose a model, use a temperature from 0 to 2, and complete the custom endpoint fields.");
+      setSubmitError("Check the model binding: choose a model, use a temperature from 0 to 2, give an output token limit where it's required, and complete the custom endpoint fields.");
       return;
     }
     setSubmitting(true);
@@ -775,7 +792,7 @@ export function SkillEditScreen() {
   const availableProviderOptions = providerOptions.filter((option) => option.available);
   const selectedProviderOption = availableProviderOptions.find((option) => option.provider === provider);
   const hasConfiguredRealProvider = availableProviderOptions.some((option) => option.provider !== "mock");
-  const changeInput = buildInput();
+  const changeInput = draftInput;
 
   if (firstRun) {
     if (!dashboardReady) {
@@ -867,6 +884,7 @@ export function SkillEditScreen() {
       availableProviderOptions={availableProviderOptions}
       provider={provider}
       setProvider={setProvider}
+      canCheckModel={canCheckModel}
       selectedProviderOption={selectedProviderOption}
       baseUrl={baseUrl}
       setBaseUrl={setBaseUrl}
@@ -882,6 +900,7 @@ export function SkillEditScreen() {
       temperature={temperature}
       setTemperature={setTemperature}
       temperatureValid={temperatureValid}
+      picker={picker}
       verdictKind={verdictKind}
       scalarRange={scalarRange}
       choiceScores={choiceScores}

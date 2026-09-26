@@ -18,6 +18,7 @@ import type {
   VerdictKind
 } from "@rubrist/shared";
 import { STARTER_SKILLS, type StarterSkill } from "@/lib/starter-skills";
+import { BindingSettings, type useBindingPicker } from "./binding-settings.js";
 import { cn } from "@/lib/utils";
 import { verdictKindDescription } from "@/lib/verdict-kind";
 
@@ -33,9 +34,9 @@ export function SkillVersionEditor({
   appliedStarter, setAppliedStarter, applyStarter, rubricMode, setRubricMode,
   rubric, setRubric, prompt, setPrompt, showPromptEditor, setShowPromptEditor,
   usesImplicitRubric, unknownPromptVariables, availableProviderOptions,
-  provider, setProvider, selectedProviderOption, baseUrl, setBaseUrl, baseUrlValid,
+  provider, setProvider, canCheckModel, selectedProviderOption, baseUrl, setBaseUrl, baseUrlValid,
   modelsLoading, models, modelId, setModelId, modelVersion, setModelVersion,
-  modelsError, pinnedModelMissing, temperature, setTemperature, temperatureValid,
+  modelsError, pinnedModelMissing, temperature, setTemperature, temperatureValid, picker,
   verdictKind, scalarRange, choiceScores, hasConfiguredRealProvider, timeScope,
   setTimeScope, changeInput, submitError, canSave, submit
 }: {
@@ -68,6 +69,8 @@ export function SkillVersionEditor({
   availableProviderOptions: JudgeProviderAvailabilityItem[];
   provider: JudgeProviderId;
   setProvider: Dispatch<SetStateAction<JudgeProviderId>>;
+  /** Whether a model is chosen and its provider has a key, so the picker can check it. */
+  canCheckModel: boolean;
   selectedProviderOption: JudgeProviderAvailabilityItem | undefined;
   baseUrl: string;
   setBaseUrl: Dispatch<SetStateAction<string>>;
@@ -83,6 +86,7 @@ export function SkillVersionEditor({
   temperature: string;
   setTemperature: Dispatch<SetStateAction<string>>;
   temperatureValid: boolean;
+  picker: ReturnType<typeof useBindingPicker>;
   verdictKind: VerdictKind;
   scalarRange: [number, number] | null;
   choiceScores: Record<string, number> | null;
@@ -287,10 +291,10 @@ export function SkillVersionEditor({
           <div>
             <CardTitle>Execution binding</CardTitle>
             <CardDescription>
-              Chooses the provider, model, and temperature every judge call sends. The whole binding,
-              including reasoning and the verdict protocol, is stored on the immutable version; runs
-              record the provider-reported model identity separately when available. Verdict kind
-              controls the allowed result labels.
+              Chooses exactly what every judge call sends: provider, model, temperature, reasoning,
+              verdict protocol, and output token limit. Check the model to see which settings it takes.
+              The whole binding is stored on the immutable version; runs record the provider-reported
+              model identity separately when available. Verdict kind controls the allowed result labels.
             </CardDescription>
           </div>
           <div className="flex-1" />
@@ -307,6 +311,7 @@ export function SkillVersionEditor({
                 setModelId("");
                 setModelVersion("");
                 setBaseUrl("");
+                picker.modelPicked();
               }}
               className="h-9 rounded-sm border border-rule-soft bg-card-2 px-2 text-[12.5px] text-ink focus-visible:border-ink"
             >
@@ -328,7 +333,7 @@ export function SkillVersionEditor({
 
           {provider === "custom" ? (
             <Field label="OpenAI-compatible base URL">
-              <TextInput value={baseUrl} onChange={setBaseUrl} placeholder="https://api.example.com/v1" mono />
+              <TextInput value={baseUrl} onChange={(value) => { setBaseUrl(value); picker.modelPicked(); }} placeholder="https://api.example.com/v1" mono />
               {!baseUrlValid ? <span className="text-[11px] text-signal">Enter a full http(s) base URL.</span> : null}
             </Field>
           ) : (
@@ -345,6 +350,7 @@ export function SkillVersionEditor({
                   const selected = models.find((model) => model.id === value);
                   setModelId(selected?.id ?? "");
                   setModelVersion(selected?.version ?? "");
+                  picker.modelPicked();
                 }}
                 className="h-9 rounded-sm border border-rule-soft bg-card-2 px-2 font-mono text-[12px] text-ink focus-visible:border-ink disabled:opacity-60"
               >
@@ -376,6 +382,7 @@ export function SkillVersionEditor({
                 onChange={(value) => {
                   setModelId(value);
                   setModelVersion(value.trim());
+                  picker.modelPicked();
                 }}
                 placeholder="provider/model-name"
                 mono
@@ -396,29 +403,14 @@ export function SkillVersionEditor({
             ) : null}
           </Field>
 
-          <Field label="Temperature">
-            <input
-              type="number"
-              min="0"
-              max="2"
-              step="0.1"
-              value={provider === "mock" ? "" : temperature}
-              disabled={provider === "mock"}
-              placeholder="not sent"
-              onChange={(event) => setTemperature(event.target.value)}
-              className="h-9 rounded-sm border border-rule-soft bg-card-2 px-2 font-mono text-[12.5px] text-ink focus-visible:border-ink"
-            />
-            {provider === "mock" ? (
-              <span className="text-[11px] text-ink-3">The mock takes no sampling settings.</span>
-            ) : !temperatureValid ? (
-              <span className="text-[11px] text-signal">Enter a number from 0 to 2, or leave it blank to not send one.</span>
-            ) : (
-              <span className="text-[11px] text-ink-3">
-                Use 0 for repeatable judge decisions. Leave it blank only for a model that rejects temperature;
-                governed use needs an explicit value wherever the model accepts one.
-              </span>
-            )}
-          </Field>
+          <BindingSettings
+            provider={provider}
+            temperature={temperature}
+            setTemperature={setTemperature}
+            temperatureValid={temperatureValid}
+            picker={picker}
+            canCheck={canCheckModel}
+          />
 
           {changeInput ? (
             <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2 font-mono text-[11px] leading-5 text-ink-2 sm:col-span-2">
