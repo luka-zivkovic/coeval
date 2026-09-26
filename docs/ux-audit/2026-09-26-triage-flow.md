@@ -28,6 +28,41 @@ those additions:
 - `user-flow` › `patterns.md` › Triage a queue;
 - `page-structure` › `review.md` (the render-and-measure checks).
 
+## Components in the proposals
+
+CURRENT: shadcn is set up (`apps/web/components.json`, new-york style) but
+thinly used.
+
+- `components/ui/` holds seven components: Button, Card, Table, Badge,
+  Input, Textarea, and Separator. They use the paper/ink tokens, and some
+  are extended: Button adds `primary` and `signal` variants, and Table wraps
+  a scroll region.
+- `apps/web/package.json` lists seven Radix packages, but only `react-slot`
+  (Button) and `react-separator` are imported. `dropdown-menu`, `label`,
+  `select`, `tabs`, and `tooltip` are installed and unused.
+- Product components live in `components/rubrist/` (SectionHead,
+  EmptyShell, Receipt, MarginNote, Chip, Ref, and others). Nine dialogs are
+  hand-built (`role="dialog"`, one each in nine files), and there is no
+  toast. Selects are native, and tabs are hand-built
+  (`screens/skill.tsx:32`).
+
+Decision (founder, 2026-09-26): take the middle path.
+
+- Behavior that is hard to get right comes from shadcn's Radix-based
+  components, restyled to the paper/ink tokens. That covers dialogs,
+  sheets, menus, tooltips, tabs, toggle groups, and toasts.
+- Product-specific presentation stays in `components/rubrist/`.
+
+Each proposal marks its component:
+
+- *installed*: already in `components/ui/`;
+- *add*: run `npx shadcn add <name>` in `apps/web`, then restyle it;
+- *Rubrist*: an existing `components/rubrist/` component.
+
+This round's proposals add five components: `Sheet` (T5, T6), `ToggleGroup`
+(T7), `Sonner` (T4), `AlertDialog` (the Pause guard), and `Skeleton`
+(loading rows).
+
 ## Method
 
 - The code read covered `screens/exceptions.tsx`, `screens/trace.tsx`,
@@ -60,6 +95,7 @@ those additions:
 | 6 | On phones the queue shows two columns. The Result and every row action sit behind a sideways scroll that nothing on a touch screen signals. (T5) | 2 | fix |
 | 7 | Several links break the scent: "Open rubric alongside" leaves the queue; "Draft rubric edit from these cases" passes no cases; "Compare and resolve" opens a page Guided display hides; the default Back goes to Traces. (T6) | 2 | fix |
 | 8 | In the queue's structure, active filter chips look like primaries, a pointer card sits above the list, and each row offers four interactions. (T7) | 2 | fix |
+| 9 | Buttons change pages without being links, so none of them opens in a new tab. There are 58 across the app, a dozen of them on this flow. (T10) | 2 | fix |
 
 ---
 
@@ -253,8 +289,10 @@ Rule: `decisions.md` › Confirmation, undo, or nothing (reversible actions act
 immediately and offer Undo); `patterns.md` › Triage a queue (Undo for the
 last decision); `decisions.md` › In shadcn apps (sonner with an Undo action).
 
-Proposal: `toast("Result accepted", { action: { label: "Undo", onClick } })`.
-Undo appends a superseding record and moves the cursor back. ASSUMPTION: an
+Proposal: add shadcn's `Sonner` (*add*; it wraps the `sonner` package) and
+mount its `Toaster` once in the root layout. Then call
+`toast("Result accepted", { action: { label: "Undo", onClick } })`. Undo
+appends a superseding record and moves the cursor back. ASSUMPTION: an
 undo that appends rather than deletes fits the append-only record
 (`PRODUCT.md` principle 8). Confirm that with the evidence model (*decide*).
 
@@ -281,7 +319,7 @@ key-value list; keep sort and filter as a sheet"); `shadcn.md` › Responsive
 rules.
 
 Proposal: below `md`, render each row as a stacked item: title, Result chip,
-category, and one action. Put the filters in a `Sheet`.
+category, and one action. Put the filters in a `Sheet` (*add*).
 
 ### T6. Scent breaks along the flow
 
@@ -310,8 +348,8 @@ destination).
 
 Proposal:
 
-- Open the Review guide in a `Sheet` beside the queue, or rename the banner
-  button "Open the Review guide".
+- Open the Review guide in a `Sheet` (*add*) beside the queue, or rename the
+  banner button "Open the Review guide".
 - Pass the corrected case ids to the editor, or rename the done-view button.
 - Keep reviewer disagreements in this flow, or show Reliability in Guided
   display when this card appears.
@@ -349,8 +387,8 @@ action); `placement.md` › In shadcn apps (one filled button per state).
 
 Proposal:
 
-- Build the filters with `ToggleGroup`, whose pressed state is distinct from
-  the primary.
+- Build the filters with `ToggleGroup` (*add*). Restyle its pressed state so
+  it does not use the primary's ink fill.
 - Move the disagreements card below the list, or make it a filter
   ("Reviewer disagreements · 1").
 - Give each row one action (open it in the player) and expand the note
@@ -414,6 +452,45 @@ Sev 2 · CURRENT · *fix* (extends S1–S3)
 - The document title stays "Rubrist". Set it to "Case 3 of 7 · Waiting on a
   person · Rubrist".
 
+### T10. Buttons that navigate instead of links
+
+Sev 2 · CURRENT · *fix*
+
+Along this flow, a dozen controls change pages with
+`onClick={() => navigate(…)}` on a `Button`. That renders a `<button>` with
+no `href`:
+
+- "Review all N" (`screens/exceptions.tsx:344-357`) and each row's
+  "Review" (`screens/exceptions.tsx:138-146`);
+- "Open rubric alongside" and "Compare and resolve"
+  (`screens/exceptions.tsx:330,407`);
+- the case page's Back control (`screens/trace.tsx:110,127`), the test
+  banner's button (`screens/trace.tsx:214-217`), and "View test runs"
+  (`screens/trace.tsx:238`);
+- the player's "Back to queue" when nothing is waiting
+  (`screens/review.tsx:71`);
+- the done view's "Back to overview" and "Draft rubric edit from these
+  cases" (`screens/review.tsx:98,100`).
+
+None of them opens in a new tab on Cmd-click or a middle click, and none
+offers "Copy link". A screen reader announces each one as a button. The
+row title is the exception: it is a real link (`RowLink`,
+`screens/exceptions.tsx:69-76`), so every row keeps a keyboard and new-tab
+path.
+
+The pattern is app-wide: `apps/web/src` has 58
+`onClick={() => navigate(…)}` handlers, and at least 41 are on a `Button`.
+
+Rule: links navigate and buttons act (Vercel Web Interface Guidelines ›
+Navigation & State: "Links use `<a>`/`<Link>` (Cmd/Ctrl+click, middle-click
+support)"; WAI-ARIA Authoring Practices, Link and Button patterns).
+`navigation.md` › "Everything shareable has a URL" covers only part of it.
+
+Proposal: `<Button asChild><Link to={…} state={…}>…</Link></Button>`
+(*installed*: `Button` already supports `asChild` through Radix Slot). Router
+state still travels with `Link`. A new tab loses router state, so the URL
+must carry what the destination needs (T3, T6).
+
 ---
 
 ## Proposed flow (user-flow spec)
@@ -432,7 +509,7 @@ Sev 2 · CURRENT · *fix* (extends S1–S3)
 
 | Step | Asks or shows | Inputs and defaults | Validation | Back and exit | Progress | States |
 |---|---|---|---|---|---|---|
-| 1 Queue | Waiting Results, with filters | Category and Result filters, kept in the URL | — | Sidebar | "7 waiting" | Empty: "Nothing is waiting on a person" with a link to Runs. No matches: Clear filters. Loading: skeleton rows. Error: `Alert` with Retry |
+| 1 Queue | Waiting Results, with filters | Category and Result filters, kept in the URL | — | Sidebar | "7 waiting" | Empty: "Nothing is waiting on a person" with a link to Runs. No matches: Clear filters. Loading: `Skeleton` rows (*add*). Error: `EmptyShell` (*Rubrist*) with Retry |
 | 2 Decide | The Run, the Check's Result and reasoning, and a link to the Review guide | Accept or Correct; no preselected choice | — | Prev and Next; Pause (Esc) keeps the position | "3 of 7" and a bar | Loading: skeleton inside the frame, with header and progress kept. Error: Retry, keeping the position. Already ruled: show the ruling and "Change ruling" |
 | 3 Correct | A new Result and a reason | Result choice; reason required | On submit | Cancel keeps the draft; Esc closes the form first | Unchanged | Error inline; the reason is kept |
 | 4 Summary | Decided, skipped, and still waiting | — | — | Primary returns to where the walk started | Done | Skipped > 0: "Review 2 skipped" |
@@ -462,7 +539,8 @@ flowchart LR
 - **Add to protected examples:** a separate action, offered after a
   ruling. It keeps its required reason.
 - **Pause:** no guard, unless a reason draft is open. Then ask "Discard
-  reason?", with Keep editing as the default (`decisions.md` › Back, Cancel,
+  reason?" in an `AlertDialog` (*add*, rather than a tenth hand-built
+  dialog), with Keep editing as the default (`decisions.md` › Back, Cancel,
   Close).
 - **Shortcuts:** shown on the buttons themselves (`patterns.md` › Triage a
   queue).
@@ -538,13 +616,17 @@ Reviewer disagreements · 1 → compare     ·     ▸ Ruled this week · 3 (app
 ```
 
 Narrow: each row stacks title, Result chip, and category; tapping it opens
-the Decide page at that row; the filters open in a `Sheet`.
+the Decide page at that row; the filters open in a `Sheet` (*add*).
 
 | Zone | Empty | Loading | Partial | Error |
 |---|---|---|---|---|
-| List | "Nothing is waiting on a person. New Results the Check fails or finds ambiguous appear here." with a link to Runs | Five skeleton rows | Short list, no pagination | `Alert` with "Couldn't load the queue" and Retry |
+| List | "Nothing is waiting on a person. New Results the Check fails or finds ambiguous appear here." with a link to Runs (`EmptyShell`, *Rubrist*) | Five `Skeleton` rows (*add*) | Short list, no pagination | `EmptyShell` (*Rubrist*): "Couldn't load the queue" with Retry |
 | Filters | No matches: "No Results match these filters" with Clear filters | — | — | — |
-| Ruled this week | "No rulings in the last 7 days" | Skeleton line | — | Inline retry |
+| Ruled this week | "No rulings in the last 7 days" | `Skeleton` line (*add*) | — | Inline retry |
+
+Today the queue's error state is titled "API unavailable". It shows the raw
+error, or the developer instruction "Start the API with `pnpm dev:api` and
+refresh.", and it has no Retry (`screens/exceptions.tsx:271-282`).
 
 ## Open questions
 
