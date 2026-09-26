@@ -104,6 +104,12 @@ class FakeCalibrationRepository implements BinaryCalibrationControlRepository {
     };
   }
 
+  async getGovernedBinding(): Promise<null> {
+    return null;
+  }
+
+  async recordResolution(): Promise<void> {}
+
   async getArtifactStatus(
     access: BinaryCalibrationProjectAccess,
     artifactId: string

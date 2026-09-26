@@ -38,6 +38,11 @@ const GOVERNED_EVIDENCE_METHODS = [
 
 const BINARY_METHODS = [
   "createRun",
+  "getGovernedBinding",
+  "recordResolution",
+  "getRecheckTarget",
+  "recordRecheck",
+  "rejectBeforeAuthorization",
   "listRuns",
   "getRun",
   "getArtifact",
@@ -705,10 +710,14 @@ describe("specialist PostgreSQL repository module boundaries", () => {
         "binary-calibration/repository.pg.ts:finalizeRun:requireActiveRevisionLease:client",
         "binary-calibration/repository.pg.ts:finalizeRun:requireClaim:client",
         "binary-calibration/repository.pg.ts:getNextAttempt:requireClaim:this.pool",
+        "binary-calibration/repository.pg.ts:getRecheckTarget:requireClaim:this.pool",
         "binary-calibration/repository.pg.ts:recordProviderCallStarted:requireActiveRevisionLease:client",
         "binary-calibration/repository.pg.ts:recordProviderCallStarted:requireClaim:client",
+        "binary-calibration/repository.pg.ts:recordRecheck:requireClaim:client",
         "binary-calibration/repository.pg.ts:recoverStartedAttempts:requireActiveRevisionLease:client",
         "binary-calibration/repository.pg.ts:recoverStartedAttempts:requireClaim:client",
+        "binary-calibration/repository.pg.ts:rejectBeforeAuthorization:databaseClock:client",
+        "binary-calibration/repository.pg.ts:rejectBeforeAuthorization:requireClaim:client",
       ]
     `);
 

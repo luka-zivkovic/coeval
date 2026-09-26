@@ -20,7 +20,7 @@ run("clean-install database baseline", () => {
       expect(applied.rows).toEqual([
         {
           id: "0001_baseline",
-          checksum: "5c715522267a6b5584a4dd565551ab5c01e615454e2df903b6f5c96132b7183c",
+          checksum: "b2d18bf70bf0d69c705fb0cd24889ea712600369476ec28b73ba639f2b8d3712",
         }
       ]);
     } finally {

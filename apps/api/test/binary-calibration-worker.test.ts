@@ -14,6 +14,7 @@ import type {
   BinaryCalibrationExecutionClaim,
   BinaryCalibrationExecutionRepository,
   BinaryCalibrationMintResult,
+  BinaryCalibrationRecheckTarget,
   CompleteBinaryCalibrationAttemptInput
 } from "../src/binary-calibration/repository.js";
 import {
@@ -106,6 +107,7 @@ class FakeExecutionRepository implements BinaryCalibrationExecutionRepository {
   async authorizeRun(
     claim: BinaryCalibrationExecutionClaim
   ): Promise<BinaryCalibrationAuthorizedRun> {
+    this.authorizeCalls += 1;
     return authorized(claim);
   }
 
@@ -160,6 +162,34 @@ class FakeExecutionRepository implements BinaryCalibrationExecutionRepository {
 
   async markRecoveryRequired(): Promise<void> {
     this.recoveryMarks += 1;
+  }
+
+  authorized = false;
+  lastUnknownRecheckAt: string | null = null;
+  rechecks: string[] = [];
+  rejections: string[] = [];
+  authorizeCalls = 0;
+
+  async getRecheckTarget(claim: BinaryCalibrationExecutionClaim): Promise<BinaryCalibrationRecheckTarget> {
+    const run = authorized(claim);
+    return {
+      binding: {
+        projectId: run.projectId,
+        executionBinding: run.executionBinding,
+        customEndpointUrl: run.customEndpointUrl,
+        spec: { verdictKind: "binary", scalarRange: null, categoricalChoiceScores: null }
+      },
+      authorized: this.authorized,
+      lastUnknownRecheckAt: this.lastUnknownRecheckAt
+    };
+  }
+
+  async recordRecheck(_claim: BinaryCalibrationExecutionClaim, result: { outcome: string }): Promise<void> {
+    this.rechecks.push(result.outcome);
+  }
+
+  async rejectBeforeAuthorization(_claim: BinaryCalibrationExecutionClaim, reason: string): Promise<void> {
+    this.rejections.push(reason);
   }
 }
 
@@ -467,5 +497,79 @@ describe("sealed binary calibration worker", () => {
       providerObservation: { provider: "openai", observedModel: "gpt-pinned-2026", observedVersion: null, systemFingerprint: "fp_2", upstreamProvider: null }
     }]);
     expect(JSON.stringify(repository.completeInputs)).not.toContain("CANARY");
+  });
+
+  describe("the re-check before the first authorization (ADR-0014 section 4)", () => {
+    const counting = () => {
+      let calls = 0;
+      return { executeProvider: successfulExecutor(() => { calls += 1; }), calls: () => calls };
+    };
+
+    it("authorizes and runs when the resolution still holds, recording the re-check", async () => {
+      const repository = new FakeExecutionRepository();
+      const provider = counting();
+      const seen: string[] = [];
+      await expect(processBinaryCalibrationRun({
+        repository, executeProvider: provider.executeProvider, runId: "cal_run_1", workerId: "worker_1",
+        recheck: async (binding) => { seen.push(binding.executionBinding.modelId); return { outcome: "holds", probes: [] }; }
+      })).resolves.toBe(MINT);
+      expect(seen).toEqual(["gpt-pinned"]);
+      expect(repository.rechecks).toEqual(["holds"]);
+      expect(repository.authorizeCalls).toBe(1);
+      expect(provider.calls()).toBe(1);
+    });
+
+    it("rejects the run before any authorization or sealed call when the resolution no longer holds", async () => {
+      const repository = new FakeExecutionRepository();
+      const provider = counting();
+      await expect(processBinaryCalibrationRun({
+        repository, executeProvider: provider.executeProvider, runId: "cal_run_1", workerId: "worker_1",
+        recheck: async () => ({ outcome: "no_longer_holds", probes: [] })
+      })).resolves.toBeNull();
+      expect(repository.rejections).toEqual(["resolution_no_longer_holds"]);
+      expect(repository.authorizeCalls).toBe(0);
+      expect(provider.calls()).toBe(0);
+    });
+
+    it("waits on a transient error without failing the binding, and backs off before the next re-check", async () => {
+      const repository = new FakeExecutionRepository();
+      const provider = counting();
+      let probes = 0;
+      const recheck = async () => { probes += 1; return { outcome: "unknown" as const, probes: [] }; };
+      await expect(processBinaryCalibrationRun({
+        repository, executeProvider: provider.executeProvider, runId: "cal_run_1", workerId: "worker_1", recheck
+      })).resolves.toBeNull();
+      expect(repository.rechecks).toEqual(["unknown"]);
+      expect(repository.recoveryMarks).toBe(1);
+      expect(repository.rejections).toEqual([]);
+      expect(repository.authorizeCalls).toBe(0);
+
+      repository.lastUnknownRecheckAt = "2026-09-26T10:00:00.000Z";
+      await expect(processBinaryCalibrationRun({
+        repository, executeProvider: provider.executeProvider, runId: "cal_run_1", workerId: "worker_1", recheck,
+        now: () => new Date("2026-09-26T10:04:00.000Z")
+      })).resolves.toBeNull();
+      expect(probes).toBe(1);
+      expect(repository.recoveryMarks).toBe(2);
+
+      await processBinaryCalibrationRun({
+        repository, executeProvider: provider.executeProvider, runId: "cal_run_1", workerId: "worker_1", recheck,
+        now: () => new Date("2026-09-26T10:06:00.000Z")
+      });
+      expect(probes).toBe(2);
+      expect(provider.calls()).toBe(0);
+    });
+
+    it("never re-checks a run that already passed authorization", async () => {
+      const repository = new FakeExecutionRepository();
+      repository.authorized = true;
+      let probes = 0;
+      await processBinaryCalibrationRun({
+        repository, executeProvider: counting().executeProvider, runId: "cal_run_1", workerId: "worker_1",
+        recheck: async () => { probes += 1; return { outcome: "no_longer_holds", probes: [] }; }
+      });
+      expect(probes).toBe(0);
+      expect(repository.rejections).toEqual([]);
+    });
   });
 });

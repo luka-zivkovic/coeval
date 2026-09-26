@@ -15,7 +15,10 @@ function repository(): EvaluatorLifecycleRepository {
     listLifecycles: vi.fn(),
     activate: vi.fn(),
     retire: vi.fn(),
-    authorizeExecution: vi.fn()
+    authorizeExecution: vi.fn(),
+    candidateExists: vi.fn(async () => false),
+    getGovernedBinding: vi.fn(async () => null),
+    recordResolution: vi.fn()
   };
 }
 
@@ -223,6 +226,88 @@ describe("evaluator lifecycle API boundary", () => {
     expect(enqueueRegression).toHaveBeenCalledWith({
       projectId: "project", skillVersionId: "skill-version",
       datasetRevisionId: "regression", actorUserId: "owner"
+    });
+  });
+
+  describe("resolution at the governed gates (ADR-0014 section 4)", () => {
+    const services = { credential: vi.fn(async () => ({ apiKey: null, source: null })) };
+    const mockGoverned = {
+      projectId: "project",
+      executionBinding: structuredClone(MOCK_BINDING),
+      customEndpointUrl: null,
+      spec: { verdictKind: "binary" as const, scalarRange: null, categoricalChoiceScores: null }
+    };
+    const router = (repo: EvaluatorLifecycleRepository, bindingResolution: typeof services | null = services) => createEvaluatorLifecycleRouter({
+      repository: repo,
+      databaseMode: true,
+      requestIdentity: () => ({ userId: "owner", projectId: "project" }),
+      resolveProjectRole: async () => "owner",
+      bindingResolution: bindingResolution ?? undefined
+    });
+    const post = (app: ReturnType<typeof router>, path: string, body: unknown) => app.request(path, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body)
+    });
+
+    it("resolves a new candidate's binding before creating it, and never re-resolves a replay", async () => {
+      const repo = repository();
+      vi.mocked(repo.createCandidate).mockResolvedValue(candidateResult(false));
+      const app = router(repo);
+      expect((await post(app, "/candidates", CANDIDATE_INPUT)).status).toBe(201);
+      expect(repo.recordResolution).toHaveBeenCalledWith(expect.objectContaining({
+        projectId: "project", skillVersionId: null, kind: "resolution",
+        triggerKind: "candidate_creation", triggerRef: "candidate-key", outcome: "resolved"
+      }), null);
+      const [, , record] = vi.mocked(repo.createCandidate).mock.calls[0]!;
+      expect(record).toMatchObject({ status: "resolved", probes: [{ stage: "resolution", purpose: "confirm", outcome: "accepted" }] });
+
+      vi.mocked(repo.candidateExists).mockResolvedValue(true);
+      vi.mocked(repo.createCandidate).mockResolvedValue(candidateResult(true));
+      expect((await post(app, "/candidates", CANDIDATE_INPUT)).status).toBe(200);
+      expect(repo.recordResolution).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(repo.createCandidate).mock.calls[1]![2]).toBeNull();
+    });
+
+    it("resolves an unresolved binding at activation, and leaves a resolved or failed one alone", async () => {
+      const repo = repository();
+      vi.mocked(repo.activate).mockRejectedValue(new EvaluatorLifecycleRepositoryError("state_conflict", "stop here"));
+      vi.mocked(repo.getGovernedBinding).mockResolvedValue({ binding: mockGoverned, record: null });
+      const app = router(repo);
+      const activation = {
+        expectedState: "candidate", expectedSequence: "1", expectedEventId: "event", expectedEventDigest: DIGEST,
+        calibrationArtifactId: "artifact", expectedCalibrationArtifactDigest: DIGEST, expectedCalibrationEvidenceDigest: DIGEST,
+        regressionRunId: "regression", expectedPriorActiveSkillVersionId: null, expectedPriorActiveEventId: null,
+        expectedPriorActiveEventDigest: null, rationale: "Activate the calibrated candidate.", idempotencyKey: "activate-key"
+      };
+      await post(app, "/skill-version/activate", activation);
+      expect(repo.recordResolution).toHaveBeenCalledWith(
+        expect.objectContaining({ skillVersionId: "skill-version", triggerKind: "activation", triggerRef: "activate-key", outcome: "resolved" }),
+        expect.objectContaining({ status: "resolved" })
+      );
+
+      const resolved = await (await import("./fixtures/execution-binding.js")).resolvedRecordFor(MOCK_BINDING);
+      for (const record of [resolved, { ...resolved, status: "failed" as const }]) {
+        vi.mocked(repo.recordResolution).mockClear();
+        vi.mocked(repo.getGovernedBinding).mockResolvedValue({ binding: mockGoverned, record });
+        await post(app, "/skill-version/activate", activation);
+        expect(repo.recordResolution).not.toHaveBeenCalled();
+      }
+    });
+
+    it("reads a version's resolution, and resolves on demand only where probes are configured", async () => {
+      const repo = repository();
+      vi.mocked(repo.getGovernedBinding).mockResolvedValue({ binding: mockGoverned, record: null });
+      const read = await router(repo).request("/skill-version/resolution");
+      expect(read.status).toBe(200);
+      await expect(read.json()).resolves.toEqual({ skillVersionId: "skill-version", record: null });
+
+      expect((await post(router(repo, null), "/skill-version/resolution", {})).status).toBe(501);
+      const resolved = await post(router(repo), "/skill-version/resolution", {});
+      expect(resolved.status).toBe(200);
+      await expect(resolved.json()).resolves.toMatchObject({ record: { status: "resolved" } });
+      expect(repo.recordResolution).toHaveBeenCalledWith(expect.objectContaining({ triggerKind: "on_demand" }), expect.anything());
+
+      vi.mocked(repo.getGovernedBinding).mockResolvedValue(null);
+      expect((await router(repo).request("/missing/resolution")).status).toBe(404);
     });
   });
 });

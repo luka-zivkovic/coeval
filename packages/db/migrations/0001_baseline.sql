@@ -10658,6 +10658,50 @@ CREATE TABLE evaluator_execution_authorizations (
 
 
 --
+-- Name: evaluator_resolution_attempts; Type: TABLE; Schema: current; Owner: -
+--
+
+-- Every resolution attempt and re-check of an execution binding, recorded
+-- against the gate, run, or request that triggered it (ADR-0014 section 4).
+-- A candidate's gate attempt precedes its version, so the version is optional.
+CREATE TABLE evaluator_resolution_attempts (
+    id text NOT NULL,
+    project_id text NOT NULL,
+    skill_version_id text,
+    binding_digest text NOT NULL,
+    kind text NOT NULL,
+    trigger_kind text NOT NULL,
+    trigger_ref text NOT NULL,
+    outcome text NOT NULL,
+    probes jsonb NOT NULL,
+    recorded_at timestamp with time zone DEFAULT date_trunc('milliseconds'::text, clock_timestamp()) NOT NULL,
+    CONSTRAINT evaluator_resolution_attempts_binding_digest_check CHECK ((binding_digest ~ '^sha256:[0-9a-f]{64}$'::text)),
+    CONSTRAINT evaluator_resolution_attempts_kind_check CHECK ((kind = ANY (ARRAY['resolution'::text, 'recheck'::text]))),
+    CONSTRAINT evaluator_resolution_attempts_outcome_check CHECK ((((kind = 'resolution'::text) AND (outcome = ANY (ARRAY['resolved'::text, 'unresolved'::text, 'failed'::text]))) OR ((kind = 'recheck'::text) AND (outcome = ANY (ARRAY['holds'::text, 'no_longer_holds'::text, 'unknown'::text]))))),
+    CONSTRAINT evaluator_resolution_attempts_probes_check CHECK ((jsonb_typeof(probes) = 'array'::text)),
+    CONSTRAINT evaluator_resolution_attempts_trigger_kind_check CHECK ((trigger_kind = ANY (ARRAY['candidate_creation'::text, 'activation'::text, 'binary_calibration'::text, 'binary_calibration_run'::text, 'on_demand'::text]))),
+    CONSTRAINT evaluator_resolution_attempts_trigger_ref_check CHECK (((char_length(trigger_ref) >= 1) AND (char_length(trigger_ref) <= 4096)))
+);
+
+
+--
+-- Name: evaluator_resolution_records; Type: TABLE; Schema: current; Owner: -
+--
+
+-- The latest resolution of each evaluator version's execution binding. Not
+-- identity: it confirms or fails the binding and never changes it
+-- (ADR-0014 section 1).
+CREATE TABLE evaluator_resolution_records (
+    skill_version_id text NOT NULL,
+    project_id text NOT NULL,
+    status text NOT NULL,
+    record jsonb NOT NULL,
+    recorded_at timestamp with time zone DEFAULT date_trunc('milliseconds'::text, clock_timestamp()) NOT NULL,
+    CONSTRAINT evaluator_resolution_records_status_check CHECK (((status = ANY (ARRAY['resolved'::text, 'unresolved'::text, 'failed'::text])) AND (status = (record ->> 'status'::text))))
+);
+
+
+--
 -- Name: evaluator_suite_manifest_members; Type: TABLE; Schema: current; Owner: -
 --
 
@@ -13200,6 +13244,22 @@ ALTER TABLE ONLY evaluator_execution_authorizations
 
 
 --
+-- Name: evaluator_resolution_attempts evaluator_resolution_attempts_pkey; Type: CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY evaluator_resolution_attempts
+    ADD CONSTRAINT evaluator_resolution_attempts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: evaluator_resolution_records evaluator_resolution_records_pkey; Type: CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY evaluator_resolution_records
+    ADD CONSTRAINT evaluator_resolution_records_pkey PRIMARY KEY (skill_version_id);
+
+
+--
 -- Name: evaluator_lifecycle_events evaluator_lifecycle_events_lifecycle_id_sequence_key; Type: CONSTRAINT; Schema: current; Owner: -
 --
 
@@ -14828,6 +14888,13 @@ CREATE INDEX evaluator_execution_authorizations_version_idx ON evaluator_executi
 
 
 --
+-- Name: evaluator_resolution_attempts_trigger_idx; Type: INDEX; Schema: current; Owner: -
+--
+
+CREATE INDEX evaluator_resolution_attempts_trigger_idx ON evaluator_resolution_attempts USING btree (project_id, trigger_kind, trigger_ref, recorded_at);
+
+
+--
 -- Name: evaluator_lifecycle_events_activation_idx; Type: INDEX; Schema: current; Owner: -
 --
 
@@ -16239,6 +16306,13 @@ CREATE TRIGGER eval_runs_revision_guard BEFORE INSERT OR UPDATE OF dataset_revis
 --
 
 CREATE TRIGGER evaluator_execution_authorizations_append_only BEFORE DELETE OR UPDATE ON evaluator_execution_authorizations FOR EACH ROW EXECUTE FUNCTION guard_evaluator_lifecycle_append_only_v1();
+
+
+--
+-- Name: evaluator_resolution_attempts evaluator_resolution_attempts_append_only; Type: TRIGGER; Schema: current; Owner: -
+--
+
+CREATE TRIGGER evaluator_resolution_attempts_append_only BEFORE DELETE OR UPDATE ON evaluator_resolution_attempts FOR EACH ROW EXECUTE FUNCTION guard_evaluator_lifecycle_append_only_v1();
 
 
 --
@@ -18247,6 +18321,38 @@ ALTER TABLE ONLY evaluator_execution_authorizations
 
 ALTER TABLE ONLY evaluator_execution_authorizations
     ADD CONSTRAINT evaluator_execution_authorizations_skill_version_id_fkey FOREIGN KEY (skill_version_id) REFERENCES skill_versions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: evaluator_resolution_attempts evaluator_resolution_attempts_project_id_fkey; Type: FK CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY evaluator_resolution_attempts
+    ADD CONSTRAINT evaluator_resolution_attempts_project_id_fkey FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: evaluator_resolution_attempts evaluator_resolution_attempts_skill_version_id_fkey; Type: FK CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY evaluator_resolution_attempts
+    ADD CONSTRAINT evaluator_resolution_attempts_skill_version_id_fkey FOREIGN KEY (skill_version_id) REFERENCES skill_versions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: evaluator_resolution_records evaluator_resolution_records_project_id_fkey; Type: FK CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY evaluator_resolution_records
+    ADD CONSTRAINT evaluator_resolution_records_project_id_fkey FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: evaluator_resolution_records evaluator_resolution_records_skill_version_id_fkey; Type: FK CONSTRAINT; Schema: current; Owner: -
+--
+
+ALTER TABLE ONLY evaluator_resolution_records
+    ADD CONSTRAINT evaluator_resolution_records_skill_version_id_fkey FOREIGN KEY (skill_version_id) REFERENCES skill_versions(id) ON DELETE CASCADE;
 
 
 --

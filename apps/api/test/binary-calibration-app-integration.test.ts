@@ -86,6 +86,12 @@ class AppCalibrationRepository implements BinaryCalibrationControlRepository {
       createdAt: "2026-08-23T00:00:00.000Z"
     };
   }
+  async getGovernedBinding(): Promise<null> {
+    return null;
+  }
+
+  async recordResolution(): Promise<void> {}
+
   async getArtifactStatus(
     access: BinaryCalibrationProjectAccess,
     artifactId: string

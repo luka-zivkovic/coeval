@@ -1,8 +1,11 @@
 import {
   SEEDED_DEFAULT_EXECUTION_BINDING,
   type ExecutionBinding,
-  type ExecutionBindingInput
+  type ExecutionBindingInput,
+  type ResolutionRecord
 } from "@rubrist/shared";
+import { EvaluatorCallError } from "@rubrist/audit/runtime";
+import { resolveExecutionBinding } from "../../src/lib/evaluator-resolution.js";
 import type { EvaluatorRuntimeVersion } from "../../src/lib/judge-provider.js";
 
 // Execution bindings for tests (ADR-0014 section 2): the seeded default and
@@ -37,4 +40,47 @@ export function runtimeVersion(binding: ExecutionBinding, overrides: Partial<Eva
     prompt: "Judge the trace against the review guide below.\n\n<review_guide>\n{{rubric_markdown}}\n</review_guide>",
     ...overrides
   };
+}
+
+/**
+ * A resolution record from a gate resolution in which the provider accepted
+ * every probe: `resolved`, with any unset setting shown accepted.
+ */
+export async function resolvedRecordFor(binding: ExecutionBinding): Promise<ResolutionRecord> {
+  return resolveExecutionBinding({
+    binding,
+    trigger: "gate",
+    check: null,
+    published: null,
+    documentedDefault: null,
+    credentialSource: "project",
+    execute: async () => ({ usage: null }),
+    now: new Date("2026-09-26T00:00:00.000Z")
+  });
+}
+
+/**
+ * A resolution record in which the model rejects the temperature parameter
+ * itself: the saved request (which leaves it unset) is accepted, and the
+ * temperature probe is refused naming the parameter.
+ */
+export async function temperatureRejectingRecordFor(binding: ExecutionBinding): Promise<ResolutionRecord> {
+  return resolveExecutionBinding({
+    binding,
+    trigger: "gate",
+    check: null,
+    published: null,
+    documentedDefault: null,
+    credentialSource: "project",
+    execute: async (probed) => {
+      if (probed.sampling.temperature === null) return { usage: null };
+      const message = "`temperature` is deprecated for this model.";
+      throw new EvaluatorCallError("provider_rejected_request", message, {
+        physicalCall: true,
+        status: 400,
+        providerError: { type: "invalid_request_error", code: null, param: null, message, raw: null, upstreamProvider: null }
+      });
+    },
+    now: new Date("2026-09-26T00:00:00.000Z")
+  });
 }

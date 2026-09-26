@@ -108,6 +108,19 @@ check that can refuse the call and immediately before dispatch, so a refusal
 counts no call. The mock makes no call and typed-question evaluators arrive in
 Batch 8E, so neither can be calibrated.
 
+Creating a run is a governed gate (ADR-0014 sections 2 and 4). It needs a
+resolved execution binding that states its temperature and reasoning, unless
+the resolution shows the model rejecting that parameter itself. An unresolved
+binding resolves at the gate with up to three probes over a fixed,
+non-sensitive input. A failed binding is fixed only by a new evaluator
+version. Before a run's first authorization, and so before any sealed
+exposure, the worker re-checks the binding: the confirming probe again, and a
+probe of each setting the binding leaves unset. A resolution that no longer
+holds rejects the run. A transient error leaves the run waiting and retries
+after a back-off; it never fails the binding. Every resolution attempt and
+re-check is appended against the gate, request, or run that triggered it. The
+latest resolution is the version's record, which is not identity.
+
 Binary provider output is pass, fail, or ambiguous. Pass and fail are the two
 classification outcomes; ambiguous is an explicit evaluator abstention. The
 ordinary path routes it to needs-review/exception surfaces, while sealed
@@ -184,7 +197,10 @@ and at least one resolved pass/fail item. The same transaction creates the
 sole stable skill lineage when necessary, one immutable version, a copied
 known-failure regression revision, a durable developer exposure, and the
 append-only `candidate` seed event. No legacy writer may mint a version on this
-lineage without the complete bundle.
+lineage without the complete bundle. Candidate creation and activation are
+governed gates: they require a resolved execution binding with explicit
+temperature and reasoning (ADR-0014 section 2), resolved beforehand outside the
+transaction, and the candidate's resolution becomes its version's record.
 
 Lifecycle state overrides `skill_versions.status` for every
 `analysis_promotion` lineage. Candidates and needs-review versions are allowed

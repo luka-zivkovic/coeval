@@ -107,6 +107,7 @@ import { registerTraceTestAdministrationRoutes } from "./routes/trace-test-admin
 import { registerTraceLinkRoutes } from "./routes/trace-links.js";
 import { registerV1AgentAdministrationRoutes } from "./routes/v1-agent-administration.js";
 import { registerV1EvaluationAdministrationRoutes } from "./routes/v1-evaluation-administration.js";
+import { bindingResolutionServices, type BindingResolutionServices } from "./lib/binding-resolution.js";
 
 export {
   agentSetupPairingClaimExpiresAt,
@@ -204,6 +205,8 @@ export interface CreateAppOptions {
   evaluatorLifecycleRepository?: EvaluatorLifecycleRepository | null | undefined;
   analysisMeasurementRepository?: AnalysisMeasurementRepository | null | undefined;
   productionDecisionRecordRepository?: ProductionDecisionRecordRepository | null | undefined;
+  /** How governed gates probe a binding; by default the project's credential against the real provider. */
+  bindingResolution?: BindingResolutionServices | undefined;
 }
 
 export function createApp(repository: RubristRepository = new DemoRepository(), options: CreateAppOptions = {}) {
@@ -635,11 +638,14 @@ export function createApp(repository: RubristRepository = new DemoRepository(), 
   // and its current versioned status require an owner session as well; API
   // keys cannot remotely fetch either surface. No route is mounted for sealed
   // items or the private calibration ledger.
+  const bindingResolution = options.bindingResolution ??
+    bindingResolutionServices((projectId, provider) => repository.getJudgeProviderCredential(projectId, provider));
   app.route("/api/binary-calibration-runs", createBinaryCalibrationControlRouter({
     repository: binaryCalibrationRepository,
     databaseMode: Boolean(options.auth && options.pool),
     requestIdentity: binaryCalibrationIdentity,
-    resolveProjectRole: resolveBinaryCalibrationRole
+    resolveProjectRole: resolveBinaryCalibrationRole,
+    bindingResolution
   }));
   app.route("/api/v1/binary-calibration-artifacts", createBinaryCalibrationArtifactRouter({
     repository: binaryCalibrationRepository,
@@ -680,6 +686,7 @@ export function createApp(repository: RubristRepository = new DemoRepository(), 
     databaseMode: Boolean(options.auth && options.pool),
     requestIdentity: binaryCalibrationIdentity,
     resolveProjectRole: resolveBinaryCalibrationRole,
+    bindingResolution,
     enqueueRegression: options.queue ? async (input) => {
       await options.queue!.send("gate.run", {
         projectId: input.projectId,
