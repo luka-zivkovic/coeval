@@ -3,6 +3,8 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import { z, type ZodType } from "zod";
 import { parseCanonicalBinaryCalibrationV2ArtifactBytes } from "../lib/binary-calibration-v2.js";
+import { mutableModelAlias } from "@rubrist/shared";
+import { resolutionNeeded, resolveGovernedBinding, type BindingResolutionServices } from "../lib/binding-resolution.js";
 import {
   BINARY_CALIBRATION_CONTROL_BODY_BYTES,
   CreateBinaryCalibrationRunRequestSchema
@@ -30,6 +32,8 @@ export interface BinaryCalibrationRouteDependencies {
     projectId: string;
     userId: string;
   }): Promise<BinaryCalibrationProjectRole | null>;
+  /** Probes a binding at the calibration gate; without it, an unresolved binding stays unresolved. */
+  bindingResolution?: BindingResolutionServices | undefined;
 }
 
 type SessionVariables = { binaryCalibrationActor: BinaryCalibrationActor };
@@ -97,6 +101,26 @@ export function createBinaryCalibrationControlRouter(
       }, 403);
     }
     const input = await parseBody(c, CreateBinaryCalibrationRunRequestSchema);
+    // An unresolved binding resolves the first time the gate needs it; a
+    // failed one is fixed only by a new evaluator version. A binding the run
+    // would refuse anyway (a mutable alias, the mock, a typed question) isn't
+    // probed.
+    const governed = await repository(dependencies).getGovernedBinding(actor, input.skillVersionId);
+    const probeable = governed !== null && mutableModelAlias(governed.binding.executionBinding.modelId) === null &&
+      governed.binding.executionBinding.provider !== "mock" && governed.binding.executionBinding.provider !== "typesafe";
+    if (dependencies.bindingResolution && governed && probeable && resolutionNeeded(governed.binding.executionBinding, governed.record)) {
+      const record = await resolveGovernedBinding(dependencies.bindingResolution, governed.binding);
+      await repository(dependencies).recordResolution({
+        projectId: actor.projectId,
+        skillVersionId: input.skillVersionId,
+        executionBinding: governed.binding.executionBinding,
+        kind: "resolution",
+        triggerKind: "binary_calibration",
+        triggerRef: input.idempotencyKey,
+        outcome: record.status,
+        probes: record.probes
+      }, record);
+    }
     const run = await repository(dependencies).createRun(actor, input);
     return c.json({ run }, 202);
   });

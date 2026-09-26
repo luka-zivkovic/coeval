@@ -1,4 +1,5 @@
 import type { Queue } from "@rubrist/queue";
+import type { GovernedBinding, RecheckOutcome } from "../lib/binding-resolution.js";
 import type { BinaryCalibrationMintResult } from "./repository.js";
 import type {
   BinaryCalibrationExecutionClaim,
@@ -19,7 +20,13 @@ export interface BinaryCalibrationWorkerOptions {
   claimTtlMs?: number;
   discoveryIntervalMs?: number;
   discoveryLimit?: number;
+  /** The re-check before a run's first authorization (ADR-0014 section 4). */
+  recheck?: BinaryCalibrationRecheck;
+  recheckBackoffMs?: number;
 }
+
+/** Re-checks a binding with the probe input, never sealed data. */
+export type BinaryCalibrationRecheck = (binding: GovernedBinding) => Promise<RecheckOutcome>;
 
 export interface BinaryCalibrationOrchestrator {
   stop(): void;
@@ -29,6 +36,9 @@ export interface BinaryCalibrationOrchestrator {
 const DEFAULT_CLAIM_TTL_MS = 15 * 60_000;
 const DEFAULT_DISCOVERY_INTERVAL_MS = 15_000;
 const DEFAULT_DISCOVERY_LIMIT = 100;
+// A re-check that couldn't reach the provider waits this long before the next
+// one, so an outage doesn't probe on every discovery pass.
+const DEFAULT_RECHECK_BACKOFF_MS = 5 * 60_000;
 
 /**
  * Register the sealed worker and a bounded discovery loop. Discovery is what
@@ -63,7 +73,9 @@ export async function registerBinaryCalibrationWorker(
         executeProvider,
         runId: data.runId,
         workerId: `binary-calibration:${id}`,
-        claimTtlMs
+        claimTtlMs,
+        ...(options.recheck ? { recheck: options.recheck } : {}),
+        ...(options.recheckBackoffMs !== undefined ? { recheckBackoffMs: options.recheckBackoffMs } : {})
       });
     }
   );
@@ -131,6 +143,8 @@ export async function processBinaryCalibrationRun(input: {
   runId: string;
   workerId: string;
   claimTtlMs?: number;
+  recheck?: BinaryCalibrationRecheck;
+  recheckBackoffMs?: number;
 }): Promise<BinaryCalibrationMintResult | null> {
   const claimTtlMs = input.claimTtlMs ?? DEFAULT_CLAIM_TTL_MS;
   validatePositiveInteger(claimTtlMs, "claimTtlMs");
@@ -144,6 +158,32 @@ export async function processBinaryCalibrationRun(input: {
   if (!claim) return null;
 
   try {
+    if (input.recheck) {
+      // Before the first authorization, and so before any sealed exposure:
+      // the resolution must still hold. The probes use a fixed input, never a
+      // sealed item, and never change the resolution record.
+      const target = await input.repository.getRecheckTarget(claim);
+      if (!target.authorized) {
+        const backoffMs = input.recheckBackoffMs ?? DEFAULT_RECHECK_BACKOFF_MS;
+        if (target.msSinceUnknownRecheck !== null && target.msSinceUnknownRecheck < backoffMs) {
+          await input.repository.markRecoveryRequired(claim);
+          return null;
+        }
+        // A re-check that throws is as unknown as a transient error.
+        const result = await input.recheck(target.binding).catch(() => ({ outcome: "unknown" as const, probes: [] }));
+        await input.repository.recordRecheck(claim, result);
+        if (result.outcome === "unknown") {
+          // A transient error delays the run; it never fails the binding.
+          await input.repository.markRecoveryRequired(claim);
+          return null;
+        }
+        if (result.outcome === "no_longer_holds") {
+          await input.repository.rejectBeforeAuthorization(claim, "resolution_no_longer_holds");
+          return null;
+        }
+      }
+    }
+
     const authorizedRun = await input.repository.authorizeRun(claim);
     assertAuthorizedClaim(claim, authorizedRun.claim);
 

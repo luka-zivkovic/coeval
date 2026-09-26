@@ -4,8 +4,19 @@ import {
   EVALUATOR_IDENTITY_BASIS,
   ExecutionBindingSchema,
   type BinaryCalibrationV2Artifact,
-  type BinaryCalibrationV2PrivateLedger
+  type BinaryCalibrationV2PrivateLedger,
+  type CapabilityProbe,
+  type ResolutionRecord
 } from "@rubrist/shared";
+import type { GovernedBinding } from "../lib/binding-resolution.js";
+import {
+  appendResolutionAttempt,
+  loadGovernedBinding,
+  msSinceUnknownRecheck,
+  loadResolutionRecord,
+  saveResolutionRecord,
+  type ResolutionAttemptInput
+} from "../evaluator-lifecycle/resolution.pg.js";
 
 import { sha256Digest } from "../lib/canonical-json.js";
 import {
@@ -31,6 +42,7 @@ import type {
   BinaryCalibrationExecutionRepository,
   BinaryCalibrationMintResult,
   BinaryCalibrationProjectAccess,
+  BinaryCalibrationRecheckTarget,
   BinaryCalibrationRunProjection,
   CompleteBinaryCalibrationAttemptInput,
   CreateBinaryCalibrationRunInput
@@ -150,6 +162,75 @@ export class PgBinaryCalibrationRepository implements
       } catch (error) {
         throw mapPgError(error);
       }
+    });
+  }
+
+  async getGovernedBinding(
+    access: BinaryCalibrationProjectAccess,
+    skillVersionId: string
+  ): Promise<{ binding: GovernedBinding; record: ResolutionRecord | null } | null> {
+    const binding = await loadGovernedBinding(this.pool, access.projectId, skillVersionId);
+    if (!binding) return null;
+    return { binding, record: await loadResolutionRecord(this.pool, access.projectId, skillVersionId, binding.executionBinding) };
+  }
+
+  async recordResolution(attempt: ResolutionAttemptInput, record: ResolutionRecord): Promise<ResolutionRecord | null> {
+    return this.transaction(async (client) => {
+      await appendResolutionAttempt(client, attempt);
+      return attempt.skillVersionId === null
+        ? record
+        : saveResolutionRecord(client, attempt.projectId, attempt.skillVersionId, attempt.executionBinding, record);
+    });
+  }
+
+  async getRecheckTarget(claim: BinaryCalibrationExecutionClaim): Promise<BinaryCalibrationRecheckTarget> {
+    const run = await requireClaim(this.pool, claim, false);
+    const binding = await loadGovernedBinding(this.pool, String(run.project_id), String(run.skill_version_id));
+    if (!binding) throw repoError("state_conflict", "binary calibration evaluator version is unavailable");
+    return {
+      // The run pins its binding; the re-check probes exactly it.
+      binding: { ...binding, executionBinding: ExecutionBindingSchema.parse(parseJson(run.execution_binding)) },
+      authorized: run.authorization_check_id !== null && run.authorization_check_id !== undefined,
+      msSinceUnknownRecheck: await msSinceUnknownRecheck(this.pool, String(run.project_id), String(run.id))
+    };
+  }
+
+  async recordRecheck(
+    claim: BinaryCalibrationExecutionClaim,
+    result: { outcome: "holds" | "no_longer_holds" | "unknown"; probes: readonly CapabilityProbe[] }
+  ): Promise<void> {
+    await this.transaction(async (client) => {
+      const run = await requireClaim(client, claim, true);
+      await appendResolutionAttempt(client, {
+        projectId: String(run.project_id),
+        skillVersionId: String(run.skill_version_id),
+        executionBinding: ExecutionBindingSchema.parse(parseJson(run.execution_binding)),
+        kind: "recheck",
+        triggerKind: "binary_calibration_run",
+        triggerRef: String(run.id),
+        outcome: result.outcome,
+        probes: result.probes
+      });
+    });
+  }
+
+  async rejectBeforeAuthorization(
+    claim: BinaryCalibrationExecutionClaim,
+    reason: "resolution_no_longer_holds"
+  ): Promise<void> {
+    await this.transaction(async (client) => {
+      const run = await requireClaim(client, claim, true);
+      if (run.authorization_check_id) {
+        throw repoError("state_conflict", "binary calibration run is already authorized");
+      }
+      const rejectedAt = await databaseClock(client);
+      await client.query(
+        `update binary_calibration_runs
+         set state='rejected',rejection_reason=$2,completed_at=$3::timestamptz,
+             claim_worker_id=null,claim_token=null,claim_expires_at=null
+         where id=$1`,
+        [run.id, reason, rejectedAt]
+      );
     });
   }
 

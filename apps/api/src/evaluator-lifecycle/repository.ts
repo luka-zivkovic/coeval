@@ -6,8 +6,11 @@ import type {
   EvaluatorLifecycleProjection,
   EvaluatorLifecycleRetireInput,
   EvaluatorLifecycleTransitionResult,
-  EvaluatorExecutionContext
+  EvaluatorExecutionContext,
+  ResolutionRecord
 } from "@rubrist/shared";
+import type { GovernedBinding } from "../lib/binding-resolution.js";
+import type { ResolutionAttemptInput } from "./resolution.pg.js";
 
 export type EvaluatorLifecycleProjectRole = "owner" | "member";
 
@@ -31,11 +34,35 @@ export interface EvaluatorExecutionAuthorizationInput {
   idempotencyKey: string;
 }
 
+/** A resolution record together with the digest of the binding it resolved. */
+export interface ResolvedBinding {
+  bindingDigest: string;
+  record: ResolutionRecord;
+}
+
 export interface EvaluatorLifecycleRepository {
+  /**
+   * Creates a candidate. The governed gate (ADR-0014 section 2) needs the
+   * binding's resolution, resolved before the call because probes are network
+   * calls; a replay needs none.
+   */
   createCandidate(
     actor: EvaluatorLifecycleAccess,
-    input: EvaluatorCandidateCreateInput
+    input: EvaluatorCandidateCreateInput,
+    resolution?: ResolvedBinding | null
   ): Promise<EvaluatorCandidateCreateResult>;
+  /** Whether this idempotency key already created a candidate, so its replay skips resolution. */
+  candidateExists(actor: EvaluatorLifecycleAccess, idempotencyKey: string): Promise<boolean>;
+  /** A version's binding and latest resolution record; `null` when the version isn't in the project. */
+  getGovernedBinding(
+    access: Pick<EvaluatorLifecycleAccess, "projectId">,
+    skillVersionId: string
+  ): Promise<{ binding: GovernedBinding; record: ResolutionRecord | null } | null>;
+  /**
+   * Appends a resolution attempt and, for an existing version, stores it as
+   * the latest record; returns the record stored (a failed one is kept).
+   */
+  recordResolution(attempt: ResolutionAttemptInput, record: ResolutionRecord | null): Promise<ResolutionRecord | null>;
   getLifecycle(
     access: Pick<EvaluatorLifecycleAccess, "projectId">,
     skillVersionId: string
@@ -71,7 +98,8 @@ export const EVALUATOR_LIFECYCLE_ERROR_CODES = [
   "prior_active_conflict",
   "execution_forbidden",
   "mutable_model_alias",
-  "invalid_execution_binding"
+  "invalid_execution_binding",
+  "execution_binding_unresolved"
 ] as const;
 export type EvaluatorLifecycleErrorCode = (typeof EVALUATOR_LIFECYCLE_ERROR_CODES)[number];
 

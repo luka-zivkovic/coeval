@@ -26,6 +26,7 @@ import { registerLangfuseImportWorker } from "./workers/langfuse-import.js";
 import { parseLangfusePollImportLimit, parseLangfusePollIntervalMs, registerLangfusePoller } from "./workers/langfuse-poller.js";
 import { registerLangSmithImportWorker } from "./workers/langsmith-import.js";
 import { parsePollImportLimit, parsePollIntervalMs, registerLangSmithPoller } from "./workers/langsmith-poller.js";
+import { bindingResolutionServices, recheckGovernedBinding } from "./lib/binding-resolution.js";
 
 const port = Number(process.env.PORT ?? 8787);
 const pool = createPgPool();
@@ -81,7 +82,13 @@ if (queue) {
       createBinaryCalibrationProviderExecutor({
         resolveProjectCredential: (projectId, provider) =>
           repository.getJudgeProviderCredential(projectId, provider)
-      })
+      }),
+      {
+        recheck: (binding) => recheckGovernedBinding(
+          bindingResolutionServices((projectId, provider) => repository.getJudgeProviderCredential(projectId, provider)),
+          binding
+        )
+      }
     );
     pollers.push(binaryCalibrationOrchestrator);
   }

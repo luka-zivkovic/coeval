@@ -7,6 +7,7 @@ import {
   EvaluatorCandidateCreateResultSchema,
   EvaluatorLifecycleEventSchema,
   EvaluatorLifecycleProjectionSchema,
+  ExecutionBindingSchema,
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   MinimumVerdictOutputSchema,
   SkillSchema,
@@ -23,9 +24,20 @@ import {
   type EvaluatorLifecycleProjection,
   type EvaluatorLifecycleRetireInput,
   type EvaluatorLifecycleTransitionResult,
+  type ExecutionBinding,
+  type ResolutionRecord,
   type Skill
 } from "@rubrist/shared";
 import { ExecutionBindingInputError, executionBindingFromInput } from "../lib/execution-binding.js";
+import { governedGateRefusal, type GovernedBinding } from "../lib/binding-resolution.js";
+import { sha256Digest } from "../lib/canonical-json.js";
+import {
+  appendResolutionAttempt,
+  loadGovernedBinding,
+  loadResolutionRecord,
+  saveResolutionRecord,
+  type ResolutionAttemptInput
+} from "./resolution.pg.js";
 import {
   evaluatorCandidateRequestDigest,
   evaluatorExecutionAuthorizationDigest,
@@ -43,7 +55,8 @@ import {
   type EvaluatorExecutionAuthorizationInput,
   type EvaluatorLifecycleAccess,
   type EvaluatorLifecyclePageInput,
-  type EvaluatorLifecycleRepository
+  type EvaluatorLifecycleRepository,
+  type ResolvedBinding
 } from "./repository.js";
 
 interface CandidateContextRow extends Record<string, unknown> {
@@ -67,9 +80,41 @@ interface PreparedRegressionItem {
 export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleRepository {
   constructor(private readonly pool: Pool) {}
 
+  async candidateExists(actor: EvaluatorLifecycleAccess, idempotencyKey: string): Promise<boolean> {
+    return Boolean(await lifecycleByIdempotency(this.pool, actor.projectId, idempotencyKey));
+  }
+
+  async getGovernedBinding(
+    access: Pick<EvaluatorLifecycleAccess, "projectId">,
+    skillVersionId: string
+  ): Promise<{ binding: GovernedBinding; record: ResolutionRecord | null } | null> {
+    const binding = await loadGovernedBinding(this.pool, access.projectId, skillVersionId);
+    if (!binding) return null;
+    return { binding, record: await loadResolutionRecord(this.pool, access.projectId, skillVersionId, binding.executionBinding) };
+  }
+
+  async recordResolution(attempt: ResolutionAttemptInput, record: ResolutionRecord | null): Promise<ResolutionRecord | null> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await appendResolutionAttempt(client, attempt);
+      const stored = record !== null && attempt.skillVersionId !== null
+        ? await saveResolutionRecord(client, attempt.projectId, attempt.skillVersionId, attempt.executionBinding, record)
+        : record;
+      await client.query("commit");
+      return stored;
+    } catch (error) {
+      await client.query("rollback");
+      throw mapError(error);
+    } finally {
+      client.release();
+    }
+  }
+
   async createCandidate(
     actor: EvaluatorLifecycleAccess,
-    input: EvaluatorCandidateCreateInput
+    input: EvaluatorCandidateCreateInput,
+    resolution: ResolvedBinding | null = null
   ): Promise<EvaluatorCandidateCreateResult> {
     requireOwner(actor);
     let stored: ReturnType<typeof executionBindingFromInput>;
@@ -116,6 +161,9 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
       // Checked after replay, like the other candidate rules, so a committed
       // candidate always replays identically.
       rejectMutableModelAlias(stored.executionBinding.modelId, "become a candidate");
+      // The record must be the one resolved for exactly this binding.
+      const record = resolution !== null && resolution.bindingDigest === sha256Digest(stored.executionBinding) ? resolution.record : null;
+      rejectUngovernedBinding(stored.executionBinding, record);
       const subjectId = await ensureOwnerSubject(client, actor);
       const context = await loadCandidateContext(client, actor.projectId, input);
       assertCandidateContext(context, input);
@@ -227,6 +275,7 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
           JSON.stringify(input.outputSchema ?? MinimumVerdictOutputSchema), JSON.stringify(stored.executionBinding),
           regressionRevisionId, input.criterionVersionId, actor.userId, subjectId, stored.customEndpointUrl]
       );
+      await saveResolutionRecord(client, actor.projectId, skillVersionId, stored.executionBinding, record!);
 
       const developerExposureEventId = `dse_${randomUUID()}`;
       await client.query(
@@ -484,7 +533,9 @@ export class PgEvaluatorLifecycleRepository implements EvaluatorLifecycleReposit
           [actor.projectId, skillVersionId]
         )).rows[0];
         if (!binding) throw repoError("not_found", "Evaluator version not found");
-        rejectMutableModelAlias(String((parseJson(binding.execution_binding) as { modelId: unknown }).modelId), "be activated");
+        const executionBinding = ExecutionBindingSchema.parse(parseJson(binding.execution_binding));
+        rejectMutableModelAlias(executionBinding.modelId, "be activated");
+        rejectUngovernedBinding(executionBinding, await loadResolutionRecord(client, actor.projectId, skillVersionId, executionBinding));
         const active = (await client.query(
           `select other.*,other_head.id as head_id,other_head.sequence as head_sequence,
                   other_head.content_digest as head_digest,other_head.state as head_state
@@ -661,7 +712,7 @@ async function ensureOwnerSubject(client: PoolClient, actor: EvaluatorLifecycleA
   return subjectId;
 }
 
-async function lifecycleByIdempotency(client: PoolClient, projectId: string, key: string): Promise<Record<string, unknown> | null> {
+async function lifecycleByIdempotency(client: Pool | PoolClient, projectId: string, key: string): Promise<Record<string, unknown> | null> {
   return (await client.query(`select * from evaluator_lifecycles where project_id=$1 and idempotency_key=$2`, [projectId,key])).rows[0] ?? null;
 }
 
@@ -952,6 +1003,17 @@ function rejectMutableModelAlias(modelId: string, gate: string): void {
     `An evaluator bound to the mutable model alias "${modelId}" cannot ${gate}; pin a specific model id`,
     { modelId, alias, rule: MUTABLE_MODEL_ALIAS_RULE_VERSION }
   );
+}
+
+/** The governed gate (ADR-0014 section 2): a resolved binding stating its temperature and reasoning. */
+function rejectUngovernedBinding(binding: ExecutionBinding, record: ResolutionRecord | null): void {
+  const refusal = governedGateRefusal(binding, record);
+  if (refusal === null) return;
+  throw new EvaluatorLifecycleRepositoryError("execution_binding_unresolved", refusal.message, {
+    problems: refusal.problems.join("; "),
+    providerMessage: refusal.providerMessage,
+    suggestion: refusal.suggestion
+  });
 }
 
 function mapError(error: unknown, fallback: ConstructorParameters<typeof EvaluatorLifecycleRepositoryError>[0] = "state_conflict"): unknown {

@@ -5,8 +5,6 @@ import {
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   mutableModelAlias,
   VerdictKindSchema,
-  reasoningFamilyFor,
-  takesSamplingSettings,
   type BinaryCalibrationV2CompletionEligibilityReason,
   type EvaluatorIdentity
 } from "@rubrist/shared";
@@ -19,6 +17,8 @@ import {
   skillDigestV2
 } from "../lib/evaluator-identity.js";
 import { governedContentV1Digest } from "../lib/governed-content-digest.js";
+import { governedGateRefusal } from "../lib/binding-resolution.js";
+import { loadResolutionRecord } from "../evaluator-lifecycle/resolution.pg.js";
 import type {
   BinaryCalibrationAuthorizedRun,
   BinaryCalibrationExecutionClaim,
@@ -104,21 +104,18 @@ export async function deriveRunIdentity(
   } catch (error) {
     throw repoError("unsupported", `sealed calibration requires an evaluator version with a valid v2 identity (${identityProblem(error)})`);
   }
-  // Governed gate (ADR-0014 section 2): sealed calibration states its
-  // temperature and reasoning. A resolution record can show the model
-  // rejecting the parameter itself, which lets it stay unset; those records
-  // arrive in Batch 8D-3, so until then an unset setting is refused.
-  if (takesSamplingSettings(binding.provider) && binding.sampling.temperature === null) {
-    throw repoError("ineligible", "sealed calibration requires an explicit temperature until resolution can show the model rejects the parameter (Batch 8D-3)");
-  }
-  if (reasoningFamilyFor(binding.provider) !== null && binding.reasoning === null) {
-    throw repoError("ineligible", "sealed calibration requires explicit reasoning until resolution can show the model rejects the parameter (Batch 8D-3)");
-  }
   if (mutableModelAlias(binding.modelId) !== null) {
     throw repoError(
       "ineligible",
       `sealed calibration requires a pinned model id; "${binding.modelId}" is a mutable alias under ${MUTABLE_MODEL_ALIAS_RULE_VERSION}`
     );
+  }
+  // Governed gate (ADR-0014 section 2): a resolved binding that states its
+  // temperature and reasoning, unless its resolution shows the model
+  // rejecting the parameter itself.
+  const refusal = governedGateRefusal(binding, await loadResolutionRecord(client, projectId, skillVersion.id, binding));
+  if (refusal !== null) {
+    throw repoError("ineligible", `${refusal.message}. ${refusal.suggestion}${refusal.providerMessage ? ` The provider said: ${refusal.providerMessage}` : ""}`);
   }
   const evaluatorDigests = {
     definitionDigest: skillDigestInput(identity).definitionDigest,

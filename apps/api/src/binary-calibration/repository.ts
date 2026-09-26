@@ -2,9 +2,13 @@ import type {
   BinaryCalibrationV2Artifact,
   BinaryCalibrationV2CompletionEligibilityReason,
   BinaryCalibrationV2PrivateProviderObservation,
+  CapabilityProbe,
   EvaluatorItemState,
-  ExecutionBinding
+  ExecutionBinding,
+  ResolutionRecord
 } from "@rubrist/shared";
+import type { GovernedBinding } from "../lib/binding-resolution.js";
+import type { ResolutionAttemptInput } from "../evaluator-lifecycle/resolution.pg.js";
 
 export type BinaryCalibrationProjectRole = "owner" | "member";
 
@@ -120,6 +124,22 @@ export interface BinaryCalibrationControlRepository {
     access: BinaryCalibrationProjectAccess,
     artifactId: string
   ): Promise<BinaryCalibrationArtifactStatusProjection>;
+  /** A version's binding and latest resolution record, for the gate at run creation; `null` when absent. */
+  getGovernedBinding(
+    access: BinaryCalibrationProjectAccess,
+    skillVersionId: string
+  ): Promise<{ binding: GovernedBinding; record: ResolutionRecord | null } | null>;
+  /** Appends a resolution attempt and stores it as the version's latest record (a failed one is kept). */
+  recordResolution(attempt: ResolutionAttemptInput, record: ResolutionRecord): Promise<ResolutionRecord | null>;
+}
+
+/** What the re-check before authorization reads (ADR-0014 section 4). */
+export interface BinaryCalibrationRecheckTarget {
+  binding: GovernedBinding;
+  /** Whether the run already passed authorization; only the first authorization is re-checked. */
+  authorized: boolean;
+  /** How long ago, by the database clock, the run's latest re-check ended unknown, so a transient error backs off. */
+  msSinceUnknownRecheck: number | null;
 }
 
 export interface BinaryCalibrationExecutionClaim {
@@ -198,6 +218,14 @@ export interface BinaryCalibrationExecutionRepository {
     claim: BinaryCalibrationExecutionClaim,
     claimTtlMs: number
   ): Promise<BinaryCalibrationExecutionClaim>;
+  getRecheckTarget(claim: BinaryCalibrationExecutionClaim): Promise<BinaryCalibrationRecheckTarget>;
+  /** Records a re-check against the run it guards; it never changes the resolution record. */
+  recordRecheck(
+    claim: BinaryCalibrationExecutionClaim,
+    result: { outcome: "holds" | "no_longer_holds" | "unknown"; probes: readonly CapabilityProbe[] }
+  ): Promise<void>;
+  /** Rejects a run the re-check stopped, before any lease or exposure. */
+  rejectBeforeAuthorization(claim: BinaryCalibrationExecutionClaim, reason: "resolution_no_longer_holds"): Promise<void>;
   authorizeRun(claim: BinaryCalibrationExecutionClaim): Promise<BinaryCalibrationAuthorizedRun>;
   /** Permanently accounts stale `started` rows as errored/outcome_unknown. */
   recoverStartedAttempts(claim: BinaryCalibrationExecutionClaim): Promise<number>;
