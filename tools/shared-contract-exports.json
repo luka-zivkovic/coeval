@@ -140,8 +140,6 @@
     "ApiErrorSchema",
     "ApiKeyCapabilitySchema",
     "ApiKeySchema",
-    "AssessmentReceiptItemSchema",
-    "AssessmentReceiptSchema",
     "AssessmentReceiptV2ItemSchema",
     "AssessmentReceiptV2Schema",
     "AssistTraceTestDraftInputSchema",

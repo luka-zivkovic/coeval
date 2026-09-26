@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
-import type { AssessmentReceipt, EvalRun, EvalRunDetail, EvalRunItem, SkillVersion } from "@rubrist/shared";
-import { LegacyEvidenceUnsupportedError, legacyModelBinding } from "../lib/execution-binding.js";
+import type { AssessmentReceiptV2, EvalRun, EvalRunDetail, EvalRunItem, SkillVersion, VerdictRecord } from "@rubrist/shared";
 import {
-  buildAssessmentReceipt,
-  canonicalReceiptBytes,
-  parseCanonicalReceiptBytes,
+  buildAssessmentReceiptV2,
+  canonicalReceiptV2Bytes,
+  parseCanonicalReceiptV2Bytes,
   receiptArtifactDigest,
   receiptSourceSnapshotDigest
-} from "../lib/assessment-receipt.js";
+} from "../lib/assessment-receipt-v2.js";
 import type {
   AssessmentReceiptArtifactSource,
   AssessmentReceiptArtifact,
@@ -82,19 +81,25 @@ export class DemoEvaluationRepository implements
     skillVersion: SkillVersion,
     sourceKind: Exclude<AssessmentReceiptArtifactSource, "correction">
   ): AssessmentReceiptArtifact {
-    const receipt = buildAssessmentReceipt({ run, skillVersion });
-    const canonicalBytes = canonicalReceiptBytes(receipt);
+    // Each outcome's score and observation live on its verdict.
+    const verdictIds = new Set(run.items.flatMap((item) => item.status === "completed" && item.verdictId ? [item.verdictId] : []));
+    const verdicts = new Map<string, VerdictRecord>(this.store.verdicts
+      .filter((verdict) => verdict.projectId === run.projectId && verdictIds.has(verdict.id))
+      .map((verdict) => [verdict.id, structuredClone(verdict)]));
+    const source = { run, skillVersion, verdicts };
+    const receipt = buildAssessmentReceiptV2(source);
+    const canonicalBytes = canonicalReceiptV2Bytes(receipt);
     return {
-      id: `rart_${run.id}_v1_r1`,
+      id: `rart_${run.id}_v${receipt.schemaVersion}_r1`,
       projectId: run.projectId,
       evalRunId: run.id,
       receiptId: receipt.receiptId,
-      contractVersion: 1,
+      contractVersion: receipt.schemaVersion,
       artifactRevision: 1,
       canonicalBytes,
       artifactDigest: receiptArtifactDigest(canonicalBytes),
       evidenceDigest: receipt.evidenceDigest,
-      sourceSnapshotDigest: receiptSourceSnapshotDigest({ run, skillVersion }),
+      sourceSnapshotDigest: receiptSourceSnapshotDigest(source),
       sourceKind,
       predecessorArtifactId: null,
       correctionReason: null,
@@ -108,7 +113,7 @@ export class DemoEvaluationRepository implements
     sourceKind: Exclude<AssessmentReceiptArtifactSource, "correction">
   ): Promise<AssessmentReceiptArtifact> {
     const existing = this.store.assessmentReceiptArtifacts.find(
-      (artifact) => artifact.evalRunId === run.id && artifact.contractVersion === 1 && artifact.artifactRevision === 1
+      (artifact) => artifact.evalRunId === run.id && artifact.artifactRevision === 1
     );
     if (existing) return this.cloneAssessmentReceiptArtifact(existing);
     if (run.trigger !== "release_evidence") {
@@ -128,7 +133,7 @@ export class DemoEvaluationRepository implements
     if (!detail) throw new AssessmentReceiptUnavailableError("missing_source", "Eval run detail not found");
     const prepared = this.materializeDemoRootArtifact(detail, skillVersion, sourceKind);
     const raced = this.store.assessmentReceiptArtifacts.find(
-      (artifact) => artifact.evalRunId === run.id && artifact.contractVersion === 1 && artifact.artifactRevision === 1
+      (artifact) => artifact.evalRunId === run.id && artifact.artifactRevision === 1
     );
     if (raced) return this.cloneAssessmentReceiptArtifact(raced);
     this.store.assessmentReceiptArtifacts.push(prepared);
@@ -136,12 +141,6 @@ export class DemoEvaluationRepository implements
   }
 
   async createEvalRun(input: CreateEvalRunInputDb): Promise<EvalRunDetail> {
-    if (input.trigger === "release_evidence") {
-      // A release-evidence run ends in a v1 receipt, so refuse before any item
-      // runs when v1 can't state the binding (Batch 8D).
-      const version = await this.dependencies.getSkillVersion(input.projectId, input.skillVersionId);
-      if (version && legacyModelBinding(version) === null) throw new LegacyEvidenceUnsupportedError("An assessment receipt v1");
-    }
     if (input.trigger === "backfill") {
       const existing = this.store.evalRuns.find((candidate) =>
         candidate.projectId === input.projectId &&
@@ -704,13 +703,13 @@ export class DemoEvaluationRepository implements
   async compareAssessmentReceiptCopy(input: CompareAssessmentReceiptCopyInput): Promise<AssessmentReceiptComparison> {
     const root = await this.dependencies.getOrFreezeAssessmentReceipt(input.projectId, input.evalRunId);
     if (!root) throw new AssessmentReceiptUnavailableError("missing_source", "Eval run not found");
-    let consumerReceipt: AssessmentReceipt;
+    let consumerReceipt: AssessmentReceiptV2;
     try {
-      consumerReceipt = parseCanonicalReceiptBytes(input.consumerCanonicalBytes);
+      consumerReceipt = parseCanonicalReceiptV2Bytes(input.consumerCanonicalBytes);
     } catch (error) {
       throw new AssessmentReceiptIntegrityError(error instanceof Error ? error.message : String(error));
     }
-    const rootReceipt = parseCanonicalReceiptBytes(root.canonicalBytes);
+    const rootReceipt = parseCanonicalReceiptV2Bytes(root.canonicalBytes);
     if (
       consumerReceipt.projectId !== input.projectId ||
       consumerReceipt.evalRunId !== input.evalRunId ||
@@ -745,11 +744,11 @@ export class DemoEvaluationRepository implements
     if (!reason) throw new AssessmentReceiptIntegrityError("Assessment receipt correction reason is required");
     const root = await this.dependencies.getOrFreezeAssessmentReceipt(input.projectId, input.evalRunId);
     if (!root) throw new AssessmentReceiptUnavailableError("missing_source", "Eval run not found");
-    let receipt: AssessmentReceipt;
+    let receipt: AssessmentReceiptV2;
     let canonicalBytes: Buffer;
     try {
-      canonicalBytes = canonicalReceiptBytes(input.receipt);
-      receipt = parseCanonicalReceiptBytes(canonicalBytes);
+      canonicalBytes = canonicalReceiptV2Bytes(input.receipt);
+      receipt = parseCanonicalReceiptV2Bytes(canonicalBytes);
     } catch (error) {
       throw new AssessmentReceiptIntegrityError(error instanceof Error ? error.message : String(error));
     }
@@ -769,7 +768,7 @@ export class DemoEvaluationRepository implements
       }
       throw new AssessmentReceiptIntegrityError("Correction receiptId is already in use");
     }
-    const rootReceipt = parseCanonicalReceiptBytes(root.canonicalBytes);
+    const rootReceipt = parseCanonicalReceiptV2Bytes(root.canonicalBytes);
     if (
       receipt.schemaVersion !== rootReceipt.schemaVersion ||
       receipt.skillId !== rootReceipt.skillId ||
@@ -784,11 +783,11 @@ export class DemoEvaluationRepository implements
     const artifactRevision = predecessor.artifactRevision + 1;
     const artifactDigest = receiptArtifactDigest(canonicalBytes);
     const correction: AssessmentReceiptArtifact = {
-      id: `rart_${input.evalRunId}_v1_r${artifactRevision}`,
+      id: `rart_${input.evalRunId}_v${receipt.schemaVersion}_r${artifactRevision}`,
       projectId: input.projectId,
       evalRunId: input.evalRunId,
       receiptId: receipt.receiptId,
-      contractVersion: 1,
+      contractVersion: receipt.schemaVersion,
       artifactRevision,
       canonicalBytes,
       artifactDigest,

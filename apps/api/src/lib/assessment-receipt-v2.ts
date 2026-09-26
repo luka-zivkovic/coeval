@@ -1,15 +1,26 @@
+import { createHash } from "node:crypto";
 import {
+  ASSESSMENT_RECEIPT_V2_CONTRACT,
   AssessmentReceiptV2Schema,
   type AssessmentReceiptV2,
-  type AssessmentReceiptV2Item
+  type AssessmentReceiptV2Item,
+  type EvalRunDetail,
+  type EvalRunItem,
+  type EvaluatorItemOutcome,
+  type SkillVersion,
+  type VerdictRecord
 } from "@rubrist/shared";
 import { canonicalJson, sha256Digest } from "./canonical-json.js";
-import { skillDigestV2FromInput } from "./evaluator-identity.js";
+import { evaluatorIdentityFor, skillDigestInput, skillDigestV2FromInput } from "./evaluator-identity.js";
 
 // Assessment receipt v2 (Rubrist ADR-0014 section 7;
-// contracts/assessment-receipt-v2.md). The schema is structural; everything
-// below is a semantic rule a structurally valid receipt must also satisfy
-// before anyone trusts it.
+// contracts/assessment-receipt-v2.md): built from a terminal release-evidence
+// run, and verified. The schema is structural; the verifier below checks every
+// semantic rule a structurally valid receipt must also satisfy before anyone
+// trusts it.
+
+/** Every receipt's schemaVersion, which a stored artifact records as its contract version. */
+export const RECEIPT_SCHEMA_VERSION = 2;
 
 const byCodeUnit = (left: string, right: string) => left < right ? -1 : left > right ? 1 : 0;
 
@@ -117,6 +128,115 @@ export function verifyAssessmentReceiptV2(receipt: AssessmentReceiptV2, expected
   if (expected.skillDigest !== undefined && receipt.skillDigest !== expected.skillDigest) {
     throw new Error(`Assessment receipt skillDigest does not match the expected evaluator: expected ${expected.skillDigest}`);
   }
+}
+
+/** The run, its evaluator version, and the verdicts its outcomes rest on. */
+export interface ReceiptV2Source {
+  run: EvalRunDetail;
+  skillVersion: SkillVersion;
+  /** The verdict of every completed item, by id. */
+  verdicts: ReadonlyMap<string, VerdictRecord>;
+}
+
+// A verdict's label as a receipt outcome; an ambiguous verdict is an abstention.
+const OUTCOME_BY_LABEL = new Map<string, EvaluatorItemOutcome>([["pass", "pass"], ["fail", "fail"], ["ambiguous", "abstain"]]);
+
+/**
+ * One item's evidence (ADR-0014 section 6). An outcome carries its verdict's
+ * score and what its call observed; nothing is synthesized for a verdict that
+ * recorded no observation, so such an item refuses the receipt.
+ */
+function receiptItem(item: EvalRunItem, verdicts: ReadonlyMap<string, VerdictRecord>): AssessmentReceiptV2Item {
+  if (!item.clientItemId || !item.contentDigest) {
+    throw new Error(`Release evidence item ${item.id} is missing its receipt identity`);
+  }
+  const identity = { clientItemId: item.clientItemId, caseId: item.caseId, contentDigest: item.contentDigest };
+  const notAttempted = { ...identity, result: { state: "not_attempted" as const }, verdictId: null, evaluatorScore: null, observed: null };
+  switch (item.status) {
+    case "completed": {
+      const verdict = item.verdictId === null ? undefined : verdicts.get(item.verdictId);
+      if (!verdict) throw new Error(`Release evidence item ${item.id} has no recorded verdict`);
+      if (!verdict.observed) throw new Error(`Release evidence item ${item.id}'s verdict recorded no call observation`);
+      const outcome = item.resultLabel === null ? undefined : OUTCOME_BY_LABEL.get(item.resultLabel);
+      if (!outcome) throw new Error(`Release evidence item ${item.id} has no pass, fail, or ambiguous result`);
+      return {
+        ...identity,
+        result: { state: "outcome", outcome },
+        verdictId: verdict.id,
+        evaluatorScore: verdict.evaluatorScore ?? null,
+        observed: verdict.observed
+      };
+    }
+    case "failed":
+      if (item.notAttempted) return notAttempted;
+      if (!item.failureKind || !item.observed) throw new Error(`Release evidence item ${item.id} failed without a classification`);
+      return { ...identity, result: { state: "failure", failureKind: item.failureKind }, verdictId: null, evaluatorScore: null, observed: item.observed };
+    case "pending":
+      // The run ended, canceled or failed, before this item was taken up.
+      return notAttempted;
+    default:
+      throw new Error(`Release evidence item ${item.id} was ${item.status}, which a receipt can't state`);
+  }
+}
+
+/**
+ * The receipt of a terminal release-evidence run. It is verified before it is
+ * returned, so a receipt Rubrist can build is one a consumer accepts.
+ */
+export function buildAssessmentReceiptV2({ run, skillVersion, verdicts }: ReceiptV2Source): AssessmentReceiptV2 {
+  if (run.trigger !== "release_evidence") {
+    throw new Error("Assessment receipts are available only for release_evidence runs");
+  }
+  if (run.skillVersionId !== skillVersion.id) {
+    throw new Error("Assessment receipt skill version does not match its eval run");
+  }
+  const items = run.items.map((item) => receiptItem(item, verdicts))
+    .sort((left, right) => byCodeUnit(left.clientItemId, right.clientItemId));
+  const outcomes = (outcome: "pass" | "fail" | "abstain") =>
+    items.filter((item) => item.result.state === "outcome" && item.result.outcome === outcome).length;
+  const complete = run.status === "completed" && items.every((item) => item.result.state === "outcome");
+  const evaluator = skillDigestInput(evaluatorIdentityFor(skillVersion));
+  const unsigned: Omit<AssessmentReceiptV2, "evidenceDigest"> = {
+    contract: ASSESSMENT_RECEIPT_V2_CONTRACT,
+    schemaVersion: RECEIPT_SCHEMA_VERSION,
+    receiptId: `receipt_${run.id}`,
+    evalRunId: run.id,
+    projectId: run.projectId,
+    skillId: skillVersion.skillId,
+    skillVersionId: skillVersion.id,
+    status: complete ? "complete" : "incomplete",
+    run: {
+      status: run.status,
+      totalItems: items.length,
+      passItems: outcomes("pass"),
+      failItems: outcomes("fail"),
+      abstainedItems: outcomes("abstain"),
+      failedItems: items.filter((item) => item.result.state === "failure").length,
+      notAttemptedItems: items.filter((item) => item.result.state === "not_attempted").length,
+      agreedItems: run.agreedItems
+    },
+    evaluator,
+    skillDigest: skillDigestV2FromInput(evaluator),
+    datasetDigest: datasetDigestForReceiptV2Items(items),
+    items
+  };
+  const receipt = AssessmentReceiptV2Schema.parse({ ...unsigned, evidenceDigest: evidenceDigestForReceiptV2(unsigned) });
+  verifyAssessmentReceiptV2(receipt, { evalRunId: run.id, skillVersionId: skillVersion.id });
+  return receipt;
+}
+
+/** Digest of the repository rows a mint or freeze observed. */
+export function receiptSourceSnapshotDigest({ run, skillVersion, verdicts }: ReceiptV2Source): string {
+  return sha256Digest({
+    run,
+    skillVersion,
+    verdicts: [...verdicts.values()].sort((left, right) => byCodeUnit(left.id, right.id))
+  });
+}
+
+/** SHA-256 over the exact stored and served receipt bytes, including evidenceDigest. */
+export function receiptArtifactDigest(bytes: Uint8Array): string {
+  return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 }
 
 export function canonicalReceiptV2Bytes(receipt: AssessmentReceiptV2): Buffer {

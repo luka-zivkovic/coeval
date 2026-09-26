@@ -49,8 +49,9 @@ Eval-run counter terminalization and immutable assessment-receipt minting live
 in `repository.pg/assessment-receipt-commands.ts`. Both commands accept the
 caller-owned client, so cached run creation, item completion and failure,
 historical freeze, consumer comparison, and correction keep receipt creation
-inside their existing transactions. Receipt v1 canonical bytes and source
-snapshot construction remain unchanged.
+inside their existing transactions. Receipt v2 canonical bytes and the source
+snapshot, which covers each completed item's verdict, come from
+`lib/assessment-receipt-v2.ts`.
 Skill-version numbering, governed reviewer-subject binding, and immutable
 version insertion live in `repository.pg/skill-version-commands.ts`. The three
 commands accept the caller-owned client, so native criterion setup and pending
@@ -99,8 +100,8 @@ The complete five-method assessment-receipt port lives in
 once with the same pool. Historical freeze, exact-byte consumer comparison,
 and append-only correction each retain their existing transaction owner and
 caller-owned mint command; project-scoped reads keep returning persisted bytes
-and deterministic revision order. Receipt v1, canonicalization, terminal mint
-atomicity, and correction lineage remain unchanged.
+and deterministic revision order. The receipt contract, canonicalization,
+terminal mint atomicity, and correction lineage remain unchanged.
 The complete four-method judge-provider credential port lives in
 `repository.pg/judge-credential-repository.ts`. The facade constructs it once
 with the same pool. Masked owner reads never select encrypted credentials,

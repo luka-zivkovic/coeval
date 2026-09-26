@@ -295,7 +295,7 @@ Rubrist complements tracing platforms rather than replacing them. It can import 
 - Multiple independently versioned evaluation criteria per project, each with
   its own judging-skill lineage, human evidence, and exact definition binding.
 - Immutable, policy-free evaluator-suite manifests that bind ordered criterion
-  definitions to exact evaluator versions without changing assessment receipt v1.
+  definitions to exact evaluator versions without changing the assessment receipt.
 - Binary, scalar, and categorical structured verdicts. Binary evaluators can
   explicitly return `ambiguous` to abstain instead of being forced to pass or fail.
 - Bulk trace judging with asynchronous eval runs.
@@ -386,19 +386,22 @@ Unchanged examples reuse recorded verdicts; edited examples are judged again. In
 available. New release integrations submit `purpose: "release_evidence"` to
 `POST /api/v1/judge/batch`, verify the policy-free assessment receipt, and
 apply thresholds or ship/hold policy in the release layer—not in Rubrist.
-Receipt v1 is a closed wire contract with portable schema and interoperability
-fixtures in [`contracts/`](contracts/). Calibration transport is the
+Receipt v2 is a closed wire contract with portable schema and interoperability
+fixtures in [`contracts/`](contracts/). It states the evaluator's execution
+binding and definition digest, and for each item an outcome, a failure, or
+that it was never attempted, with the evaluator's score and what its call
+observed. Calibration transport is the
 separate aggregate-only `rubrist/binary-calibration/v2` contract (ADR-0009, as
 ADR-0014 revises it). The current Postgres runtime executes one trial per
 governed sealed binary item through the evaluator's exact execution binding
 and mints that separate artifact; it is not added to the receipt.
-Dailies independently verifies calibration v1 and consumes explicitly
-configured local artifacts through config v6, policy v2, report v6, runner,
-and CLI paths; it moves to v2 evidence with Rubrist's receipt v2. It performs no network or latest-artifact
+Dailies independently verifies receipt v2 and calibration v2 and consumes
+explicitly configured local artifacts through config v6, policy v2, report v6,
+runner, and CLI paths. It performs no network or latest-artifact
 lookup. Other uncertainty transport remains unresolved. Current receipts are
 derived once at terminalization and persisted as exact canonical bytes in
-append-only PostgreSQL artifacts. Historical terminal v1 runs freeze once on
-their first receipt read. Later source-row changes cannot alter the stored
+append-only PostgreSQL artifacts. A terminal run without one freezes once on
+its first receipt read. Later source-row changes cannot alter the stored
 root; governed
 corrections append linked successors, and consumer-held canonical copies can
 be recorded as exact matches or divergences without overwriting history. See
@@ -484,10 +487,8 @@ the historical artifact.
 
 The frozen contract supports repeated-trial evidence, but the current Rubrist
 runtime does not execute it. Dailies consumes explicitly configured local
-calibration artifacts and emits calibration-aware release reports, but it
-still verifies calibration v1: it switches to v2 evidence in the same window
-as Rubrist's receipt v2 (Dailies ADR-0008), and until then its reports can't
-consume the v2 artifacts Rubrist now mints. It never fetches a latest
+calibration artifacts and emits calibration-aware release reports over
+calibration v2 (Dailies ADR-0008). It never fetches a latest
 artifact or Rubrist status, and it has no access to the private ledger.
 
 See the [binary-calibration contract](contracts/binary-calibration-v2.md),
