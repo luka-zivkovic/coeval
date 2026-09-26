@@ -10,9 +10,9 @@ Last reviewed: 2026-09-26 · code at `2c82321`
 Vocabulary: findings describe today's UI in the onboarding contract's words
 (Run, Check, Result), which were TARGET when this round was written.
 Proposals, the flow spec, blueprints, and decisions use the single vocabulary
-of [ADR-0015](../decisions/0015-one-vocabulary-and-two-display-modes.md)
-(Proposed): case, evaluator, assessment, rubric, golden set, and review queue,
-in both of its display modes.
+of [ADR-0015](../decisions/0015-one-vocabulary-one-display.md)
+(Proposed): case, evaluator, assessment, rubric, golden set, and review queue.
+That ADR also replaces the display modes with one display and a help layer.
 
 This round covers the attention flow that the Overview hands off to:
 
@@ -192,9 +192,9 @@ response are Technical-only (`components/rubrist/judge-call-panel.tsx:86-116`).
   next step); `placement.md` › Universal rules (reach on touch).
 - Proposal: put the decision card first in the right column and make it
   sticky on desktop (`lg:sticky`). Show the evaluator's assessment and
-  reasoning inside it. Collapse Judge call and Decision history below it in
-  both display modes. On phones, use a sticky bottom action bar with the two
-  decisions (see the blueprint).
+  reasoning inside it. Collapse Judge call and Decision history below it. On
+  phones, use a sticky bottom action bar with the two decisions (see the
+  blueprint).
 
 ### T2. The page's only filled button is not the decision
 
@@ -363,7 +363,7 @@ Proposal:
   banner's current label, "Open rubric alongside", accurate.
 - Pass the corrected case ids to the editor, as the flow's landing proposes.
 - Keep Reliability as the home for reviewer disagreements, listed in the nav
-  in both display modes (D5).
+  for everyone (D5).
 - Carry `?from=` in the URL, with a fallback the nav shows.
 - Link the note to the rubric.
 
@@ -444,7 +444,7 @@ and "trace" 9× (the contract's Run). Against ADR-0015's vocabulary, "judge",
 Rule: `verbs.md` (a confirmation repeats the verb of the button that opened
 it); `labels.md` › Terminology.
 
-Proposal (ADR-0015's vocabulary, the same in both display modes):
+Proposal (ADR-0015's vocabulary):
 
 | Element | Proposed |
 |---|---|
@@ -463,8 +463,8 @@ Sev 2 · CURRENT · *fix* (extends S1–S3)
   the walk. The crumbs should read "Review queue / Review" and "Review queue /
   ‹case title›".
 - The case page shows raw ids in its top bar, beside Back, in Guided display
-  (`screens/trace.tsx:132-134`). ADR-0015 keeps them in both display modes:
-  move them into the case's metadata line, with a copy button.
+  (`screens/trace.tsx:132-134`). ADR-0015 shows them to everyone: move them
+  into the case's metadata line, with a copy button.
 - The document title stays "Rubrist". Set it to "Case 3 of 7 · Review queue ·
   Rubrist".
 
@@ -616,7 +616,7 @@ Assessment: FAIL · "The answer promises…"
 | Evidence | The case, formatted, with raw JSON on request; the rubric excerpt | Everything the decision needs |
 | Decide *(sticky; the task zone)* | The evaluator's assessment and reasoning, a link to the rubric, one filled "Accept assessment", "Correct assessment", Skip | T1, T2 |
 | After a ruling | The ruling, "Change ruling", and next steps: the assessment's test step ("Prevent this next time" on a failed assessment, "Protect this behavior" on a passing one), then "Add to golden set" | T2 and D6; T8 (naming) |
-| History and technical | Decision history and Judge call, collapsed in both display modes | O7 in round 1; ADR-0015 |
+| History and technical | Decision history and Judge call, collapsed by default | O7 in round 1; ADR-0015 |
 
 ### Queue
 
@@ -649,9 +649,9 @@ refresh.", and it has no Retry (`screens/exceptions.tsx:271-282`).
 ## Decisions
 
 Decided 2026-09-26: the founder asked to take the recommended options. Later
-the same day, the founder chose one vocabulary and two display modes
-([ADR-0015](../decisions/0015-one-vocabulary-and-two-display-modes.md),
-Proposed), so D2–D6 use that ADR's terms. These are design decisions for
+the same day, the founder chose one vocabulary and one display with a help
+layer ([ADR-0015](../decisions/0015-one-vocabulary-one-display.md), Proposed), so D2–D6 use
+that ADR's terms. These are design decisions for
 implementing this audit, not product authority. `PRODUCT.md`, the accepted
 ADRs, and the onboarding contract are unchanged.
 
@@ -667,14 +667,14 @@ ADRs, and the onboarding contract are unchanged.
    ruling. A true Undo would need a retraction record, which would change the
    evidence model and the κ history built on these rows; this audit does not
    propose one.
-3. **The queue's name (T8).** "Review queue" in both display modes (round 1's
-   D2), with the rest of T8's table.
+3. **The queue's name (T8).** "Review queue" everywhere (round 1's D2), with
+   the rest of T8's table.
 4. **Category labels (T7).** Humanize by formatting only, so
    `policy_grounding` becomes "Policy grounding"; never invent a name. The
-   exact value shows in a `Tooltip` (*add*) in both display modes.
+   exact value shows in a `Tooltip` (*add*).
 5. **Reviewer disagreements (T6, T7).** Reliability stays their home and is
-   listed in the nav in both display modes. The queue's card becomes one line
-   below the list, as in the queue blueprint.
+   listed in the nav for everyone. The queue's card becomes one line below
+   the list, as in the queue blueprint.
 6. **Test creation (T2).** It follows the ruling, as the decision card's next
    step. A test built before review would encode the evaluator's unreviewed
    assessment. The contract lists these steps only as optional next steps after

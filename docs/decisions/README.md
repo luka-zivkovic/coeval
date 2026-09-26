@@ -25,4 +25,4 @@ Status meanings:
 - [0012 — Rename Coeval to Rubrist](0012-rename-coeval-to-rubrist.md) — Accepted
 - [0013 — Production outcome monitoring](0013-production-outcome-monitoring.md) — Accepted
 - [0014 — Model-agnostic evaluator execution and evidence v2](0014-model-agnostic-evaluator-execution.md) — Accepted
-- [0015 — One product vocabulary and two display modes](0015-one-vocabulary-and-two-display-modes.md) — Proposed
+- [0015 — One product vocabulary and one display with a help layer](0015-one-vocabulary-one-display.md) — Proposed

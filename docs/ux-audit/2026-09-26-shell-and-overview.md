@@ -10,9 +10,9 @@ Last reviewed: 2026-09-26 · code at `2c82321`
 Vocabulary: findings describe today's UI in the onboarding contract's words
 (Run, Check, Result), which were TARGET when this round was written.
 Proposals, blueprints, the naming table, and decisions use the single
-vocabulary of [ADR-0015](../decisions/0015-one-vocabulary-and-two-display-modes.md)
-(Proposed): evaluator, rubric, case, assessment, golden set, and review queue,
-in both of its display modes.
+vocabulary of [ADR-0015](../decisions/0015-one-vocabulary-one-display.md)
+(Proposed): evaluator, rubric, case, assessment, golden set, and review queue.
+That ADR also replaces the display modes with one display and a help layer.
 
 This is round 1 of a page-by-page UX audit of the web app (`apps/web`). It
 covers:
@@ -387,7 +387,7 @@ On the day-0 Overview in Guided display, the sidebar lists "Criteria",
 screens not *lead* with "criterion" or "golden" (TARGET,
 `docs/beginner-onboarding-journey.md` › Product language). ADR-0015
 (Proposed) drops that rule: "criterion" and "golden set" are the vocabulary,
-and Beginner mode explains them (D5).
+and its help layer explains them (D5).
 
 - TARGET: the separation itself is required. See `PRODUCT.md` principles 1
   and 10, and the intent comment at `sidebar.tsx:49-51`: a trace count or
@@ -666,13 +666,13 @@ The Check card prints two technical lines in every display
 Only "Too strict / lenient" is marked `dev-only`. Guided promises to hide
 "secondary diagnostics and technical details" (`lib/display-mode.ts:15`).
 
-This was Sev 2 against Guided display's promise. ADR-0015 (Proposed) keeps
-technical detail in both of its display modes, so the binding stays on the
-card. What remains is repetition: the model appears on its own line and again
-inside the binding.
+This was Sev 2 against Guided display's promise. ADR-0015 (Proposed) shows
+technical detail to everyone, so the binding stays on the card. What remains
+is repetition: the model appears on its own line and again inside the
+binding.
 
-Proposal: show the execution binding once, model first. Beginner mode adds a
-one-line explanation of what a binding is.
+Proposal: show the execution binding once, model first. The help layer
+explains what a binding is.
 
 ### O8. Terminology on Guided surfaces
 
@@ -717,8 +717,8 @@ contract's.
 Rule: `labels.md` › Terminology; `ui-naming` step 0.
 
 ADR-0015 (Proposed) would replace the contract's Guided vocabulary with the
-glossary's terms in both display modes, so the inconsistency is fixed with one
-name per concept rather than two.
+glossary's terms everywhere, so the inconsistency is fixed with one name per
+concept rather than two.
 
 Proposal: the [naming table](#naming-proposal) below.
 
@@ -985,9 +985,8 @@ Setup · 2 of 3 (step 2 current)
 
 ### Naming proposal
 
-In `ui-naming` format. Each row names a concept once, the same in both of
-ADR-0015's display modes. Rules are `labels.md` › Terminology and
-`docs/glossary.md`.
+In `ui-naming` format. Each row names a concept once, the same everywhere
+(ADR-0015). Rules are `labels.md` › Terminology and `docs/glossary.md`.
 
 | Concept | Current names (where) | Proposed | Status |
 |---|---|---|---|
@@ -1011,9 +1010,9 @@ language section is rewritten to match.
 ## Decisions
 
 Decided 2026-09-26: the founder asked to take the recommended options. Later
-the same day, the founder chose one vocabulary and two display modes
-([ADR-0015](../decisions/0015-one-vocabulary-and-two-display-modes.md),
-Proposed), so D1, D2, D5, D7, D10, and D11 use that ADR's terms. These are
+the same day, the founder chose one vocabulary and one display with a help
+layer ([ADR-0015](../decisions/0015-one-vocabulary-one-display.md), Proposed), so D1, D2, D5,
+D7, D10, and D11 use that ADR's terms. These are
 design decisions for implementing this audit, not product authority.
 `PRODUCT.md`, the accepted ADRs, and the onboarding contract are unchanged.
 Items 9–11 were marked *decide* in their findings but were not in the open
@@ -1027,9 +1026,8 @@ questions.
    "Review assessments", and "Grow the golden set". Bench projects get the
    loop strip once setup is complete (O6). Only setup is numbered, so no
    screen shows two numbered sequences.
-2. **The queue's name (O4, O8).** "Review queue" in both display modes, the
-   same in the nav, crumb, title, and eyebrow. Round 2's T8 uses the same
-   name.
+2. **The queue's name (O4, O8).** "Review queue" everywhere: in the nav,
+   crumb, title, and eyebrow. Round 2's T8 uses the same name.
 3. **Governed evidence on the Overview (O13).** Add the status-only zone to the
    production Overview, visually separate from the operational zones. It shows
    whether an analysis study is open, the number of truth revisions, and
@@ -1045,7 +1043,7 @@ questions.
    governed evidence, and system. Order the loop's items by stage, without
    numbers, and drop the per-item governance suffixes. Nav labels use
    ADR-0015's terms, such as "Review queue" and "Golden set", and no display
-   mode hides an item. Tree-test 5–8 real tasks before shipping.
+   setting hides an item. Tree-test 5–8 real tasks before shipping.
 6. **Criterion scope (S5).** When a project has more than one criterion, the
    breadcrumb reads `Project / Criterion / Page`, and the criterion crumb is
    the switcher (`DropdownMenu`, *add*). With one criterion, the crumb is
@@ -1062,7 +1060,7 @@ questions.
     "Other ways to add traces" disclosure for the tracer, API, and agent
     paths. Each explanation is cut to one line.
 11. **The naming table (O8).** Adopt it as written. It follows ADR-0015: one
-    term per concept in both display modes. A case's source is a trace, or an
+    term per concept everywhere. A case's source is a trace, or an
     example in bench projects, and labels a reviewer records while seeing the
     assessment are "ungoverned human labels".
 

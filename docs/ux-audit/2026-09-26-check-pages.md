@@ -9,10 +9,10 @@ Last reviewed: 2026-09-26 · code at `2c82321`
 
 Vocabulary: findings quote today's UI words. Proposals, blueprints, and
 decisions use the single vocabulary of
-[ADR-0015](../decisions/0015-one-vocabulary-and-two-display-modes.md)
+[ADR-0015](../decisions/0015-one-vocabulary-one-display.md)
 (Proposed): evaluator, rubric, case, assessment, golden set, review queue,
-and regression check. It applies in both of that ADR's display modes,
-Beginner and Standard.
+and regression check. That ADR also replaces the display modes with one
+display and a help layer.
 
 This round covers the pages behind the Review guide nav item:
 
@@ -388,8 +388,8 @@ Sev 3 · CURRENT · *fix* · medium · decided in D1 and D5 · extends round 1's
 
 CURRENT promise: Guided display "hides secondary diagnostics and technical
 details" (`lib/display-mode.ts:15`). This page hides none of them. ADR-0015
-(Proposed) drops that promise: both of its display modes show technical
-detail, and Beginner mode explains it. The page's problems are its order, its
+(Proposed) drops that promise: everyone sees the same page, and its help
+layer explains the technical detail. The page's problems are its order, its
 title, and its missing next step, not the detail it shows.
 
 Rule: `archetypes.md` › Detail (the primary action is the object's most
@@ -401,7 +401,7 @@ Proposal:
 - Title the page "Version 1.2.0", with one status chip.
 - Lead with what changed from the previous version, then the rubric.
 - Move the Judge Card, κ, and self-consistency into an "Evidence" section
-  after the rubric, open in both display modes (D1).
+  after the rubric, open for everyone (D1).
 - Add "Compare with current" as a link to `/skill/compare?from=…&to=…`.
 - For owners, add "Start a new version from v1.2.0", linking to
   `/skill/edit?from=<id>` (D5).
@@ -675,8 +675,8 @@ Context:
   behavior (ADR-0010:193-195).
 
 ADR-0015 (Proposed) would replace the onboarding contract's beginner names
-with the glossary's terms in every display mode. BOJ:316-317's rule on
-assurance copy stays.
+with the glossary's terms everywhere. BOJ:316-317's rule on assurance copy
+stays.
 
 Proposal:
 
@@ -812,7 +812,7 @@ Evidence: Judge Card, κ, self-consistency, execution binding, output contract
 | Header | The version as the title, one status chip, compare link, owner primary | C5, C1 |
 | Change | What changed from the previous version | C5 |
 | Main | The rubric, then the regression check, with "No recorded regression check" when there is none | C1, C5 |
-| Evidence | Judge Card, κ, self-consistency, execution binding, output contract; open in both display modes, explained in Beginner mode | C5, D1 |
+| Evidence | Judge Card, κ, self-consistency, execution binding, output contract; open for everyone, explained by the help layer | C5, D1 |
 
 | Zone | Empty | Loading | Error |
 |---|---|---|---|
@@ -824,19 +824,17 @@ Evidence: Judge Card, κ, self-consistency, execution binding, output contract
 ## Decisions
 
 Decided 2026-09-26: the founder asked to take the recommended options. Later
-the same day, the founder chose one vocabulary and two display modes
-([ADR-0015](../decisions/0015-one-vocabulary-and-two-display-modes.md),
-Proposed), so D1 and D6 follow that ADR instead of the earlier Guided and
-Technical split. These are design decisions for implementing this audit, not
+the same day, the founder chose one vocabulary and one display with a help
+layer ([ADR-0015](../decisions/0015-one-vocabulary-one-display.md), Proposed), so D1 and D6
+follow that ADR instead of the earlier Guided and Technical split. These are design decisions for implementing this audit, not
 product authority. `PRODUCT.md`, the accepted ADRs, and the onboarding
 contract are unchanged.
 
-1. **Content of the version page (C5).** Both display modes show the same
-   page: the header, what changed, the rubric, and the regression check, with
-   "No recorded regression check" when there is none. The Judge Card, κ,
+1. **Content of the version page (C5).** Everyone sees the same page: the
+   header, what changed, the rubric, and the regression check, with "No
+   recorded regression check" when there is none. The Judge Card, κ,
    self-consistency, execution binding, and output contract follow in an
-   "Evidence" section, open in both modes. Beginner mode adds a one-line
-   explanation to each.
+   "Evidence" section, open for everyone. The help layer explains each one.
 2. **Override prominence (C8).** Revising is the default. "Revise the edit"
    is the filled button, and the override moves into a "Record an override…"
    disclosure for owners, which keeps its reason field. An override records an
@@ -863,8 +861,8 @@ contract are unchanged.
    (`:736`). The change review still compares with the current version and
    names the starting point ("Started from v1.1.0"). `?version=` stays
    reserved for resuming a queued version (`screens/skill-edit.tsx:73,280-314`).
-6. **Status vocabulary (C12).** Each status gets one label in both display
-   modes, and its raw value stays available in a tooltip. BOJ:316-317's rule
+6. **Status vocabulary (C12).** Each status gets one label, and its raw
+   value stays available in a tooltip. BOJ:316-317's rule
    still applies: assurance copy derives from evidence, not legacy version
    status.
 
