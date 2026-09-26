@@ -116,6 +116,10 @@ OPENROUTER_API_KEY=
 TYPESAFE_API_KEY=
 ```
 
+Typed-question evaluators ask a TypeSafe model one yes-or-no question; see
+[typed-question evaluators](docs/typed-question-evaluators.md) for when they
+fit and how to author one.
+
 Set `RUBRIST_TRUST_PROXY=1` only when clients cannot bypass your trusted reverse
 proxy. Rubrist will then use sanitized forwarded client-IP headers for the
 pre-auth onboarding rate limit; direct deployments use the socket address.
@@ -602,6 +606,7 @@ over HTTP without MCP.
 - [MCP reference](tools/mcp/README.md) — commands, available tools, and current limitations.
 - [Self-hosting](docs/self-hosting.md) — deployment and operations.
 - [Architecture](docs/architecture.md) — runtime components and evidence boundaries.
+- [Typed-question evaluators](docs/typed-question-evaluators.md) — when a TypeSafe yes-or-no evaluator fits, and how to author one.
 - [Guided onboarding](docs/beginner-onboarding-journey.md), [Analyze](docs/analyze-journey.md), and [trace-to-test](docs/trace-to-test-journey.md) — detailed workflows.
 - [Product charter](PRODUCT.md), [glossary](docs/glossary.md), and [architecture decisions](docs/decisions/README.md) — product scope and terminology.
 
