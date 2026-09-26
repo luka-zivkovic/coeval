@@ -606,6 +606,7 @@ over HTTP without MCP.
 - [MCP reference](tools/mcp/README.md) — commands, available tools, and current limitations.
 - [Self-hosting](docs/self-hosting.md) — deployment and operations.
 - [Architecture](docs/architecture.md) — runtime components and evidence boundaries.
+- [Typed-question evaluators](docs/typed-question-evaluators.md) — when a TypeSafe yes-or-no evaluator fits, and how to author one.
 - [Guided onboarding](docs/beginner-onboarding-journey.md), [Analyze](docs/analyze-journey.md), and [trace-to-test](docs/trace-to-test-journey.md) — detailed workflows.
 - [Product charter](PRODUCT.md), [glossary](docs/glossary.md), and [architecture decisions](docs/decisions/README.md) — product scope and terminology.
 
