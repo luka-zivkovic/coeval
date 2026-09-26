@@ -52,14 +52,14 @@ those additions:
 
 | # | Finding | Sev | Status |
 |---|---|---|---|
-| 1 | The decision is buried. "Record your ruling" is the last card of the right column: its Accept button sits at y≈978 in a 900 px window, and ≈1,540–1,590 px down on a phone. Above it are raw JSON, the evaluator panel, a Judge call panel that is empty in Guided display, and the decision history. (T1) | 3 | fix |
-| 2 | The page's only filled button is not the decision. The case page leads with a "Prevent this next time" test banner above the case title. The ruling buttons are outlined, and the player has no filled button at all. (T2) | 3 | fix |
-| 3 | On phones the queue hides the Result and every row action. The fixed-layout table shows two columns at 390 px and does not scroll. (T5) | 3 | fix |
-| 4 | There are two surfaces for one decision, and each item costs a round trip. A row click opens a case page with no Next. A row "Review" opens a one-case player whose done view sends you to the Overview. (T3) | 3 | fix |
-| 5 | Along the flow, the queue has seven names. Ruling buttons submit under a different name than they open with, and the contract's "Correct this result" is not used. (T8) | 3 | decide |
-| 6 | One keystroke records a ruling and moves on, with no undo. (T4) | 2 | fix, *decide* undo semantics |
+| 1 | The decision is buried. "Record your ruling" is the last card of the right column: its Accept button sits at y≈978 in a 900 px window, and ≈1,540–1,590 px down on a phone. Above it in that column are the evaluator panel, the Judge call panel, and the decision history. On a phone the raw JSON conversation comes first as well. (T1) | 3 | fix |
+| 2 | The page's only filled button is not the decision. The case page leads with a test banner above the case title, and the banner's button is the filled one. The ruling buttons are outlined, and in the player nothing is filled until a form opens. (T2) | 3 | fix |
+| 3 | There are two surfaces for one decision, and each item costs a round trip. A row click opens a case page with no Next. A row "Review" opens a one-case player whose done view sends you to the Overview. (T3) | 3 | fix |
+| 4 | Along the flow, the queue has seven names. Ruling buttons submit under a different name than they open with, and the contract's "Correct this result" is not used. (T8) | 3 | decide |
+| 5 | One keystroke records a ruling and moves on, with no undo. (T4) | 2 | fix, *decide* undo semantics |
+| 6 | On phones the queue shows two columns. The Result and every row action sit behind a sideways scroll that nothing on a touch screen signals. (T5) | 2 | fix |
 | 7 | Several links break the scent: "Open rubric alongside" leaves the queue; "Draft rubric edit from these cases" passes no cases; "Compare and resolve" opens a page Guided display hides; the default Back goes to Traces. (T6) | 2 | fix |
-| 8 | In the queue's structure, active filter chips look like primaries, a pointer card sits above the list, and each row offers three interactions. (T7) | 2 | fix |
+| 8 | In the queue's structure, active filter chips look like primaries, a pointer card sits above the list, and each row offers four interactions. (T7) | 2 | fix |
 
 ---
 
@@ -86,9 +86,12 @@ What holds up (*keep*):
 - **The queue's primary is in the header.** "Review all N"
   (`screens/exceptions.tsx:344-357`) is where the list archetype puts it
   (`archetypes.md` › List).
-- **The walk respects the filter.** It survives refresh through `?cluster=`
-  (`screens/exceptions.tsx:349-352`), and the player names the filtered scope
-  ("Exceptions · policy grounding").
+- **The walk respects the filter.** "Review all N" hands the player the
+  exact filtered list in router state (`screens/exceptions.tsx:352`), and the
+  player names the filtered scope ("Exceptions · policy_grounding", a raw
+  value; see T7). The URL carries only the category (`?cluster=`, `:351`). A
+  shared link or a new tab therefore re-filters by category alone
+  (`lib/exception-queue.ts:22-25`) and drops the Result filter.
 - **The player has the triage basics:** progress ("0 of 5 done · case 1"),
   Prev and Next, an item strip, and keyboard shortcuts with a visible legend.
   Pause and exit returns to the queue with a session receipt
@@ -99,7 +102,9 @@ What holds up (*keep*):
   "so these rulings remain ungoverned legacy evidence". Promotion says it
   "does not create governed human truth".
 - **A different ruling and a promotion each require a reason**, and both are
-  stored append-only (`components/trace-detail.tsx:744-755,779-784`).
+  stored append-only. For the ruling, see `components/trace-detail.tsx:744-755`.
+  For promotion, see the reason field at `components/trace-detail.tsx:779-784`
+  and the server-side append noted at `components/trace-detail.tsx:353-354`.
 - **Case switching is race-guarded**, so a stale fetch cannot show one
   case's verdict on another (`screens/trace.tsx:30-81`).
 
@@ -129,8 +134,13 @@ Measured "Accept evaluator opinion" positions:
 | 1440×900 | y≈978 | y≈980 |
 | 390×844 | y≈1,593 | y≈1,537 |
 
-In Guided display the Judge call panel above it holds only "No call meta
-available. Raw request & response available in Technical display."
+In the demo, the Judge call panel above it holds only "No call meta
+available." Demo cases carry no request metadata
+(`apps/api/src/repository/demo-golden.ts:292-309`). Real runs record the
+provider, model, and latency (`apps/api/src/workers/judge.ts:140-165`). The
+panel then shows them, and a compiled-prompt disclosure, in both displays
+(`components/rubrist/judge-call-panel.tsx:58-84`). Only the raw request and
+response are Technical-only (`components/rubrist/judge-call-panel.tsx:86-116`).
 
 - Rule: `patterns.md` › Triage a queue ("everything the decision needs on
   screen… one decision per item, with the usual choice as the primary");
@@ -147,24 +157,38 @@ available. Raw request & response available in Technical display."
 Sev 3 · CURRENT · *fix*
 
 - The case page renders the trace-to-test banner (`screens/trace.tsx:150`,
-  `:255-297`) above the case title. Its filled "Prevent this next time"
-  (`:268-274`) is the page's only filled button, measured at y≈149. The first
-  serif heading on the page is the banner's, not the case's.
+  `screens/trace.tsx:255-297`) above the case title. Its button
+  (`screens/trace.tsx:268-274`) is the page's only filled button, measured at
+  y≈149. The first serif heading on the page is the banner's, not the case's.
+- The banner's label follows the Result (`screens/trace.tsx:163-176,185-187`).
+  A failed Result, as measured, shows "Prevent this next time". A passing one
+  shows "Protect this behavior", and an ambiguous one "Make this a test". The
+  banner has no filled button once the case has an enabled test
+  (`screens/trace.tsx:230-241`) or after "Not now" (`screens/trace.tsx:244-253`).
 - The three ruling buttons use `variant="default"`, which this app styles
   as an outline, until one is clicked
   (`components/trace-detail.tsx:686-714`).
-- The player renders no filled button in any measured state.
-- Opening a form fills both its opener and its submit button. Choosing
-  promotion makes "Add to golden set" filled
-  (`components/trace-detail.tsx:702`) next to a filled "Add regression
-  reference" (`:797`). Choosing a different ruling makes "Record different
-  ruling" the filled `signal` variant (`:695`) next to a filled "Record
-  review" (`:758`). On the case page the banner's button makes a third.
+- In the player, the decision view has no filled button until a form is
+  opened. After that, the next bullet applies there too. The done view fills
+  "Back to overview" (`screens/review.tsx:177`). When overrides were recorded,
+  it also fills "Draft rubric edit from these cases" (`variant="signal"`,
+  `screens/review.tsx:168`).
+- Opening a form fills both its opener and its submit button:
+  - Choosing promotion makes "Add to golden set" filled
+    (`components/trace-detail.tsx:702`), next to a filled "Add regression
+    reference" (`components/trace-detail.tsx:797`).
+  - Choosing a different ruling makes "Record different ruling" the filled
+    `signal` variant (`components/trace-detail.tsx:695`), next to a filled
+    "Record review" (`components/trace-detail.tsx:758`).
+  - On the case page, the banner's button makes a third.
 
-TARGET: the contract offers "Protect this behavior" and "Prevent this next
-time" as optional next steps after a result is reviewed
-(`docs/beginner-onboarding-journey.md` › Optional next steps), not as the
-lead of the page.
+TARGET: the contract lists "Protect this behavior" and "Prevent this next
+time" among the optional next steps after the first-run completion summary.
+They sit alongside "review or correct the result", and the contract calls
+them progressive milestones, not first-run requirements
+(`docs/beginner-onboarding-journey.md` › Optional next steps). The contract
+does not say where they sit on the case page. Placing them after a ruling is
+this audit's proposal (ASSUMPTION).
 
 Rule: `placement.md` › In shadcn apps (one filled button per page state);
 `archetypes.md` › Pages that change with state.
@@ -172,9 +196,9 @@ Rule: `placement.md` › In shadcn apps (one filled button per page state);
 Proposal:
 
 - Before a ruling, the filled button is "Accept result".
-- After a ruling, the decision card's next step is "Prevent this next time",
-  and it becomes filled. The banner moves into that post-ruling state, and
-  "Not now" stays.
+- After a ruling, the decision card's next step is the banner's action for
+  that Result (for a failed one, "Prevent this next time"), and it becomes
+  filled. The banner moves into that post-ruling state, and "Not now" stays.
 
 ### T3. Two surfaces for one decision, and a round trip per item
 
@@ -183,11 +207,12 @@ Sev 3 · CURRENT · *fix*
 - A row click opens `/cases/:id` (`screens/exceptions.tsx:497-501`). That
   page has no Previous or Next (`screens/trace.tsx`), so every item costs a
   trip back to the queue.
-- A row "Review" (`:503-507`) opens `/review?caseId=…`. The player then
-  contains only that case (`lib/exception-queue.ts:21`). After the decision,
-  its done view shows "1 exception handled", and the primary "Back to
-  overview" (`screens/review.tsx:98,177-179`) leaves the queue the user came
-  from.
+- A row "Review" (`screens/exceptions.tsx:503-507`) opens
+  `/review?caseId=…`, with `&cluster=…` when the row has a category. The
+  player then contains only that case (`lib/exception-queue.ts:21`). After
+  the decision, its done view shows "1 exception handled", and the primary
+  "Back to overview" (`screens/review.tsx:98,177-179`) leaves the queue the
+  user came from.
 - Only "Review all N" walks the queue.
 
 Rule:
@@ -201,7 +226,10 @@ Rule:
 Proposal:
 
 - A row click and "Review" both open the player at that row, within the
-  current filtered list (`/review?caseId=…&cluster=…`), keeping Prev and Next.
+  current filtered list, keeping Prev and Next. The URL already carries
+  `caseId` and `cluster` (`lib/exception-queue.ts:9-13`). The change is in
+  case selection: start the walk at `caseId` instead of returning that case
+  alone (`lib/exception-queue.ts:21`).
 - `/cases/:id` stays the deep-link view. When it is opened from the queue, it
   gains "Next waiting".
 - The done view's primary returns to where the walk started.
@@ -210,13 +238,15 @@ Proposal:
 
 Sev 2 · CURRENT · *fix* · undo semantics *decide*
 
-- A click on "Accept evaluator opinion", or the A key
+- A click on "Accept evaluator opinion", or, in the player, the A key
   (`components/trace-detail.tsx:529`), records a human ruling immediately
-  (`:429-451`).
+  (`components/trace-detail.tsx:429-451`).
 - In the player, every decision advances to the next case
   (`components/review-player.tsx:173-178`). The next case's loading state
-  replaces the confirmation text, so "1 of 5 done" is the only visible
-  trace of the decision.
+  replaces the confirmation text. After that, the only visible traces of the
+  decision are the count ("1 of 5 done"), the progress bar, and the case's
+  dot in the item strip (`components/review-player.tsx:216-218,258`). None
+  of them says what was decided.
 - The app has no toast system.
 
 Rule: `decisions.md` › Confirmation, undo, or nothing (reversible actions act
@@ -228,20 +258,23 @@ Undo appends a superseding record and moves the cursor back. ASSUMPTION: an
 undo that appends rather than deletes fits the append-only record
 (`PRODUCT.md` principle 8). Confirm that with the evidence model (*decide*).
 
-### T5. On phones the queue hides the Result and the actions
+### T5. On phones the Result and the actions sit behind a sideways scroll
 
-Sev 3 · CURRENT · *fix*
+Sev 2 · CURRENT · *fix*
 
 The list is a `table-fixed` with column widths 240, 150, 110, auto, and 160
-(`screens/exceptions.tsx:481-489`). At 390×844:
+(`screens/exceptions.tsx:481-489`), 660 px in all. Every `Table` sits in a
+horizontally scrolling region (`components/ui/table.tsx:6`). At 390×844 that
+region is 348 px wide:
 
-- only Case and Judge category are visible;
-- the Result chip, the note, and "Full note" and "Review" are cut off at the
-  screen edge (14 row controls measured outside their container);
-- the table region does not scroll: its scroll width equals its width,
-  348 px.
+- Case and most of Judge category show;
+- the Result chip, the note, "Full note", and "Review" sit beyond the right
+  edge (14 row controls measured outside the visible region);
+- nothing on a touch screen signals that the table scrolls sideways.
 
-A tap on a row still opens the case.
+A tap on a row still opens the case, and "Review all N" still walks the
+queue. The cost is discoverability: the Result, the column a reviewer scans
+the queue for, is off-screen. No task is blocked, so this is Sev 2.
 
 Rule: `layouts.md` › Table page (narrow viewport: "cards or a stacked
 key-value list; keep sort and filter as a sheet"); `shadcn.md` › Responsive
@@ -260,9 +293,9 @@ Sev 2 · CURRENT · *fix*
 - **"Draft rubric edit from these cases"** (`screens/review.tsx:100,168-170`)
   opens `/skill/edit` without the cases.
 - **"Compare and resolve"** (`screens/exceptions.tsx:407`) opens
-  `/reliability`, which Guided display hides from the nav
-  (`lib/display-mode.ts:37-47`). A Guided user lands on a page that has no
-  active nav item.
+  `/reliability`, which Guided display hides from the nav in both tracing and
+  bench projects (`lib/display-mode.ts:37-59`). A Guided user lands on a page
+  that has no active nav item.
 - **The case page's Back** defaults to "Back to Traces"
   (`screens/trace.tsx:315-316`) whenever router state is absent, as it is for
   a shared link or a new tab. Bench projects have no Traces item in their nav
@@ -295,15 +328,20 @@ Sev 2 · CURRENT · *fix*
   measured on the page: "Review all 5", "All categories", and "All
   verdicts".
 - **A pointer card precedes the list.** The "Reviewer disagreements" card
-  (`:396-456`), which points to another page, sits between the filters and
-  the page's own list.
-- **Rows have three interactions:** a row click (case page), "Full note",
-  and "Review" (player).
-- **"No matches" has no way out.** The empty state for a filter with no
-  results (`:471-479`) offers no Clear filters action.
+  (`screens/exceptions.tsx:396-456`), which points to another page, sits
+  between the filters and the page's own list.
+- **Rows have four interactions:** a row click (case page), the category
+  chip, which filters the queue (`screens/exceptions.tsx:83-88`), "Full
+  note", and "Review" (player).
+- **"No matches" has no Clear filters action.** The chips stay visible,
+  including a pinned category that no longer matches
+  (`screens/exceptions.tsx:226-229`). The card's description says "Change a
+  filter to see the rest of the queue." (`screens/exceptions.tsx:467`). The
+  empty state itself (`screens/exceptions.tsx:471-479`) offers no action.
 - **Raw values in the UI.** Category values render as raw evaluator strings
-  (`policy_grounding`), and the result filters as raw enums (`pass`,
-  `ambiguous`).
+  (`policy_grounding`), and so does the player's scope label
+  ("Exceptions · policy_grounding", `screens/review.tsx:89`). The result
+  filters show raw enums (`pass`, `ambiguous`).
 
 Rule: `archetypes.md` › List (one inline action per row, the rest in an
 overflow menu); `states.md` › Empty (no matches means a Clear filters
@@ -336,11 +374,19 @@ CURRENT names:
 | The queue | "Needs a human · ungoverned" (nav), "Exceptions" (breadcrumb), "Cases that need human review" (title, `screens/exceptions.tsx:341`), "Exception queue" (eyebrow, `:338`), "Waiting on a human" (card, `:461`), "Exceptions waiting" (player, `screens/review.tsx:89`), "Queue is clear" (`:67`) |
 | The Check's output | "Latest evaluator opinion" (`components/trace-detail.tsx:624`), "Evaluator" (column, `screens/exceptions.tsx:486`), "Judge note" (`:487`), "The skill flagged this case" (`components/trace-detail.tsx:606`), "not yet verdicted" (`components/review-player.tsx:274`) |
 | The category | "Judge category" (`screens/exceptions.tsx:363,485`), "Capability gap" (`components/trace-detail.tsx:651`), "category" (chip, `:791`) |
-| The ruling | Opens with "Record different ruling" (`:699`) and submits "Record review" (`:763`) |
-| Promotion | Opens with "Add to golden set" (`:713`) and submits "Add regression reference" (`:802`), with the chip "regression reference" (`:793`) |
+| The ruling | Opens with "Record different ruling" (`components/trace-detail.tsx:699`) and submits "Record review" (`components/trace-detail.tsx:763`) |
+| Promotion | Opens with "Add to golden set" (`components/trace-detail.tsx:713`) and submits "Add regression reference" (`components/trace-detail.tsx:802`), with the chip "regression reference" (`components/trace-detail.tsx:793`) |
 
-The scanner, run on these five files with the contract's glossary, reports
-drift toward "judge" 4×, "Skill" 1×, "verdict" 7×, and "golden" 8×.
+I ran the scanner with the contract's glossary over the flow's five UI files:
+
+- `screens/exceptions.tsx`;
+- `screens/trace.tsx`;
+- `components/trace-detail.tsx`;
+- `screens/review.tsx`;
+- `components/review-player.tsx`.
+
+It reports drift toward "judge" 4×, "Skill" 1×, "verdict" 7×, "golden" 8×,
+and "trace" 9× (the contract's Run).
 
 Rule: `verbs.md` (a confirmation repeats the verb of the button that opened
 it); `labels.md` › Terminology.
@@ -404,7 +450,7 @@ flowchart LR
   P -->|last item decided| D[Summary]
   D -->|"primary: back to where the walk started"| Q
   D -->|"N corrections: open the Review guide with these Results"| E[Review guide]
-  P -.->|"after a ruling: Prevent this next time"| X[Trace-to-test builder]
+  P -.->|"after a ruling: the Result's test step, e.g. Prevent this next time"| X[Trace-to-test builder]
 ```
 
 **Decisions.**
@@ -473,8 +519,8 @@ The Check says FAIL: "The answer promises…"
 | Walk bar | Prev and Next, the position and progress, the scope, Pause | `patterns.md` › Triage a queue |
 | Evidence | The Run, formatted, with raw JSON on request; the Review guide excerpt | Everything the decision needs |
 | Decide *(sticky; the task zone)* | The Check's Result and reasoning, a link to the guide, one filled "Accept result", "Correct this result", Skip | T1, T2 |
-| After a ruling | The ruling, "Change ruling", and next steps: "Prevent this next time", "Add to protected examples" | Contract › Optional next steps |
-| History and technical | Decision history and Judge call, collapsed (open in Technical display) | O7 in round 1; `display-mode.ts:15` |
+| After a ruling | The ruling, "Change ruling", and next steps: the Result's test step ("Prevent this next time" on a failed Result, "Protect this behavior" on a passing one), then "Add to protected examples" | T2 (placement is an ASSUMPTION); T8 (naming) |
+| History and technical | Decision history and Judge call, collapsed (open in Technical display) | O7 in round 1; `lib/display-mode.ts:15` |
 
 ### Queue
 
@@ -510,8 +556,9 @@ the Decide page at that row; the filters open in a `Sheet`.
    and keep the exact value in a tooltip?
 5. **Reviewer disagreements (T6, T7).** Handle them in this flow, or keep
    Reliability as their home and show it in Guided display?
-6. **Test creation (T2).** Confirm it belongs after the ruling, as the
-   contract's optional next step.
+6. **Test creation (T2).** Confirm it belongs after the ruling. The contract
+   lists it as an optional next step after the first-run summary but does
+   not place it on the case page.
 
 ## Next rounds
 
