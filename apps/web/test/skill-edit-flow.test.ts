@@ -39,6 +39,8 @@ const base: SkillVersion = {
   status: "approved",
   rubricMarkdown: "# Guide\n\nPass when grounded.",
   prompt: "Judge against {{rubric_markdown}}.",
+  typedQuestion: null,
+  decisionThreshold: null,
   executionBinding: { provider: "mock", endpoint: { kind: "managed" }, modelId: "mock", modelVersion: "mock", sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null, verdictProtocol: "mock/v1", routing: null },
   customEndpointUrl: null,
   outputSchema: { type: "object" },
@@ -98,6 +100,32 @@ describe("guided evaluator editing", () => {
     expect(html).toContain("Pass when grounded.");
     expect(html).toContain("Pass only with a cited source.");
     expect(html).toContain("Future and existing traces");
+  });
+
+  it("reviews a typed question in place of the guide and instructions", () => {
+    const question = { type: "noul" as const, instructions: "Is the reply grounded?", criteria: { true: "Grounded.", false: "Not grounded." } };
+    const jev = { provider: "typesafe" as const, endpoint: { kind: "managed" as const }, modelId: "jev-1.13.0", modelVersion: "jev-1.13.0", sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null, verdictProtocol: "typed-question/v1" as const, routing: null };
+    const typedBase = { ...base, rubricMarkdown: null, prompt: null, typedQuestion: question, decisionThreshold: 0.6, executionBinding: jev };
+    const html = renderToStaticMarkup(createElement(SkillChangeReview, {
+      base: typedBase, rubricMarkdown: "", prompt: "", typedQuestion: question, decisionThreshold: 0.7,
+      executionBinding: jev, verdictKind: "binary", timeScope: "new"
+    }));
+    expect(html).toContain("Typed question");
+    expect(html).toContain("threshold 0.6 → 0.7");
+    expect(html).toContain("1 evaluator field changed");
+    expect(html).toContain("Decision threshold: 0.7");
+    expect(html).not.toContain("Review guide");
+
+    // Switching a prompted version to a typed question changes the definition and the binding.
+    const switched = renderToStaticMarkup(createElement(SkillChangeReview, {
+      base, rubricMarkdown: "", prompt: "", typedQuestion: question, decisionThreshold: 0.7,
+      executionBinding: jev, verdictKind: "binary", timeScope: "new"
+    }));
+    expect(switched).toContain("2 evaluator fields changed");
+    expect(switched).toContain("threshold none → 0.7");
+
+    expect(skillVersionChangeLabels({ ...typedBase, id: "next", decisionThreshold: 0.7 }, typedBase)).toEqual(["decision threshold"]);
+    expect(skillVersionChangeLabels({ ...typedBase, id: "next" }, base)).toEqual(["review guide", "judge instructions", "typed question", "decision threshold", "execution binding"]);
   });
 
   it("summarizes what changed for the version-history ledger", () => {

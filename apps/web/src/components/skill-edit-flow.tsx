@@ -9,6 +9,7 @@ import {
   type ExecutionBindingInput,
   type SkillVersion,
   type SkillVersionTimeScope,
+  type TypedQuestion,
   type VerdictKind
 } from "@rubrist/shared";
 
@@ -149,10 +150,18 @@ function SourceComparison({
   );
 }
 
+/** A typed-question version's question as source text, for comparing versions. */
+function questionSource(question: TypedQuestion | null, threshold: number | null): string {
+  if (question === null) return "";
+  return `${question.instructions}\n\nTrue when: ${question.criteria.true}\nFalse when: ${question.criteria.false}\nDecision threshold: ${threshold ?? "not recorded"}`;
+}
+
 export function SkillChangeReview({
   base,
   rubricMarkdown,
   prompt,
+  typedQuestion = null,
+  decisionThreshold = null,
   executionBinding,
   verdictKind,
   timeScope
@@ -160,15 +169,23 @@ export function SkillChangeReview({
   base: SkillVersion;
   rubricMarkdown: string;
   prompt: string;
+  /** A typed-question draft's question and threshold, in place of a guide and instructions. */
+  typedQuestion?: TypedQuestion | null;
+  decisionThreshold?: number | null;
   executionBinding: ExecutionBindingInput;
   verdictKind: VerdictKind;
   timeScope: SkillVersionTimeScope;
 }) {
-  const rubricChanged = rubricMarkdown !== base.rubricMarkdown;
-  const promptChanged = prompt !== base.prompt;
+  // A typed question replaces the review guide and judge instructions, in either direction.
+  const typed = typedQuestion !== null || base.typedQuestion !== null;
+  const beforeQuestion = questionSource(base.typedQuestion, base.decisionThreshold);
+  const afterQuestion = questionSource(typedQuestion, decisionThreshold);
+  const questionChanged = typed && afterQuestion !== beforeQuestion;
+  const rubricChanged = !typed && rubricMarkdown !== base.rubricMarkdown;
+  const promptChanged = !typed && prompt !== base.prompt;
   const bindingChanged = !inputMatchesVersion(executionBinding, base);
   const verdictChanged = verdictKind !== base.verdictKind;
-  const changedCount = [rubricChanged, promptChanged, bindingChanged, verdictChanged].filter(Boolean).length;
+  const changedCount = [questionChanged, rubricChanged, promptChanged, bindingChanged, verdictChanged].filter(Boolean).length;
 
   return (
     <Card className="mb-5">
@@ -186,16 +203,28 @@ export function SkillChangeReview({
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div className="grid grid-cols-1 gap-2 text-[12px] sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2">
-            <div className="text-ink-3">Review guide</div>
-            <div className="mt-0.5 font-medium text-ink">{rubricChanged ? "Changed" : "No change"}</div>
-            <div className="text-[10.5px] text-ink-3">{lineCount(base.rubricMarkdown ?? "")} → {lineCount(rubricMarkdown)} lines</div>
-          </div>
-          <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2">
-            <div className="text-ink-3">Judge instructions</div>
-            <div className="mt-0.5 font-medium text-ink">{promptChanged ? "Changed" : "No change"}</div>
-            <div className="text-[10.5px] text-ink-3">exact prompt source</div>
-          </div>
+          {typed ? (
+            <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2 sm:col-span-2">
+              <div className="text-ink-3">Typed question</div>
+              <div className="mt-0.5 font-medium text-ink">{questionChanged ? "Changed" : "No change"}</div>
+              <div className="text-[10.5px] text-ink-3">
+                threshold {base.decisionThreshold ?? "none"} → {decisionThreshold ?? "none"}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2">
+                <div className="text-ink-3">Review guide</div>
+                <div className="mt-0.5 font-medium text-ink">{rubricChanged ? "Changed" : "No change"}</div>
+                <div className="text-[10.5px] text-ink-3">{lineCount(base.rubricMarkdown ?? "")} → {lineCount(rubricMarkdown)} lines</div>
+              </div>
+              <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2">
+                <div className="text-ink-3">Judge instructions</div>
+                <div className="mt-0.5 font-medium text-ink">{promptChanged ? "Changed" : "No change"}</div>
+                <div className="text-[10.5px] text-ink-3">exact prompt source</div>
+              </div>
+            </>
+          )}
           <div className="rounded-sm border border-rule-soft bg-paper-3 px-3 py-2">
             <div className="text-ink-3">Execution binding</div>
             <div className="mt-0.5 font-medium text-ink">{bindingChanged ? "Changed" : "No change"}</div>
@@ -208,10 +237,18 @@ export function SkillChangeReview({
           </div>
         </div>
 
-        {rubricChanged || promptChanged ? (
+        {rubricChanged || promptChanged || questionChanged ? (
           <details className="rounded-sm border border-rule-soft bg-card-2 px-3 py-2">
             <summary className="cursor-pointer text-[12px] font-medium text-ink">View exact source comparison</summary>
             <div className="mt-3 flex flex-col gap-4">
+              {questionChanged ? (
+                <SourceComparison
+                  label="Typed question"
+                  version={base.version}
+                  before={beforeQuestion}
+                  after={afterQuestion}
+                />
+              ) : null}
               {rubricChanged ? (
                 <SourceComparison label="Review guide" version={base.version} before={base.rubricMarkdown ?? ""} after={rubricMarkdown} />
               ) : null}

@@ -30,7 +30,8 @@ export const webExtractionContracts = {
       "screens/skill-edit.tsx",
       "screens/skill-edit/binding-settings.tsx",
       "screens/skill-edit/editor.tsx",
-      "screens/skill-edit/regression.tsx"
+      "screens/skill-edit/regression.tsx",
+      "screens/skill-edit/typed-question.tsx"
     ],
     dialogSources: [],
     rowActionSources: []

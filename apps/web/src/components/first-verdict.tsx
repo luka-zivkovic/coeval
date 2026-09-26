@@ -46,9 +46,12 @@ export function FirstVerdictCard({
   }, [dashboard.currentVersionResultCount, dashboard.skill.currentVersion.id]);
 
   if (!detail) return null;
-  // A typed-question version has no rubric; its views arrive in Batch 8F.
-  const rubric = (dashboard.skill.currentVersion.rubricMarkdown ?? "").trim();
-  const excerpt = rubric.length > 720 ? `${rubric.slice(0, 720).trimEnd()}…` : rubric;
+  const current = dashboard.skill.currentVersion;
+  // A typed-question version's definition is its question, not a review guide.
+  const definition = (current.typedQuestion === null
+    ? current.rubricMarkdown ?? ""
+    : `${current.typedQuestion.instructions}\n\nTrue when: ${current.typedQuestion.criteria.true}\nFalse when: ${current.typedQuestion.criteria.false}\nPass when p ≥ ${current.decisionThreshold}`).trim();
+  const excerpt = definition.length > 720 ? `${definition.slice(0, 720).trimEnd()}…` : definition;
   const isFirst = dashboard.currentVersionResultCount === 1;
 
   return (
@@ -57,7 +60,7 @@ export function FirstVerdictCard({
         <div>
           <Eyebrow>Recorded Check result</Eyebrow>
           <CardTitle className="mt-1">{isFirst ? "Your first Result" : "Latest Result"}</CardTitle>
-          <CardDescription>See what the Check concluded and which Review guide produced that opinion. It is not a human decision.</CardDescription>
+          <CardDescription>See what the Check concluded and which {current.typedQuestion === null ? "Review guide" : "typed question"} produced that opinion. It is not a human decision.</CardDescription>
         </div>
         <div className="flex-1" />
         <VerdictChip verdict={detail.judgeRun.verdict} />
@@ -73,7 +76,7 @@ export function FirstVerdictCard({
           </Button>
         </div>
         <div className="border-l border-rule-soft pl-5">
-          <Eyebrow>Review guide · v{dashboard.skill.currentVersion.version}</Eyebrow>
+          <Eyebrow>{current.typedQuestion === null ? "Review guide" : "Typed question"} · v{current.version}</Eyebrow>
           <pre className="mt-2 max-h-[180px] overflow-auto whitespace-pre-wrap break-words font-mono text-[10.5px] leading-[1.55] text-ink-3">
             {excerpt || "No review guide recorded."}
           </pre>

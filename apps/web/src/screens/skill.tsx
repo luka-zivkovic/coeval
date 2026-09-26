@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, MarginNote, SectionHead, Chip } from "@/components/rubrist";
 import { MarkdownPreview } from "@/components/markdown-preview";
+import { TypedQuestionView } from "../components/typed-question-view.js";
 import { fetchCurrentSkill } from "@/lib/api";
 import { useCriterion } from "@/lib/criterion-context";
 import { useDashboard } from "@/lib/dashboard-context";
@@ -13,11 +14,18 @@ import { cn } from "@/lib/utils";
 import { verdictKindDescription } from "@/lib/verdict-kind";
 import { compileJudgePrompt, type Skill, describeExecutionBinding, describeReasoningSettings } from "@rubrist/shared";
 
-type Tab = "rubric" | "prompt" | "binding" | "schema";
+type Tab = "rubric" | "prompt" | "question" | "binding" | "schema";
 
 const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
   { id: "rubric", label: "Review guide" },
   { id: "prompt", label: "Judge instructions" },
+  { id: "binding", label: "Execution binding" },
+  { id: "schema", label: "Result format" }
+];
+
+// A typed-question version has a question in place of a review guide and instructions.
+const TYPED_TABS: ReadonlyArray<{ id: Tab; label: string }> = [
+  { id: "question", label: "Typed question" },
   { id: "binding", label: "Execution binding" },
   { id: "schema", label: "Result format" }
 ];
@@ -74,6 +82,11 @@ export function SkillScreen() {
 
   const v = skill.currentVersion;
   const agreementPct = v.goldenSetAgreement == null ? null : Math.round(v.goldenSetAgreement * 100);
+  const typedQuestion = v.typedQuestion;
+  // The chosen tab carries across versions; a definition tab the version lacks shows its own definition.
+  const shownTab: Tab = typedQuestion !== null
+    ? (tab === "rubric" || tab === "prompt" ? "question" : tab)
+    : (tab === "question" ? "rubric" : tab);
   const goldenSetSize = dashboard?.goldenSetSize ?? null;
   const editConsequence = skillEditConsequence(goldenSetSize);
   const starterUnvalidated = skill.isStarter || v.onboardingAssurance === "starter_unvalidated";
@@ -124,15 +137,15 @@ export function SkillScreen() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="flex flex-col gap-1 border-b border-rule-soft pb-4 lg:border-r lg:border-b-0 lg:pr-4 lg:pb-0">
           <Eyebrow>Skill</Eyebrow>
-          {TABS.map((t) => (
+          {(typedQuestion ? TYPED_TABS : TABS).map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              aria-pressed={tab === t.id}
+              aria-pressed={shownTab === t.id}
               className={cn(
                 "rounded-sm px-2 py-1.5 text-left text-[12.5px] cursor-pointer",
-                tab === t.id ? "bg-card text-ink shadow-[var(--shadow-card)]" : "text-ink-2 hover:bg-paper-3"
+                shownTab === t.id ? "bg-card text-ink shadow-[var(--shadow-card)]" : "text-ink-2 hover:bg-paper-3"
               )}
             >
               {t.label}
@@ -168,10 +181,10 @@ export function SkillScreen() {
         </aside>
 
         <div className="min-w-0">
-          {/* A typed-question version has no rubric or prompt; its views arrive in Batch 8F. */}
-          {tab === "rubric" ? <RubricView markdown={v.rubricMarkdown ?? ""} /> : null}
-          {tab === "prompt" ? <PromptView prompt={v.prompt ?? ""} rubricMarkdown={v.rubricMarkdown ?? ""} /> : null}
-          {tab === "binding" ? (
+          {shownTab === "question" && typedQuestion ? <TypedQuestionView question={typedQuestion} threshold={v.decisionThreshold} /> : null}
+          {shownTab === "rubric" ? <RubricView markdown={v.rubricMarkdown ?? ""} /> : null}
+          {shownTab === "prompt" ? <PromptView prompt={v.prompt ?? ""} rubricMarkdown={v.rubricMarkdown ?? ""} /> : null}
+          {shownTab === "binding" ? (
             <BindingView
               binding={v.executionBinding}
               customEndpointUrl={v.customEndpointUrl}
@@ -180,7 +193,7 @@ export function SkillScreen() {
               categoricalChoiceScores={v.categoricalChoiceScores}
             />
           ) : null}
-          {tab === "schema" ? <SchemaView schema={v.outputSchema} /> : null}
+          {shownTab === "schema" ? <SchemaView schema={v.outputSchema} /> : null}
         </div>
       </div>
 

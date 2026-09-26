@@ -157,7 +157,10 @@ describe("MarkdownPreview", () => {
     expect(skill).not.toContain("Model used");
     expect(skill).not.toContain("Rubrist flips this skill to");
     expect(versions).toContain("<MarkdownPreview markdown={v.rubricMarkdown ?? \"\"}");
-    expect(versions).toContain("{compiledPrompt.content");
+    expect(versions).toContain("{compiledPrompt?.content");
+    // A typed-question version shows its question, never an empty guide or prompt.
+    expect(versions).toContain("<TypedQuestionView question={v.typedQuestion}");
+    expect(skill).toContain("<TypedQuestionView question={typedQuestion}");
     expect(editor).toContain('rubricMode === "preview"');
     expect(editor).toContain('aria-label="Review guide Markdown source"');
     expect(editor).toContain("requested-versus-observed mismatch is recorded evidence");

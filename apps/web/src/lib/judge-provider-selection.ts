@@ -10,7 +10,8 @@ export interface JudgeProviderSelection {
 
 /**
  * The providers a prompted evaluator can run on: every one but TypeSafe, which
- * runs only typed questions (their authoring arrives in Batch 8F).
+ * runs only typed questions. Flows that author only prompted evaluators, such
+ * as first-project setup, offer these.
  */
 export function promptedProviderOptions(
   providerOptions: ReadonlyArray<JudgeProviderAvailabilityItem>
@@ -19,16 +20,17 @@ export function promptedProviderOptions(
 }
 
 // Stored bindings and availability both use canonical provider identifiers.
-// Only a prompted provider is ever chosen, even from unfiltered availability.
+// The stored provider is kept while it is offered and available; otherwise
+// the first available prompted provider is chosen, since TypeSafe runs only
+// a typed question, which a version on another provider doesn't have.
 export function resolveJudgeProviderSelection(
   storedProvider: JudgeProviderId,
   providerOptions: ReadonlyArray<JudgeProviderAvailabilityItem>
 ): JudgeProviderSelection {
-  const prompted = promptedProviderOptions(providerOptions);
-  const currentOption = prompted.find((option) => option.provider === storedProvider);
+  const currentOption = providerOptions.find((option) => option.provider === storedProvider);
   const provider = currentOption?.available
     ? currentOption.provider
-    : prompted.find((option) => option.available)?.provider ?? "mock";
+    : promptedProviderOptions(providerOptions).find((option) => option.available)?.provider ?? "mock";
 
   return { provider, preservesBinding: provider === storedProvider };
 }
