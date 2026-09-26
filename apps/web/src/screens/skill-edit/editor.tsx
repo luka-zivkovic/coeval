@@ -34,7 +34,7 @@ export function SkillVersionEditor({
   appliedStarter, setAppliedStarter, applyStarter, rubricMode, setRubricMode,
   rubric, setRubric, prompt, setPrompt, showPromptEditor, setShowPromptEditor,
   usesImplicitRubric, unknownPromptVariables, availableProviderOptions,
-  provider, setProvider, selectedProviderOption, baseUrl, setBaseUrl, baseUrlValid,
+  provider, setProvider, canCheckModel, selectedProviderOption, baseUrl, setBaseUrl, baseUrlValid,
   modelsLoading, models, modelId, setModelId, modelVersion, setModelVersion,
   modelsError, pinnedModelMissing, temperature, setTemperature, temperatureValid, picker,
   verdictKind, scalarRange, choiceScores, hasConfiguredRealProvider, timeScope,
@@ -69,6 +69,8 @@ export function SkillVersionEditor({
   availableProviderOptions: JudgeProviderAvailabilityItem[];
   provider: JudgeProviderId;
   setProvider: Dispatch<SetStateAction<JudgeProviderId>>;
+  /** Whether a model is chosen and its provider has a key, so the picker can check it. */
+  canCheckModel: boolean;
   selectedProviderOption: JudgeProviderAvailabilityItem | undefined;
   baseUrl: string;
   setBaseUrl: Dispatch<SetStateAction<string>>;
@@ -309,6 +311,7 @@ export function SkillVersionEditor({
                 setModelId("");
                 setModelVersion("");
                 setBaseUrl("");
+                picker.modelPicked();
               }}
               className="h-9 rounded-sm border border-rule-soft bg-card-2 px-2 text-[12.5px] text-ink focus-visible:border-ink"
             >
@@ -330,7 +333,7 @@ export function SkillVersionEditor({
 
           {provider === "custom" ? (
             <Field label="OpenAI-compatible base URL">
-              <TextInput value={baseUrl} onChange={setBaseUrl} placeholder="https://api.example.com/v1" mono />
+              <TextInput value={baseUrl} onChange={(value) => { setBaseUrl(value); picker.modelPicked(); }} placeholder="https://api.example.com/v1" mono />
               {!baseUrlValid ? <span className="text-[11px] text-signal">Enter a full http(s) base URL.</span> : null}
             </Field>
           ) : (
@@ -347,6 +350,7 @@ export function SkillVersionEditor({
                   const selected = models.find((model) => model.id === value);
                   setModelId(selected?.id ?? "");
                   setModelVersion(selected?.version ?? "");
+                  picker.modelPicked();
                 }}
                 className="h-9 rounded-sm border border-rule-soft bg-card-2 px-2 font-mono text-[12px] text-ink focus-visible:border-ink disabled:opacity-60"
               >
@@ -378,6 +382,7 @@ export function SkillVersionEditor({
                 onChange={(value) => {
                   setModelId(value);
                   setModelVersion(value.trim());
+                  picker.modelPicked();
                 }}
                 placeholder="provider/model-name"
                 mono
@@ -404,7 +409,7 @@ export function SkillVersionEditor({
             setTemperature={setTemperature}
             temperatureValid={temperatureValid}
             picker={picker}
-            canCheck={modelId.trim() !== "" && modelVersion.trim() !== "" && baseUrlValid && selectedProviderOption?.available === true}
+            canCheck={canCheckModel}
           />
 
           {changeInput ? (

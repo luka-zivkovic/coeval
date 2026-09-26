@@ -5,6 +5,7 @@ import {
   executionBindingFields,
   executionBindingInputFromFields,
   inputMatchesVersion,
+  outputTokenLimitProblem,
   sameExecutionBinding
 } from "../src/lib/execution-binding-draft.js";
 
@@ -91,6 +92,21 @@ describe("editor execution-binding fields", () => {
     expect(executionBindingInputFromFields(fields({ verdictProtocol: "openai.structured-output/v1" }), SEEDED)).toBeNull();
     expect(executionBindingInputFromFields(fields({ outputTokenLimit: "0" }), SEEDED)).toBeNull();
     expect(executionBindingInputFromFields(fields({ outputTokenLimit: "" }), SEEDED)).toBeNull();
+    // Anthropic counts the thinking budget toward the limit.
+    const budget = { family: "anthropic" as const, thinking: { type: "enabled" as const, budgetTokens: 2_048 }, effort: null };
+    expect(executionBindingInputFromFields(fields({ reasoning: budget, outputTokenLimit: "2048" }), SEEDED)).toBeNull();
+    expect(executionBindingInputFromFields(fields({ reasoning: budget, outputTokenLimit: "4096" }), SEEDED)?.outputTokenLimit).toBe(4_096);
+  });
+
+  it("states what's wrong with an output token limit", () => {
+    expect(outputTokenLimitProblem("anthropic", "")).toBe("Anthropic requires an output token limit.");
+    expect(outputTokenLimitProblem("openai", "")).toBeNull();
+    for (const text of ["0", "1.5", "abc", "1000001"]) {
+      expect(outputTokenLimitProblem("openai", text), text).toBe("Enter a whole number of tokens from 1 to 1,000,000.");
+    }
+    expect(outputTokenLimitProblem("anthropic", "1024", { family: "anthropic", thinking: { type: "enabled", budgetTokens: 1_024 }, effort: null }))
+      .toBe("The limit must exceed the thinking budget of 1024 tokens.");
+    expect(outputTokenLimitProblem("mock", "abc")).toBeNull();
   });
 
   it("starts a new model from its documented default reasoning, or none where the table has no entry", () => {

@@ -57,6 +57,27 @@ export function defaultBindingSettings(provider: JudgeProviderId, modelId: strin
   };
 }
 
+/**
+ * What's wrong with an output token limit as the author typed it, or `null`
+ * when it can be saved. Anthropic requires a limit, and one above the
+ * thinking budget, since the budget counts toward it.
+ */
+export function outputTokenLimitProblem(
+  provider: JudgeProviderId,
+  text: string,
+  reasoning: ReasoningSettings | null = null
+): string | null {
+  if (!takesSamplingSettings(provider)) return null;
+  const trimmed = text.trim();
+  if (trimmed === "") return provider === "anthropic" ? "Anthropic requires an output token limit." : null;
+  const limit = Number(trimmed);
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000_000) return "Enter a whole number of tokens from 1 to 1,000,000.";
+  if (reasoning?.family === "anthropic" && reasoning.thinking.type === "enabled" && limit <= reasoning.thinking.budgetTokens) {
+    return `The limit must exceed the thinking budget of ${reasoning.thinking.budgetTokens} tokens.`;
+  }
+  return null;
+}
+
 /** The binding the editor would save, or `null` while a field is invalid. */
 export function executionBindingInputFromFields(
   fields: ExecutionBindingFields,
@@ -90,6 +111,8 @@ export function executionBindingInputFromFields(
   }
   if (!takesSampling) outputTokenLimit = null;
   if (fields.provider === "anthropic" && outputTokenLimit === null) return null;
+  if (reasoning?.family === "anthropic" && reasoning.thinking.type === "enabled" && outputTokenLimit !== null &&
+    outputTokenLimit <= reasoning.thinking.budgetTokens) return null;
 
   return {
     provider: fields.provider,
