@@ -158,22 +158,35 @@ describe("a saved typed-question version", () => {
     expect(doc.digests).toEqual(FIXTURE.digests);
   });
 
-  it("can't yet be created through either route, until the runtime can judge with it (Batch 8E-3)", async () => {
+  it("is created through the version route and names the portable vector's evaluator", async () => {
+    const repository = new DemoRepository();
+    const response = await createApp(repository).request("/api/skills/skill_support_quality/versions", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(TYPED_INPUT)
+    });
+    expect(response.status).toBeLessThan(300);
+    const { version } = await response.json() as { version: SkillVersion };
+    expect(version).toMatchObject({
+      rubricMarkdown: null, prompt: null, typedQuestion: QUESTION, decisionThreshold: THRESHOLD,
+      executionBinding: JEV, outputSchema: TypedQuestionOutputSchema, verdictKind: "binary"
+    });
+    const stored = (await repository.getSkillVersion(PROJECT_ID, version.id))!;
+    expect(evaluatorIdentityFor(stored)).toEqual(FIXTURE.evaluator.identity);
+  });
+
+  it("is refused with a rubric beside its question, on either route", async () => {
     const app = createApp(new DemoRepository());
     const post = (path: string, body: unknown) => app.request(path, {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body)
     });
+    const mixed = { ...TYPED_INPUT, rubricMarkdown: "Pass grounded answers." };
     const responses = [
-      await post("/api/skills/skill_support_quality/versions", TYPED_INPUT),
+      await post("/api/skills/skill_support_quality/versions", mixed),
       await post("/api/skills/skill_support_quality/onboarding-check", {
         idempotencyKey: "typed-onboarding",
         criterion: { name: "Refund policy", definition: "Every refund the agent offers is allowed by the policy." },
-        evaluator: TYPED_INPUT
+        evaluator: mixed
       })
     ];
-    for (const response of responses) {
-      expect(response.status).toBe(400);
-      await expect(response.json()).resolves.toMatchObject({ error: expect.stringMatching(/^Invalid execution binding: typed-question evaluators/) });
-    }
+    for (const response of responses) expect(response.status).toBe(400);
   });
 });

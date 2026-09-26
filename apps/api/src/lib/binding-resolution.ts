@@ -49,7 +49,6 @@ export function bindingResolutionServices(
     ...overrides,
     credential: async (projectId, provider) => {
       if (provider === "mock") return { apiKey: null, source: "built_in" };
-      if (provider === "typesafe") return { apiKey: null, source: null };
       const project = await projectCredential(projectId, provider);
       if (project) return { apiKey: project, source: "project" };
       const platform = judgeProviderEnvironmentKey(provider);

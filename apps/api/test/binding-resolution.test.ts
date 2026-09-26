@@ -9,6 +9,7 @@ import {
   resolveGovernedBinding,
   type GovernedBinding
 } from "../src/lib/binding-resolution.js";
+import { CAPABILITY_PROBE_INPUT, TYPED_QUESTION_PROBE, governedGateProblems } from "../src/lib/evaluator-resolution.js";
 import { SEEDED_BINDING, resolvedRecordFor, temperatureRejectingRecordFor } from "./fixtures/execution-binding.js";
 
 // Resolution and re-check as the governed gates use them (ADR-0014 section 4).
@@ -46,6 +47,7 @@ function services(respond: (body: Record<string, unknown>) => Response) {
 
 afterEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.TYPESAFE_API_KEY;
 });
 
 describe("the credential a gate probes with", () => {
@@ -152,5 +154,43 @@ describe("a transient error on a setting probe never fails a binding", () => {
       : accepted());
     const unsetBoth: ExecutionBinding = { ...OPUS, reasoning: null };
     expect((await recheckGovernedBinding(s, governed(unsetBoth))).outcome).toBe("no_longer_holds");
+  });
+});
+
+describe("a typed-question binding (ADR-0014 section 5)", () => {
+  const JEV: ExecutionBinding = {
+    provider: "typesafe", endpoint: { kind: "managed" }, modelId: "jev-1.13.0", modelVersion: "jev-1.13.0",
+    sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null,
+    verdictProtocol: "typed-question/v1", routing: null
+  };
+  const answer = (noul: number) => new Response(JSON.stringify({
+    model: "jev-1.13.0", answers: { verdict: { type: "noul", noul } }, usage: { input_tokens: 40, output_tokens: 2 }
+  }), { status: 200 });
+
+  it("is probed with the project's TypeSafe key, else TYPESAFE_API_KEY", async () => {
+    process.env.TYPESAFE_API_KEY = "typesafe-platform";
+    expect(await bindingResolutionServices(async () => "typesafe-project").credential("p", "typesafe")).toEqual({ apiKey: "typesafe-project", source: "project" });
+    expect(await bindingResolutionServices(async () => null).credential("p", "typesafe")).toEqual({ apiKey: "typesafe-platform", source: "environment" });
+  });
+
+  it("resolves on one confirming probe that asks the fixed question about the fixed trace, and takes no setting probes", async () => {
+    const { sent, services: gate } = services(() => answer(0.97));
+    const record = await resolveGovernedBinding(gate, governed(JEV));
+    expect(record).toMatchObject({ status: "resolved", credentialSource: "project", temperatureSupport: null, reasoningSupport: null });
+    expect(record.probes.map((probe) => [probe.stage, probe.purpose, probe.outcome])).toEqual([["resolution", "confirm", "accepted"]]);
+    expect(sent).toEqual([{
+      state: { input: CAPABILITY_PROBE_INPUT.trace.input, output: CAPABILITY_PROBE_INPUT.trace.output },
+      questions: { verdict: TYPED_QUESTION_PROBE.question },
+      model: "jev-1.13.0"
+    }]);
+    // With no sampling or reasoning to state, a resolved binding passes the governed gates.
+    expect(governedGateProblems(JEV, record)).toEqual([]);
+  });
+
+  it("fails when TypeSafe rejects the request, and stays unresolved on a transient error", async () => {
+    const rejectedBody = () => new Response(JSON.stringify({ detail: "Unknown model: jev-0" }), { status: 400 });
+    expect((await resolveGovernedBinding(services(rejectedBody).services, governed(JEV))).status).toBe("failed");
+    const unavailable = () => new Response(JSON.stringify({ detail: "upstream failure" }), { status: 503 });
+    expect((await resolveGovernedBinding(services(unavailable).services, governed(JEV))).status).toBe("unresolved");
   });
 });
