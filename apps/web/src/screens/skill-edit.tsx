@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,6 +52,7 @@ import {
   type SkillVersionTimeScope,
   type VerdictKind
 } from "@rubrist/shared";
+import { useBindingPicker } from "./skill-edit/binding-settings.js";
 import { SkillVersionEditor } from "./skill-edit/editor.js";
 import {
   GovernedEvaluatorEditBoundary,
@@ -119,6 +120,10 @@ export function SkillEditScreen() {
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [temperature, setTemperature] = useState("0");
+  // The model picker's settings, guided by a capability check (Batch 8F).
+  const pickerModel = useMemo(() => ({ provider, modelId, modelVersion, baseUrl }), [provider, modelId, modelVersion, baseUrl]);
+  const picker = useBindingPicker(pickerModel, (baseVersion ?? skill?.currentVersion)?.executionBinding ?? null);
+  const loadPickerSettings = picker.load;
   // First-run setup starts from an already-recorded Run whenever one exists;
   // keep the new Check on future Runs and enqueue the existing evidence after
   // its regression gate. The ordinary editor preserves the safer new-only
@@ -176,7 +181,8 @@ export function SkillEditScreen() {
     setModelVersion(keeps ? fields.modelVersion : "");
     setBaseUrl(keeps && selectedProvider === "custom" ? fields.baseUrl : "");
     setTemperature(keeps ? fields.temperature : selectedProvider === "mock" ? "" : "0");
-  }, []);
+    loadPickerSettings(keeps ? version : null);
+  }, [loadPickerSettings]);
 
   // Apply a starter template's content over the form. Model binding stays as
   // whatever's loaded (the team's existing pinned model) — starters
@@ -517,7 +523,7 @@ export function SkillEditScreen() {
       // Settings not in the editor carry over from the version being edited,
       // the same base the change review compares against.
       const executionBinding = executionBindingInputFromFields(
-        { provider, modelId, modelVersion, baseUrl, temperature },
+        { provider, modelId, modelVersion, baseUrl, ...picker.savedFields(temperature) },
         (baseVersion ?? v).executionBinding
       );
       if (executionBinding === null) return null;
@@ -549,7 +555,7 @@ export function SkillEditScreen() {
       };
       return input;
     },
-    [skill, baseVersion, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, timeScope, verdictKind, choiceScores, scalarRange, firstRun, starterSuppliedOutputContract]
+    [skill, baseVersion, rubric, prompt, provider, modelId, modelVersion, baseUrl, temperature, picker, timeScope, verdictKind, choiceScores, scalarRange, firstRun, starterSuppliedOutputContract]
   );
 
   const canSave =
@@ -882,6 +888,7 @@ export function SkillEditScreen() {
       temperature={temperature}
       setTemperature={setTemperature}
       temperatureValid={temperatureValid}
+      picker={picker}
       verdictKind={verdictKind}
       scalarRange={scalarRange}
       choiceScores={choiceScores}

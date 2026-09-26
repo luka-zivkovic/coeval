@@ -18,6 +18,7 @@ const EXPECTED_PUBLIC_EXPORTS = [
   "adjudicateCase",
   "assistTraceTestDraft",
   "buildVerdictExportUrl",
+  "checkModelCapabilities",
   "createAgentSetupPairing",
   "createApiKey",
   "createDataset",

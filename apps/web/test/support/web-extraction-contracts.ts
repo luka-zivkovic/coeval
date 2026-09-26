@@ -28,6 +28,7 @@ export const webExtractionContracts = {
     root: "screens/skill-edit.tsx",
     sources: [
       "screens/skill-edit.tsx",
+      "screens/skill-edit/binding-settings.tsx",
       "screens/skill-edit/editor.tsx",
       "screens/skill-edit/regression.tsx"
     ],
