@@ -406,6 +406,7 @@ runPgSmoke("PgRepository smoke", () => {
         }]
       });
       await repo.failEvalRunItem({
+        failure: { state: "failure", failureKind: "provider_timeout", observed: { model: null, requestId: null, responseId: null, systemFingerprint: null, upstreamProvider: null, thinkingReturned: null, reasoningTokens: null } },
         projectId: "proj_test",
         evalRunId: errRun.id,
         evalRunItemId: errRun.items[0]!.id,

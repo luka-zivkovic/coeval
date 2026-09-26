@@ -168,7 +168,8 @@ class ExecutionBindingJudgeProvider implements JudgeProvider {
         requestId: result.observed.requestId,
         responseId: result.observed.responseId,
         systemFingerprint: result.observed.systemFingerprint
-      }
+      },
+      observed: result.observed
     };
   }
 }

@@ -673,6 +673,7 @@ export class PgEvalRunRepository implements EvalRunRepositoryPort {
          set status = 'failed', error = $4, execution_token = null,
              execution_claimed_at = null, provider_call_started_at = null,
              provider_call_returned_at = null, delivery_deadline_at = null,
+             failure_kind = $6, not_attempted = $7, observed = $8::jsonb,
              finished_at = now()
          where id = $1 and eval_run_id = $2 and project_id = $3 and status = 'pending'
            and ($5::text is null or execution_token = $5)
@@ -683,7 +684,10 @@ export class PgEvalRunRepository implements EvalRunRepositoryPort {
                and run.status in ('pending', 'running')
            )
          returning id`,
-        [input.evalRunItemId, input.evalRunId, input.projectId, input.error, input.executionToken ?? null]
+        [input.evalRunItemId, input.evalRunId, input.projectId, input.error, input.executionToken ?? null,
+          input.failure.state === "failure" ? input.failure.failureKind : null,
+          input.failure.state === "not_attempted",
+          input.failure.state === "failure" ? JSON.stringify(input.failure.observed) : null]
       );
       if (!itemResult.rows[0]) {
         await client.query("rollback");

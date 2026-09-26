@@ -133,6 +133,7 @@ describe("assessment receipt canonical evidence", () => {
       items: [{ caseId: "case_error", clientItemId: "error-1", contentDigest: contentDigest(null, null) }]
     });
     await repo.failEvalRunItem({
+      failure: { state: "failure", failureKind: "provider_timeout", observed: { model: null, requestId: null, responseId: null, systemFingerprint: null, upstreamProvider: null, thinkingReturned: null, reasoningTokens: null } },
       projectId: PROJECT,
       evalRunId: created.id,
       evalRunItemId: created.items[0]!.id,

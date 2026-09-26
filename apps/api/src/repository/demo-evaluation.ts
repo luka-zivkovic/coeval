@@ -212,6 +212,9 @@ export class DemoEvaluationRepository implements
         providerMetadata: item.providerMetadata ?? null,
         cached: item.cached ?? false,
         error: null,
+        failureKind: null,
+        notAttempted: false,
+        observed: null,
         createdAt,
         finishedAt: status === "pending" ? null : createdAt
       };
@@ -624,6 +627,9 @@ export class DemoEvaluationRepository implements
     try {
       item.status = "failed";
       item.error = input.error;
+      item.failureKind = input.failure.state === "failure" ? input.failure.failureKind : null;
+      item.notAttempted = input.failure.state === "not_attempted";
+      item.observed = input.failure.state === "failure" ? input.failure.observed : null;
       item.finishedAt = new Date().toISOString();
       this.store.evalRunItemExecutions.delete(item.id);
       run.failedItems += 1;

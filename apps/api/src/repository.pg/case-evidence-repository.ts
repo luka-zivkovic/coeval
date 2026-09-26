@@ -162,8 +162,9 @@ export class PgCaseEvidenceRepository implements CaseEvidenceRepositoryPort {
     }
     const result = await this.pool.query(
       `insert into verdicts
-       (id, project_id, case_id, skill_version_id, source, actor_user_id, verdict_kind, payload, external_run_id)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       (id, project_id, case_id, skill_version_id, source, actor_user_id, verdict_kind, payload, external_run_id,
+        observed, evaluator_score)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb)
        returning *`,
       [
         `verdict_${randomUUID()}`,
@@ -174,7 +175,9 @@ export class PgCaseEvidenceRepository implements CaseEvidenceRepositoryPort {
         input.actorUserId ?? null,
         input.payload.kind,
         JSON.stringify(input.payload),
-        input.externalRunId ?? null
+        input.externalRunId ?? null,
+        input.observed ? JSON.stringify(input.observed) : null,
+        input.evaluatorScore ? JSON.stringify(input.evaluatorScore) : null
       ]
     );
     // a human verdict completes any pending queue items pointing at

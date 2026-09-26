@@ -429,6 +429,7 @@ describe("eval runs — worker fan-out + counter lifecycle", () => {
     await processEvalItemJob(repository, jobs.find((job) => job.caseId === good)!);
     const doomed = jobs.find((job) => job.caseId === "case_vanished")!;
     await repository.failEvalRunItem({
+      failure: { state: "failure", failureKind: "provider_timeout", observed: { model: null, requestId: null, responseId: null, systemFingerprint: null, upstreamProvider: null, thinkingReturned: null, reasoningTokens: null } },
       projectId: PROJECT,
       evalRunId: run.id,
       evalRunItemId: doomed.evalRunItemId,

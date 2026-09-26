@@ -389,6 +389,7 @@
     "ManualTraceImportResultSchema",
     "MinimumVerdictOutputSchema",
     "ModelBindingSchema",
+    "ObservedCallSchema",
     "OnboardingEvidenceInventorySchema",
     "OpenRouterRoutingSchema",
     "PRODUCTION_CALIBRATION_CONFIDENCE_BASIS_POINTS",

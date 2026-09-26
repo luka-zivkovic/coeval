@@ -18,6 +18,9 @@ import type {
   ManualTraceImportResult,
   PromoteGoldenSetInput,
   ProviderResponseMetadata,
+  EvaluatorFailureKind,
+  EvaluatorScore,
+  ObservedCall,
   RuntimeIngestionPurpose,
   SkillVersion,
   TraceRedactionConfig,
@@ -240,12 +243,18 @@ export interface CompleteEvalRunItemInputDb {
   providerMetadata?: ProviderResponseMetadata | undefined;
 }
 
+/** How a failed item ended (ADR-0014 section 6): a classified failure of an attempted call, or never attempted. */
+export type EvalRunItemFailure =
+  | { state: "failure"; failureKind: EvaluatorFailureKind; observed: ObservedCall }
+  | { state: "not_attempted" };
+
 export interface FailEvalRunItemInputDb {
   projectId: string;
   evalRunId: string;
   evalRunItemId: string;
   executionToken?: string | undefined;
   error: string;
+  failure: EvalRunItemFailure;
 }
 
 export interface CreateApiKeyInputDb {
@@ -399,6 +408,9 @@ export interface RecordVerdictInput {
   skillVersionId?: string | undefined;
   actorUserId?: string | undefined;
   externalRunId?: string | undefined;
+  /** An evaluator verdict's call observation and own score (ADR-0014 section 6). */
+  observed?: ObservedCall | null | undefined;
+  evaluatorScore?: EvaluatorScore | null | undefined;
 }
 
 export interface ListCasesOptions {

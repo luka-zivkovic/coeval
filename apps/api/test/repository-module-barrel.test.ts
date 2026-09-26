@@ -100,6 +100,7 @@ const EXPECTED_TYPE_ONLY_EXPORTS = [
   "EvalRunDispatchInputDb",
   "EvalRunItemExecutionClaim",
   "EvalRunItemExecutionInputDb",
+  "EvalRunItemFailure",
   "EvalRunItemReleaseDisposition",
   "EvalRunItemReleaseOptions",
   "FailEvalRunItemInputDb",

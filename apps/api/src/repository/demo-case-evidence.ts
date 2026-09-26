@@ -102,6 +102,8 @@ export class DemoCaseEvidenceRepository implements CaseEvidenceRepositoryPort {
       actorUserId: input.actorUserId ?? null,
       payload: input.payload,
       externalRunId: input.externalRunId ?? null,
+      observed: input.observed ?? null,
+      evaluatorScore: input.evaluatorScore ?? null,
       createdAt
     };
     this.store.verdicts.push(record);

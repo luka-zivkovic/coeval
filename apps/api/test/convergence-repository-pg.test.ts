@@ -553,6 +553,7 @@ run("PostgreSQL convergence audit", () => {
         executionToken: "terminal_pre_call_generation_b"
       })).toEqual({ state: "busy" });
       await repository.failEvalRunItem({
+        failure: { state: "failure", failureKind: "provider_timeout", observed: { model: null, requestId: null, responseId: null, systemFingerprint: null, upstreamProvider: null, thinkingReturned: null, reasoningTokens: null } },
         projectId: terminalPreCallClaim.projectId,
         evalRunId: terminalPreCallClaim.evalRunId,
         evalRunItemId: terminalPreCallClaim.evalRunItemId,

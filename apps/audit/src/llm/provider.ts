@@ -1,5 +1,6 @@
 import { JudgePrompt, JudgeVerdict, Trace } from "../schema.js";
 import { StructuredVerdict, VerdictSpec } from "./verdict-spec.js";
+import type { ObservedProvenance } from "../execution/failure.js";
 
 export interface JudgeProvider {
   readonly name: string;
@@ -42,4 +43,6 @@ export interface StructuredJudgeResult {
   verdict: StructuredVerdict;
   usage?: TokenUsage;
   providerMetadata?: ProviderResponseMetadata;
+  /** Everything the call observed (ADR-0014 section 6); absent for a provider that doesn't execute a binding. */
+  observed?: ObservedProvenance;
 }
