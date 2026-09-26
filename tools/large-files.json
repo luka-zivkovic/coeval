@@ -85,6 +85,11 @@
       "classification": "generated",
       "reason": "apps/audit/scripts/write-verdict-protocol-fixture.ts records every prompted verdict protocol's pinned material, one entry per protocol and sample; released entries never change (ADR-0014 section 3).",
       "revisit": "Never hand-edit or split; a new protocol version or sample only adds entries through the writer."
+    },
+    "docs/ux-audit/2026-09-26-shell-and-overview.md": {
+      "classification": "structural_exception",
+      "reason": "One dated audit record: each finding keeps its evidence, TARGET/CURRENT/ASSUMPTION label, rule, and proposal together so claims can be checked in place, and the Overview blueprint cites findings across both parts. The top-findings table and the S1-S9 and O1-O13 finding IDs are the navigation map.",
+      "revisit": "Revisit if a second round, page, or flow is added to this file; later audit rounds get their own dated files in docs/ux-audit/."
     }
   }
 }
