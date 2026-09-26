@@ -7,7 +7,7 @@ import type { SkillVersion } from "@rubrist/shared";
 /** A prompted version's rubric and prompt; a typed-question version has none to give. */
 export function promptedText(version: Pick<SkillVersion, "rubricMarkdown" | "prompt">): { rubricMarkdown: string; prompt: string } {
   if (version.rubricMarkdown === null || version.prompt === null) {
-    throw new Error("A typed-question evaluator version has no rubric or prompt");
+    throw new Error("This evaluator version has no rubric and prompt to judge with");
   }
   return { rubricMarkdown: version.rubricMarkdown, prompt: version.prompt };
 }

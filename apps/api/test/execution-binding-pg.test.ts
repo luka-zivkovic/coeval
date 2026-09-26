@@ -73,16 +73,18 @@ runPgSmoke("execution binding storage", () => {
         prompt: null as string | null,
         question: question as unknown,
         threshold: 0.62 as number | null,
-        verdictKind: "binary"
+        verdictKind: "binary",
+        scalarRange: null as [number, number] | null,
+        outputSchema: TypedQuestionOutputSchema as object
       };
       const store = (row: typeof typed) => pool.query(
         `update skill_versions
             set execution_binding = $1, rubric_markdown = $2, prompt = $3, typed_question = $4,
-                decision_threshold = $5, verdict_kind = $6, output_schema = $7
+                decision_threshold = $5, verdict_kind = $6, scalar_range = $7, output_schema = $8
           where id = 'skillv_test'`,
         [
           JSON.stringify(row.binding), row.rubric, row.prompt, row.question === null ? null : JSON.stringify(row.question),
-          row.threshold, row.verdictKind, JSON.stringify(TypedQuestionOutputSchema)
+          row.threshold, row.verdictKind, row.scalarRange === null ? null : JSON.stringify(row.scalarRange), JSON.stringify(row.outputSchema)
         ]
       );
 
@@ -95,6 +97,9 @@ runPgSmoke("execution binding storage", () => {
       // The saved version names the portable vector's evaluator exactly.
       expect(evaluatorIdentityFor(stored!)).toEqual(identity);
       expect(skillDigestV2(evaluatorIdentityFor(stored!))).toBe(TYPED_FIXTURE.digests.skillDigest);
+      // The contract is compared as JSON, so its key order doesn't matter.
+      const { properties, ...rest } = TypedQuestionOutputSchema;
+      await store({ ...typed, outputSchema: { properties, ...rest } });
 
       const refusals: Array<[string, Partial<typeof typed>]> = [
         ["a rubric beside the question", { rubric: "Pass correct answers." }],
@@ -104,7 +109,8 @@ runPgSmoke("execution binding storage", () => {
         ["no threshold", { threshold: null }],
         ["threshold 0", { threshold: 0 }],
         ["threshold 1", { threshold: 1 }],
-        ["a scalar verdict", { verdictKind: "scalar" }],
+        ["a scalar verdict", { verdictKind: "scalar", scalarRange: [0, 1] }],
+        ["another output contract", { outputSchema: { type: "object" } }],
         ["a question on a prompted binding", { binding: MOCK_BINDING, rubric: "r", prompt: "p" }],
         ["a threshold on a prompted binding", { binding: MOCK_BINDING, rubric: "r", prompt: "p", question: null }],
         ["a prompted binding without its rubric", { binding: MOCK_BINDING, rubric: null, prompt: "p", question: null, threshold: null }]

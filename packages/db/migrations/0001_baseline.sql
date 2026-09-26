@@ -11927,10 +11927,12 @@ CREATE TABLE skill_versions (
     -- A typed-question version (ADR-0014 section 5) asks a question with a
     -- decision threshold on P(pass), strictly between 0 and 1, and has no
     -- rubric or prompt; a prompted version is the reverse. Only
-    -- typed-question/v1 runs a typed question, and its verdict is binary.
+    -- typed-question/v1 runs a typed question, its verdict is binary, and its
+    -- output contract is the fixed probability schema, which identity names
+    -- only by question type and polarity.
     CONSTRAINT skill_versions_definition_kind_check CHECK ((
       CASE WHEN ((execution_binding ->> 'verdictProtocol'::text) = 'typed-question/v1'::text)
-        THEN ((typed_question IS NOT NULL) AND (jsonb_typeof(typed_question) = 'object'::text) AND (decision_threshold IS NOT NULL) AND (decision_threshold > (0)::double precision) AND (decision_threshold < (1)::double precision) AND (rubric_markdown IS NULL) AND (prompt IS NULL) AND (verdict_kind = 'binary'::text))
+        THEN ((typed_question IS NOT NULL) AND (jsonb_typeof(typed_question) = 'object'::text) AND (decision_threshold IS NOT NULL) AND (decision_threshold > (0)::double precision) AND (decision_threshold < (1)::double precision) AND (rubric_markdown IS NULL) AND (prompt IS NULL) AND (verdict_kind = 'binary'::text) AND (output_schema = '{"type": "object", "required": ["probability"], "properties": {"probability": {"type": "number", "maximum": 1, "minimum": 0}}, "additionalProperties": false}'::jsonb))
         ELSE ((typed_question IS NULL) AND (decision_threshold IS NULL) AND (rubric_markdown IS NOT NULL) AND (prompt IS NOT NULL))
       END)),
     -- The binding names a custom endpoint only by digest (ADR-0014 section 2):

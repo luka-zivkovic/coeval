@@ -4,7 +4,8 @@ import {
   JsonSchemaSchema,
   RubricProvenanceSchema,
   SkillStatusSchema,
-  VerdictKindSchema
+  VerdictKindSchema,
+  isTypedQuestionOutputSchema
 } from "./judge.js";
 
 export const SkillVersionSchema = z
@@ -66,9 +67,10 @@ export const SkillVersionSchema = z
     message: "custom bindings keep their endpoint URL, and only they do"
   })
   .refine((v) => v.executionBinding.verdictProtocol === "typed-question/v1"
-    ? v.typedQuestion !== null && v.decisionThreshold !== null && v.rubricMarkdown === null && v.prompt === null && v.verdictKind === "binary"
+    ? v.typedQuestion !== null && v.decisionThreshold !== null && v.rubricMarkdown === null && v.prompt === null &&
+      v.verdictKind === "binary" && isTypedQuestionOutputSchema(v.outputSchema)
     : v.typedQuestion === null && v.decisionThreshold === null && v.rubricMarkdown !== null && v.prompt !== null, {
-    message: "a typed-question version holds a question and threshold and no rubric or prompt, and a prompted version the reverse"
+    message: "a typed-question version holds a question, a threshold, and the fixed probability contract and no rubric or prompt, and a prompted version a rubric and prompt and no question or threshold"
   });
 export type SkillVersion = z.infer<typeof SkillVersionSchema>;
 

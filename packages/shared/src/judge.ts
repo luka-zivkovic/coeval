@@ -147,6 +147,27 @@ export const TypedQuestionOutputSchema = {
   }
 } as const;
 
+/** JSON equality, with object keys in any order. */
+function sameJson(left: unknown, right: unknown): boolean {
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left) && Array.isArray(right) && left.length === right.length &&
+      left.every((entry, index) => sameJson(entry, right[index]));
+  }
+  if (left !== null && right !== null && typeof left === "object" && typeof right === "object") {
+    const leftRecord = left as Record<string, unknown>;
+    const rightRecord = right as Record<string, unknown>;
+    const keys = Object.keys(leftRecord);
+    return keys.length === Object.keys(rightRecord).length &&
+      keys.every((key) => Object.hasOwn(rightRecord, key) && sameJson(leftRecord[key], rightRecord[key]));
+  }
+  return Object.is(left, right);
+}
+
+/** Whether a stored output schema is exactly the typed-question contract, keys in any order. */
+export function isTypedQuestionOutputSchema(value: unknown): boolean {
+  return sameJson(value, TypedQuestionOutputSchema);
+}
+
 /**
  * How deep a saved output schema may nest: skill-format/v2 carries it four
  * levels below the document root (evaluator.identity.definition.outputSchema).

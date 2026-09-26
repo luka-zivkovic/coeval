@@ -1070,6 +1070,7 @@
     "ironsideTraceViewerUrl",
     "isInternalTraceMetadata",
     "isPortableSkillFormatV2Example",
+    "isTypedQuestionOutputSchema",
     "isVerdictLabel",
     "joinProductionDecisionRecords",
     "mutableModelAlias",

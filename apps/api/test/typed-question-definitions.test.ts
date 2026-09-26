@@ -66,26 +66,44 @@ describe("typed-question version input", () => {
     expect(CreateSkillVersionInputSchema.parse(PROMPTED_INPUT).outputSchema).toEqual(MinimumVerdictOutputSchema);
   });
 
-  it("refuses a version that mixes the two definition kinds or leaves out what its kind needs", () => {
+  it("parses its own output again, so a client that parses before sending isn't refused", () => {
+    const typed = CreateSkillVersionInputSchema.parse(TYPED_INPUT);
+    expect(CreateSkillVersionInputSchema.parse(typed)).toEqual(typed);
+    // The fixed contract may come back with its keys in any order.
+    const { properties, ...rest } = TypedQuestionOutputSchema;
+    expect(CreateSkillVersionInputSchema.safeParse({ ...TYPED_INPUT, outputSchema: { properties, ...rest } }).success).toBe(true);
+    const prompted = CreateSkillVersionInputSchema.parse(PROMPTED_INPUT);
+    expect(CreateSkillVersionInputSchema.parse(prompted)).toEqual(prompted);
+  });
+
+  it("refuses a version that mixes the two definition kinds or leaves out what its kind needs, naming the field", () => {
     const { typedQuestion: _question, ...noQuestion } = TYPED_INPUT;
     const { decisionThreshold: _threshold, ...noThreshold } = TYPED_INPUT;
     const { rubricMarkdown: _rubric, ...noRubric } = PROMPTED_INPUT;
-    const refused: Array<[string, unknown]> = [
-      ["typed without a question", noQuestion],
-      ["typed without a threshold", noThreshold],
-      ["typed at threshold 0", { ...TYPED_INPUT, decisionThreshold: 0 }],
-      ["typed at threshold 1", { ...TYPED_INPUT, decisionThreshold: 1 }],
-      ["typed with a rubric", { ...TYPED_INPUT, rubricMarkdown: "r" }],
-      ["typed with a prompt", { ...TYPED_INPUT, prompt: "p" }],
-      ["typed and scalar", { ...TYPED_INPUT, verdictKind: "scalar", scalarRange: [0, 1] }],
-      ["typed with an output schema", { ...TYPED_INPUT, outputSchema: TypedQuestionOutputSchema }],
-      ["typed with an empty criterion", { ...TYPED_INPUT, typedQuestion: { ...QUESTION, criteria: { ...QUESTION.criteria, false: "" } } }],
-      ["prompted with a question", { ...PROMPTED_INPUT, typedQuestion: QUESTION }],
-      ["prompted with a threshold", { ...PROMPTED_INPUT, decisionThreshold: THRESHOLD }],
-      ["prompted without a rubric", noRubric]
+    const { prompt: _prompt, ...noPrompt } = PROMPTED_INPUT;
+    const nul = (text: string) => `${text}\u0000`;
+    const refused: Array<[string, unknown, string | null]> = [
+      ["typed without a question", noQuestion, "typedQuestion"],
+      ["typed without a threshold", noThreshold, "decisionThreshold"],
+      ["typed at threshold 0", { ...TYPED_INPUT, decisionThreshold: 0 }, "decisionThreshold"],
+      ["typed at threshold 1", { ...TYPED_INPUT, decisionThreshold: 1 }, "decisionThreshold"],
+      ["typed with a rubric", { ...TYPED_INPUT, rubricMarkdown: "r" }, "rubricMarkdown"],
+      ["typed with a prompt", { ...TYPED_INPUT, prompt: "p" }, "prompt"],
+      ["typed and scalar", { ...TYPED_INPUT, verdictKind: "scalar", scalarRange: [0, 1] }, "verdictKind"],
+      ["typed with another output schema", { ...TYPED_INPUT, outputSchema: MinimumVerdictOutputSchema }, "outputSchema"],
+      ["typed with an empty criterion", { ...TYPED_INPUT, typedQuestion: { ...QUESTION, criteria: { ...QUESTION.criteria, false: "" } } }, "typedQuestion"],
+      ["typed with a NUL in its question", { ...TYPED_INPUT, typedQuestion: { ...QUESTION, instructions: nul(QUESTION.instructions) } }, null],
+      ["prompted with a question", { ...PROMPTED_INPUT, typedQuestion: QUESTION }, "typedQuestion"],
+      ["prompted with a threshold", { ...PROMPTED_INPUT, decisionThreshold: THRESHOLD }, "decisionThreshold"],
+      ["prompted without a rubric", noRubric, "rubricMarkdown"],
+      ["prompted without a prompt", noPrompt, "prompt"],
+      ["prompted with a NUL in its rubric", { ...PROMPTED_INPUT, rubricMarkdown: nul("Pass.") }, null]
     ];
-    for (const [name, input] of refused) {
-      expect(CreateSkillVersionInputSchema.safeParse(input).success, name).toBe(false);
+    for (const [name, input, field] of refused) {
+      const result = CreateSkillVersionInputSchema.safeParse(input);
+      expect(result.success, name).toBe(false);
+      const paths = result.error!.issues.map((issue) => issue.path[0] ?? null);
+      expect(paths, name).toContain(field);
     }
   });
 });
@@ -99,6 +117,7 @@ describe("a saved typed-question version", () => {
       ["a prompt beside the question", { prompt: "p" }],
       ["no question", { typedQuestion: null }],
       ["no threshold", { decisionThreshold: null }],
+      ["another output contract", { outputSchema: MinimumVerdictOutputSchema }],
       ["a question on a prompted binding", { executionBinding: structuredClone(MOCK_BINDING), rubricMarkdown: "r", prompt: "p" }]
     ];
     for (const [name, change] of refused) {
@@ -137,5 +156,24 @@ describe("a saved typed-question version", () => {
     const doc = verifySkillFormatV2(await response.json(), { skillDigest: FIXTURE.digests.skillDigest });
     expect(doc.evaluator).toEqual(FIXTURE.evaluator);
     expect(doc.digests).toEqual(FIXTURE.digests);
+  });
+
+  it("can't yet be created through either route, until the runtime can judge with it (Batch 8E-3)", async () => {
+    const app = createApp(new DemoRepository());
+    const post = (path: string, body: unknown) => app.request(path, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body)
+    });
+    const responses = [
+      await post("/api/skills/skill_support_quality/versions", TYPED_INPUT),
+      await post("/api/skills/skill_support_quality/onboarding-check", {
+        idempotencyKey: "typed-onboarding",
+        criterion: { name: "Refund policy", definition: "Every refund the agent offers is allowed by the policy." },
+        evaluator: TYPED_INPUT
+      })
+    ];
+    for (const response of responses) {
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toMatchObject({ error: expect.stringMatching(/^Invalid execution binding: typed-question evaluators/) });
+    }
   });
 });

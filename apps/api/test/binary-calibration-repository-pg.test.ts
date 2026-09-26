@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runMigrations } from "@rubrist/db";
-import { CreateSkillVersionInputSchema } from "@rubrist/shared";
+import { CreateSkillVersionInputSchema, TypedQuestionOutputSchema } from "@rubrist/shared";
 import { canonicalJson, sha256Digest } from "../src/lib/canonical-json.js";
 import {
   parseCanonicalBinaryCalibrationV2ArtifactBytes,
@@ -212,17 +212,21 @@ run("PgBinaryCalibrationRepository", () => {
       await pool.query(`update skill_versions set execution_binding = $2::jsonb where id=$1`, [skillVersionId, JSON.stringify(MOCK_BINDING)]);
       await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({ code: "unsupported" });
       const typedQuestion = { ...MOCK_BINDING, provider: "typesafe", modelId: "jev-1.13.0", modelVersion: "jev-1.13.0", verdictProtocol: "typed-question/v1" };
-      const promptedText = (await pool.query(`select rubric_markdown,prompt from skill_versions where id=$1`, [skillVersionId])).rows[0]!;
+      const prompted = (await pool.query(`select rubric_markdown,prompt,output_schema from skill_versions where id=$1`, [skillVersionId])).rows[0]!;
       await pool.query(
         `update skill_versions set execution_binding = $2::jsonb, rubric_markdown = null, prompt = null,
-                typed_question = $3::jsonb, decision_threshold = 0.5 where id=$1`,
-        [skillVersionId, JSON.stringify(typedQuestion), JSON.stringify({ type: "noul", instructions: "Is it correct?", criteria: { true: "Yes.", false: "No." } })]
+                typed_question = $3::jsonb, decision_threshold = 0.5, output_schema = $4::jsonb where id=$1`,
+        [
+          skillVersionId, JSON.stringify(typedQuestion),
+          JSON.stringify({ type: "noul", instructions: "Is it correct?", criteria: { true: "Yes.", false: "No." } }),
+          JSON.stringify(TypedQuestionOutputSchema)
+        ]
       );
       await expect(repository.createRun(OWNER, input)).rejects.toMatchObject({ code: "unsupported" });
       await pool.query(
         `update skill_versions set execution_binding = $2::jsonb, rubric_markdown = $3, prompt = $4,
-                typed_question = null, decision_threshold = null where id=$1`,
-        [skillVersionId, JSON.stringify(MOCK_BINDING), promptedText.rubric_markdown, promptedText.prompt]
+                typed_question = null, decision_threshold = null, output_schema = $5::jsonb where id=$1`,
+        [skillVersionId, JSON.stringify(MOCK_BINDING), prompted.rubric_markdown, prompted.prompt, JSON.stringify(prompted.output_schema)]
       );
       // Governed gate (ADR-0014 section 2): a resolved binding that states
       // its temperature and reasoning, unless the model rejects the parameter.

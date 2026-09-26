@@ -6,6 +6,7 @@ import {
   JudgeProviderIdSchema,
   MinimumVerdictOutputSchema,
   TypedQuestionOutputSchema,
+  isTypedQuestionOutputSchema,
   RubricProvenanceSchema,
   RUBRIC_TEMPLATE_VARIABLE,
   SkillStatusSchema,
@@ -127,6 +128,7 @@ export {
   VerdictSourceSchema,
   compileJudgePrompt,
   containsLoneUtf16Surrogate,
+  isTypedQuestionOutputSchema,
   defaultJudgePromptTemplate,
   MUTABLE_MODEL_ALIAS_RULE_VERSION,
   mutableModelAlias,
@@ -750,6 +752,11 @@ export const CreateSkillVersionInputSchema = z
   .refine((value) => !containsLoneUtf16Surrogate(value), {
     message: "Evaluator input must not contain an unpaired UTF-16 surrogate"
   })
+  // PostgreSQL text and jsonb can't hold a NUL character.
+  .refine((v) => ![v.rubricMarkdown, v.prompt, v.typedQuestion?.instructions, v.typedQuestion?.criteria.true, v.typedQuestion?.criteria.false]
+    .some((text) => text?.includes("\u0000")), {
+    message: "Evaluator text must not contain a NUL character"
+  })
   .refine(
     (v) => v.verdictKind !== "scalar" || (v.scalarRange !== undefined && v.scalarRange[0] < v.scalarRange[1]),
     { message: "scalar skill versions require an ascending scalarRange" }
@@ -765,15 +772,18 @@ export const CreateSkillVersionInputSchema = z
     if (v.executionBinding.verdictProtocol === "typed-question/v1") {
       if (v.typedQuestion === undefined) issue("typedQuestion", "a typed-question version names its question");
       if (v.decisionThreshold === undefined) issue("decisionThreshold", "a typed-question version declares its decision threshold; there is no default");
-      if (v.rubricMarkdown !== undefined || v.prompt !== undefined) issue("rubricMarkdown", "a typed-question version has no rubric or prompt");
+      if (v.rubricMarkdown !== undefined) issue("rubricMarkdown", "a typed-question version has no rubric");
+      if (v.prompt !== undefined) issue("prompt", "a typed-question version has no prompt");
       if (v.verdictKind !== "binary") issue("verdictKind", "a typed-question version is binary");
-      if (v.outputSchema !== undefined) issue("outputSchema", "a typed-question version's output contract is fixed");
+      // The contract is fixed, so it may be left out or sent back unchanged.
+      if (v.outputSchema !== undefined && !isTypedQuestionOutputSchema(v.outputSchema)) {
+        issue("outputSchema", "a typed-question version's output contract is the fixed probability schema");
+      }
     } else {
       if (v.rubricMarkdown === undefined) issue("rubricMarkdown", "a prompted version needs a rubric");
       if (v.prompt === undefined) issue("prompt", "a prompted version needs a prompt");
-      if (v.typedQuestion !== undefined || v.decisionThreshold !== undefined) {
-        issue("typedQuestion", "only a typed-question version names a question or decision threshold");
-      }
+      if (v.typedQuestion !== undefined) issue("typedQuestion", "only a typed-question version names a question");
+      if (v.decisionThreshold !== undefined) issue("decisionThreshold", "only a typed-question version declares a decision threshold");
     }
   })
   .transform((v) => ({

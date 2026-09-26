@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { SkillVersion } from "@rubrist/shared";
+import { TypedQuestionOutputSchema, type SkillVersion } from "@rubrist/shared";
 import type { PoolClient } from "pg";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
@@ -234,6 +234,38 @@ describe("PostgreSQL skill-version client commands", () => {
       null,
       null
     ]);
+  });
+
+  it("writes a typed-question version's question and threshold in place of a rubric and prompt", async () => {
+    const question = { type: "noul" as const, instructions: "Is the answer grounded?", criteria: { true: "Grounded.", false: "Not grounded." } };
+    const version: SkillVersion = {
+      ...versionFixture(),
+      rubricMarkdown: null,
+      prompt: null,
+      typedQuestion: question,
+      decisionThreshold: 0.62,
+      executionBinding: {
+        provider: "typesafe", endpoint: { kind: "managed" }, modelId: "jev-1.13.0", modelVersion: "jev-1.13.0",
+        sampling: { temperature: null, topP: null }, reasoning: null, outputTokenLimit: null,
+        verdictProtocol: "typed-question/v1", routing: null
+      },
+      outputSchema: structuredClone(TypedQuestionOutputSchema) as unknown as SkillVersion["outputSchema"],
+      verdictKind: "binary",
+      scalarRange: null
+    };
+    const calls: Array<{ sql: string; values: unknown[] | undefined }> = [];
+    const client = {
+      query: async (sql: string, values?: unknown[]) => {
+        calls.push({ sql, values });
+        if (sql.includes("insert into skill_versions")) return { rows: [], rowCount: 1 };
+        return { rows: [], rowCount: 0 };
+      }
+    } as unknown as PoolClient;
+
+    await commands.insertSkillVersion(client, version, "project-1", "criterion-version-1", null);
+    const values = calls.find((call) => call.sql.includes("insert into skill_versions"))?.values ?? [];
+    expect({ rubric: values[5], prompt: values[6], question: values[29], threshold: values[30] })
+      .toEqual({ rubric: null, prompt: null, question: JSON.stringify(question), threshold: 0.62 });
   });
 
   it("keeps absent or unverified authors unknown without retaining account PII", async () => {
