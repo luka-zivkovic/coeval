@@ -124,6 +124,10 @@ export async function fetchJudgeModelCatalog(input: {
   if (provider === "custom") {
     throw new JudgeModelCatalogError(provider, "unconfigured", null, "Custom OpenAI-compatible models are entered manually.");
   }
+  // TypeSafe publishes no model catalog; a typed-question model is named exactly.
+  if (provider === "typesafe") {
+    throw new JudgeModelCatalogError(provider, "unconfigured", null, "TypeSafe models are entered by name.");
+  }
   if (!input.apiKey) {
     throw new JudgeModelCatalogError(provider, "unconfigured", null, `Configure a ${provider} API key before loading models.`);
   }
@@ -147,7 +151,7 @@ async function fetchJudgeModelCatalogUncached(input: {
   fetchImpl?: JudgeModelFetch;
 }): Promise<JudgeModelCatalog> {
   const { provider } = input;
-  if (provider === "mock" || provider === "custom" || !input.apiKey) {
+  if (provider === "mock" || provider === "custom" || provider === "typesafe" || !input.apiKey) {
     throw new Error("fetchJudgeModelCatalogUncached requires a keyed catalog provider");
   }
   const fetchImpl = input.fetchImpl ?? defaultFetch;

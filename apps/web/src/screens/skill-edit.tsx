@@ -259,8 +259,11 @@ export function SkillEditScreen() {
       setOnboardingEvidenceInventory(evidenceInventory);
       const v = s.currentVersion;
       setBaseVersion(v);
-      setProviderOptions(availability.providers);
-      applyBindingFields(v, availability.providers);
+      // This editor authors prompted evaluators; TypeSafe runs only typed
+      // questions, whose authoring arrives in Batch 8F.
+      const promptedProviders = availability.providers.filter((option) => option.provider !== "typesafe");
+      setProviderOptions(promptedProviders);
+      applyBindingFields(v, promptedProviders);
 
       if (firstRun) {
         const savedDraft = loadOnboardingCheckDraft(s.projectId, s.id);

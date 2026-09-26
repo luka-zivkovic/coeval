@@ -19,7 +19,7 @@ export const SkillStatusSchema = z.enum([
 ]);
 export type SkillStatus = z.infer<typeof SkillStatusSchema>;
 
-export const JudgeProviderIdSchema = z.enum(["mock", "anthropic", "openai", "openrouter", "custom"]);
+export const JudgeProviderIdSchema = z.enum(["mock", "anthropic", "openai", "openrouter", "custom", "typesafe"]);
 export type JudgeProviderId = z.infer<typeof JudgeProviderIdSchema>;
 
 // Canonical JSON identities operate on Unicode scalar values. JavaScript can

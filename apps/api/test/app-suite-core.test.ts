@@ -79,6 +79,11 @@ describe("Rubrist Hono API", () => {
       ...base,
       skill: { ...base.skill, model: { provider: "openai", baseUrl: "https://judge.example/v1" } }
     })).toThrow();
+    // A bootstrap writes a rubric, which only a prompted provider runs.
+    expect(() => AgentBootstrapRequestSchema.parse({
+      ...base,
+      skill: { ...base.skill, model: { provider: "typesafe", modelId: "jev-1.13.0" } }
+    })).toThrow();
   });
 
   it("reports a retryable rollback when headless setup removes its failed project", async () => {

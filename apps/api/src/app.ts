@@ -854,7 +854,7 @@ export function createApp(repository: RubristRepository = new DemoRepository(), 
     const denied = await requireOwner(c, "manage judge provider keys");
     if (denied) return denied;
     const provider = JudgeKeyProviderSchema.safeParse(c.req.param("provider"));
-    if (!provider.success) return c.json({ error: "Provider must be anthropic, openai, openrouter, or custom" }, 400);
+    if (!provider.success) return c.json({ error: "Provider must be anthropic, openai, openrouter, custom, or typesafe" }, 400);
     const body = await c.req.json().catch(() => null);
     const parsed = SetJudgeProviderKeyInputSchema.safeParse(body);
     if (!parsed.success) {
@@ -873,7 +873,7 @@ export function createApp(repository: RubristRepository = new DemoRepository(), 
     const denied = await requireOwner(c, "manage judge provider keys");
     if (denied) return denied;
     const provider = JudgeKeyProviderSchema.safeParse(c.req.param("provider"));
-    if (!provider.success) return c.json({ error: "Provider must be anthropic, openai, openrouter, or custom" }, 400);
+    if (!provider.success) return c.json({ error: "Provider must be anthropic, openai, openrouter, custom, or typesafe" }, 400);
     const removed = await repository.deleteJudgeProviderKey(c.get("projectId"), provider.data, c.get("user")?.id);
     if (!removed) return c.json({ error: "No stored key for that provider" }, 404);
     return c.json({ removed: true });

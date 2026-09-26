@@ -500,6 +500,13 @@ runPgSmoke("PgRepository smoke", () => {
       await repo.setJudgeProviderKey("proj_test", "custom", "custom-compatible-key-12345678", undefined);
       expect(await repo.getJudgeProviderCredential("proj_test", "openrouter")).toBe("openrouter-secret-key-12345678");
       expect(await repo.getJudgeProviderCredential("proj_test", "custom")).toBe("custom-compatible-key-12345678");
+      // TypeSafe keys run typed-question evaluators (ADR-0014 section 5).
+      await repo.setJudgeProviderKey("proj_test", "typesafe", "typesafe-secret-key-12345678", undefined);
+      expect(await repo.getJudgeProviderCredential("proj_test", "typesafe")).toBe("typesafe-secret-key-12345678");
+      await expect(pool.query(
+        `insert into judge_provider_keys (id, project_id, provider, encrypted_credentials, key_display)
+         values ('jpk_unknown', 'proj_test', 'jev', 'x', 'x')`
+      )).rejects.toMatchObject({ code: "23514" });
 
       // Replace overwrites; delete removes; foreign project sees nothing.
       await repo.setJudgeProviderKey("proj_test", "anthropic", "test-anthropic-replacement-key-999999", undefined);

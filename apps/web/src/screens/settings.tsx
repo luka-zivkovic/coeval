@@ -339,7 +339,8 @@ const JUDGE_KEY_PROVIDERS: ReadonlyArray<{ provider: JudgeKeyProvider; label: st
   { provider: "anthropic", label: "Anthropic" },
   { provider: "openai", label: "OpenAI" },
   { provider: "openrouter", label: "OpenRouter" },
-  { provider: "custom", label: "Custom OpenAI-compatible" }
+  { provider: "custom", label: "Custom OpenAI-compatible" },
+  { provider: "typesafe", label: "TypeSafe" }
 ];
 
 function JudgeKeysCard() {

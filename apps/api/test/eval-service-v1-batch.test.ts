@@ -498,7 +498,7 @@ describe("POST /api/v1/judge/batch — fire-and-poll", () => {
     const delAgain = await app.request("/api/judge-keys/anthropic", { method: "DELETE" });
     expect(delAgain.status).toBe(404);
 
-    for (const provider of ["openrouter", "custom"] as const) {
+    for (const provider of ["openrouter", "custom", "typesafe"] as const) {
       const save = await app.request(`/api/judge-keys/${provider}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },

@@ -112,6 +112,7 @@ RUBRIST_BOOTSTRAP_TOKEN=
 ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
 OPENROUTER_API_KEY=
+TYPESAFE_API_KEY=
 ```
 
 Set `RUBRIST_TRUST_PROXY=1` only when clients cannot bypass your trusted reverse
