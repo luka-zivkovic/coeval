@@ -53,7 +53,10 @@ export interface VerdictExecutionInput {
    * Runs once every check before the call has passed and just before the one
    * physical call is sent, so a durable call-start record never precedes a
    * refusal. If it throws, nothing is sent and its error propagates as is.
-   * The mock makes no physical call, so it never runs there.
+   * The mock makes no physical call, so it never runs there. After it runs,
+   * every failure counts as a physical call, even one the runtime refuses
+   * locally (such as a port fetch blocks): evidence errs toward a request
+   * having left.
    */
   beforeDispatch?: () => Promise<void>;
 }
@@ -160,6 +163,10 @@ export async function executeVerdict(input: VerdictExecutionInput): Promise<Verd
   const apiKey = input.apiKey;
   assertCredential(binding.provider, apiKey);
   const send = input.fetch ?? ((url, init) => fetch(url, init));
+  // Everything the call sends is built before the dispatch hook, so only the
+  // send itself follows it.
+  const headers = { ...http.headers, ...authorization(binding, apiKey) };
+  const body = JSON.stringify(http.body);
   await input.beforeDispatch?.();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), input.timeoutMs ?? DEFAULT_TIMEOUT_MS);
@@ -179,8 +186,8 @@ export async function executeVerdict(input: VerdictExecutionInput): Promise<Verd
     try {
       response = await send(http.url, {
         method: "POST",
-        headers: { ...http.headers, ...authorization(binding, apiKey) },
-        body: JSON.stringify(http.body),
+        headers,
+        body,
         redirect: "manual",
         signal: controller.signal
       });

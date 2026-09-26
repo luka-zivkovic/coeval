@@ -54,7 +54,7 @@ import type {
   RetentionPruneResult,
   UpdateProjectSettingsInput
 } from "./projects.js";
-import { ExecutionBindingInputSchema } from "./evaluator-execution.js";
+import { EVALUATOR_DEFINITION_TEXT_MAX, ExecutionBindingInputSchema } from "./evaluator-execution.js";
 import { SkillSchema, SkillVersionSchema } from "./skills.js";
 import type { Skill, SkillVersion } from "./skills.js";
 import {
@@ -735,9 +735,8 @@ export type SkillVersionTimeScope = z.infer<typeof SkillVersionTimeScopeSchema>;
 export const CreateSkillVersionInputSchema = z
   .object({
     criterionVersionId: z.string().min(1).optional(),
-    // The evaluator definition's limits (ADR-0014 section 1).
-    rubricMarkdown: z.string().min(1).max(100_000),
-    prompt: z.string().min(1).max(100_000),
+    rubricMarkdown: z.string().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX),
+    prompt: z.string().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX),
     executionBinding: ExecutionBindingInputSchema,
     outputSchema: JsonSchemaSchema.default(MinimumVerdictOutputSchema),
     verdictKind: VerdictKindSchema.default("binary"),

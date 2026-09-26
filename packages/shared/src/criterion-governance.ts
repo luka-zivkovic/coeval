@@ -24,7 +24,7 @@ import {
   VerdictKindSchema,
   containsLoneUtf16Surrogate
 } from "./judge.js";
-import { ExecutionBindingInputSchema } from "./evaluator-execution.js";
+import { EVALUATOR_DEFINITION_TEXT_MAX, ExecutionBindingInputSchema } from "./evaluator-execution.js";
 import { SkillSchema } from "./skills.js";
 
 // Evaluator suite manifest v1 is a separate, policy-free artifact. It binds
@@ -425,8 +425,8 @@ export const CriterionDetailSchema = z.object({
 export type CriterionDetail = z.infer<typeof CriterionDetailSchema>;
 
 export const CriterionEvaluatorDraftInputSchema = z.object({
-  rubricMarkdown: z.string().trim().min(1).max(100_000),
-  prompt: z.string().trim().min(1).max(100_000),
+  rubricMarkdown: z.string().trim().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX),
+  prompt: z.string().trim().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX),
   executionBinding: ExecutionBindingInputSchema,
   outputSchema: JsonSchemaSchema.default(MinimumVerdictOutputSchema),
   verdictKind: VerdictKindSchema.default("binary"),

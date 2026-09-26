@@ -465,8 +465,9 @@ describe("failures are classified once and never retried", () => {
 });
 
 describe("calls that never leave Rubrist", () => {
-  it("runs the mock locally", async () => {
+  it("runs the mock locally, with no dispatch", async () => {
     const http = stub(() => { throw new Error("the mock must not call out"); });
+    let dispatched = 0;
     const result = await run({
       provider: "mock",
       endpoint: { kind: "managed" },
@@ -477,10 +478,11 @@ describe("calls that never leave Rubrist", () => {
       outputTokenLimit: null,
       verdictProtocol: "mock/v1",
       routing: null
-    }, http, { apiKey: null });
+    }, http, { apiKey: null, beforeDispatch: async () => { dispatched += 1; } });
     expect(result.verdict.kind).toBe("binary");
     expect(result.observed.model).toBe("mock-heuristic-v1");
     expect(http.sent).toHaveLength(0);
+    expect(dispatched).toBe(0);
   });
 
   it("refuses before sending when there is no credential or the binding can't be sent as stated", async () => {

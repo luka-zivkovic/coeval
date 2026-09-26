@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CreateSkillVersionInputSchema,
+  EVALUATOR_DEFINITION_TEXT_MAX,
   EVALUATOR_IDENTITY_BASIS,
   EvaluatorDefinitionSchema,
   EvaluatorIdentitySchema,
@@ -22,6 +23,7 @@ import {
   skillDigestV2FromInput,
   typedQuestionDigest
 } from "../src/lib/evaluator-identity.js";
+import { executionBindingFromInput } from "../src/lib/execution-binding.js";
 
 const SONNET_46: ExecutionBinding = {
   provider: "anthropic",
@@ -297,10 +299,28 @@ describe("a saved version's identity", () => {
     expect(() => evaluatorIdentityFor({ ...version, verdictKind: "scalar" })).toThrow();
   });
 
-  it("can always be built from a version the create input accepts", () => {
-    const input = { rubricMarkdown: "x".repeat(100_001), prompt: "Judge.", executionBinding: { ...SONNET_46, endpoint: { kind: "managed" } } };
-    expect(CreateSkillVersionInputSchema.safeParse(input).success).toBe(false);
-    expect(CreateSkillVersionInputSchema.safeParse({ ...input, rubricMarkdown: "x".repeat(100_000) }).success).toBe(true);
+  it("can be built from any version the create input accepts, at the longest text", () => {
+    const text = "x".repeat(EVALUATOR_DEFINITION_TEXT_MAX);
+    const base = { rubricMarkdown: text, prompt: text, executionBinding: { ...SONNET_46, endpoint: { kind: "managed" } } };
+    const inputs = [
+      base,
+      { ...base, verdictKind: "scalar", scalarRange: [1, 5] },
+      { ...base, verdictKind: "categorical", categoricalChoiceScores: { good: 1, bad: 0 } }
+    ];
+    for (const raw of inputs) {
+      const input = CreateSkillVersionInputSchema.parse(raw);
+      const { executionBinding } = executionBindingFromInput(input.executionBinding, { openAIBaseUrl: null });
+      expect(() => evaluatorIdentityFor({
+        rubricMarkdown: input.rubricMarkdown,
+        prompt: input.prompt,
+        verdictKind: input.verdictKind,
+        outputSchema: input.outputSchema,
+        scalarRange: input.scalarRange ?? null,
+        categoricalChoiceScores: input.categoricalChoiceScores ?? null,
+        executionBinding
+      })).not.toThrow();
+    }
+    expect(CreateSkillVersionInputSchema.safeParse({ ...base, rubricMarkdown: `${text}x` }).success).toBe(false);
   });
 });
 

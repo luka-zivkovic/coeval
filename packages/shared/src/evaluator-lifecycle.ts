@@ -1,9 +1,10 @@
 import { z } from "zod";
 import {
   JsonSchemaSchema,
-  MinimumVerdictOutputSchema
+  MinimumVerdictOutputSchema,
+  containsLoneUtf16Surrogate
 } from "./judge.js";
-import { ExecutionBindingInputSchema } from "./evaluator-execution.js";
+import { EVALUATOR_DEFINITION_TEXT_MAX, ExecutionBindingInputSchema } from "./evaluator-execution.js";
 import { SkillSchema } from "./skills.js";
 
 // Batch 6B-4: explicit evaluator lifecycle for analysis-promotion criteria.
@@ -59,12 +60,14 @@ export const EvaluatorCandidateCreateInputSchema = z.object({
   expectedTruthContentDigest: EvaluatorLifecycleDigestSchema,
   skillName: z.string().trim().min(1).max(200),
   skillDescription: z.string().trim().min(1).max(2_000),
-  rubricMarkdown: z.string().trim().min(1).max(100_000),
-  prompt: z.string().trim().min(1).max(100_000),
+  rubricMarkdown: z.string().trim().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX),
+  prompt: z.string().trim().min(1).max(EVALUATOR_DEFINITION_TEXT_MAX),
   executionBinding: ExecutionBindingInputSchema,
   outputSchema: JsonSchemaSchema.default(MinimumVerdictOutputSchema),
   idempotencyKey: EvaluatorLifecycleIdempotencyKeySchema
-}).strict();
+}).strict().refine((value) => !containsLoneUtf16Surrogate(value), {
+  message: "Evaluator input must not contain an unpaired UTF-16 surrogate"
+});
 export type EvaluatorCandidateCreateInput = z.infer<typeof EvaluatorCandidateCreateInputSchema>;
 
 export const EvaluatorLifecycleArtifactSchema = z.object({

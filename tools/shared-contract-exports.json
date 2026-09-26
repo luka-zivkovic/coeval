@@ -249,6 +249,7 @@
     "DeleteProjectInputSchema",
     "DisagreementCaseSchema",
     "DisagreementSummarySchema",
+    "EVALUATOR_DEFINITION_TEXT_MAX",
     "EVALUATOR_EXECUTION_AUTHORIZATION_VERSION",
     "EVALUATOR_IDENTITY_BASIS",
     "EVALUATOR_LIFECYCLE_CONTRACT_VERSION",
