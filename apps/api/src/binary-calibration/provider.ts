@@ -113,8 +113,8 @@ export function createBinaryCalibrationProviderExecutor(input: {
           observed: {
             model: error.observed?.model ?? null,
             systemFingerprint: error.observed?.systemFingerprint ?? null,
-            // An OpenRouter error names the upstream that answered in its body.
-            upstreamProvider: error.observed?.upstreamProvider ?? error.providerError?.upstreamProvider ?? null
+            // The executor records an OpenRouter error's upstream, and only an OpenRouter binding's.
+            upstreamProvider: error.observed?.upstreamProvider ?? null
           }
         });
       }

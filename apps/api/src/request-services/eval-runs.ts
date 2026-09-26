@@ -10,6 +10,7 @@ import {
   SealedValidationUnavailableError,
   type RubristRepository
 } from "../repository.js";
+import { createJudgeProvider, createStrictJudgeProvider } from "../lib/judge-provider.js";
 import { runEvalRunInline } from "../workers/eval-run.js";
 
 export interface DatasetEvalRunInput {
@@ -105,7 +106,15 @@ export function createEvalRunRequestService(
         ...queueOptions
       });
     } else {
-      await runEvalRunInline(repository, projectId, run.id);
+      // Release evidence is judged only by the bound evaluator: every receipt
+      // outcome states what its call observed, so the demo's heuristic
+      // fallback never stands in for it.
+      await runEvalRunInline(
+        repository,
+        projectId,
+        run.id,
+        run.trigger === "release_evidence" ? createStrictJudgeProvider : createJudgeProvider
+      );
     }
     return (await repository.getEvalRun(projectId, run.id)) ?? run;
   };

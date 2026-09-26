@@ -61,7 +61,7 @@ manifest revisions. The canonical manifest bytes are the artifact of record;
 relational member rows support ownership and execution checks. A manifest pins
 ordered criterion definitions, exact evaluator versions, applicability, and an
 optional independent-repetition plan. It cannot represent customer release
-policy. Assessment receipt v1 remains a separate artifact per criterion.
+policy. The assessment receipt remains a separate artifact per criterion.
 
 ### Human review
 

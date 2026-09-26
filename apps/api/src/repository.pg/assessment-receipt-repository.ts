@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import type { AssessmentReceipt } from "@rubrist/shared";
+import type { AssessmentReceiptV2 } from "@rubrist/shared";
 import type { Pool } from "pg";
 import {
-  canonicalReceiptBytes,
-  parseCanonicalReceiptBytes,
+  RECEIPT_SCHEMA_VERSION,
+  canonicalReceiptV2Bytes,
+  parseCanonicalReceiptV2Bytes,
   receiptArtifactDigest
-} from "../lib/assessment-receipt.js";
+} from "../lib/assessment-receipt-v2.js";
 import type {
   AssessmentReceiptArtifact,
   AssessmentReceiptComparison,
@@ -70,9 +71,9 @@ export class PgAssessmentReceiptRepository implements AssessmentReceiptRepositor
   }
 
   async compareAssessmentReceiptCopy(input: CompareAssessmentReceiptCopyInput): Promise<AssessmentReceiptComparison> {
-    let consumerReceipt: AssessmentReceipt;
+    let consumerReceipt: AssessmentReceiptV2;
     try {
-      consumerReceipt = parseCanonicalReceiptBytes(input.consumerCanonicalBytes);
+      consumerReceipt = parseCanonicalReceiptV2Bytes(input.consumerCanonicalBytes);
     } catch (error) {
       throw new AssessmentReceiptIntegrityError(error instanceof Error ? error.message : String(error));
     }
@@ -86,7 +87,7 @@ export class PgAssessmentReceiptRepository implements AssessmentReceiptRepositor
         "historical_freeze"
       );
       if (!root) throw new AssessmentReceiptUnavailableError("missing_source", "Eval run not found");
-      const rootReceipt = parseCanonicalReceiptBytes(root.canonicalBytes);
+      const rootReceipt = parseCanonicalReceiptV2Bytes(root.canonicalBytes);
       if (
         consumerReceipt.projectId !== input.projectId ||
         consumerReceipt.evalRunId !== input.evalRunId ||
@@ -144,11 +145,11 @@ export class PgAssessmentReceiptRepository implements AssessmentReceiptRepositor
   ): Promise<AssessmentReceiptArtifact> {
     const reason = input.reason.trim();
     if (!reason) throw new AssessmentReceiptIntegrityError("Assessment receipt correction reason is required");
-    let receipt: AssessmentReceipt;
+    let receipt: AssessmentReceiptV2;
     let canonicalBytes: Buffer;
     try {
-      canonicalBytes = canonicalReceiptBytes(input.receipt);
-      receipt = parseCanonicalReceiptBytes(canonicalBytes);
+      canonicalBytes = canonicalReceiptV2Bytes(input.receipt);
+      receipt = parseCanonicalReceiptV2Bytes(canonicalBytes);
     } catch (error) {
       throw new AssessmentReceiptIntegrityError(error instanceof Error ? error.message : String(error));
     }
@@ -182,30 +183,31 @@ export class PgAssessmentReceiptRepository implements AssessmentReceiptRepositor
         }
         throw new AssessmentReceiptIntegrityError("Correction receiptId is already in use");
       }
-      const rootReceipt = parseCanonicalReceiptBytes(root.canonicalBytes);
+      const rootReceipt = parseCanonicalReceiptV2Bytes(root.canonicalBytes);
       if (
         receipt.schemaVersion !== rootReceipt.schemaVersion ||
         receipt.skillId !== rootReceipt.skillId ||
-        receipt.skillVersionId !== rootReceipt.skillVersionId
+        receipt.skillVersionId !== rootReceipt.skillVersionId ||
+        receipt.skillDigest !== rootReceipt.skillDigest
       ) {
         throw new AssessmentReceiptIntegrityError("Correction cannot change the receipt contract or evaluator identity");
       }
       const latest = await client.query(
         `select * from assessment_receipt_artifacts
-         where project_id = $1 and eval_run_id = $2 and contract_version = 1
+         where project_id = $1 and eval_run_id = $2 and contract_version = $3
          order by artifact_revision desc limit 1`,
-        [input.projectId, input.evalRunId]
+        [input.projectId, input.evalRunId, RECEIPT_SCHEMA_VERSION]
       );
       const predecessor = rowToAssessmentReceiptArtifact(latest.rows[0]);
       const artifactRevision = predecessor.artifactRevision + 1;
       const artifactDigest = receiptArtifactDigest(canonicalBytes);
-      const artifactId = `rart_${input.evalRunId}_v1_r${artifactRevision}`;
+      const artifactId = `rart_${input.evalRunId}_v${RECEIPT_SCHEMA_VERSION}_r${artifactRevision}`;
       const inserted = await client.query(
         `insert into assessment_receipt_artifacts
          (id, project_id, eval_run_id, receipt_id, contract_version, artifact_revision,
           canonical_bytes, artifact_digest, evidence_digest, source_snapshot_digest,
           source_kind, predecessor_artifact_id, correction_reason, created_by_user_id)
-         values ($1,$2,$3,$4,1,$5,$6,$7,$8,$7,'correction',$9,$10,$11)
+         values ($1,$2,$3,$4,$12,$5,$6,$7,$8,$7,'correction',$9,$10,$11)
          returning *`,
         [
           artifactId,
@@ -218,7 +220,8 @@ export class PgAssessmentReceiptRepository implements AssessmentReceiptRepositor
           receipt.evidenceDigest,
           predecessor.id,
           reason,
-          input.createdByUserId ?? null
+          input.createdByUserId ?? null,
+          RECEIPT_SCHEMA_VERSION
         ]
       );
       await client.query("commit");

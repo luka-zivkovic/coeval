@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { DatasetSchema, validateStepExpectation } from "./datasets.js";
-import { ModelBindingSchema, VerdictLabelSchema } from "./judge.js";
+import { VerdictLabelSchema } from "./judge.js";
 import { EvaluatorFailureKindSchema, ObservedCallSchema } from "./evaluator-execution.js";
 import { ManualTraceImportInputSchema } from "./traces.js";
 
@@ -322,39 +322,3 @@ export const JudgeBatchRequestSchema = z.object({
 });
 export type JudgeBatchRequest = z.infer<typeof JudgeBatchRequestSchema>;
 
-const Sha256DigestSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
-
-export const AssessmentReceiptItemSchema = z.object({
-  clientItemId: z.string().min(1),
-  caseId: z.string().min(1),
-  status: EvalRunItemStatusSchema,
-  judgedLabel: VerdictLabelSchema.nullable(),
-  verdictId: z.string().nullable(),
-  error: z.string().nullable(),
-  contentDigest: Sha256DigestSchema,
-  providerMetadata: ProviderResponseMetadataSchema.strict()
-}).strict();
-export type AssessmentReceiptItem = z.infer<typeof AssessmentReceiptItemSchema>;
-
-export const AssessmentReceiptSchema = z.object({
-  schemaVersion: z.literal(1),
-  receiptId: z.string().min(1),
-  evalRunId: z.string().min(1),
-  projectId: z.string().min(1),
-  skillId: z.string().min(1),
-  skillVersionId: z.string().min(1),
-  status: z.enum(["complete", "incomplete"]),
-  run: z.object({
-    status: EvalRunStatusSchema,
-    totalItems: z.number().int().nonnegative(),
-    completedItems: z.number().int().nonnegative(),
-    failedItems: z.number().int().nonnegative(),
-    agreedItems: z.number().int().nonnegative()
-  }).strict(),
-  requestedModelBinding: ModelBindingSchema.strict(),
-  skillDigest: Sha256DigestSchema,
-  datasetDigest: Sha256DigestSchema,
-  items: z.array(AssessmentReceiptItemSchema),
-  evidenceDigest: Sha256DigestSchema
-}).strict();
-export type AssessmentReceipt = z.infer<typeof AssessmentReceiptSchema>;

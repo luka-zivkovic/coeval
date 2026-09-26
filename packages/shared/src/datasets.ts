@@ -42,7 +42,7 @@ export const DatasetDetailSchema = DatasetSchema.extend({
 export type DatasetDetail = z.infer<typeof DatasetDetailSchema>;
 
 // Immutable evidence revisions sit alongside mutable datasets. Exact input
-// identity is deliberately separate from assessment-receipt v1's
+// identity is deliberately separate from the assessment receipt's
 // input+output content digest.
 export const DatasetRevisionRoleSchema = z.enum([
   "analysis_authoring",

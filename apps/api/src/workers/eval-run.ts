@@ -152,7 +152,7 @@ const NOT_ATTEMPTED: EvalRunItemFailure = { state: "not_attempted" };
 function postDispatchFailure(error: unknown, providerCallReturned: boolean): EvalRunItemFailure {
   if (!providerCallReturned && error instanceof EvaluatorCallError) {
     if (!error.physicalCall) return { state: "not_attempted", executorRefused: true };
-    return { state: "failure", failureKind: error.failureKind, observed: observedCallFrom(error.observed, error.providerError) };
+    return { state: "failure", failureKind: error.failureKind, observed: observedCallFrom(error.observed) };
   }
   return OUTCOME_UNKNOWN;
 }

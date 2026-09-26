@@ -1,6 +1,6 @@
 import type {
   ApiKey,
-  AssessmentReceipt,
+  AssessmentReceiptV2,
   Criterion,
   CriterionVersion,
   Dataset,
@@ -57,7 +57,7 @@ import {
   VerdictPayloadSchema,
   VerdictRecordSchema
 } from "@rubrist/shared";
-import { parseCanonicalReceiptBytes, receiptArtifactDigest } from "../lib/assessment-receipt.js";
+import { parseCanonicalReceiptV2Bytes, receiptArtifactDigest } from "../lib/assessment-receipt-v2.js";
 import type {
   AssessmentReceiptArtifact,
   AssessmentReceiptArtifactSource,
@@ -475,9 +475,9 @@ export function rowToEvalRun(row: Record<string, unknown>): EvalRun {
 
 export function rowToAssessmentReceiptArtifact(row: Record<string, unknown>): AssessmentReceiptArtifact {
   const canonicalBytes = Buffer.from(row.canonical_bytes as Uint8Array);
-  let receipt: AssessmentReceipt;
+  let receipt: AssessmentReceiptV2;
   try {
-    receipt = parseCanonicalReceiptBytes(canonicalBytes);
+    receipt = parseCanonicalReceiptV2Bytes(canonicalBytes);
   } catch (error) {
     throw new AssessmentReceiptIntegrityError(
       `Persisted assessment receipt bytes failed validation: ${error instanceof Error ? error.message : String(error)}`
@@ -528,9 +528,9 @@ export function rowToAssessmentReceiptArtifact(row: Record<string, unknown>): As
 
 export function rowToAssessmentReceiptComparison(row: Record<string, unknown>): AssessmentReceiptComparison {
   const consumerCanonicalBytes = Buffer.from(row.consumer_canonical_bytes as Uint8Array);
-  let receipt: AssessmentReceipt;
+  let receipt: AssessmentReceiptV2;
   try {
-    receipt = parseCanonicalReceiptBytes(consumerCanonicalBytes);
+    receipt = parseCanonicalReceiptV2Bytes(consumerCanonicalBytes);
   } catch (error) {
     throw new AssessmentReceiptIntegrityError(
       `Persisted consumer receipt bytes failed validation: ${error instanceof Error ? error.message : String(error)}`

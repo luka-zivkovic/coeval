@@ -1,7 +1,7 @@
 import type { JudgeProvider, Trace } from "@rubrist/audit/runtime";
 import type {
   ApiKeyCapability,
-  AssessmentReceipt,
+  AssessmentReceiptV2,
   CaseSource,
   DatasetKind,
   DatasetReferenceProvenance,
@@ -107,7 +107,7 @@ export interface CompareAssessmentReceiptCopyInput {
 export interface CreateAssessmentReceiptCorrectionInput {
   projectId: string;
   evalRunId: string;
-  receipt: AssessmentReceipt;
+  receipt: AssessmentReceiptV2;
   reason: string;
   createdByUserId?: string | undefined;
 }

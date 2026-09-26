@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  AssessmentReceiptSchema,
-  type AssessmentReceipt
+  AssessmentReceiptV2Schema,
+  type AssessmentReceiptV2
 } from "@rubrist/shared";
 import type { Pool, PoolClient } from "pg";
 import ts from "typescript";
@@ -15,10 +15,10 @@ import {
   vi
 } from "vitest";
 import {
-  canonicalReceiptBytes,
-  evidenceDigestForReceipt,
+  canonicalReceiptV2Bytes,
+  evidenceDigestForReceiptV2,
   receiptArtifactDigest
-} from "../src/lib/assessment-receipt.js";
+} from "../src/lib/assessment-receipt-v2.js";
 import type { AssessmentReceiptArtifact } from "../src/repository.js";
 
 const receiptCommandMocks = vi.hoisted(() => ({
@@ -51,11 +51,11 @@ const ASSESSMENT_RECEIPT_REPOSITORY_PATH = path.join(
   "repository.pg/assessment-receipt-repository.ts"
 );
 const fixture = JSON.parse(fs.readFileSync(
-  fileURLToPath(new URL("../../../contracts/fixtures/assessment-receipt-v1.complete.json", import.meta.url)),
+  fileURLToPath(new URL("../../../contracts/fixtures/assessment-receipt-v2.complete.json", import.meta.url)),
   "utf8"
 )) as { receipt: unknown };
-const ROOT_RECEIPT = AssessmentReceiptSchema.parse(fixture.receipt);
-const ROOT_BYTES = canonicalReceiptBytes(ROOT_RECEIPT);
+const ROOT_RECEIPT = AssessmentReceiptV2Schema.parse(fixture.receipt);
+const ROOT_BYTES = canonicalReceiptV2Bytes(ROOT_RECEIPT);
 
 function sourceFile(filePath: string): ts.SourceFile {
   return ts.createSourceFile(
@@ -202,10 +202,10 @@ function assessmentReceiptRepositoryAnalysis(program: ts.Program) {
   };
 }
 
-function rootArtifact(receipt: AssessmentReceipt = ROOT_RECEIPT): AssessmentReceiptArtifact {
-  const canonicalBytes = canonicalReceiptBytes(receipt);
+function rootArtifact(receipt: AssessmentReceiptV2 = ROOT_RECEIPT): AssessmentReceiptArtifact {
+  const canonicalBytes = canonicalReceiptV2Bytes(receipt);
   return {
-    id: "rart-contract-run-1-v1-r1",
+    id: "rart-contract-v2-run-1-v2-r1",
     projectId: receipt.projectId,
     evalRunId: receipt.evalRunId,
     receiptId: receipt.receiptId,
@@ -243,17 +243,15 @@ function artifactRow(artifact: AssessmentReceiptArtifact): Record<string, unknow
   };
 }
 
-function correctedReceipt(root: AssessmentReceipt): AssessmentReceipt {
-  const unsigned = {
-    ...structuredClone(root),
-    receiptId: `${root.receiptId}-correction-2`,
-    items: root.items.map((item, index) => index === 0 ? { ...item, judgedLabel: "fail" as const } : item)
-  };
-  const { evidenceDigest: _old, ...withoutDigest } = unsigned;
-  return AssessmentReceiptSchema.parse({
-    ...withoutDigest,
-    evidenceDigest: evidenceDigestForReceipt(withoutDigest as AssessmentReceipt)
-  });
+/** The fixture's first item, a pass, corrected to a fail, with consistent counters. */
+function correctedReceipt(root: AssessmentReceiptV2): AssessmentReceiptV2 {
+  const draft = structuredClone(root);
+  draft.receiptId = `${root.receiptId}-correction-2`;
+  draft.items[0]!.result = { state: "outcome", outcome: "fail" };
+  draft.run.passItems -= 1;
+  draft.run.failItems += 1;
+  const { evidenceDigest: _old, ...unsigned } = draft;
+  return AssessmentReceiptV2Schema.parse({ ...unsigned, evidenceDigest: evidenceDigestForReceiptV2(unsigned) });
 }
 
 beforeEach(() => {
@@ -373,7 +371,7 @@ describe("PostgreSQL assessment-receipt repository slice", () => {
     const successorReceipt = correctedReceipt(ROOT_RECEIPT);
     const successor = {
       ...rootArtifact(successorReceipt),
-      id: "rart-contract-run-1-v1-r2",
+      id: "rart-contract-v2-run-1-v2-r2",
       artifactRevision: 2,
       sourceKind: "correction" as const,
       predecessorArtifactId: root.id,
@@ -531,10 +529,10 @@ describe("PostgreSQL assessment-receipt repository slice", () => {
   it("appends a canonical correction after the exact predecessor and commits once", async () => {
     const root = rootArtifact();
     const receipt = correctedReceipt(ROOT_RECEIPT);
-    const canonicalBytes = canonicalReceiptBytes(receipt);
+    const canonicalBytes = canonicalReceiptV2Bytes(receipt);
     const correction: AssessmentReceiptArtifact = {
       ...rootArtifact(receipt),
-      id: "rart_contract-run-1_v1_r2",
+      id: "rart_contract-v2-run-1_v2_r2",
       artifactRevision: 2,
       sourceKind: "correction",
       predecessorArtifactId: root.id,
@@ -582,9 +580,9 @@ describe("PostgreSQL assessment-receipt repository slice", () => {
       "release"
     ]);
     expect(queries[0]?.values).toEqual([root.projectId, receipt.receiptId]);
-    expect(queries[1]?.values).toEqual([root.projectId, root.evalRunId]);
+    expect(queries[1]?.values).toEqual([root.projectId, root.evalRunId, 2]);
     expect(queries[2]?.values).toEqual([
-      "rart_contract-run-1_v1_r2",
+      "rart_contract-v2-run-1_v2_r2",
       root.projectId,
       root.evalRunId,
       receipt.receiptId,
@@ -594,7 +592,8 @@ describe("PostgreSQL assessment-receipt repository slice", () => {
       receipt.evidenceDigest,
       root.id,
       "Correct first label",
-      "user-1"
+      "user-1",
+      2
     ]);
 
     const replayEvents: string[] = [];

@@ -1,8 +1,7 @@
 import { EvaluatorCallError } from "@rubrist/audit/runtime";
-import type { ExecutionBinding, SkillVersion } from "@rubrist/shared";
+import { AssessmentReceiptV2Schema, type ExecutionBinding } from "@rubrist/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.js";
-import { skillDigest } from "../src/lib/assessment-receipt.js";
 import { endpointBaseUrlDigest } from "../src/lib/evaluator-identity.js";
 import {
   ExecutionBindingInputError,
@@ -39,6 +38,7 @@ const view = (executionBinding: ExecutionBinding, customEndpointUrl: string | nu
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   delete process.env.OPENAI_BASE_URL;
 });
 
@@ -57,12 +57,12 @@ describe("the temporary v1 evidence view", () => {
     expect(legacyModelBinding(view(MOCK_BINDING))).toMatchObject({ provider: "mock", temperature: 0 });
     expect(legacyModelBinding(view(UNSET_TEMPERATURE))).toBeNull();
     expect(legacyModelBinding(view(OPENAI_OVERRIDE))).toBeNull();
-    expect(() => skillDigest({ ...view(UNSET_TEMPERATURE) } as SkillVersion)).toThrow(LegacyEvidenceUnsupportedError);
   });
 });
 
-describe("release evidence refusal", () => {
-  it("refuses a release-evidence batch before any trace or call when v1 can't state the binding", async () => {
+describe("release evidence on any binding", () => {
+  it("states a binding v1 couldn't, exactly, in the release receipt", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", undefined);
     const repository = new DemoRepository();
     const app = createApp(repository);
     const key = await mintKey(app);
@@ -74,32 +74,18 @@ describe("release evidence refusal", () => {
     expect(created.status).toBe(201);
     const versionId = (await created.json() as { version: { id: string } }).version.id;
 
-    const refused = await app.request("/api/v1/judge/batch", {
+    const submitted = await app.request("/api/v1/judge/batch", {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
       body: JSON.stringify({ purpose: "release_evidence", skillVersionId: versionId, items: [{ clientItemId: "a", input: { q: 1 }, output: { a: 1 }, metadata: {} }] })
     });
-    expect(refused.status).toBe(409);
-    expect(await refused.json()).toMatchObject({ code: "v1_evidence_unsupported_binding" });
-    expect((await repository.listEvalRuns(PROJECT)).filter((run) => run.skillVersionId === versionId)).toHaveLength(0);
-  });
-
-  it("refuses in the repository too, so no release run can end unable to mint its receipt", async () => {
-    const repository = new DemoRepository();
-    const version = await repository.createSkillVersion("skill_support_quality", {
-      rubricMarkdown: "Pass grounded answers.",
-      prompt: "Judge the answer.",
-      executionBinding: bindingInput(UNSET_TEMPERATURE),
-      outputSchema: { type: "object" },
-      verdictKind: "binary",
-      timeScope: "new"
-    }, { projectId: PROJECT });
-    await expect(repository.createEvalRun({
-      projectId: PROJECT,
-      skillVersionId: version.version.id,
-      trigger: "release_evidence",
-      items: []
-    })).rejects.toBeInstanceOf(LegacyEvidenceUnsupportedError);
+    expect(submitted.status).toBe(202);
+    const { evalRunId } = await submitted.json() as { evalRunId: string };
+    const receipt = AssessmentReceiptV2Schema.parse(await (await app.request(
+      `/api/v1/eval-runs/${evalRunId}/assessment-receipt`,
+      { headers: { authorization: `Bearer ${key}` } }
+    )).json());
+    expect(receipt.evaluator.executionBinding).toEqual(UNSET_TEMPERATURE);
   });
 });
 

@@ -8,6 +8,7 @@ import {
   EvaluatorCallError,
   failureKindForStatus,
   observedText,
+  observedUpstream,
   providerErrorDetail,
   statusFromCode,
   type ObservedProvenance,
@@ -113,7 +114,7 @@ export function readOpenAIChatResponse(
     throw new EvaluatorCallError(
       status === null ? "provider_unavailable" : failureKindForStatus(status),
       `the provider reported an error in a successful response${providerError.message ? `: ${providerError.message}` : ""}`,
-      { ...detail, providerError }
+      { ...detail, providerError, observed: { ...observed, upstreamProvider: observed.upstreamProvider ?? observedUpstream(binding, providerError) } }
     );
   }
   if (message === undefined) throw new EvaluatorCallError("provider_protocol", "the completion has no message", detail);

@@ -1,11 +1,12 @@
 import type { EvalRunDetail } from "@rubrist/shared";
 import type { PoolClient } from "pg";
 import {
-  buildAssessmentReceipt,
-  canonicalReceiptBytes,
+  RECEIPT_SCHEMA_VERSION,
+  buildAssessmentReceiptV2,
+  canonicalReceiptV2Bytes,
   receiptArtifactDigest,
   receiptSourceSnapshotDigest
-} from "../lib/assessment-receipt.js";
+} from "../lib/assessment-receipt-v2.js";
 import type {
   AssessmentReceiptArtifact,
   AssessmentReceiptArtifactSource
@@ -16,7 +17,8 @@ import {
   rowToAssessmentReceiptArtifact,
   rowToEvalRun,
   rowToEvalRunItem,
-  rowToSkillVersion
+  rowToSkillVersion,
+  rowToVerdictRecord
 } from "./mappers.js";
 
 export async function mintAssessmentReceiptWithClient(
@@ -34,8 +36,8 @@ export async function mintAssessmentReceiptWithClient(
   const run = rowToEvalRun(runRow);
   const existingResult = await client.query(
     `select * from assessment_receipt_artifacts
-       where eval_run_id = $1 and contract_version = 1 and artifact_revision = 1`,
-    [evalRunId]
+       where eval_run_id = $1 and contract_version = $2 and artifact_revision = 1`,
+    [evalRunId, RECEIPT_SCHEMA_VERSION]
   );
   if (existingResult.rows[0]) return rowToAssessmentReceiptArtifact(existingResult.rows[0]);
   if (run.trigger !== "release_evidence") {
@@ -67,16 +69,27 @@ export async function mintAssessmentReceiptWithClient(
   const items = itemsResult.rows.map(rowToEvalRunItem);
   const detail: EvalRunDetail = { ...run, items, spend: computeEvalRunSpend(items) };
   const skillVersion = rowToSkillVersion(versionRow);
-  const receipt = buildAssessmentReceipt({ run: detail, skillVersion });
-  const canonicalBytes = canonicalReceiptBytes(receipt);
+  // Each outcome's score and observation live on its verdict.
+  const verdictIds = items.flatMap((item) => item.status === "completed" && item.verdictId ? [item.verdictId] : []);
+  const verdictResult = await client.query(
+    `select * from verdicts where project_id = $1 and id = any($2::text[])`,
+    [projectId, verdictIds]
+  );
+  const verdicts = new Map(verdictResult.rows.map((row) => {
+    const verdict = rowToVerdictRecord(row);
+    return [verdict.id, verdict] as const;
+  }));
+  const source = { run: detail, skillVersion, verdicts };
+  const receipt = buildAssessmentReceiptV2(source);
+  const canonicalBytes = canonicalReceiptV2Bytes(receipt);
   const artifactDigest = receiptArtifactDigest(canonicalBytes);
-  const artifactId = `rart_${evalRunId}_v1_r1`;
+  const artifactId = `rart_${evalRunId}_v${RECEIPT_SCHEMA_VERSION}_r1`;
   await client.query(
     `insert into assessment_receipt_artifacts
        (id, project_id, eval_run_id, receipt_id, contract_version, artifact_revision,
         canonical_bytes, artifact_digest, evidence_digest, source_snapshot_digest,
         source_kind, predecessor_artifact_id, correction_reason, created_by_user_id)
-       values ($1,$2,$3,$4,1,1,$5,$6,$7,$8,$9,null,null,null)
+       values ($1,$2,$3,$4,$10,1,$5,$6,$7,$8,$9,null,null,null)
        on conflict (eval_run_id, contract_version, artifact_revision) do nothing`,
     [
       artifactId,
@@ -86,14 +99,15 @@ export async function mintAssessmentReceiptWithClient(
       canonicalBytes,
       artifactDigest,
       receipt.evidenceDigest,
-      receiptSourceSnapshotDigest({ run: detail, skillVersion }),
-      sourceKind
+      receiptSourceSnapshotDigest(source),
+      sourceKind,
+      RECEIPT_SCHEMA_VERSION
     ]
   );
   const stored = await client.query(
     `select * from assessment_receipt_artifacts
-       where eval_run_id = $1 and contract_version = 1 and artifact_revision = 1`,
-    [evalRunId]
+       where eval_run_id = $1 and contract_version = $2 and artifact_revision = 1`,
+    [evalRunId, RECEIPT_SCHEMA_VERSION]
   );
   if (!stored.rows[0]) throw new Error(`Assessment receipt artifact vanished after mint: ${evalRunId}`);
   return rowToAssessmentReceiptArtifact(stored.rows[0]);

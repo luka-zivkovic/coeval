@@ -105,9 +105,9 @@ export const HttpUrlSchema = z
   .url()
   .refine((value) => /^https?:\/\//i.test(value), { message: "baseUrl must use http or https" });
 
-// Contract-facing model bindings intentionally mirror the frozen receipt-v1
-// schema, where provider and sampling values are not restricted to Rubrist's
-// current runtime provider catalog.
+// TEMPORARY (Batch 8D-5d deletes it): the v1 model binding shape, whose
+// provider and sampling values are not restricted to Rubrist's current runtime
+// provider catalog.
 export const ModelBindingSchema = z.object({
   provider: z.string(),
   modelId: z.string(),

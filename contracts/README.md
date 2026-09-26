@@ -41,8 +41,8 @@ The normative rules are in [`skill-format-v2.md`](skill-format-v2.md).
 ## Assessment receipt v2
 
 `assessment-receipt-v2.schema.json` is the closed, policy-free wire contract
-that replaces receipt v1 (Rubrist ADR-0014 sections 6 and 7, decisions 5 and
-6). It carries the execution binding and a digest of the evaluator
+Rubrist emits for every terminal `release_evidence` run. It replaced receipt v1
+(Rubrist ADR-0014 sections 6 and 7, decisions 5 and 6). It carries the execution binding and a digest of the evaluator
 definition, never rubric, prompt, or question text, and `skillDigest` v2 is
 recomputed from them. Each item has exactly one outcome, failure, or
 `not_attempted` result, a score whose kind the verdict protocol fixes, and
@@ -54,25 +54,15 @@ schema/runtime parity, every digest, the binding's rules, and each semantic
 rule. The normative rules and pinned file digests are in
 [`assessment-receipt-v2.md`](assessment-receipt-v2.md).
 
-## Assessment receipt v1 (superseded)
-
-`assessment-receipt-v1.schema.json` is the closed, policy-free wire contract
-for a `release_evidence` assessment receipt. The positive fixture and
-conformance corpus in `fixtures/` are portable interoperability vectors:
-consumers must verify schema acceptance, canonical digests, exact item
-coverage, item ordering, and candidate-content linkage. The normative
-canonicalization, digest, mutation, and pinned-file rules are in
-[`assessment-receipt-v1.md`](assessment-receipt-v1.md).
-
 ## Version policy
 
 - Rubrist owns the canonical contract; consumers vendor a reviewed copy and
   independently verify it. See
   [ADR-0001](../docs/decisions/0001-evidence-contract-ownership-and-versioning.md).
-- Receipt v1 is frozen, and receipt v2 replaces it (ADR-0014 decision 6):
-  before launch, Rubrist and Dailies switch together and neither keeps code
-  that emits or verifies v1. The v1 files here are deleted with that code,
-  and at the launch baseline every contract restarts at v1 (decision 7).
+- The v2 contracts replaced v1 (ADR-0014 decision 6): before launch, Rubrist
+  and Dailies switched together, and neither keeps code, documents, or
+  fixtures for v1. At the launch baseline every contract restarts at v1
+  (decision 7).
 - Every contract's parsers are intentionally strict at every object
   boundary, so adding, removing, or renaming a field is a breaking change.
 - After launch, a breaking change requires a new schema version, new

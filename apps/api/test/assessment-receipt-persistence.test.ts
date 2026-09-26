@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { AssessmentReceiptSchema, type AssessmentReceipt } from "@rubrist/shared";
+import { AssessmentReceiptV2Schema, type AssessmentReceiptV2, type VerdictLabel } from "@rubrist/shared";
 import { createApp } from "../src/app.js";
 import { canonicalJson, contentDigest } from "../src/lib/canonical-json.js";
-import { evidenceDigestForReceipt, parseCanonicalReceiptBytes, receiptArtifactDigest } from "../src/lib/assessment-receipt.js";
+import { evidenceDigestForReceiptV2, parseCanonicalReceiptV2Bytes, receiptArtifactDigest } from "../src/lib/assessment-receipt-v2.js";
+import { skillDigestV2FromInput } from "../src/lib/evaluator-identity.js";
 import {
   AssessmentReceiptIntegrityError,
   AssessmentReceiptUnavailableError,
@@ -12,18 +13,33 @@ import {
 const PROJECT = "proj_langsmith_support";
 const VERSION = "skillv_1_2_0";
 
-async function terminalRun(repo: DemoRepository) {
+/** A fully cached release run, terminal at creation, over one recorded verdict. */
+async function terminalRun(repo: DemoRepository, resultLabel: VerdictLabel = "pass") {
+  const input = { question: "Persist?" };
+  const output = { answer: "Yes." };
+  const { caseId } = await repo.importTrace(PROJECT, "release_evidence", {
+    sourceTraceId: `release_${resultLabel}`, input, output, metadata: {}
+  }, { ingestionPurpose: "release_evidence" });
+  const verdict = await repo.recordVerdict({
+    projectId: PROJECT,
+    caseId,
+    source: "llm_judge",
+    skillVersionId: VERSION,
+    payload: { kind: "binary", pass: resultLabel === "pass", rationale: "recorded" },
+    observed: { model: "claude-sonnet-4-6", requestId: "req_persisted", responseId: null, systemFingerprint: null, upstreamProvider: null, thinkingReturned: false, reasoningTokens: null },
+    evaluatorScore: { value: 0.8, kind: "self_reported_score" }
+  });
   return repo.createEvalRun({
     projectId: PROJECT,
     skillVersionId: VERSION,
     trigger: "release_evidence",
     items: [{
-      caseId: "case_persisted",
+      caseId,
       clientItemId: "release-item",
-      contentDigest: contentDigest({ question: "Persist?" }, { answer: "Yes." }),
+      contentDigest: contentDigest(input, output),
       status: "completed",
-      verdictId: "verdict_persisted",
-      resultLabel: "pass",
+      verdictId: verdict.id,
+      resultLabel,
       cached: true
     }]
   });
@@ -38,18 +54,29 @@ async function mintKey(app: ReturnType<typeof createApp>): Promise<string> {
   return (await response.json() as { key: string }).key;
 }
 
-function correctedReceipt(root: AssessmentReceipt): AssessmentReceipt {
-  const unsigned = {
-    ...structuredClone(root),
-    receiptId: `${root.receiptId}_correction_2`,
-    items: root.items.map((item) => ({ ...item, judgedLabel: "fail" as const }))
-  };
-  const { evidenceDigest: _old, ...withoutDigest } = unsigned;
-  return AssessmentReceiptSchema.parse({
-    ...withoutDigest,
-    evidenceDigest: evidenceDigestForReceipt(withoutDigest as AssessmentReceipt)
+/** The receipt changed and signed again, as a consumer or a correction would. */
+function resigned(receipt: AssessmentReceiptV2, change: (draft: AssessmentReceiptV2) => void): AssessmentReceiptV2 {
+  const draft = structuredClone(receipt);
+  change(draft);
+  const { evidenceDigest: _old, ...unsigned } = draft;
+  return AssessmentReceiptV2Schema.parse({ ...unsigned, evidenceDigest: evidenceDigestForReceiptV2(unsigned) });
+}
+
+/** Its single pass outcome restated as a fail, with consistent counters. */
+function failedInstead(draft: AssessmentReceiptV2): void {
+  draft.items[0]!.result = { state: "outcome", outcome: "fail" };
+  draft.run.passItems = 0;
+  draft.run.failItems = 1;
+}
+
+function correctedReceipt(root: AssessmentReceiptV2): AssessmentReceiptV2 {
+  return resigned(root, (draft) => {
+    draft.receiptId = `${root.receiptId}_correction_2`;
+    failedInstead(draft);
   });
 }
+
+const parsedArtifact = (bytes: Buffer) => AssessmentReceiptV2Schema.parse(JSON.parse(bytes.toString("utf8")));
 
 describe("immutable assessment receipt artifacts", () => {
   it("mints a cached terminal run once and returns defensive exact-byte copies", async () => {
@@ -98,39 +125,24 @@ describe("immutable assessment receipt artifacts", () => {
       error: "provider failed"
     });
     const [artifact] = await repo.listAssessmentReceiptArtifacts(PROJECT, created.id);
-    const receipt = AssessmentReceiptSchema.parse(JSON.parse(artifact!.canonicalBytes.toString("utf8")));
+    const receipt = parsedArtifact(artifact!.canonicalBytes);
     expect(receipt.status).toBe("incomplete");
-    expect(receipt.items[0]).toMatchObject({ status: "failed", error: "provider failed" });
+    expect(receipt.items[0]).toMatchObject({ result: { state: "failure", failureKind: "provider_timeout" }, verdictId: null });
+    expect(artifact).toMatchObject({ id: `rart_${created.id}_v2_r1`, contractVersion: 2 });
   });
 
-  it("keeps ambiguous judgments incomplete and rejects a forged complete claim", async () => {
+  it("keeps an abstention complete, as an outcome, and rejects a forged incomplete claim", async () => {
     const repo = new DemoRepository();
-    const run = await repo.createEvalRun({
-      projectId: PROJECT,
-      skillVersionId: VERSION,
-      trigger: "release_evidence",
-      items: [{
-        caseId: "case_ambiguous_receipt",
-        clientItemId: "ambiguous-item",
-        contentDigest: contentDigest("ambiguous", "answer"),
-        status: "completed",
-        verdictId: "verdict_ambiguous",
-        resultLabel: "ambiguous",
-        cached: true
-      }]
-    });
+    const run = await terminalRun(repo, "ambiguous");
     const artifact = await repo.getOrFreezeAssessmentReceipt(PROJECT, run.id);
-    const receipt = AssessmentReceiptSchema.parse(JSON.parse(artifact!.canonicalBytes.toString("utf8")));
-    expect(receipt.status).toBe("incomplete");
+    const receipt = parsedArtifact(artifact!.canonicalBytes);
+    expect(receipt.status).toBe("complete");
+    expect(receipt.run).toMatchObject({ passItems: 0, failItems: 0, abstainedItems: 1 });
+    expect(receipt.items[0]!.result).toEqual({ state: "outcome", outcome: "abstain" });
 
-    const forgedUnsigned = { ...structuredClone(receipt), status: "complete" as const };
-    const { evidenceDigest: _old, ...forgedWithoutDigest } = forgedUnsigned;
-    const forged = AssessmentReceiptSchema.parse({
-      ...forgedWithoutDigest,
-      evidenceDigest: evidenceDigestForReceipt(forgedWithoutDigest as AssessmentReceipt)
-    });
-    expect(() => parseCanonicalReceiptBytes(Buffer.from(canonicalJson(forged), "utf8")))
-      .toThrow(/claims complete/);
+    const forged = resigned(receipt, (draft) => { draft.status = "incomplete"; });
+    expect(() => parseCanonicalReceiptV2Bytes(Buffer.from(canonicalJson(forged), "utf8")))
+      .toThrow(/claims incomplete/);
   });
 
   it("rejects nonterminal and non-release runs without minting", async () => {
@@ -165,7 +177,7 @@ describe("immutable assessment receipt artifacts", () => {
     const repo = new DemoRepository();
     const run = await terminalRun(repo);
     const root = await repo.getOrFreezeAssessmentReceipt(PROJECT, run.id);
-    const rootReceipt = AssessmentReceiptSchema.parse(JSON.parse(root!.canonicalBytes.toString("utf8")));
+    const rootReceipt = parsedArtifact(root!.canonicalBytes);
     const correctionReceipt = correctedReceipt(rootReceipt);
 
     const correction = await repo.createAssessmentReceiptCorrection({
@@ -176,6 +188,8 @@ describe("immutable assessment receipt artifacts", () => {
       createdByUserId: "user_reviewer"
     });
     expect(correction).toMatchObject({
+      id: `rart_${run.id}_v2_r2`,
+      contractVersion: 2,
       artifactRevision: 2,
       predecessorArtifactId: root!.id,
       sourceKind: "correction",
@@ -202,6 +216,19 @@ describe("immutable assessment receipt artifacts", () => {
       receipt: rootReceipt,
       reason: "Cannot reuse the root receipt id."
     })).rejects.toBeInstanceOf(AssessmentReceiptIntegrityError);
+
+    // A correction can't restate the evaluator, even with a recomputed skillDigest.
+    const otherEvaluator = resigned(rootReceipt, (draft) => {
+      draft.receiptId = `${rootReceipt.receiptId}_other_evaluator`;
+      draft.evaluator.executionBinding.modelId = "another-model";
+      draft.skillDigest = skillDigestV2FromInput(draft.evaluator);
+    });
+    await expect(repo.createAssessmentReceiptCorrection({
+      projectId: PROJECT,
+      evalRunId: run.id,
+      receipt: otherEvaluator,
+      reason: "Cannot swap the evaluator."
+    })).rejects.toThrow(/cannot change the receipt contract or evaluator identity/);
   });
 
   it("records exact matching and divergent consumer copies without replacing the root", async () => {
@@ -216,16 +243,8 @@ describe("immutable assessment receipt artifacts", () => {
     });
     expect(match).toMatchObject({ artifactId: root!.id, comparisonStatus: "match" });
 
-    const rootReceipt = AssessmentReceiptSchema.parse(JSON.parse(root!.canonicalBytes.toString("utf8")));
-    const divergentUnsigned = {
-      ...structuredClone(rootReceipt),
-      items: rootReceipt.items.map((item) => ({ ...item, judgedLabel: "fail" as const }))
-    };
-    const { evidenceDigest: _old, ...divergentWithoutDigest } = divergentUnsigned;
-    const divergentReceipt = AssessmentReceiptSchema.parse({
-      ...divergentWithoutDigest,
-      evidenceDigest: evidenceDigestForReceipt(divergentWithoutDigest as AssessmentReceipt)
-    });
+    const rootReceipt = parsedArtifact(root!.canonicalBytes);
+    const divergentReceipt = resigned(rootReceipt, failedInstead);
     const divergentBytes = Buffer.from(canonicalJson(divergentReceipt), "utf8");
     const divergence = await repo.compareAssessmentReceiptCopy({
       projectId: PROJECT,
@@ -254,7 +273,7 @@ describe("persisted receipt routes", () => {
     const repo = new DemoRepository();
     const run = await terminalRun(repo);
     const root = await repo.getOrFreezeAssessmentReceipt(PROJECT, run.id);
-    const rootReceipt = AssessmentReceiptSchema.parse(JSON.parse(root!.canonicalBytes.toString("utf8")));
+    const rootReceipt = parsedArtifact(root!.canonicalBytes);
     const correctionReceipt = correctedReceipt(rootReceipt);
     await repo.createAssessmentReceiptCorrection({
       projectId: PROJECT,

@@ -1,20 +1,21 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { AssessmentReceiptSchema, MinimumVerdictOutputSchema } from "@rubrist/shared";
+import { AssessmentReceiptV2Schema, MinimumVerdictOutputSchema } from "@rubrist/shared";
 import type { PoolClient } from "pg";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import {
-  parseCanonicalReceiptBytes,
+  parseCanonicalReceiptV2Bytes,
   receiptSourceSnapshotDigest
-} from "../src/lib/assessment-receipt.js";
+} from "../src/lib/assessment-receipt-v2.js";
 import { AssessmentReceiptUnavailableError, computeEvalRunSpend } from "../src/repository.js";
 import * as commands from "../src/repository.pg/assessment-receipt-commands.js";
 import {
   rowToEvalRun,
   rowToEvalRunItem,
-  rowToSkillVersion
+  rowToSkillVersion,
+  rowToVerdictRecord
 } from "../src/repository.pg/mappers.js";
 import { MOCK_BINDING } from "./fixtures/execution-binding.js";
 
@@ -96,6 +97,31 @@ function itemRow(): Record<string, unknown> {
     error: null,
     created_at: "2026-09-02T00:00:00.000Z",
     finished_at: "2026-09-02T00:00:02.000Z"
+  };
+}
+
+function verdictRow(): Record<string, unknown> {
+  return {
+    id: "verdict-1",
+    project_id: "project-1",
+    case_id: "case-1",
+    skill_version_id: "skill-version-1",
+    source: "llm_judge",
+    actor_user_id: null,
+    actor_name: null,
+    payload: JSON.stringify({ kind: "binary", pass: true, rationale: "grounded" }),
+    external_run_id: null,
+    observed: JSON.stringify({
+      model: "observed-model",
+      requestId: "request-1",
+      responseId: "response-1",
+      systemFingerprint: null,
+      upstreamProvider: null,
+      thinkingReturned: null,
+      reasoningTokens: null
+    }),
+    evaluator_score: JSON.stringify({ value: 0.9, kind: "self_reported_score" }),
+    created_at: "2026-09-02T00:00:02.000Z"
   };
 }
 
@@ -269,13 +295,14 @@ describe("PostgreSQL assessment-receipt client commands", () => {
         }
         if (sql.includes("from eval_run_items")) return { rows: [itemRow()] };
         if (sql.includes("from skill_versions")) return { rows: [skillVersionRow()] };
+        if (sql.includes("from verdicts")) return { rows: [verdictRow()] };
         if (sql.includes("insert into assessment_receipt_artifacts")) {
           artifactRow = {
             id: values?.[0],
             project_id: values?.[1],
             eval_run_id: values?.[2],
             receipt_id: values?.[3],
-            contract_version: 1,
+            contract_version: values?.[9],
             artifact_revision: 1,
             canonical_bytes: values?.[4],
             artifact_digest: values?.[5],
@@ -300,30 +327,39 @@ describe("PostgreSQL assessment-receipt client commands", () => {
       "terminal_mint"
     );
     expect(first).toMatchObject({
-      id: "rart_eval-run-1_v1_r1",
+      id: "rart_eval-run-1_v2_r1",
+      contractVersion: 2,
       sourceKind: "terminal_mint",
       artifactRevision: 1
     });
-    const parsed = parseCanonicalReceiptBytes(first!.canonicalBytes);
-    expect(AssessmentReceiptSchema.parse(parsed)).toEqual(parsed);
+    const parsed = parseCanonicalReceiptV2Bytes(first!.canonicalBytes);
+    expect(AssessmentReceiptV2Schema.parse(parsed)).toEqual(parsed);
     expect(parsed).toMatchObject({
       projectId: "project-1",
       evalRunId: "eval-run-1",
-      schemaVersion: 1,
+      schemaVersion: 2,
       status: "complete",
-      items: [{ clientItemId: "item-a", judgedLabel: "pass", status: "completed" }]
+      items: [{
+        clientItemId: "item-a",
+        result: { state: "outcome", outcome: "pass" },
+        verdictId: "verdict-1",
+        evaluatorScore: { value: 0.9, kind: "self_reported_score" },
+        observed: { model: "observed-model", requestId: "request-1" }
+      }]
     });
     const expectedRun = rowToEvalRun(runRow());
     const expectedItems = [rowToEvalRunItem(itemRow())];
     expect(first?.sourceSnapshotDigest).toBe(receiptSourceSnapshotDigest({
       run: { ...expectedRun, items: expectedItems, spend: computeEvalRunSpend(expectedItems) },
-      skillVersion: rowToSkillVersion(skillVersionRow())
+      skillVersion: rowToSkillVersion(skillVersionRow()),
+      verdicts: new Map([["verdict-1", rowToVerdictRecord(verdictRow())]])
     }));
     expect(calls.map(({ sql }) => sql.replace(/\s+/g, " ").trim())).toEqual([
       expect.stringContaining("from eval_runs where id = $1 and project_id = $2 for update"),
       expect.stringContaining("from assessment_receipt_artifacts"),
       expect.stringContaining("from eval_run_items"),
       expect.stringContaining("from skill_versions"),
+      expect.stringContaining("from verdicts where project_id = $1 and id = any($2::text[])"),
       expect.stringContaining("insert into assessment_receipt_artifacts"),
       expect.stringContaining("from assessment_receipt_artifacts")
     ]);
@@ -351,6 +387,7 @@ describe("PostgreSQL assessment-receipt client commands", () => {
         if (sql.includes("from assessment_receipt_artifacts")) return { rows: [] };
         if (sql.includes("from eval_run_items")) return { rows: [itemRow()] };
         if (sql.includes("from skill_versions")) return { rows: [skillVersionRow()] };
+        if (sql.includes("from verdicts")) return { rows: [verdictRow()] };
         if (sql.includes("insert into assessment_receipt_artifacts")) return { rows: [] };
         throw new Error(`unexpected query: ${sql}`);
       }

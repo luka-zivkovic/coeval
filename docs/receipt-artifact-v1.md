@@ -2,10 +2,11 @@
 
 Status: **accepted Batch 1A storage contract**
 
-The receipt body remains the closed
-[`rubrist/assessment-receipt/v1`](../contracts/assessment-receipt-v1.md) wire
-contract. This document specifies how Rubrist preserves and serves those exact
-bytes; it does not add fields to receipt v1.
+The receipt body is the closed
+[`rubrist/assessment-receipt/v2`](../contracts/assessment-receipt-v2.md) wire
+contract, which replaced receipt v1 in Batch 8D (Rubrist ADR-0014). This
+document specifies how Rubrist preserves and serves those exact bytes; it does
+not add fields to the receipt.
 
 ## Stored artifact
 
@@ -16,17 +17,17 @@ bytes; it does not add fields to receipt v1.
 | --- | --- |
 | `id` | Stable artifact identity. |
 | `project_id`, `eval_run_id` | Owning assessment identity. |
-| `receipt_id` | Receipt v1 identity; unique across artifacts. |
-| `contract_version` | Positive integer; Batch 1A writes `1`. |
+| `receipt_id` | Receipt identity; unique across artifacts. |
+| `contract_version` | The receipt's `schemaVersion`; every artifact holds receipt v2 and writes `2`. |
 | `artifact_revision` | Positive lineage revision; root is `1`. |
 | `canonical_bytes` | Exact canonical UTF-8 receipt bytes as `bytea`. |
 | `artifact_digest` | `sha256:` digest over all `canonical_bytes`. |
-| `evidence_digest` | Receipt v1 `evidenceDigest`. |
-| `source_snapshot_digest` | Digest of the source rows observed at mint/freeze; for a correction, digest of the governed correction artifact supplied to the append operation. |
+| `evidence_digest` | Receipt `evidenceDigest`. |
+| `source_snapshot_digest` | Digest of the source rows observed at mint/freeze (the run, its items, the evaluator version, and each completed item's verdict); for a correction, digest of the governed correction artifact supplied to the append operation. |
 | `source_kind` | `terminal_mint`, `historical_freeze`, or `correction`. |
 | `predecessor_artifact_id` | Null only for the root; corrections link backward. |
 | `correction_reason` | Required only for a correction. |
-| `created_by_user_id`, `created_at` | Artifact provenance outside receipt v1. |
+| `created_by_user_id`, `created_at` | Artifact provenance outside the receipt. |
 
 Unique constraints enforce one revision and one receipt identity. Database
 triggers reject mutation or direct deletion while the project exists. Project
@@ -36,12 +37,38 @@ deletion is the explicit erasure boundary.
 its digest, and `match|diverged` result against one persisted artifact. It is
 append-only and deduplicated by artifact plus consumer byte digest.
 
-The comparison endpoint accepts canonical receipt bytes. Before Batch 1A the
-HTTP endpoint serialized a receipt as ordinary JSON, so a consumer that kept
-those raw response bytes must parse and re-canonicalize the receipt according
-to [`contracts/assessment-receipt-v1.md`](../contracts/assessment-receipt-v1.md)
-before submitting it. The evidence and dataset digests remain unchanged by
-that representation-only step.
+The comparison endpoint accepts canonical receipt bytes, as
+[`contracts/assessment-receipt-v2.md`](../contracts/assessment-receipt-v2.md)
+defines them.
+
+## Item evidence
+
+Each outcome in a receipt carries its verdict's evaluator score and what its
+call observed, so a mint reads the verdict of every completed item. Nothing is
+synthesized for a verdict that recorded no observation: such an item can't be
+minted. Two rules keep that from happening:
+
+- release evidence is judged only by the bound evaluator, never by the
+  demo's heuristic fallback, so an item without the evaluator's credential is
+  not attempted;
+- a release batch reuses a recorded verdict only when it states its call's
+  observation.
+
+A failed item records its failure kind and observation, or that it was never
+attempted, and a pending item of a run that ended is not attempted.
+
+An outcome is the verdict's label, as Rubrist labels every verdict: a binary
+verdict passes, fails, or abstains, and a scalar or categorical verdict is
+labelled by where its comparable score falls, passing at two thirds or above,
+failing at one third or below, and abstaining between. Receipt v1 recorded the
+same labels.
+
+A recorded observation holds only what a receipt can carry: bounded text with
+no lone surrogate, and an upstream provider only for an OpenRouter binding.
+The executor records an upstream from an OpenRouter response or error body;
+another provider's error metadata stays diagnostic detail and never becomes
+evidence. So recording a call can never leave a run unable to mint its
+receipt.
 
 ## State machine
 
@@ -80,7 +107,7 @@ root artifact ── read ──────────────────
 | Candidate | Result |
 | --- | --- |
 | Unknown project/run or non-release run | Reject. |
-| Invalid v1 schema or evidence digest | Reject. |
+| Invalid receipt v2 schema, semantic rule, or evidence digest | Reject. |
 | Different `projectId` or `evalRunId` | Reject identity swap. |
 | Reused `receiptId` | Reject. |
 | Valid correction with a reason | Append next revision linked to current latest artifact. |

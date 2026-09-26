@@ -6,7 +6,7 @@ import {
   JudgeServiceRequestSchema,
   verdictLabelFromPayload
 } from "@rubrist/shared";
-import { LegacyEvidenceUnsupportedError, legacyModelBinding } from "../lib/execution-binding.js";
+import { evaluatorIdentityFor } from "../lib/evaluator-identity.js";
 import { contentDigest, sha256Digest } from "../lib/canonical-json.js";
 import {
   createStrictJudgeProvider,
@@ -192,11 +192,16 @@ export function registerV1EvaluationAdministrationRoutes(
     if ("invalid" in resolvedVersion) return c.json({ error: resolvedVersion.invalid }, 400);
     const skillVersionId = resolvedVersion.id;
     if (parsed.data.purpose === "release_evidence") {
+      // A receipt states the evaluator's identity, so a version without one
+      // is refused before any trace is imported or provider called.
       const version = await repository.getSkillVersion(projectId, skillVersionId);
-      if (version && legacyModelBinding(version) === null) {
-        // Refused before any trace is imported or provider called (Batch 8D).
-        const refusal = new LegacyEvidenceUnsupportedError("An assessment receipt v1");
-        return c.json({ error: refusal.message, code: refusal.code }, 409);
+      try {
+        if (version) evaluatorIdentityFor(version);
+      } catch {
+        return c.json({
+          error: "This evaluator version has no valid evaluator identity for an assessment receipt.",
+          code: "evaluator_identity_invalid"
+        }, 409);
       }
     }
 
@@ -275,13 +280,15 @@ export function registerV1EvaluationAdministrationRoutes(
         ...(expectedFailStep !== undefined ? { expectedFailStep } : {})
       };
       if (!imported.created) {
-        const existing = await repository.listVerdicts({
+        // A receipt outcome states what its call observed, so release
+        // evidence reuses only a verdict that recorded its observation.
+        const existing = (await repository.listVerdicts({
           projectId,
           caseId: imported.caseId,
           source: "llm_judge",
           skillVersionId,
           limit: 1
-        });
+        })).filter((verdict) => parsed.data.purpose !== "release_evidence" || verdict.observed);
         if (existing[0]) {
           entry.verdictId = existing[0].id;
           entry.resultLabel = verdictLabelFromPayload(existing[0].payload);

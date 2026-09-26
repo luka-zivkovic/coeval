@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { demoProject, demoSkill } from "@rubrist/db";
-import { AssessmentReceiptSchema } from "@rubrist/shared";
+import { AssessmentReceiptV2Schema } from "@rubrist/shared";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { contentDigest } from "../src/lib/canonical-json.js";
@@ -205,6 +205,22 @@ function evaluationSlice(repository: DemoRepository): DemoEvaluationRepository {
   return Reflect.get(repository, "evaluationRepository") as DemoEvaluationRepository;
 }
 
+/** A release case with an evaluator verdict that recorded its call's observation. */
+async function observedVerdict(repository: DemoRepository, name: string) {
+  const { caseId } = await repository.importTrace(demoProject.id, "release_evidence", {
+    sourceTraceId: `release_${name}`, input: { question: name }, output: { answer: "Yes." }, metadata: {}
+  }, { ingestionPurpose: "release_evidence" });
+  return repository.recordVerdict({
+    projectId: demoProject.id,
+    caseId,
+    source: "llm_judge",
+    skillVersionId: demoSkill.currentVersion.id,
+    payload: { kind: "binary", pass: true, rationale: "recorded" },
+    observed: { model: "claude-sonnet-4-6", requestId: `req_${name}`, responseId: null, systemFingerprint: null, upstreamProvider: null, thinkingReturned: false, reasoningTokens: null },
+    evaluatorScore: { value: 0.8, kind: "self_reported_score" }
+  });
+}
+
 function repositoryStore(repository: DemoRepository): DemoRepositoryStore {
   return Reflect.get(repository, "store") as DemoRepositoryStore;
 }
@@ -369,22 +385,23 @@ describe("Demo evaluation and assessment-receipt repository slice", () => {
     await repository.listPendingEvalRunItemDispatches(demoProject.id, retried.run.id);
     expect(repository.calls).toEqual(["listPendingEvalRunItems"]);
 
+    const receiptVerdict = await observedVerdict(repository, "evaluation-receipt");
     repository.calls.length = 0;
     const terminal = await repository.createEvalRun({
       projectId: demoProject.id,
       skillVersionId: demoSkill.currentVersion.id,
       trigger: "release_evidence",
       items: [{
-        caseId: "case_evaluation_receipt",
+        caseId: receiptVerdict.caseId,
         clientItemId: "evaluation-receipt-item",
         contentDigest: contentDigest({ question: "Persist?" }, { answer: "Yes." }),
         status: "completed",
-        verdictId: "verdict_evaluation_receipt",
+        verdictId: receiptVerdict.id,
         resultLabel: "pass",
         cached: true
       }]
     });
-    expect(repository.calls).toEqual(["createEvalRun", "getSkillVersion", "getSkillVersion"]);
+    expect(repository.calls).toEqual(["createEvalRun", "getSkillVersion"]);
 
     const store = repositoryStore(repository);
     store.assessmentReceiptArtifacts.splice(0);
@@ -423,12 +440,13 @@ describe("Demo evaluation and assessment-receipt repository slice", () => {
     }
 
     const repository = new ReceiptFailureRepository();
+    const mintVerdict = await observedVerdict(repository, "evaluation-terminal-mint");
     const run = await repository.createEvalRun({
       projectId: demoProject.id,
       skillVersionId: demoSkill.currentVersion.id,
       trigger: "release_evidence",
       items: [{
-        caseId: "case_evaluation_terminal_mint",
+        caseId: mintVerdict.caseId,
         clientItemId: "evaluation-terminal-mint-item",
         contentDigest: contentDigest({ question: "Mint atomically?" }, { answer: "Yes." })
       }]
@@ -438,14 +456,19 @@ describe("Demo evaluation and assessment-receipt repository slice", () => {
     const store = repositoryStore(repository);
     const storedRun = store.evalRuns.find((candidate) => candidate.id === run.id)!;
     const storedItem = store.evalRunItems.find((candidate) => candidate.evalRunId === run.id)!;
+    const claim = { projectId: demoProject.id, evalRunId: run.id, evalRunItemId: storedItem.id, executionToken: "token_mint" };
+    expect(await repository.claimEvalRunItemExecution(claim)).toMatchObject({ state: "claimed" });
     repository.rejectSkillLookup = true;
     await expect(repository.completeEvalRunItem({
       projectId: demoProject.id,
       evalRunId: run.id,
       evalRunItemId: storedItem.id,
-      verdictId: "verdict_evaluation_terminal_mint",
+      executionToken: claim.executionToken,
+      verdictId: mintVerdict.id,
       resultLabel: "pass"
     })).rejects.toThrow("Eval run skill version not found");
+    // The rollback keeps the item's claim, as PG's does.
+    expect(store.evalRunItemExecutions.get(storedItem.id)?.executionToken).toBe(claim.executionToken);
     expect(store.evalRuns.find((candidate) => candidate.id === run.id)).toBe(storedRun);
     expect(store.evalRunItems.find((candidate) => candidate.id === storedItem.id)).toBe(storedItem);
     expect(storedRun).toMatchObject({
@@ -467,20 +490,21 @@ describe("Demo evaluation and assessment-receipt repository slice", () => {
       projectId: demoProject.id,
       evalRunId: run.id,
       evalRunItemId: storedItem.id,
-      verdictId: "verdict_evaluation_terminal_mint",
+      executionToken: claim.executionToken,
+      verdictId: mintVerdict.id,
       resultLabel: "pass"
     })).resolves.toEqual({ runFinished: true });
     expect(storedRun).toMatchObject({ status: "completed", completedItems: 1, failedItems: 0 });
-    expect(storedItem).toMatchObject({ status: "completed", verdictId: "verdict_evaluation_terminal_mint" });
+    expect(storedItem).toMatchObject({ status: "completed", verdictId: mintVerdict.id });
     const completedArtifact = store.assessmentReceiptArtifacts.find(
       (artifact) => artifact.evalRunId === run.id
     );
     expect(completedArtifact).toMatchObject({ sourceKind: "terminal_mint", artifactRevision: 1 });
-    expect(AssessmentReceiptSchema.parse(JSON.parse(completedArtifact!.canonicalBytes.toString("utf8"))))
+    expect(AssessmentReceiptV2Schema.parse(JSON.parse(completedArtifact!.canonicalBytes.toString("utf8"))))
       .toMatchObject({
         status: "complete",
-        run: { status: "completed", completedItems: 1, failedItems: 0 },
-        items: [expect.objectContaining({ status: "completed", judgedLabel: "pass" })]
+        run: { status: "completed", passItems: 1, failedItems: 0 },
+        items: [expect.objectContaining({ result: { state: "outcome", outcome: "pass" }, verdictId: mintVerdict.id })]
       });
 
     const failedRun = await repository.createEvalRun({
@@ -505,11 +529,11 @@ describe("Demo evaluation and assessment-receipt repository slice", () => {
       (artifact) => artifact.evalRunId === failedRun.id
     );
     expect(failedArtifact).toMatchObject({ sourceKind: "terminal_mint", artifactRevision: 1 });
-    expect(AssessmentReceiptSchema.parse(JSON.parse(failedArtifact!.canonicalBytes.toString("utf8"))))
+    expect(AssessmentReceiptV2Schema.parse(JSON.parse(failedArtifact!.canonicalBytes.toString("utf8"))))
       .toMatchObject({
         status: "incomplete",
-        run: { status: "failed", completedItems: 0, failedItems: 1 },
-        items: [expect.objectContaining({ status: "failed", error: "provider exhausted retries" })]
+        run: { status: "failed", passItems: 0, failedItems: 1 },
+        items: [expect.objectContaining({ result: { state: "failure", failureKind: "provider_timeout" } })]
       });
   });
 });

@@ -162,6 +162,15 @@ export function providerErrorDetail(body: unknown, rawText: string, secret: stri
   return { type: null, code: null, param: null, message: message.length > 0 ? redactedProviderText(message, secret) : null, raw: null, upstreamProvider: null };
 }
 
+/**
+ * The upstream an error body names, as an observation. Only an OpenRouter
+ * binding records one (ADR-0014 section 6), and only as bounded text; any
+ * other provider's error metadata is diagnostic detail, never evidence.
+ */
+export function observedUpstream(binding: { provider: string }, providerError: ProviderErrorDetail): string | null {
+  return binding.provider === "openrouter" ? observedText(providerError.upstreamProvider) : null;
+}
+
 const OBSERVED_TEXT_LIMIT = 1_024;
 
 function hasLoneSurrogate(value: string): boolean {
