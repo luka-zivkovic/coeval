@@ -195,13 +195,15 @@ still use the promoted criterion through the existing nonsealed path.
 Candidate creation is now an owner-session Analyze command over the exact
 promoted criterion, frozen nonsealed governed batch, immutable truth revision,
 and at least one resolved pass/fail item. The same transaction creates the
-sole stable skill lineage when necessary, one immutable version, a copied
-known-failure regression revision, a durable developer exposure, and the
-append-only `candidate` seed event. No legacy writer may mint a version on this
+sole stable skill lineage when necessary, one immutable version (a prompted
+rubric and prompt, or a typed-question question and decision threshold), a
+copied known-failure regression revision, a durable developer exposure, and
+the append-only `candidate` seed event. No legacy writer may mint a version on this
 lineage without the complete bundle. Candidate creation and activation are
 governed gates: they require a resolved execution binding with explicit
-temperature and reasoning (ADR-0014 section 2), resolved beforehand outside the
-transaction, and the candidate's resolution becomes its version's record.
+temperature and reasoning where the model takes them (ADR-0014 section 2),
+resolved beforehand outside the transaction, and the candidate's resolution
+becomes its version's record.
 
 Lifecycle state overrides `skill_versions.status` for every
 `analysis_promotion` lineage. Candidates and needs-review versions are allowed
